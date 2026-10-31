@@ -107,7 +107,9 @@ final class JadeProbe {
             Stage.place(level, pos, TTRegistry.block(c.block()).defaultBlockState());
             c.setUp().accept(level, pos);
             at[0] = pos;
-            look(run.serverPlayer(), pos);
+            // the middle of what the crosshair can hit: the magnets are a plate two pixels high under a tall model (as in 1.7.10)
+            double middle = level.getBlockState(pos).getShape(level, pos).bounds().getCenter().y;
+            look(run.serverPlayer(), pos, middle);
             SEEN.remove(pos);
         }));
         script.run("show the interface", r -> r.client().options.hideGui = false);
@@ -136,14 +138,14 @@ final class JadeProbe {
         return message == null ? "none" : message.replace('\n', '|');
     }
 
-    /** The player two blocks south of {@code pos}, the crosshair on the middle of the block. */
-    private static void look(ServerPlayer player, BlockPos pos) {
+    /** The player two blocks south of {@code pos}, the crosshair at the height {@code middle} (0..1 within the block) of its middle. */
+    private static void look(ServerPlayer player, BlockPos pos, double middle) {
         double distance = 2.2;
         double x = pos.getX() + 0.5;
         double z = pos.getZ() + 0.5 + distance;
         double y = pos.getY() + 0.6;
         double eye = y + player.getEyeHeight();
-        float pitch = (float) Math.toDegrees(Math.atan2(eye - (pos.getY() + 0.5), distance));
+        float pitch = (float) Math.toDegrees(Math.atan2(eye - (pos.getY() + middle), distance));
         player.connection.teleport(x, y, z, 180.0F, pitch);
     }
 }

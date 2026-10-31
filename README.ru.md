@@ -29,7 +29,8 @@ English version: [README.md](README.md).
 | Паритет с исходником 1.7.10 | `docs/PARITY_REPORT.md` (прогоны 2026-10-30): сверены по полям 74 записи исследований и 127 рецептов с оригиналом, а также 17 тегов объектов; **11 задокументированных отличий, 0 незадокументированных**; только Fabric (GameTest на запущенном сервере: в записанном там прогоне пройдены все 7 обязательных тестов; NeoForge не запускался) |
 | NeoForge | не начат: нет ни модуля, ни файла сборки аддона, и ни одна из реализаций отправки событий не написана, поэтому Soul Hearts, дроп осколков, эффекты зачарований и прочее поведение на событиях там не работали бы. Это следует из чтения кода: аддон под NeoForge не собирался и не запускался (`docs/HOOKS.md`, раздел 9, `docs/DEVIATIONS.md`, «Не перенесено») |
 | Клиент (модели, экраны, HUD) | **просмотрен в запущенном dev-клиенте Fabric** под Xvfb с программным рендерингом (Mesa llvmpipe), `docs/CLIENT_VERIFICATION.md`: последний прогон стенда записал 726 пройденных проверок, 0 провалов, 1 не запущенную (подсказка режима инструмента требует нажатия клавиши), 80 снимков, английский и русский; дефекты, найденные первым прогоном, исправлены, прогон повторён. **Не просмотрено:** видеокарта, звук, ввод (клики, клавиши, перетаскивание), мультиплеер, другие моды (EMI, JEI, Jade), NeoForge, оригинальный клиент 1.7.10 для сравнения (`docs/CLIENT_VERIFICATION.md`, «What it cannot show») |
-| Страницы в просмотрщиках рецептов, подсказки Jade, периферия ComputerCraft / OpenComputers, API големов | не перенесены (см. `docs/DEVIATIONS.md`, «Не перенесено») |
+| Страницы в просмотрщиках рецептов (EMI, JEI) и подсказки Jade | **перенесены** (необязательные: аддон работает и без этих модов): страницы NEI «некромантия» и «выпадение из заражённых семян» стали категориями EMI и JEI, строки Waila пяти блоков — подсказками Jade (`docs/deviations/RecipeViewers.md`, `docs/deviations/Tooltips.md`). Проверены на сервере (GameTests) и **просмотрены в dev-клиенте** с EMI + Jade и, отдельным запуском, с JEI: 30 + 45 страниц, все 82 рецепта аддона для верстака, тигля и инфузии в собственных категориях Thaumcraft, текст подсказок шести блоков прочитан из Jade (`docs/CLIENT_VERIFICATION.md`). Не просмотрено: всплывающие подсказки при наведении, EMI и JEI вместе, NeoForge |
+| Периферия ComputerCraft / OpenComputers, API големов | не перенесены (см. `docs/DEVIATIONS.md`, «Не перенесено») |
 
 Ничего из этой таблицы не заявлено сверх того, что документ или файл результатов фиксирует как запущенное. Документы групп
 записывают запуски в разном объёме (первые строки); где документ не фиксирует запуска, таблица так и говорит.
@@ -70,15 +71,15 @@ tools/client-smoke.sh                        # клиентский осмотр
 ./gradlew exportTinkererClasspath && tools/compile.sh [-g]   # javac вне Gradle для быстрого цикла правка-компиляция (-g: вместе с исходниками GameTest)
 ```
 
-* **Как выглядит хороший запуск** (0.1.0-alpha.7, 2026-10-30; числа меняются, когда добавляются тесты, важно отсутствие сбоев):
+* **Как выглядит хороший запуск** (0.1.0-alpha.7, 2026-10-31; числа меняются, когда добавляются тесты, важно отсутствие сбоев):
 
   | Команда | Результат |
   |---|---|
-  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; файлы в `build/test-results/tinkererTest/` дают в сумме 364 теста, 0 сбоев, 0 ошибок, 0 пропущенных |
-  | `./gradlew runTinkererGameTest` | строка лога `All 299 required tests passed :)` и `BUILD SUCCESSFUL`; в `build/tinkerer-gametest-results.xml` 299 элементов `testcase` и ни одного `failure` или `error` |
-  | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` и `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (около 2,2 МБ) |
+  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; файлы в `build/test-results/tinkererTest/` дают в сумме 406 тестов, 0 сбоев, 0 ошибок, 0 пропущенных |
+  | `./gradlew runTinkererGameTest` | строка лога `All 312 required tests passed :)` и `BUILD SUCCESSFUL`; в `build/tinkerer-gametest-results.xml` 312 элементов `testcase` и ни одного `failure` или `error` |
+  | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` и `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (около 2,3 МБ) |
   | `./gradlew check` | `BUILD SUCCESSFUL` (три набора исходников компилируются, проверка refmap Mixin проходит, `tinkererTest` запускается) |
-  | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` и 80 снимков в `build/tinkerer-client-smoke/`; PASS был 725–727 в четырёх запусках (три проверки блоков огня зависят от случайных пикселей), FAIL 0 и NOT_RUN 1 не менялись |
+  | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` и 80 снимков в `build/tinkerer-client-smoke/`; PASS был 725–727 в пяти запусках (три проверки блоков огня зависят от случайных пикселей), FAIL 0 и NOT_RUN 1 не менялись. `tools/client-smoke.sh -- -PwithEmi -PwithJade` добавляет проверки EMI и Jade (737 PASS, 88 снимков), `-- -PwithJei` — проверки JEI (730 PASS, 82 снимка) |
 * Релизный jar — `build/libs/ThaumicTinkerer-fabric-<версия>.jar` (`mod_version` в `gradle.properties`; его же собирает `./gradlew assemble`). Он
   переотображён для продакшена, несёт `LICENSE` в `META-INF/` и содержит refmap Mixin. Чтобы играть с ним, положите его в `mods/` рядом с jar
   Thaumcraft 4 Reload, Architectury API 13.0.11+ и Fabric API.

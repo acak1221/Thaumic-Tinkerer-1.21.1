@@ -16,6 +16,8 @@ original, and `docs/PARITY_REPORT.md` compares the research and recipe definitio
 | Enchantments (fourteen enchantments, Osmotic Enchanter) | [Enchantments](deviations/Enchantments.md) | `content/Enchantments` |
 | Kami gear (Ichorium tools and armour, Placement Mirror, Bottomless Pouch, Feline Amulet, Kami foci) | [KamiGear](deviations/KamiGear.md) | `content/KamiGear` |
 | Kami world (Bedrock dimension and portal, Celestial Gateway, Soul Hearts, dimensional shards) | [KamiWorld](deviations/KamiWorld.md) | `content/KamiWorld` |
+| Jade tooltips (the Waila providers of 1.7.10: Animation Tablet, Transvector Interface, Thaumic Restorer, Celestial Gateway, attractors) | [Tooltips](deviations/Tooltips.md) | `compat/.../tooltip`, `compat/.../jade` |
+| EMI and JEI pages (the NEI pages of 1.7.10: necromancy, infused seed drops) | [RecipeViewers](deviations/RecipeViewers.md) | `compat/.../viewer`, `compat/.../emi`, `compat/.../jei` |
 
 Related: [PORTING_RULES](PORTING_RULES.md) (the rules), [API_GAPS](API_GAPS.md) and [api-requests/](api-requests/) (what the add-on needed
 from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families](lang-key-families.md) (language keys).
@@ -105,8 +107,7 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
 
 ## 4. Not ported (kept visible)
 
-* **Other mods' integrations**: Waila (now Jade; the gateway tooltip and the other providers), NEI (recipe pages for infused seeds and
-  necromancy would be EMI/JEI categories), Forge Multipart parts (candle and Nitor parts), EnderStorage page of the Ender Rift focus, Botania,
+* **Other mods' integrations**: Forge Multipart parts (candle and Nitor parts), EnderStorage page of the Ender Rift focus, Botania,
   Blood Magic, AE2 (`IMovableTile`, passenger handling), Tinkers' Construct repair, GregTech accelerator text, EnderIO planter,
   Electro-Magic Tools hoe.
 * **Computer peripherals** (ComputerCraft / OpenComputers) of the Animation Tablet, Transvector Interface, Golem Connector, Aspectalyzer and
@@ -134,24 +135,26 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
 ## 5. Verification status and what is not verified
 
 What was run, with the numbers of the last run (2026-10-30, Fabric only; each line is what a log or a result file recorded, nothing else is claimed).
-The runs were made while the add-on was still part of the Thaumcraft 4 Reload repository (its tasks then had the prefix `:fabric:`, its
-build output was below `fabric/build/`; `NOTICE.md`, "History"); the add-on's suites are the same here. The two rows marked **Thaumcraft repository**
+The runs up to 2026-10-30 were made while the add-on was still part of the Thaumcraft 4 Reload repository (its tasks then had the prefix
+`:fabric:`, its build output was below `fabric/build/`; `NOTICE.md`, "History"); the rows of the add-on's own suites give the runs of 2026-10-31 in
+this repository. The two rows marked **Thaumcraft repository**
 were runs of Thaumcraft's own suites, which belong to that repository and not to this one:
 
 | What | Result | Where it is recorded |
 |---|---|---|
-| Add-on JUnit (`tinkererTest`) | 364 tests, 0 failures, 0 skipped. Since 2026-10-30 16:28 the documents, language fragments and source trees the tests read are inputs of the task (before, Gradle could restore a result from its cache after a document was edited) | `build/test-results/tinkererTest/*.xml` |
-| Add-on GameTests on a Fabric dedicated server (`runTinkererGameTest`) | "All 299 required tests passed" | Gradle log of the run |
+| Add-on JUnit (`tinkererTest`) | 406 tests, 0 failures, 0 skipped (2026-10-31; 364 before the integrations). Since 2026-10-30 16:28 the documents, language fragments and source trees the tests read are inputs of the task (before, Gradle could restore a result from its cache after a document was edited) | `build/test-results/tinkererTest/*.xml` |
+| Add-on GameTests on a Fabric dedicated server (`runTinkererGameTest`) | "All 312 required tests passed" (2026-10-31; 299 before the 7 Jade-tooltip and 6 recipe-viewer checks) | Gradle log of the run, `build/tinkerer-gametest-results.xml` |
 | Parity with the 1.7.10 source (research, recipes, object tags) | 74 research entries and 127 recipes compared field by field; 11 documented differences, 0 undocumented | `PARITY_REPORT.md`, `ParityGameTests` |
 | **Thaumcraft repository:** Mod regression after the add-on's changes (`:common:test :fabric:runGameTest`) | JUnit 2761 tests, 5 skipped, 0 failures (the results of 2026-10-29, Gradle found the inputs unchanged); GameTests: "All 515 required tests passed" (2026-10-30 16:26, new world). Two earlier runs the same afternoon on the world that a previous run had left behind failed `mazeAuditGeneratesRealRegionAndReloadsMap` (the test opens, and so removes, the boss lock it generated; the next run finds no lock). Not caused by the add-on; `fabric/build.gradle` now deletes `run-gametest/world` before every run, and `fabric.gradle` does the same for the add-on's run | Gradle logs, `fabric/build/gametest-results.xml` of that repository |
 | **Thaumcraft repository:** Python porting scripts (`scripts/porting`, all tools of that repository, the add-on's two among them) | 296 tests OK. The add-on's two tools with their tests are in this repository now: `tools/porting.sh test` ran 153 tests OK (2026-10-31, with both checkouts present) | run output |
 | Client, Fabric dev client under Xvfb + Mesa llvmpipe (`tools/client-smoke.sh`) | 726 checks PASS, 0 FAIL, 0 harness errors, 1 NOT_RUN (tool-mode tooltip needs a key press), 80 pictures (read by the engineers in the run before the last, which had 721 PASS); the first run had 3 FAIL and a number of defects seen only in pictures (all fixed, see `CLIENT_VERIFICATION.md`). The last run added a check that the six infused seeds have six different models; with the old model file it fails (5 `override_collapsed`), with the fixed one it passes | `CLIENT_VERIFICATION.md`, `build/tinkerer-client-smoke/report.json` (not committed) |
+| Client with the optional mods (2026-10-31, same harness, phase `integrations`) | with EMI and Jade (`-- -PwithEmi -PwithJade`): 737 PASS, 0 FAIL, 1 NOT_RUN, 88 pictures; with JEI (`-- -PwithJei`): 730 PASS, 0 FAIL, 1 NOT_RUN, 82 pictures; without them: 725 PASS, 0 FAIL, 1 NOT_RUN, 80 pictures. In the viewers: 30 necromancy and 45 seed-drop pages, and all 82 arcane/crucible/infusion recipes of the add-on in Thaumcraft's own categories; Jade's tooltip text read for six blocks (`Tooltips.md`, `RecipeViewers.md`) | `CLIENT_VERIFICATION.md` |
 | NeoForge | **nothing written, nothing run** | `HOOKS.md` sections 9, 10, 14 |
 
 **Not verified** (a `PASS` of the client harness says a lookup answered and nothing threw; it is not a person looking at the game on a GPU):
 
 * The client on a **real GPU**, with **sound** (the add-on has no sounds of its own; the sound device fails to start on the test machine), with **input** (clicks on the screens,
-  keys, drag, scroll are never sent), in **multiplayer** (a dedicated server, a second client), with **other mods** (EMI, JEI, Jade), and in languages other than English and Russian
+  keys, drag, scroll are never sent), in **multiplayer** (a dedicated server, a second client), with **other mods** beyond EMI, JEI and Jade (those three were run, see the table above), and in languages other than English and Russian
   (the de, fr, ko and zh files are compared as files only).
 * The screens were drawn, not used: the Enchanter, the Tablet of Necromancy, the Aspectalyzer, the Mob Magnet, the Remote Placer, the Ichor Pouch and the Celestial Gateway were not judged
   against the 1.7.10 layouts (the Ichor Pouch was compared with the original code and texture: same hash, same slot coordinates).
@@ -193,8 +196,8 @@ None of these is a known defect. Each is something the port decided or assumed w
 7. **The Cursed Spirit's Blade cannot take the vanilla sword enchantments** (Sharpness, Smite, Looting, Fire Aspect, Unbreaking, Mending ...), which the 1.7.10 `ItemSword`
    took: it is in none of the vanilla sword tags. The fix touches files of other groups (`data/minecraft/tags/item/swords.json` and the Vampirism tag, which must keep refusing
    the blade) and is a request to the lead, **not done** (`Machines.md` section 8, `api-requests/Machines.md` section 5).
-8. **The gateway tooltip of the original (Waila, now Jade) is inverted**: it shows "allow incoming" when the gate's `locked` flag is true, which is the opposite of what the flag
-   does. Whether the Jade port copies it or fixes it is the lead's decision; no Jade provider exists yet (`KamiWorld.md` section 10). Two more decisions from the same section:
+8. **The gateway tooltip of the original (Waila, now Jade) was inverted**: it showed "allow incoming" when the gate's `locked` flag is true, which is the opposite of what the flag
+   does. Decided: the Jade port shows what the flag does (`deviations/Tooltips.md`). Two more decisions from `KamiWorld.md` section 10:
    **`PORTING_RULES` 1.3** (groups reach each other by registry path) has no exception for the four KamiGear helpers that the gateway uses (`ItemSkyPearl`, `SlotSkyPearl`,
    `ModelSpinningCubes`, `KamiHooks`); and the gateway's map no longer hides a destination at `y == -1` as the original did (`y == -1` is a real height in 1.21.1,
    `KamiWorld.md` section 9).

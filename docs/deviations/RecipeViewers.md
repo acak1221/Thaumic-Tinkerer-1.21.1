@@ -210,10 +210,16 @@ imports neither EMI, JEI, Jade nor client classes.
 
 ## 5. Not verified
 
-- **Not run in a client.** Neither EMI nor JEI was started (no `-PwithEmi` / `-PwithJei` client run, no client smoke): that
-  the categories appear, the layout and the slot frames, the trimming of the text lines and their tooltips, the chance
-  tooltips, the Mob Display drawn as its mob in a slot, the item-list insertion, the comparisons and subtype
-  interpreters, the recipe and use lookups, and the EMI scroll-free paging are all unchecked. The lead checks the client.
+- **Run in a client (2026-10-31, Fabric dev client under Xvfb; `docs/CLIENT_VERIFICATION.md`, phase `integrations`).** With EMI
+  (`tools/client-smoke.sh -- -PwithEmi -PwithJade`): EMI's recipe manager held 30 recipes in `thaumictinkerer:necromancy` and 45 in
+  `thaumictinkerer:infused_seed_drops`, the numbers the add-on's data gives (counted by the harness from `EnumMobAspect` and the crop
+  table, not from these views); the necromancy workstations are the Cursed Spirit's Blade and the Tablet of Necromancy; and every one of
+  the add-on's 82 arcane, crucible and infusion recipes with an item result is listed in Thaumcraft's own EMI category of its kind
+  (28 arcane, 15 crucible, 39 infusion). With JEI (`tools/client-smoke.sh -- -PwithJei`, a separate run): the same 30 and 45, the same
+  catalysts, and the output of each of the 82 recipes in Thaumcraft's JEI category of its kind. Pictures of the first page of each
+  category in both viewers (`emi-*.png`, `jei-*.png`): the slots, the ring around the tablet, the arrow, the Mob Display drawn as its
+  mob, the header and the drop grid are there. Still not checked: the tooltips on hover (no input device), the item-list insertion and
+  the comparisons/subtypes in use, the Russian page texts in the viewers, EMI and JEI installed together.
 - **When the pages are built on a client.** Read in the viewers' sources, not run: EMI reloads after the recipes and then
   waits for the tags (`EmiReloadManager`); JEI on Fabric starts after the recipe packet (`ClientPacketListenerRecipeUpdateMixin`),
   which in 1.21.1 comes after the configuration phase that sends the tags. The crop table itself is filled on the

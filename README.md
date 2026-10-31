@@ -28,7 +28,8 @@ Fabric first (as for the whole project); NeoForge is **not** built for the add-o
 | Parity with the 1.7.10 source | `docs/PARITY_REPORT.md` (runs of 2026-10-30): 74 research entries and 127 recipes compared field by field with the original, and 17 object tags; **11 documented differences, 0 undocumented**; Fabric only (a GameTest on a running server: all 7 required tests passed in the run recorded there; NeoForge not run) |
 | NeoForge | not started: no module and no build file of the add-on, and none of the hook posters is written, so the Soul Hearts, the shard drops, the enchantment effects and the other event-based behaviour would not happen there. That is read from the code: the add-on has not been built or run on NeoForge (`docs/HOOKS.md` section 9, `docs/DEVIATIONS.md` "Not ported") |
 | Client (models, screens, HUD) | **seen in a running Fabric dev client** under Xvfb with software rendering (Mesa llvmpipe), `docs/CLIENT_VERIFICATION.md`: the last run of the harness recorded 726 checks passed, 0 failed, 1 not run (the tool-mode tooltip needs a key press), 80 pictures, English and Russian; the defects the first run found were fixed and the run repeated. **Not seen:** a GPU, sound, input (clicks, keys, drag), multiplayer, other mods (EMI, JEI, Jade), NeoForge, the original 1.7.10 client for comparison (`docs/CLIENT_VERIFICATION.md`, "What it cannot show") |
-| Recipe-viewer pages, Jade tooltips, ComputerCraft / OpenComputers peripherals, golem API | not ported (see `docs/DEVIATIONS.md`, "Not ported") |
+| Recipe-viewer pages (EMI, JEI) and Jade tooltips | **ported** (optional: the add-on runs without these mods): the necromancy and infused-seed-drop pages of NEI as EMI and JEI categories, the Waila lines of five blocks as Jade tooltips (`docs/deviations/RecipeViewers.md`, `docs/deviations/Tooltips.md`). Tested on a server (GameTests) and **seen in the dev client** with EMI + Jade and, in a second run, with JEI: 30 + 45 pages, all 82 arcane/crucible/infusion recipes of the add-on in Thaumcraft's own categories, the tooltip text of six blocks read from Jade (`docs/CLIENT_VERIFICATION.md`). Not seen: hover tooltips, EMI and JEI together, NeoForge |
+| ComputerCraft / OpenComputers peripherals, golem API | not ported (see `docs/DEVIATIONS.md`, "Not ported") |
 
 Nothing in this table is claimed beyond what a document or a results file records as run. The group documents differ in how much they record (first rows); where a document records no run, this table says so.
 
@@ -67,15 +68,15 @@ tools/client-smoke.sh                        # the client smoke under Xvfb, abou
 ./gradlew exportTinkererClasspath && tools/compile.sh [-g]   # javac outside Gradle, for a quick edit-compile loop (-g: with the GameTest sources)
 ```
 
-* **What a good run looks like** (0.1.0-alpha.7, 2026-10-30; the counts move when tests are added, a failure is what matters):
+* **What a good run looks like** (0.1.0-alpha.7, 2026-10-31; the counts move when tests are added, a failure is what matters):
 
   | Command | Result |
   |---|---|
-  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; the files in `build/test-results/tinkererTest/` add up to 364 tests, 0 failures, 0 errors, 0 skipped |
-  | `./gradlew runTinkererGameTest` | the log line `All 299 required tests passed :)` and `BUILD SUCCESSFUL`; `build/tinkerer-gametest-results.xml` has 299 `testcase` elements and no `failure` or `error` |
-  | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` and `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (about 2.2 MB) |
+  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; the files in `build/test-results/tinkererTest/` add up to 406 tests, 0 failures, 0 errors, 0 skipped |
+  | `./gradlew runTinkererGameTest` | the log line `All 312 required tests passed :)` and `BUILD SUCCESSFUL`; `build/tinkerer-gametest-results.xml` has 312 `testcase` elements and no `failure` or `error` |
+  | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` and `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (about 2.3 MB) |
   | `./gradlew check` | `BUILD SUCCESSFUL` (the three source sets compile, the Mixin refmap check passes, `tinkererTest` runs) |
-  | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` and 80 screenshots in `build/tinkerer-client-smoke/`; PASS was 725 to 727 in four runs (three fire-block checks depend on random pixels), FAIL 0 and NOT_RUN 1 did not move |
+  | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` and 80 screenshots in `build/tinkerer-client-smoke/`; PASS was 725 to 727 in five runs (three fire-block checks depend on random pixels), FAIL 0 and NOT_RUN 1 did not move. `tools/client-smoke.sh -- -PwithEmi -PwithJade` adds the EMI and Jade checks (737 PASS, 88 screenshots), `-- -PwithJei` the JEI ones (730 PASS, 82 screenshots) |
 * The release jar is `build/libs/ThaumicTinkerer-fabric-<version>.jar` (`mod_version` in `gradle.properties`; it is also what `./gradlew assemble` builds). It
   is remapped for production, carries `LICENSE` under `META-INF/` and holds the Mixin refmap. To play with it, put it into `mods/` next to the
   Thaumcraft 4 Reload jar, Architectury API 13.0.11+ and Fabric API.

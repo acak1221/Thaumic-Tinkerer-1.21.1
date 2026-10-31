@@ -123,9 +123,16 @@ shown as it is. The interface's block and the mould's entity type are sent as id
 
 ## 6. What was not verified
 
-- **Not run: a client with Jade.** Not seen: that `registerClient` registers the lines, that Jade asks the server for the data and
-  calls `appendTooltip` with it, that the lines are drawn (order relative to Jade's own lines, colours), the option labels in
-  Jade's plugin settings and the title of the add-on's section there. The lead runs a client with Jade.
+- **Run in a client with Jade (2026-10-31, Fabric dev client under Xvfb, `tools/client-smoke.sh -- -PwithEmi -PwithJade`,
+  `docs/CLIENT_VERIFICATION.md`, phase `integrations`).** For each of the six blocks the harness put the block into a known state on
+  the integrated server, pointed the crosshair at it with the HUD on, and read the text of the tooltip Jade collected (Jade's own
+  callback, not the add-on's code); the expected lines were translated by the harness from the keys, in English. All six passed,
+  e.g. "Dynamism Tablet|Current Tool: Diamond Pickaxe|Right Click|Redstone Activated|1 Diamond Pickaxe", "Transvector
+  Interface|Connected to: Chest|x: -7 y: -60 z: -14", "Celestial Gateway|Doesn't allow incoming teleports" (locked), "Corporeal
+  Attractor|Mode: Pushing|Pushing: Children"; six pictures (`jade-*.png`). The first run missed both attractors: their outline is a
+  plate two pixels high (as in 1.7.10) under the tall model, and the harness aimed at the middle of the block; it now aims at the
+  middle of the block's shape. Still not seen: the option labels in Jade's plugin settings and the add-on's section title there,
+  the Russian lines in Jade, a GPU.
 - Not run: a dedicated server with a separate client; Jade on the client only (expected: no extra line, section 4.4); several
   players.
 - Not run: NeoForge (there is no NeoForge build; `@WailaPlugin` is untested).

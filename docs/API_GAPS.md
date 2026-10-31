@@ -168,14 +168,14 @@ SimpleBlocks, Enchantments).
 |---|---|---|
 | 1 | OpenComputers drivers (`peripheral/OpenComputers/*`, `OCCompat`) | CC:Tweaked only |
 | 2 | Forge Multipart (`multipart/*`: candle and nitor parts) | none |
-| 3 | NEI handlers (`client/nei/*`) | EMI/JEI plugins; TC's arcane/crucible/infusion recipes show up already, TT's seed and necromancy lists need an own plugin |
+| 3 | NEI handlers (`client/nei/*`) | **done**: EMI and JEI plugins of the add-on (`compat/`, `deviations/RecipeViewers.md`); TC's arcane/crucible/infusion recipes show the add-on's through Thaumcraft's own plugins |
 | 4 | EnderIO planter (`EnderIO`, `InfusedSeedsPlanter`) | none |
 | 5 | EMT electric hoe (`EMTCompat`) | none |
 | 6 | IC2/CoFH energy on the Transvector Interface (`IndustrialcraftUnloadHelper`) | loader energy/fluid/item capabilities, per loader |
 | 7 | AE2 `IMovableTile` | none |
 | 8 | Baubles Expanded (`IBaubleExpanded`, `BaubleItemHelper`) | TC4 Reload's own four slots |
 | 9 | ThaumicBoots omni mode (`@Optional` in `ItemGemBoots`) | none |
-| 10 | Waila providers (`TTinkererProvider`, `MagnetProvider`) | Jade (`compat/jade` of the mod shows the pattern) |
+| 10 | Waila providers (`TTinkererProvider`, `MagnetProvider`) | **done**: Jade plugin of the add-on (`compat/`, `deviations/Tooltips.md`) |
 | 11 | Tinkers' Construct repair (`TinkersConstructCompat`) | optional later |
 | 12 | BloodMagic/Botania deflect blacklists | optional later (entity-type tag) |
 | 13 | EnderStorage focus integration | optional later |

@@ -105,6 +105,23 @@ How a picture is taken: `Screenshot.grab` reads the window's frame buffer from t
 frame. A step waits for the chunk sections to be built and for a number of rendered frames (`Frames`; the software renderer draws far fewer frames than the tick
 runs) before it asks for the picture.
 
+### The optional mods (phase `integrations`)
+
+A normal run has neither EMI, JEI nor Jade and records that as `INFO`. `tools/client-smoke.sh -- -PwithEmi -PwithJade` and
+`tools/client-smoke.sh -- -PwithJei` (EMI and JEI are run separately) put the mods into the client (`build.gradle`, `modLocalRuntime`), and the
+phase then checks, with numbers taken from the add-on's data and not from its plugins (`ViewerExpectations`):
+
+| Probe | What it compares |
+|---|---|
+| `EmiProbe` | waits until EMI's recipe manager has Thaumcraft's arcane category filled and its size is steady; the recipes in `thaumictinkerer:necromancy` (one per `EnumMobAspect`) and `thaumictinkerer:infused_seed_drops` (one per aspect with loot); the workstations of the necromancy category; every arcane, crucible and infusion recipe the add-on registered through `ThaumcraftApi` with an item result must be among EMI's recipes for that output in Thaumcraft's category of its kind; pictures of the first page of both categories |
+| `JeiProbe` (+ `HarnessJeiPlugin`, the harness's own `jei_mod_plugin` that keeps JEI's runtime) | the same counts through `IRecipeManager`, the catalysts, the add-on's recipe outputs in Thaumcraft's JEI categories (a focus on the output), pictures |
+| `JadeProbe` (+ `HarnessJadePlugin`, a `jade` plugin that receives every tooltip Jade collects) | six blocks (Animation Tablet, Transvector Interface, Thaumic Restorer, Celestial Gateway, both attractors) in a known state, the crosshair on the middle of the block's outline, the HUD on; the text of Jade's tooltip must contain the lines the state calls for, translated by the harness from the `ttwaila.*` keys; a picture each |
+
+Last runs (2026-10-31): with EMI and Jade 737 PASS, 0 FAIL, 1 NOT_RUN, 88 pictures; with JEI 730 PASS, 0 FAIL, 1 NOT_RUN, 82 pictures; without them 725 PASS,
+0 FAIL, 1 NOT_RUN, 80 pictures. The first run with Jade failed both attractors: the harness aimed at the middle of the block and the attractors' outline is
+a plate two pixels high under their tall model (as in 1.7.10), so the crosshair hit the floor; the probe now aims at the middle of the outline. EMI in
+development mode also listed the add-on's item tags as untranslated; they have names now (`lang-extra/tags.*.json`).
+
 ## Wiring
 
 * Source set `thaumicTinkererClientSmoke` (`fabric.gradle`): Java in `fabric/src/clientSmoke/java`, its own `fabric.mod.json` (mod id
@@ -134,7 +151,8 @@ runs) before it asks for the picture.
   bound and pressed (the sneak key is set programmatically to open the warp gate screen). The scroll, drag and click handling of the screens is untested.
 * **No multiplayer.** One integrated server, one client in the same process; packets are real but in-memory. A dedicated server, a second client or a desync is not covered.
 * **One setting.** 1280x720, GUI scale 2, view distance 8, English (the Russian pictures are a repeat after a language switch), one flat peaceful world at noon, the default
-  field of view. Other GUI scales, resolutions, languages (the de/fr/ko/zh files are not compared), resource packs and other mods (EMI, JEI, Jade) are not seen.
+  field of view. Other GUI scales, resolutions, languages (the de/fr/ko/zh files are not compared), resource packs and other mods are not seen; EMI, JEI and Jade are
+  seen only in their own runs (above), never EMI and JEI together, and their hover tooltips are not (no input).
 * **Default states only.** Items are shown as the default stack of the creative tab (damaged and stacked copies for the decorations); the model overrides are resolved at their default
   values plus the states of `ItemVariants`; a branch that is not in that list is checked only as a file and by its predicate name. Blocks are shown in representative states, the
   block entities in the few states of `RendererPhase`. Animated textures are seen in one frame.

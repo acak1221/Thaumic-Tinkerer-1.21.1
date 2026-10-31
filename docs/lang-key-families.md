@@ -8,12 +8,12 @@ No text was translated or edited. A value changed only where a literal `%` becam
 
 | Source | Target | Keys in .lang | Keys in .json | Renamed keys | Duplicates | Escaped `%` | Fragment files | Fragment keys |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `en_US.lang` | `en_us.json` | 478 | 665 | 114 | 1 | 1 | 9 | 38 |
+| `en_US.lang` | `en_us.json` | 478 | 680 | 114 | 1 | 1 | 10 | 53 |
 | `en_GB.lang` | `en_gb.json` | 14 | 14 | 1 | 0 | 0 | 0 | 0 |
 | `de_DE.lang` | `de_de.json` | 437 | 586 | 101 | 1 | 1 | 7 | 14 |
 | `fr_Fr.lang` | `fr_fr.json` | 464 | 627 | 102 | 1 | 1 | 7 | 14 |
 | `ko_KR.lang` | `ko_kr.json` | 421 | 570 | 91 | 1 | 1 | 7 | 14 |
-| `ru_RU.lang` | `ru_ru.json` | 467 | 661 | 105 | 1 | 1 | 10 | 59 |
+| `ru_RU.lang` | `ru_ru.json` | 467 | 676 | 105 | 1 | 1 | 11 | 74 |
 | `zh_CN.lang` | `zh_cn.json` | 469 | 632 | 107 | 1 | 1 | 7 | 14 |
 
 ## Key families
@@ -109,6 +109,7 @@ New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objec
 | `en_us` | `lang-extra/kami_world.en_us.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
 | `en_us` | `lang-extra/recipe_viewers.en_us.json` | 13 | none |
 | `en_us` | `lang-extra/simple_blocks.en_us.json` | 4 | none |
+| `en_us` | `lang-extra/tags.en_us.json` | 15 | none |
 | `en_us` | `lang-extra/tile_blocks.en_us.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `en_us` | `lang-extra/tooltips.en_us.json` | 5 | none |
 | `de_de` | `lang-extra/basic_items.de_de.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
@@ -140,6 +141,7 @@ New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objec
 | `ru_ru` | `lang-extra/machines.ru_ru.json` | 1 | none |
 | `ru_ru` | `lang-extra/recipe_viewers.ru_ru.json` | 13 | none |
 | `ru_ru` | `lang-extra/simple_blocks.ru_ru.json` | 10 | none |
+| `ru_ru` | `lang-extra/tags.ru_ru.json` | 15 | none |
 | `ru_ru` | `lang-extra/tile_blocks.ru_ru.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `ru_ru` | `lang-extra/tooltips.ru_ru.json` | 19 | `ttwaila.allowIncoming`, `ttwaila.disallowIncoming`, `ttwaila.finishedRepairing`, `ttwaila.redstone`, `ttwaila.pullingMode`, `ttwaila.pushingMode`, `ttwaila.pullingAdult`, `ttwaila.pullingChild`, `ttwaila.pushingAdult`, `ttwaila.pushingChild`, `ttwaila.pullingAdultType`, `ttwaila.pullingChildType`, `ttwaila.pushingAdultType`, `ttwaila.pushingChildType` |
 | `zh_cn` | `lang-extra/basic_items.zh_cn.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
