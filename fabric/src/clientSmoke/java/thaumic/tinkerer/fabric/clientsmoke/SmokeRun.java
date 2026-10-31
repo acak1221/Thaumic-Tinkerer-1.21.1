@@ -51,6 +51,7 @@ final class SmokeRun {
         phases.add(new MenusPhase(""));
         phases.add(new RendererPhase());
         phases.add(new HudPhase());
+        phases.add(new IntegrationsPhase());
         phases.add(new CreativeTabPhase());
         phases.add(new LanguagePhase("ru_ru"));
         phases.add(new ItemGridPhase("ru_ru"));

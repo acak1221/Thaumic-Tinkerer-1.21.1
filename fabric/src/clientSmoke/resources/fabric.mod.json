@@ -9,6 +9,12 @@
   "entrypoints": {
     "client": [
       "thaumic.tinkerer.fabric.clientsmoke.TinkererClientSmoke"
+    ],
+    "jade": [
+      "thaumic.tinkerer.fabric.clientsmoke.HarnessJadePlugin"
+    ],
+    "jei_mod_plugin": [
+      "thaumic.tinkerer.fabric.clientsmoke.HarnessJeiPlugin"
     ]
   },
   "depends": {

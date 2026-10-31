@@ -11,6 +11,7 @@
  */
 package thaumic.tinkerer.common.registry;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import net.minecraft.resources.ResourceLocation;
@@ -48,6 +49,11 @@ public final class TTRecipes {
 
     public static boolean has(String name) {
         return RECIPES.containsKey(name);
+    }
+
+    /** Every registered recipe by name, in registration order (read-only; the client smoke compares it with the recipe viewers). */
+    public static Map<String, Object> all() {
+        return Collections.unmodifiableMap(RECIPES);
     }
 
     /** The id of the data-driven recipe file for {@code name}. */
