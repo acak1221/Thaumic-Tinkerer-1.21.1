@@ -326,6 +326,16 @@ def empty_structure():
     return gzip.compress(root, compresslevel=9, mtime=0)
 
 
+def same_content(rel, existing, expected):
+    """Equal files; a structure is compared by its NBT, because gzip's bytes depend on the Python version (3.12 and 3.13 differ)."""
+    if rel.suffix == ".nbt":
+        try:
+            return gzip.decompress(existing) == gzip.decompress(expected)
+        except (OSError, EOFError):
+            return False
+    return existing == expected
+
+
 def expected_files(root):
     """Every generated file (relative path -> bytes) and the problems that generation alone finds."""
     files = {}
@@ -370,7 +380,7 @@ def check(root):
         path = root / rel
         if not path.is_file():
             problems.append("%s is missing (run python3 tools/neoforge_gametests.py --write)" % rel.as_posix())
-        elif path.read_bytes() != data:
+        elif not same_content(rel, path.read_bytes(), data):
             problems.append("%s differs from what the Fabric wrappers generate (run python3 tools/neoforge_gametests.py --write)"
                             % rel.as_posix())
     for rel in stray_files(root, files):
@@ -384,7 +394,7 @@ def write(root):
     for rel, data in files.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
-        if not path.is_file() or path.read_bytes() != data:
+        if not path.is_file() or not same_content(rel, path.read_bytes(), data):
             path.write_bytes(data)
             print("wrote", rel.as_posix())
     for rel in stray_files(root, files):
