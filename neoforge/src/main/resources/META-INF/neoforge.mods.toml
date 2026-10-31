@@ -1,0 +1,57 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="CC-BY-NC-SA-3.0"
+issueTrackerURL="https://github.com/acak1221/Thaumic-Tinkerer-1.21.1/issues"
+[[mods]]
+modId="thaumictinkerer"
+version="${version}"
+displayName="Thaumic Tinkerer"
+authors="Vazkii, pixlepix, nekosune, GTNewHorizons contributors; Thaumcraft 4 Reload contributors (1.21.1 port)"
+credits="Azanor (Thaumcraft 4)"
+description='''An add-on for Thaumcraft 4 Reload: new devices, foci, enchantments and the Kami tier. Research from this mod is prefixed [TT]. Port of Thaumic Tinkerer 1.7.10 by Vazkii, pixlepix, nekosune and the GTNH contributors.'''
+displayURL="https://github.com/acak1221/Thaumic-Tinkerer-1.21.1"
+[[mixins]]
+config="thaumictinkerer-neoforge.mixins.json"
+[[dependencies.thaumictinkerer]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.259,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.thaumictinkerer]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+[[dependencies.thaumictinkerer]]
+modId="architectury"
+type="required"
+versionRange="[13.0.11,)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.thaumictinkerer]]
+modId="thaumcraft"
+type="required"
+versionRange="*"
+ordering="AFTER"
+side="BOTH"
+# Optional integrations; their plugins are loaded by those mods only when they are installed.
+[[dependencies.thaumictinkerer]]
+modId="emi"
+type="optional"
+versionRange="*"
+ordering="NONE"
+side="CLIENT"
+[[dependencies.thaumictinkerer]]
+modId="jei"
+type="optional"
+versionRange="*"
+ordering="NONE"
+side="CLIENT"
+[[dependencies.thaumictinkerer]]
+modId="jade"
+type="optional"
+versionRange="*"
+ordering="NONE"
+side="BOTH"

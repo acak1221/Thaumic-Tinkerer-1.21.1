@@ -11,3 +11,5 @@ pluginManagement {
  }
 }
 rootProject.name = 'thaumic-tinkerer'
+// The NeoForge build of the add-on (the root project is the Fabric one): neoforge/build.gradle.
+include 'neoforge'

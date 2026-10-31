@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+// Thaumic Tinkerer for NeoForge (Minecraft 1.21.1): the NeoForge build of the add-on, a subproject next to the Fabric root project.
+// MIT (LICENSE-MIT, NOTICE.md); the add-on sources it compiles are CC BY-NC-SA 3.0 (LICENSE).
+//
+// It compiles the same loader-neutral tree as the Fabric build (common/src/main and the optional integrations in compat/src/main) together
+// with the NeoForge glue of neoforge/src/main: the @Mod entry, the posters of the loader events (docs/HOOKS.md), the item renderer backend and
+// the client hooks. Thaumcraft 4 Reload comes as thaumcraft:Thaumcraft-neoforge:<thaumcraft_version> from the local Maven repository, like the
+// Fabric jar (tools/publish-thaumcraft.sh installs both).
+plugins {
+ id 'dev.architectury.loom'
+}
+
+group = rootProject.maven_group
+version = rootProject.mod_version
+base { archivesName = rootProject.archives_name + '-neoforge' }
+
+repositories {
+ exclusiveContent {
+  forRepository { mavenLocal() }
+  filter { includeGroup 'thaumcraft' }
+ }
+ mavenCentral()
+ maven { url = 'https://maven.neoforged.net/releases/' }
+ maven { url = 'https://maven.architectury.dev/' }
+ maven { url = 'https://maven.terraformersmc.com/releases/'; content { includeGroup 'dev.emi' } }
+ maven { url = 'https://maven.blamejared.com/'; content { includeGroup 'mezz.jei' } }
+ maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+}
+
+dependencies {
+ minecraft "com.mojang:minecraft:$rootProject.minecraft_version"
+ mappings loom.officialMojangMappings()
+ neoForge "net.neoforged:neoforge:$rootProject.neoforge_version"
+ modImplementation "dev.architectury:architectury-neoforge:$rootProject.architectury_api_version"
+ modImplementation "thaumcraft:Thaumcraft-neoforge:$rootProject.thaumcraft_version"
+
+ // The optional integrations, compile-only as on Fabric; `-PwithEmi`, `-PwithJei`, `-PwithJade` add them to the development runs.
+ modCompileOnly "dev.emi:emi-neoforge:$rootProject.emi_version:api"
+ modCompileOnly "mezz.jei:jei-1.21.1-neoforge-api:$rootProject.jei_version"
+ modCompileOnly "maven.modrinth:jade:$rootProject.jade_version+neoforge"
+ if (providers.gradleProperty('withEmi').isPresent()) modLocalRuntime "dev.emi:emi-neoforge:$rootProject.emi_version"
+ if (providers.gradleProperty('withJei').isPresent()) modLocalRuntime "mezz.jei:jei-1.21.1-neoforge:$rootProject.jei_version"
+ if (providers.gradleProperty('withJade').isPresent()) modLocalRuntime "maven.modrinth:jade:$rootProject.jade_version+neoforge"
+}
+
+sourceSets {
+ main {
+  java.srcDirs = [rootProject.file('common/src/main/java'), file('src/main/java'), rootProject.file('compat/src/main/java')]
+  resources.srcDirs = [rootProject.file('common/src/main/resources'), file('src/main/resources')]
+ }
+}
+
+java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
+
+processResources {
+ inputs.property 'version', project.version
+ filesMatching('META-INF/neoforge.mods.toml') { expand version: project.version }
+ // The licence travels with every artifact of the add-on.
+ from(rootProject.file('LICENSE')) { into 'META-INF' }
+}
+
+loom.runs {
+ client {
+  client()
+  name 'Thaumic Tinkerer NeoForge client'
+  runDir 'run-client'
+ }
+ server {
+  server()
+  name 'Thaumic Tinkerer NeoForge server'
+  runDir 'run-server'
+ }
+}
