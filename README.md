@@ -35,10 +35,9 @@ Nothing in this table is claimed beyond what a document or a results file record
 ## What you need
 
 * **JDK 21** (any vendor; the build uses a Java 21 toolchain) and git. The Gradle wrapper (8.12.1) is in the repository.
-* **Thaumcraft 4 Reload, built from the commit the add-on needs.** The add-on uses extensions of `thaumcraft.api` that exist only on the branch
-  `claude/hopeful-hamilton-v8m5pi` of <https://github.com/acak1221/Thaumcraft-1.21.1>; a Thaumcraft built from another branch (or a release without
-  them) does not compile the add-on. `thaumcraft_ref` in `gradle.properties` is the commit of that branch that the add-on is built and tested against
-  (the CI uses it too). The build reads Thaumcraft from your local Maven repository (`~/.m2`, `mavenLocal()`), as
+* **Thaumcraft 4 Reload, built from the commit the add-on needs.** The add-on uses extensions of `thaumcraft.api` that are on the branch `main` of
+  <https://github.com/acak1221/Thaumcraft-1.21.1> since commit `4c38e3f` (2026-10-31); a Thaumcraft without them (an older commit or release) does not
+  compile the add-on. `thaumcraft_ref` in `gradle.properties` is the commit that the add-on is built and tested against (the CI uses it too). The build reads Thaumcraft from your local Maven repository (`~/.m2`, `mavenLocal()`), as
   `thaumcraft:Thaumcraft-fabric:<thaumcraft_version>` (`gradle.properties`, now `0.1.0-alpha.7`). Install it first, below; a build without it stops
   with a message that says so.
 * Internet access for Maven Central, `maven.fabricmc.net`, `maven.architectury.dev` and Mojang (Minecraft, assets) on the first build.

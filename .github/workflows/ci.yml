@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: MIT
 # CI of Thaumic Tinkerer (Fabric, Minecraft 1.21.1).
 #
-# The add-on needs Thaumcraft 4 Reload from https://github.com/acak1221/Thaumcraft-1.21.1 (it needs extensions of thaumcraft.api that exist
-# only on the branch claude/hopeful-hamilton-v8m5pi), so the job checks that repository out next to the add-on at the commit thaumcraft_ref
+# The add-on needs Thaumcraft 4 Reload from https://github.com/acak1221/Thaumcraft-1.21.1 (it needs extensions of thaumcraft.api that are on
+# main there since 4c38e3f), so the job checks that repository out next to the add-on at the commit thaumcraft_ref
 # of gradle.properties (a commit, not the branch: the build does not change when the branch moves; move it together with thaumcraft_version),
 # installs Thaumcraft into the local Maven repository of the runner (the add-on build reads it from there) and then builds the add-on:
 # compilation of the main, GameTest and client-smoke source sets and the JUnit tests (`check`), GameTests on a Fabric dedicated server, the

@@ -37,9 +37,9 @@ English version: [README.md](README.md).
 ## Что нужно
 
 * **JDK 21** (любого поставщика; сборка использует toolchain Java 21) и git. Gradle wrapper (8.12.1) лежит в репозитории.
-* **Thaumcraft 4 Reload, собранный из нужного аддону коммита.** Аддон использует расширения `thaumcraft.api`, которые есть только в ветке
-  `claude/hopeful-hamilton-v8m5pi` репозитория <https://github.com/acak1221/Thaumcraft-1.21.1>; Thaumcraft из другой ветки (или релиз без них) аддон
-  не скомпилирует. `thaumcraft_ref` в `gradle.properties` — коммит этой ветки, с которым аддон собирается и проверяется (CI берёт его же).
+* **Thaumcraft 4 Reload, собранный из нужного аддону коммита.** Аддон использует расширения `thaumcraft.api`, которые есть в ветке `main`
+  репозитория <https://github.com/acak1221/Thaumcraft-1.21.1> начиная с коммита `4c38e3f` (2026-10-31); Thaumcraft без них (более старый коммит или релиз)
+  аддон не скомпилирует. `thaumcraft_ref` в `gradle.properties` — коммит, с которым аддон собирается и проверяется (CI берёт его же).
   Сборка берёт Thaumcraft из локального Maven-репозитория (`~/.m2`, `mavenLocal()`) как
   `thaumcraft:Thaumcraft-fabric:<thaumcraft_version>` (`gradle.properties`, сейчас `0.1.0-alpha.7`). Сначала установите его, см. ниже; сборка без него
   останавливается сообщением об этом.
