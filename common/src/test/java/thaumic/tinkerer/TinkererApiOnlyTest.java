@@ -32,7 +32,7 @@ class TinkererApiOnlyTest {
         List<String> offending = new ArrayList<>();
         int files = scan(Path.of("common", "src", "main", "java"), COMMON_ALLOWED, offending)
                 + scan(Path.of("fabric", "src", "main", "java"), concat(COMMON_ALLOWED, FABRIC_ALLOWED), offending)
-                + scan(Path.of("neoforge", "src", "main", "java"), concat(COMMON_ALLOWED, List.of("net.neoforged.", "org.objectweb.")), offending)
+                + scan(Path.of("neoforge", "src", "main", "java"), concat(COMMON_ALLOWED, List.of("net.neoforged.", "org.objectweb.", "org.spongepowered.", "com.llamalad7.")), offending)
                 + scan(Path.of("compat", "src", "main", "java"), concat(COMMON_ALLOWED, COMPAT_ALLOWED), offending);
         assertTrue(files > 0, "the add-on has sources: " + Path.of(".").toAbsolutePath());
         assertEquals(List.of(), offending, "the add-on reaches past thaumcraft.api");

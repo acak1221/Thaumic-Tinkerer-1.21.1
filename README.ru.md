@@ -56,9 +56,9 @@ English version: [README.md](README.md).
 
 ```bash
 # 1. Thaumcraft 4 Reload в ~/.m2 (один раз; снова — когда изменился thaumcraft_ref в gradle.properties)
-tools/publish-thaumcraft.sh                  # клонирует ../Thaumcraft-1.21.1 на thaumcraft_ref и запускает там ./gradlew :fabric:publishToMavenLocal
+tools/publish-thaumcraft.sh                  # клонирует ../Thaumcraft-1.21.1 на thaumcraft_ref и запускает там ./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
 #    вручную:  git clone https://github.com/acak1221/Thaumcraft-1.21.1 ../Thaumcraft-1.21.1
-#              cd ../Thaumcraft-1.21.1 && git checkout <thaumcraft_ref> && ./gradlew :fabric:publishToMavenLocal
+#              cd ../Thaumcraft-1.21.1 && git checkout <thaumcraft_ref> && ./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
 
 # 2. Аддон
 ./gradlew tinkererTest                       # JUnit-тесты аддона
@@ -69,6 +69,11 @@ tools/publish-thaumcraft.sh                  # клонирует ../Thaumcraft-
 ./gradlew runTinkererClient                  # клиент для разработки с Thaumcraft и аддоном
 tools/client-smoke.sh                        # клиентский осмотр под Xvfb, около 2 минут после первой компиляции (docs/CLIENT_VERIFICATION.md)
 ./gradlew exportTinkererClasspath && tools/compile.sh [-g]   # javac вне Gradle для быстрого цикла правка-компиляция (-g: вместе с исходниками GameTest)
+
+# 3. NeoForge (подпроект :neoforge; docs/NEOFORGE.md)
+./gradlew :neoforge:runGameTest              # те же GameTests на тестовом сервере NeoForge
+./gradlew :neoforge:runGameTest -PtinkererGameTestFilter='kamiworldgametests.*'    # тот же фильтр, что у запуска Fabric
+python3 tools/neoforge_gametests.py          # совпадают ли обёртки GameTest для NeoForge с обёртками Fabric? (--write генерирует их заново)
 ```
 
 * **Как выглядит хороший запуск** (0.1.0-alpha.7, 2026-10-31; числа меняются, когда добавляются тесты, важно отсутствие сбоев):
@@ -79,12 +84,15 @@ tools/client-smoke.sh                        # клиентский осмотр
   | `./gradlew runTinkererGameTest` | строка лога `All 312 required tests passed :)` и `BUILD SUCCESSFUL`; в `build/tinkerer-gametest-results.xml` 312 элементов `testcase` и ни одного `failure` или `error` |
   | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` и `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (около 2,3 МБ) |
   | `./gradlew check` | `BUILD SUCCESSFUL` (три набора исходников компилируются, проверка refmap Mixin проходит, `tinkererTest` запускается) |
+  | `./gradlew :neoforge:runGameTest` | то же, что у `runTinkererGameTest`: `All 312 required tests passed :)` и `neoforge/build/tinkerer-gametest-results.xml` с 312 элементами `testcase` без `failure` и `error`. Пока не достигнуто: последний запуск и его сбои — в `docs/NEOFORGE.md`, «GameTests on NeoForge» |
   | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` и 80 снимков в `build/tinkerer-client-smoke/`; PASS был 725–727 в пяти запусках (три проверки блоков огня зависят от случайных пикселей), FAIL 0 и NOT_RUN 1 не менялись. `tools/client-smoke.sh -- -PwithEmi -PwithJade` добавляет проверки EMI и Jade (737 PASS, 88 снимков), `-- -PwithJei` — проверки JEI (730 PASS, 82 снимка) |
 * Релизный jar — `build/libs/ThaumicTinkerer-fabric-<версия>.jar` (`mod_version` в `gradle.properties`; его же собирает `./gradlew assemble`). Он
   переотображён для продакшена, несёт `LICENSE` в `META-INF/` и содержит refmap Mixin. Чтобы играть с ним, положите его в `mods/` рядом с jar
   Thaumcraft 4 Reload, Architectury API 13.0.11+ и Fabric API.
 * `runTinkererGameTest` пишет `build/tinkerer-gametest-results.xml`; его мир лежит в `run-tinkerer-gametest/` (удаляется в начале каждого запуска).
   Отчёты JUnit — в `build/reports/tests/tinkererTest/`, результаты клиентского осмотра — в `build/tinkerer-client-smoke/`. Всё это игнорируется git.
+  `:neoforge:runGameTest` пишет `neoforge/build/tinkerer-gametest-results.xml`; его мир лежит в `neoforge/run-gametest/` (удаляется в начале каждого
+  запуска, тоже игнорируется git).
 * `tools/client-smoke.sh` запускает `./gradlew` под `xvfb-run`; переменная окружения `GRADLE_CMD` заменяет команду Gradle (см. заголовок скрипта).
 * Компиляция падает, если процессор аннотаций Mixin не записал refmap или записал refmap без записи для миксина с инжектором (`fabric.gradle`).
 * Файлы, на которые ссылаются документы и которые принадлежат **репозиторию Thaumcraft 4 Reload**, а не этому: `AGENTS.md`, `docs/api/` (`PORTING.md`,

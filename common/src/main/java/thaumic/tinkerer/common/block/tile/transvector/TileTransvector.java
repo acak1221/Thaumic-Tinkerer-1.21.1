@@ -12,6 +12,8 @@
  */
 package thaumic.tinkerer.common.block.tile.transvector;
 
+import java.util.Objects;
+import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -37,6 +39,9 @@ public abstract class TileTransvector extends CamoDeviceBlockEntity {
     private static final String TAG_LINKED = "linked";
     private static final String TAG_CHEATY_MODE = "cheatyMode";
 
+    /** Told after the binding of a device changed (see {@link #setBindingListener}); nothing by default. */
+    private static Consumer<TileTransvector> bindingListener = device -> {};
+
     @Nullable
     private BlockPos target;
     private boolean cheaty;
@@ -57,8 +62,19 @@ public abstract class TileTransvector extends CamoDeviceBlockEntity {
 
     /** Binds the device to a position (the Transvector Binder checks the distance before it calls this). */
     public final void setTarget(@Nullable BlockPos pos) {
+        BlockPos old = target;
         this.target = pos == null ? null : pos.immutable();
         setChanged();
+        if (!Objects.equals(old, target)) bindingListener.accept(this);
+    }
+
+    /**
+     * What a loader module must also do when a binding begins, moves or ends (new in the port). NeoForge: invalidate the
+     * capabilities at the device's position, because the Interface's fluid capability exists only while it is bound and
+     * NeoForge's capability caches must be told (docs/NEOFORGE.md). Runs after the change, on the side that made it.
+     */
+    public static void setBindingListener(Consumer<TileTransvector> listener) {
+        bindingListener = Objects.requireNonNull(listener, "listener");
     }
 
     @Override
@@ -102,6 +118,7 @@ public abstract class TileTransvector extends CamoDeviceBlockEntity {
         if (!level.isClientSide && (tile == null && tileRequiredAtLink() || tooFar && !cheaty)) {
             target = null;
             setChanged();
+            bindingListener.accept(this);
             return null;
         }
 

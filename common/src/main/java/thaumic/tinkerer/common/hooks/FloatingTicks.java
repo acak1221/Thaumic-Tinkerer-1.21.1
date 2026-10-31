@@ -19,8 +19,8 @@ import net.minecraft.server.level.ServerPlayer;
  * counter to zero on each cast (see {@code docs/api-requests/Foci.md} section 3).
  *
  * <p>The field is private. The loader module makes the connection class implement {@link Access} (Fabric: the mixin
- * {@code ServerGamePacketListenerFloatingMixin}; NeoForge: not written yet, an access transformer on the field or a
- * mixin of the same shape), and the methods here go through that interface. If the loader module did not (a platform without
+ * {@code ServerGamePacketListenerFloatingMixin}; NeoForge: the mixin of the same name and shape in
+ * {@code thaumic.tinkerer.neoforge.mixin}), and the methods here go through that interface. If the loader module did not (a platform without
  * the hook), {@link #isAvailable} is false and the reads and writes do nothing; nothing here uses reflection.</p>
  *
  * <p>{@link #RESET} has the type {@code FociHooks.setFloatingTickReset} takes, so the Foci group installs it with

@@ -1,0 +1,34 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="CC-BY-NC-SA-3.0"
+[[mods]]
+modId="thaumictinkerer_gametest"
+version="1.0.0"
+displayName="Thaumic Tinkerer GameTest harness"
+description='''The NeoForge GameTest harness of Thaumic Tinkerer (neoforge/src/gameTest): test-only, loaded by :neoforge:runGameTest, never part of the add-on jar.'''
+[[dependencies.thaumictinkerer_gametest]]
+modId="thaumictinkerer"
+type="required"
+versionRange="*"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.thaumictinkerer_gametest]]
+modId="thaumcraft"
+type="required"
+versionRange="*"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.thaumictinkerer_gametest]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.259,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.thaumictinkerer_gametest]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+[[mixins]]
+config="thaumictinkerer-neoforge-gametest.mixins.json"

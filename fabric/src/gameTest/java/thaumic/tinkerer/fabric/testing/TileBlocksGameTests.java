@@ -41,7 +41,7 @@ public final class TileBlocksGameTests implements FabricGameTest {
 
     /**
      * The Transvector Interface hands the fluid storage of the block it is bound to to whoever asks it (the Fabric glue,
-     * {@code TileBlocksFabric}, registered by {@code TileBlocks.ready()}): unbound it has none; bound to a tank it fills
+     * {@code TileBlocksFabric}, registered by {@code ThaumicTinkererFabric.onThaumcraftReady()}): unbound it has none; bound to a tank it fills
      * and drains that tank.
      */
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

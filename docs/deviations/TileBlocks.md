@@ -234,19 +234,30 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   is a `Container`; `getAspects`, `addToContainer`, ... when it is an `IAspectContainer`; the transport methods when it is
   an `IEssentiaTransport` (both are the API's interfaces, which the tubes and jars ask of any block entity). The face rules
   of a non-sided inventory (all slots, insert and extract allowed) are kept.
-* **Fluids are forwarded on Fabric only; energy is not forwarded (forced).** The original implemented `IFluidHandler`, CoFH RF
+* **Fluids are forwarded by loader glue (Fabric run, NeoForge written); energy is not forwarded (forced).** The original implemented `IFluidHandler`, CoFH RF
   (`IEnergyHandler`, `IEnergyReceiver`, `IEnergyProvider`) and IC2 EU (`IEnergySink`, `IEnergySource`,
   `IEnergyConductor`) and forwarded them. 1.21.1 has no interface for these that common code can implement: fluid and
   energy storage are loader capabilities (Fabric Transfer API and Team Reborn Energy, NeoForge capabilities).
-  `TileTransvector.getTile()` is the one method a loader module needs to build the forwarding capabilities on.
-  *Fluids on Fabric:* `thaumic.tinkerer.fabric.TileBlocksFabric` (new, in the Fabric module; reached by name from
-  `TileBlocks.ready()` as the Kami gear does for its client glue) registers `FluidStorage.SIDED` for the Interface's block
+  `TileTransvector.getTile()` is the one method a loader module needs to build the forwarding capabilities on. The loader
+  modules install the glue themselves; common code names no loader class.
+  *Fluids on Fabric:* `thaumic.tinkerer.fabric.TileBlocksFabric` (new, in the Fabric module; called by
+  `ThaumicTinkererFabric.onThaumcraftReady()` through `ThaumicTinkerer.guard`, so a failure is recorded) registers `FluidStorage.SIDED` for the Interface's block
   entity type and answers with the fluid storage of the bound block for the same side, so tanks, pipes and buckets work
-  through it as `fill`/`drain`/`getTankInfo` did. The Fabric GameTest `interfaceForwardsFluids` covers it (not run). An
-  Interface bound to another Interface is refused there (no endless chain). *Not done:* energy (Team Reborn Energy is not
-  a dependency, and it is outside the import list of PORTING_RULES), and everything on NeoForge (no glue yet).
-  Items go through the Interface's `WorldlyContainer`, which the Transfer API wraps itself, and essentia through the
-  Thaumcraft interfaces.
+  through it as `fill`/`drain`/`getTankInfo` did. The Fabric GameTest `interfaceForwardsFluids` covers it (run 2026-10-31 with the
+  other 34 checks of `tileblocksgametests.*`: all passed). An Interface bound to another Interface is refused there (no endless chain).
+  *Fluids and items on NeoForge:* `thaumic.tinkerer.neoforge.NeoForgeCapabilities` (new) registers, in `RegisterCapabilitiesEvent`,
+  `Capabilities.FluidHandler.BLOCK` for the Interface's block entity type, with the same refusals (unbound, bound to itself or to
+  another Interface, or a bound block without a fluid handler for that side: none). Two differences in shape, both forced by NeoForge's
+  capability caches, which keep what a provider returned: the handler handed out asks the bound block for its handler again on every call
+  (a pipe must not keep filling the tank of a binding that ended, or a broken tank), and a change of binding invalidates the
+  capabilities at the Interface's position (`TileTransvector.setBindingListener`, new, called by `setTarget` and when `getTile()` ends a
+  binding), so a cache that saw "none" asks again. It also registers `Capabilities.ItemHandler.BLOCK` (the Interface's own
+  `WorldlyContainer` in NeoForge's `InvWrapper`, or `SidedInvWrapper` for a side), because NeoForge wraps only the vanilla containers,
+  where Fabric's Transfer API wraps any; a vanilla hopper reaches the Interface either way. Compiled; **not run** (no NeoForge GameTest of
+  it yet, `docs/NEOFORGE.md`). *Not done:* energy on either loader (Team Reborn Energy is not a dependency, and it is outside the import
+  list of PORTING_RULES; NeoForge's `Capabilities.EnergyStorage.BLOCK` is not registered either).
+  On Fabric items go through the Interface's `WorldlyContainer`, which the Transfer API wraps itself; essentia goes through the
+  Thaumcraft interfaces on both loaders.
 * **The research text of the Interface says what it does (decision).** `INTERFACE.0` promised BuildCraft, TE3 and IC2
   power; `lang-extra/tile_blocks.*.json` (all six languages) now says essentia, items and liquids and that power does not
   pass through it in this version. `INTERFACE.1` still carries the 1.7.10 note about BuildCraft pipes, which is harmless.
@@ -362,8 +373,8 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 ## 3. Not done (kept visible)
 
-* Energy forwarding of the Interface (2.5), and fluid forwarding on NeoForge: need the loader modules (Fabric has the
-  fluids).
+* Energy forwarding of the Interface (2.5), on both loaders: needs the loader modules. (Fluids are forwarded on both; the NeoForge
+  capabilities were not run.)
 * ComputerCraft/OpenComputers peripherals of the Tablet, the Interface and the Golem Connector (2.1, 2.4, 2.5): the method
   tables exist as plain Java, nothing registers them.
 * Golem data of the Golem Connector (2.4): API request A11.
@@ -391,7 +402,8 @@ fixed: the relay fix above (a stale partner hung the server thread), and six che
 (the Interface was bound to a stone block, which has no block entity to stand in for and so ends the binding at once;
 `GameTestHelper.relativePos` of 1.21.1 is not the inverse of `absolutePos`; `GameTestHelper.destroyBlock` drops nothing;
 the relays of neighbouring checks found each other, see "keeps the last relay it finds"). **Still not run:** the Fabric glue
-`TileBlocksFabric` is only exercised through `interfaceForwardsFluids`; the client ran only in the smoke harness (2.8: the
+`TileBlocksFabric` is only exercised through `interfaceForwardsFluids`; the NeoForge capabilities of the Interface
+(`NeoForgeCapabilities`, 2.5) never ran; the client ran only in the smoke harness (2.8: the
 camouflage renderer, `renderBatched`, drew in it on a software renderer); multiplayer, survival play and any run on a GPU
 have never happened. Every behaviour above that says "as the
 original" is by reading the original code, not by running both; the claims about 1.7.10 engine code (the break-speed rule,

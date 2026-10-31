@@ -4,9 +4,10 @@ Architectury has no events for several things that the 1.7.10 mod did through Fo
 around each gap and wrote the loss down (`docs/api-requests/*.md`, `docs/deviations/*.md`). This is the loader layer that closes
 the gaps: **real events**, posted from the vanilla code paths themselves, and two small registries. The five groups that needed
 them (Enchantments, KamiWorld, KamiGear, Machines, Foci) **are rewired** to them and their workarounds are deleted; section 10 says
-per group which workaround went, which event replaced it and which check pins it. The posters exist for **Fabric** (Mixin). **None of
-the NeoForge posters is written** (section 9 lists what each of them must do): on NeoForge every effect that depends on an event would not happen.
-Nothing of the add-on has been built or run on NeoForge, so that is a consequence read from the code, not an observation.
+per group which workaround went, which event replaced it and which check pins it. The posters exist for **Fabric** (Mixin) and, since
+2026-10-31, for **NeoForge** (handlers of NeoForge's events and three mixins, section 9). On NeoForge the hook GameTests and the GameTests of the
+five groups that use the events have run and passed once on a NeoForge GameTest server (section 9, "What ran on NeoForge"); no client and no
+real NeoForge game has been started with them.
 
 How the words are used: *implemented* means the code exists; a *check* is a JUnit test or a GameTest in the source that was written for the thing it
 is named for, and a check counts as *run* only where a document or a results file says so (section 12, "What ran", says what that is for the hooks); *read*
@@ -21,7 +22,7 @@ check runs one, section 12).
 | Built-in item renderer registry (client) | `common/.../thaumic/tinkerer/client/hooks/ItemRenderers.java` |
 | Fabric posters (Mixin) | `fabric/src/main/java/thaumic/tinkerer/fabric/mixin/*`, config `fabric/src/main/resources/thaumictinkerer.mixins.json`, listed under `"mixins"` of `fabric/src/main/resources/fabric.mod.json` |
 | Fabric helper of the drop capture, Fabric item renderer backend | `fabric/.../fabric/hooks/DropCapture.java`, `fabric/.../fabric/client/FabricItemRenderers.java` |
-| NeoForge posters | **not written**; there is no NeoForge build file of the add-on either (section 9) |
+| NeoForge posters | `neoforge/src/main/java/thaumic/tinkerer/neoforge/hooks/NeoForgeEventPosters.java` (the event handlers, subscribed by `ThaumicTinkererNeoForge`) and `LastHurtAccess.java`; mixins `neoforge/src/main/java/thaumic/tinkerer/neoforge/mixin/*`, config `neoforge/src/main/resources/thaumictinkerer-neoforge.mixins.json`, listed under `[[mixins]]` of `neoforge/src/main/resources/META-INF/neoforge.mods.toml` (section 9) |
 | Runtime tests | `common/src/gameTest/.../testing/HooksRuntimeChecks.java`, Fabric wrappers `fabric/src/gameTest/.../testing/HooksGameTests.java`; JUnit `common/src/test/.../hooks/` |
 
 ## 1. Overview
@@ -29,13 +30,13 @@ check runs one, section 12).
 | Event | 1.7.10 original | Sides | Fabric posting point (Mojang names) | NeoForge counterpart | Used by |
 |---|---|---|---|---|---|
 | `LIVING_DAMAGE` | `LivingHurtEvent` (`ammount`) | server | `LivingEntity.hurt`, just before the first `isSleeping()` call, i.e. right after the four early `return false` checks | `LivingIncomingDamageEvent` | Enchantments (Pounce, Final Strike, Valiance, Focused and Dispersed Strikes, Vampirism; the former `AttackBoost` is deleted), KamiWorld (Soul Hearts: `SoulHeartHandler.onLivingDamage`) |
-| `LIVING_ARMOR_ABSORB` (section 14) | `ISpecialArmor` (`ArmorProperties`, asked inside Forge's `ArmorProperties.ApplyArmor`) | server | `LivingEntity.getDamageAfterArmorAbsorb`, wrapped (`LivingEntityArmorMixin`, priority 900) | `LivingIncomingDamageEvent#addReductionModifier(DamageContainer.Reduction.ARMOR, ...)` | KamiGear (Ichorcloth: `IchorAbsorption`) |
+| `LIVING_ARMOR_ABSORB` (section 14) | `ISpecialArmor` (`ArmorProperties`, asked inside Forge's `ArmorProperties.ApplyArmor`) | server | `LivingEntity.getDamageAfterArmorAbsorb`, wrapped (`LivingEntityArmorMixin`, priority 900) | the same wrapper (a NeoForge `LivingEntityArmorMixin`, priority 900), not `LivingIncomingDamageEvent#addReductionModifier(DamageContainer.Reduction.ARMOR, ...)` (section 14 says why) | KamiGear (Ichorcloth: `IchorAbsorption`) |
 | `BREAK_SPEED` | `PlayerEvent.BreakSpeed` (`newSpeed`, cancel) | **both** | `BlockBehaviour.getDestroyProgress`, wrapping the call of `Player.getDestroySpeed(BlockState)` | `PlayerEvent.BreakSpeed` (`setNewSpeed`, cancel; its position is `getPosition()`) | Enchantments (Shatter, Tunnel, Disintegrate, Flaming Touch; the former `BreakSpeedControl` is deleted), TileBlocks (the Animation Tablet's fake player gets the event with no change in that group) |
 | `LIVING_JUMP` | `LivingJumpEvent` | both | `LivingEntity.jumpFromGround`, `TAIL` | `LivingEvent.LivingJumpEvent` | Enchantments (Ascent Boost), KamiGear (Gem Boots' jump) |
 | `LIVING_FALL` | `LivingFallEvent` (`distance`, cancel) | both | `LivingEntity.causeFallDamage`, `HEAD` | `LivingFallEvent` (`setDistance`, `setDamageMultiplier`, cancel) | Enchantments (Shockwave, Slow Fall), KamiGear (Gem Boots set the distance to 0) |
 | `USE_ITEM_TICK` | `EntityPlayer.itemInUseCount` (written every tick by the Quick Draw handler) | both | `LivingEntity.updateUsingItem`, `HEAD` | `LivingEntityUseItemEvent.Tick` (`setDuration`) | Enchantments (Quick Draw; the former arrow-speed workaround is deleted) |
 | `LIVING_DROPS` | `LivingDropsEvent` (`drops`, cancel) | server | `LivingEntity.dropAllDeathLoot` wrapped (and `Fox.dropAllDeathLoot`); capture in `Entity.spawnAtLocation(ItemStack, float)` and `ServerPlayer.drop(ItemStack, boolean, boolean)` | `LivingDropsEvent` (`getDrops()`, cancel) | Machines (Cursed Spirit's Blade), KamiWorld (`DimensionalShardDropHandler`) |
-| `FloatingTicks` | `NetHandlerPlayServer.floatingTickCount` | server | accessor mixin on `ServerGamePacketListenerImpl.aboveGroundTickCount` | an access transformer or the same mixin | Foci (Uprising) |
+| `FloatingTicks` | `NetHandlerPlayServer.floatingTickCount` | server | accessor mixin on `ServerGamePacketListenerImpl.aboveGroundTickCount` | the same mixin (`ServerGamePacketListenerFloatingMixin` of the NeoForge tree) | Foci (Uprising) |
 | `ItemRenderers` | `MinecraftForgeClient.registerItemRenderer` | client | Fabric API `BuiltinItemRendererRegistry` | `RegisterClientExtensionsEvent` + `IClientItemExtensions` | Machines (Mob Display) |
 
 `LIVING_ARMOR_ABSORB` was added after sections 3 to 13 had been numbered, and the group documents and the code comments quote those numbers, so its
@@ -162,11 +163,19 @@ the event, as `deviations/Enchantments.md` section 12 says; the 1.21.1 side of e
   *after* the event in 1.7.10 (inside the armour calculation). It has an event of its own, `LIVING_ARMOR_ABSORB`, posted from
   `LivingEntity.getDamageAfterArmorAbsorb` (section 14).
 
-*NeoForge*: a handler of `LivingIncomingDamageEvent` calls `TinkererEvents.postLivingDamage(entity, event.getSource(), event.getAmount())`,
-`event.setAmount(result)` and `event.setCanceled(true)` when the result is zero (the event is posted by `CommonHooks.onEntityIncomingDamage`
-at the same place of `hurt`). NeoForge's event is posted *before* the frames test too and has no filter of its own, so the handler must first call
-`TinkererEvents.framesRefuse(entity, event.getSource(), event.getAmount(), lastHurt)` and return without posting when it is true; `lastHurt` is a protected field of
-`LivingEntity` there as well, so the NeoForge module needs an access transformer or an accessor mixin for it.
+*NeoForge* (written; run on a GameTest server, section 9): `NeoForgeEventPosters.onLivingIncomingDamage`, a handler of `LivingIncomingDamageEvent` at
+`EventPriority.NORMAL` that does not receive cancelled events. It skips an amount that is not positive, returns without posting when
+`TinkererEvents.framesRefuse(entity, event.getSource(), event.getAmount(), lastHurt)` is true, and otherwise calls `postLivingDamage(...)` and
+`event.setAmount(result)`, or `event.setCanceled(true)` for a result of zero. Read in the 21.1.259 bytecode of `LivingEntity.hurt`: the event is posted by
+`CommonHooks.onEntityIncomingDamage` right after the four early `return false` checks and before `isSleeping()` (the place of the Fabric injection); a cancel returns
+`false` at once; `hurt` then reads the amount back from the container (`getNewDamage()`) and runs the shield, freezing, helmet and frames steps of vanilla on it, so
+NeoForge's event is posted before the frames test and filters nothing, hence the `framesRefuse` call. `lastHurt` (protected) is read through
+`LastHurtAccess`, which the mixin `LivingEntityLastHurtMixin` adds to `LivingEntity` (a `@Shadow` of the field; chosen over an access transformer because it
+needs no change of the build, no regenerated Minecraft jar and widens nothing for other mods). Architectury posts its own `EntityEvent.LIVING_HURT` from the same
+NeoForge event at `HIGH`, so it runs before `LIVING_DAMAGE`, as on Fabric (where its injection is the head of `hurt`); a hit it cancels is not posted. The event is
+posted only from `LivingEntity.hurt` (the only caller of `onEntityIncomingDamage` in the patched jar), so the armour stand is not covered there either. Observed
+in the bytecode, not caused by the add-on: on a cancel `hurt` returns without popping the `DamageContainer` it pushed, so every cancelled event leaves one on the
+entity's `damageContainers` stack (a cancelling listener such as the Soul Hearts' adds one per cancelled hit; not measured, not worked around).
 
 *Fabric*: `LivingEntityHurtMixin`, an `@Inject(cancellable)` at the `INVOKE` of `isSleeping()` with a `@Local(argsOnly)` `LocalFloatRef` of
 the amount (MixinExtras). Every override of `hurt` that reaches `LivingEntity.hurt` through `super` is covered (players: `ServerPlayer.hurt`
@@ -199,10 +208,17 @@ the like) cannot stop a sword cutting bamboo. Thaumcraft's overrides call `super
 zero. The 1.7.10 event also fired for the wear of the tool (`damageItem(1)` every tick it fired); that part is the Enchantments group's
 (`docs/deviations/Enchantments.md` section on the wear).
 
-*NeoForge*: `PlayerEvent.BreakSpeed` is posted by `EventHooks.getBreakSpeed(player, state, speed, pos)` from `Player.getDigSpeed(state, pos)`,
-which `BlockBehaviour.getDestroyProgress` calls with the position: a handler maps `getNewSpeed()`/`getPosition()`
-(`Optional<BlockPos>`) to `TinkererEvents.postBreakSpeed(...)` and `setNewSpeed(result)`, cancelling at zero. It is posted on both sides there
-as well.
+*NeoForge* (written; run on a GameTest server, server side only, section 9): `NeoForgeEventPosters.onBreakSpeed`, a handler of `PlayerEvent.BreakSpeed` at
+`EventPriority.LOW`, with no test of side, tick or kind of player. It maps `getNewSpeed()` and `getPosition()` to `TinkererEvents.postBreakSpeed(...)` and
+writes the result back with `setNewSpeed(result)`. **"Cannot dig" is a speed of zero, not a cancel**: `EventHooks.getBreakSpeed` turns a cancelled event into
+`-1`, a negative progress, where this event's rule is a progress of exactly zero (the hook GameTest asserts `== 0`). Read in the 21.1.259 bytecode:
+`BlockBehaviour.getDestroyProgress` calls `Player.getDigSpeed(state, pos)` with the position, which works out tool, Efficiency, Haste, Mining Fatigue, water and
+air and then posts the event; that is the only caller of `getDigSpeed` in the patched jar. `Player.getDestroySpeed(state)` posts the same event with no position
+(`getDigSpeed(state, null)`), nothing in the game calls it, and the Fabric poster does not reach it either, so the handler returns without posting when
+`getPosition()` is empty: the position is never null from this poster either. `LOW`: on Fabric the listeners see the speed that `Player.getDestroySpeed` returned,
+with other mods' changes of that method in it (Thaumcraft's hover harness, an injection at its `RETURN`); on NeoForge Thaumcraft makes the same change from a
+`BreakSpeed` listener at `NORMAL`, and `LOW` puts the add-on after it whatever the order in which the mods were constructed. The never-ticked fake player is
+covered: `breakSpeedIsPostedForAServerPlayerAndAFakePlayer` and the Enchantments checks of the Animation Tablet passed on NeoForge.
 
 *Fabric*: `BlockBehaviourBreakSpeedMixin`, `@WrapOperation` on the `Player.getDestroySpeed(BlockState)` call inside `getDestroyProgress`, with
 the position from the method's own arguments.
@@ -224,7 +240,12 @@ packet. Not posted when the jump power is zero. The server player and the client
 mounted horse's jump, a slime's hop and swimming up do not use the method and do not post. It cannot be cancelled. (The GameTest drives the
 `aiStep` path with `setJumping(true)`; both paths end in the same `jumpFromGround`, which is where the mixin sits.)
 
-*NeoForge*: `LivingEvent.LivingJumpEvent` (`CommonHooks.onLivingJump`, same position) → `TinkererEvents.postLivingJump(entity)`.
+*NeoForge* (written; run on a GameTest server, server side only): `NeoForgeEventPosters.onLivingJump`, `LivingEvent.LivingJumpEvent` at `NORMAL` →
+`TinkererEvents.postLivingJump(entity)`. Read in the 21.1.259 bytecode: `LivingEntity.jumpFromGround` calls `CommonHooks.onLivingJump` as its last statement, after
+the motion, the sprint push and `hasImpulse`, and not when the jump power is below `1.0E-5` (the Fabric `TAIL`). **A superset of the Fabric event**: NeoForge also
+posts its jump event from the patched `Slime.jumpFromGround` and `MagmaCube.jumpFromGround` (the hop) and from `executeRidersJump` of `AbstractHorse` and `Camel`
+(a ridden jump, the camel's dash), so on NeoForge `LIVING_JUMP` is posted for those too, which Fabric does not do. The add-on's listeners (Gem Boots, Ascent Boost)
+look at boots and leggings that those entities do not wear, so nothing of theirs changes; a listener that must see the same set on both loaders has to filter.
 *Fabric*: `LivingEntityMotionMixin`, `@Inject` at `TAIL` (the early `return` for no jump power is not matched by `TAIL`).
 
 *Order against the other listener*: the Gem Boots' listener (KamiGear, registered in `register()`) runs before Ascent Boost's (Enchantments,
@@ -253,8 +274,10 @@ goes through `LIVING_DAMAGE`). 1.7.10 was no better for the rider (the event nam
 (`EventResult.interruptFalse()` by convention): `causeFallDamage` returns `false` at once, with no damage, no sound and no fall for
 the passengers. The chain stops at the first interrupt.
 
-*NeoForge*: `LivingFallEvent` (`CommonHooks.onLivingFall`, same method) → `TinkererEvents.postLivingFall(entity, new FallData(event.getDistance(),
-event.getDamageMultiplier()))`, then `event.setDistance`/`setDamageMultiplier` or `setCanceled(true)`.
+*NeoForge* (written; run on a GameTest server, server side only): `NeoForgeEventPosters.onLivingFall`, `LivingFallEvent` at `NORMAL` →
+`TinkererEvents.postLivingFall(entity, new FallData(event.getDistance(), event.getDamageMultiplier()))`, then `event.setDistance`/`setDamageMultiplier`, or
+`setCanceled(true)` on an interrupt. Read in the 21.1.259 bytecode: `CommonHooks.onLivingFall` is the first call of `LivingEntity.causeFallDamage`, a cancel returns
+`false` at once, and the method goes on (passengers, damage, sound) with the two floats the event holds afterwards; it is called nowhere else in the patched jar.
 *Fabric*: `LivingEntityMotionMixin`, `@Inject(cancellable)` at `HEAD` with two `@Local(argsOnly)` `LocalFloatRef`s.
 
 *Order against the other listeners*: Slow Fall, then Shockwave (Enchantments), then the Gem Boots (KamiGear). Shockwave's `LOW` priority of
@@ -277,9 +300,14 @@ nothing, the poster returns `remaining` untouched**: `Item.getUseDuration` is 0 
 0, -1, -2 and never completes in vanilla (a hold-to-use item of another mod relies on that), so the clamp must not apply to it. It cannot be cancelled. The client runs it for its own copy, so Quick
 Draw must compute the same on both sides (it only reads the stack's enchantments).
 
-*NeoForge*: `LivingEntityUseItemEvent.Tick` (`EventHooks.onItemUseTick`, same place) → `TinkererEvents.postUseItemTick(entity, stack, event.getDuration())`
-→ `event.setDuration(result)`. (NeoForge applies the duration to its own variable of the method; check that it ends in `useItemRemaining`
-before relying on it, the 1.21.1 patch does.)
+*NeoForge* (written; run on a GameTest server, server side only): `NeoForgeEventPosters.onUseItemTick`, `LivingEntityUseItemEvent.Tick` at `NORMAL` →
+`TinkererEvents.postUseItemTick(entity, event.getItem(), event.getDuration())` → `event.setDuration(result)`. **Checked in the 21.1.259 bytecode: the duration is
+`useItemRemaining`.** The patched `updateUsingItem` begins with `if (!stack.isEmpty()) this.useItemRemaining = EventHooks.onItemUseTick(this, stack,
+getUseItemRemainingTicks())`, and `getUseItemRemainingTicks()` returns the field; the event's stack is the method's argument (the one the Fabric `HEAD` injection
+gets). Two NeoForge changes after that line, which the poster's clamp already fits: `onUseTick` runs only while the count is above 0, and the use completes when
+the decrement leaves `<= 0` (vanilla: `== 0`). So a counting-down use that a listener takes below 1 is held at 1 and ends on that tick on both loaders; a use that
+starts at 0 (no listener changes it) completes at once on NeoForge, where vanilla and Fabric count it into the negative, which is NeoForge's own behaviour. A cancel
+of the NeoForge event (not used) would set `-1`. Not posted for an empty stack on NeoForge.
 *Fabric*: `LivingEntityUseItemMixin`, `@Inject` at `HEAD` with a `@Shadow` of `useItemRemaining`.
 
 ## 8. `LIVING_DROPS`
@@ -309,9 +337,15 @@ in NeoForge, whose patched `Fox` moves that drop into `dropEquipment()` inside t
 nobody listening drops the emerald) and the listener case. Any other vanilla override that spawns before `super` would need the same wrap; the only
 one in 1.21.1 that was found by reading the `dropAllDeathLoot` overrides is the fox.
 
-*NeoForge*: `LivingDropsEvent` (`CommonHooks.onLivingDrops`; NeoForge does the capture itself with `Entity.captureDrops`, and passes a
-`Collection`, a list in practice) → `TinkererEvents.postLivingDrops(entity, event.getSource(), new ArrayList<>(event.getDrops()), TinkererEvents.lootingLevel(level, source),
-event.isRecentlyHit())`, then replace the contents of `event.getDrops()` and cancel on an interrupt.
+*NeoForge* (written; run on a GameTest server): `NeoForgeEventPosters.onLivingDrops`, `LivingDropsEvent` at `NORMAL`. With nobody listening
+(`hasLivingDropsListeners()` false) it does nothing. Otherwise it calls `TinkererEvents.postLivingDrops(entity, event.getSource(), new ArrayList<>(event.getDrops()),
+TinkererEvents.lootingLevel(level, source), event.isRecentlyHit())`, cancels the event on an interrupt, and otherwise writes the list back into `event.getDrops()`
+(clear and add) when it differs from it by identity or order. There are no capture mixins on NeoForge. Read in the 21.1.259 bytecode: `LivingEntity.dropAllDeathLoot`
+calls `captureDrops(new ArrayList<>())`, runs the loot table, the custom loot, `dropEquipment` and the experience, takes the list back with `captureDrops(null)`
+(so what a listener spawns goes into the world at once, as on Fabric), posts the event with `lastHurtByPlayerTime > 0` and adds the collection to the level
+unless it is cancelled. `Entity.spawnAtLocation(ItemStack, float)` and `ServerPlayer.drop(ItemStack, boolean, boolean)` add to the capture when one is open.
+The patched `Fox.dropAllDeathLoot` only calls `super`, and the mouth item is dropped by its `dropEquipment`, inside the capture. The event is posted only from
+`LivingEntity.dropAllDeathLoot`.
 
 *Fabric*: `LivingEntityDropsMixin` (`@WrapMethod` around `dropAllDeathLoot`), `EntityDropCaptureMixin` and `ServerPlayerDropCaptureMixin`
 (`@WrapOperation` on their `Level.addFreshEntity` call → `DropCapture.offer`), `FoxDropCaptureMixin` (begins the capture around `Fox.dropAllDeathLoot`,
@@ -327,9 +361,11 @@ and `FloatingTicks.RESET`, a `Consumer<ServerPlayer>` of the type `FociHooks.set
 `ServerGamePacketListenerImpl.aboveGroundTickCount` through the interface `FloatingTicks.Access` that the Fabric mixin
 `ServerGamePacketListenerFloatingMixin` makes the connection class implement (no reflection). A player without a connection gives `-1` /
 `false`, and `reset` does nothing. The Foci group uses it: `Foci.register()` calls `FociHooks.setFloatingTickReset(FloatingTicks.RESET)` and
-the group's reflection stop-gap is deleted (`deviations/Foci.md` section 2). NeoForge (**not written**): the same interface on the same class
-with a mixin, or an access transformer for the field and a tiny `Access` implementation that cannot be done by transformer; the mixin is the
-simpler choice and works on both loaders. Without it `isAvailable` is false there and the reset does nothing.
+the group's reflection stop-gap is deleted (`deviations/Foci.md` section 2). NeoForge (written): the same interface on the same class by the mixin
+`ServerGamePacketListenerFloatingMixin` of `thaumic.tinkerer.neoforge.mixin`, a copy of the Fabric one (`@Shadow private int aboveGroundTickCount`, read in the
+21.1.259 jar: the field is there, private, with that name). Thaumcraft has its own accessor on the same field (`thaumcraft$...` names), which does not collide.
+`floatingTicksReadAndResetTheRealCounter` and the two Foci checks of the reset passed on a NeoForge GameTest server (mock players' connections; no real client
+connection was tried).
 
 **`ItemRenderers`** (`client/hooks/ItemRenderers.java`): `register(Item, Renderer)` with
 `Renderer.render(ItemStack, ItemDisplayContext, PoseStack, MultiBufferSource, int light, int overlay)`; `RenderMobDisplay::render`
@@ -345,26 +381,44 @@ NeoForge (**not written**): the backend collects the items and renderers, and a 
 `event.registerItem(new IClientItemExtensions() { getCustomRenderer() → a BlockEntityWithoutLevelRenderer whose renderByItem(stack, ctx, pose,
 buffers, light, overlay) calls the Renderer }, item)` for each entry. Without it the Mob Display is invisible there.
 
-**NeoForge: what the posters must do. None of this is written.** The add-on has no NeoForge module yet (Fabric first, `AGENTS.md`) and no NeoForge build
-file: `neoforge/build.gradle`, `build.gradle` and `settings.gradle` do not name the add-on, so its common tree has not been compiled against NeoForge. The
-`TinkererApiOnlyTest` already lets a neoforge tree import `net.neoforged.` and `org.objectweb.`. The module
-will need a class subscribed to `NeoForge.EVENT_BUS` (and one on the mod bus, and a mixin) that maps the NeoForge events onto the `TinkererEvents.post…`
-methods; all the rules live in `TinkererEvents`, so only the field mapping is loader code. What sections 3 to 8 and 14 say about NeoForge's own
-events was read in NeoForge's patched jars by the authors of those sections (section 14 names the 21.1.259 jars in the Gradle cache); **none of it
-was run**. Until the posters exist, **every effect that depends on an event would not happen on NeoForge** (section 10 lists them per group; none of it was
-observed, because the add-on has never been started there). Per event:
+**NeoForge: the posters (written 2026-10-31).** The subproject `:neoforge` (`neoforge/build.gradle`) compiles `common/src/main/java`, `compat/src/main/java`
+and `neoforge/src/main/java` against NeoForge 21.1.259 and Thaumcraft's NeoForge jar from mavenLocal. `ThaumicTinkererNeoForge` calls
+`NeoForgeEventPosters.register(bus)` right after `ThaumicTinkerer.init()`; it subscribes six handlers to `NeoForge.EVENT_BUS` (none of the hooks needs the mod bus)
+and does not receive cancelled events. The mixin config `thaumictinkerer-neoforge.mixins.json` (package `thaumic.tinkerer.neoforge.mixin`, `required: true`,
+`defaultRequire: 1`) lists `LivingEntityArmorMixin`, `LivingEntityLastHurtMixin` and `ServerGamePacketListenerFloatingMixin`; it has no refmap (NeoForge runs on
+Mojang names, and the build makes none). All the rules stay in `TinkererEvents`; the posters only map fields. `TinkererApiOnlyTest` lets the neoforge tree import
+`net.neoforged.`, `org.objectweb.`, `org.spongepowered.` and `com.llamalad7.` (the mixins), like the Fabric tree. Per event:
 
-| Event / registry | What the NeoForge side must do | Details |
-|---|---|---|
-| `LIVING_DAMAGE` | a handler of `LivingIncomingDamageEvent`: first `TinkererEvents.framesRefuse(entity, event.getSource(), event.getAmount(), lastHurt)`, and return without posting when it is true (NeoForge's event is posted before the frames test and filters nothing); then `postLivingDamage(...)`, `event.setAmount(result)`, and `event.setCanceled(true)` when the result is zero. `lastHurt` is a protected field of `LivingEntity` there as well: the module needs an access transformer or an accessor mixin for it (a public reader would also serve the Soul Hearts, section 15) | section 3 |
-| `LIVING_ARMOR_ABSORB` | in the same handler: `event.addReductionModifier(DamageContainer.Reduction.ARMOR, (container, reduction) -> TinkererEvents.postLivingArmorAbsorb(event.getEntity(), container.getSource(), container.getNewDamage(), reduction))`. No `damageAfterArmorAbsorb` step is needed (the modifier takes the amount directly). Keep the poster's own `bypasses_armor` test: the patched `actuallyHurt` calls the ARMOR reduction for such sources too | section 14 |
-| `BREAK_SPEED` | a handler of `PlayerEvent.BreakSpeed` mapping `getNewSpeed()` and `getPosition()` to `postBreakSpeed(...)` and `setNewSpeed(result)`, cancelling at zero. It must run on **both sides** and also for a player that is never ticked and never in the level (the Animation Tablet's `TinkererFakePlayer`, which asks `state.getDestroyProgress(fake, level, pos)`); NeoForge posts it from `Player.getDigSpeed`, which `getDestroyProgress` calls (read, not run on NeoForge), and the handler must not filter by side or by tick | section 4 |
-| `LIVING_JUMP` | a handler of `LivingEvent.LivingJumpEvent` calling `postLivingJump(entity)` | section 5 |
-| `LIVING_FALL` | a handler of `LivingFallEvent` calling `postLivingFall(entity, new FallData(event.getDistance(), event.getDamageMultiplier()))`, then `setDistance` and `setDamageMultiplier`, or `setCanceled(true)` | section 6 |
-| `USE_ITEM_TICK` | a handler of `LivingEntityUseItemEvent.Tick` calling `postUseItemTick(entity, stack, event.getDuration())` and `event.setDuration(result)`; check that NeoForge's duration ends in `useItemRemaining` | section 7 |
-| `LIVING_DROPS` | a handler of `LivingDropsEvent` calling `postLivingDrops(entity, source, new ArrayList<>(event.getDrops()), TinkererEvents.lootingLevel(level, source), event.isRecentlyHit())`, then replacing the contents of `event.getDrops()` and cancelling on an interrupt. No capture mixins: NeoForge captures the drops itself | section 8 |
-| `FloatingTicks` | the `Access` interface on `ServerGamePacketListenerImpl` by a mixin (the same mixin works on both loaders) | above |
-| `ItemRenderers` | a backend given to `ItemRenderers.setBackend` and a `RegisterClientExtensionsEvent` handler that registers an `IClientItemExtensions` per item | above |
+| Event / registry | NeoForge poster (NeoForge event and priority, or mixin) | Where it differs from the Fabric poster | Details |
+|---|---|---|---|
+| `LIVING_DAMAGE` | `onLivingIncomingDamage`: `LivingIncomingDamageEvent`, `NORMAL`. `framesRefuse(entity, source, amount, lastHurt)` first (`lastHurt` through `LastHurtAccess`, added by `LivingEntityLastHurtMixin`), then `postLivingDamage`, `setAmount(result)` or `setCanceled(true)` for zero | none in what is posted. Architectury's `LIVING_HURT` handler of the same event runs at `HIGH`, before it, as its Fabric injection does. NeoForge leaves the container of a cancelled hit on the entity's stack (its own behaviour) | section 3 |
+| `LIVING_ARMOR_ABSORB` | **a mixin, not a reduction modifier**: `LivingEntityArmorMixin` (`@WrapMethod` on `getDamageAfterArmorAbsorb`, priority 900, the same code as the Fabric mixin) → `TinkererEvents.damageAfterArmorAbsorb`, which keeps the `bypasses_armor` test | what the game makes of the returned amount: NeoForge subtracts `newDamage - result` as the ARMOR reduction of its container, so the damage that goes on is `d - (d - result)`, and an infinite blow gives a NaN damage whatever the step returns (both NeoForge's own arithmetic) | section 14 |
+| `BREAK_SPEED` | `onBreakSpeed`: `PlayerEvent.BreakSpeed`, **`LOW`**, no filter by side, tick or kind of player; `setNewSpeed(postBreakSpeed(...))`, so "cannot dig" is a speed of 0 and **not a cancel** (a cancel is a speed of -1 there) | an event without a position (`Player.getDestroySpeed(state)`, which nothing in the game calls) is not posted, as on Fabric | section 4 |
+| `LIVING_JUMP` | `onLivingJump`: `LivingEvent.LivingJumpEvent`, `NORMAL` | **also posted** for the hop of slimes and magma cubes and the ridden jump of horses and camels, which NeoForge posts its event for and Fabric does not | section 5 |
+| `LIVING_FALL` | `onLivingFall`: `LivingFallEvent`, `NORMAL`; `setDistance`/`setDamageMultiplier`, or `setCanceled(true)` | none found | section 6 |
+| `USE_ITEM_TICK` | `onUseItemTick`: `LivingEntityUseItemEvent.Tick`, `NORMAL`; `setDuration(postUseItemTick(entity, event.getItem(), event.getDuration()))`. The duration **is** `useItemRemaining` (read) | not posted for an empty stack; NeoForge's own `updateUsingItem` completes a use at `<= 0` (vanilla `== 0`) | section 7 |
+| `LIVING_DROPS` | `onLivingDrops`: `LivingDropsEvent`, `NORMAL`; nothing when nobody listens; a copy of `getDrops()` is posted and written back when it changed; cancel on an interrupt. No capture mixins | NeoForge's capture instead of `DropCapture`: the same set for the vanilla paths that were read (the fox's mouth item included) | section 8 |
+| `FloatingTicks` | `ServerGamePacketListenerFloatingMixin`, a copy of the Fabric mixin | none | above |
+| `ItemRenderers` | not one of the posters: the NeoForge backend is client glue (`neoforge/.../client/`), not covered by this account | | above |
+
+**What ran on NeoForge** (2026-10-31, NeoForge 21.1.259, the Gradle logs in `/tmp/tt-split/nf-hooks-*.log` of the development machine, not committed):
+
+* `./gradlew :neoforge:compileJava`: passed.
+* `./gradlew :neoforge:runGameTest -PtinkererGameTestFilter='hooksgametests.*'` (a NeoForge GameTest server, mock players): first 13 of 14 passed, the failure being
+  `livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow`, whose expectations hold for vanilla's arithmetic and not for NeoForge's (section 14); after the
+  check was given NeoForge's expectation, `All 14 required tests passed :)`. The same 14 on Fabric after that change: `All 14 required tests passed :)`.
+* `./gradlew :neoforge:runGameTest -PtinkererGameTestFilter='enchantmentsgametests.*,kamiworldgametests.*,kamigeargametests.*,machinesgametests.*,focigametests.*'`:
+  `All 173 required tests passed :)` (34, 20, 36, 47 and 36 tests, the counts of the Fabric results file).
+* One run of all 312 tests: 311 passed; the failure is `simpleblocksgametests.acropneedsfarmland` (wheat on the Infused Farmland), which is not an event of this layer
+  (`docs/NEOFORGE.md`, "Last run").
+
+What sections 3 to 8 and 14 say about NeoForge's own code was read with `javap` in the 21.1.259 jars of the Gradle cache (Loom's Mojang-named merged Minecraft jar,
+NeoForge's universal and sources jars, `bus` 8.0.5), including a search of the whole patched jar for the callers of each hook. **Not verified on NeoForge**: the client
+side of every "both sides" event (no NeoForge client was started; the GameTests run the server only); a real dedicated server with real clients (the FloatingTicks
+checks used mock connections); the order against other mods' handlers of the same events (the priorities were chosen by reading Architectury's and Thaumcraft's
+NeoForge code; Thaumcraft and Architectury are the only other mods in the runs); no mutation check was made on NeoForge; the reduction-modifier variant of `LIVING_ARMOR_ABSORB`
+was not run (that it would lose Thaumcraft's ward share is read, section 14); the container left on the stack by a cancelled `LivingIncomingDamageEvent` was read,
+not measured.
 
 **Other loader glue that NeoForge needs and that is not an event of this layer. None of it is written for NeoForge** (the groups' own loader code; the
 Fabric side is named where it exists):
@@ -388,8 +442,9 @@ the source under that name and was written for the thing it is named for. **Whet
 not repeat it: KamiWorld (header and section 10 of its document), Foci (header) and, for its first round only, KamiGear (header) record runs with
 numbers; the Enchantments document says that its GameTests and JUnit tests ran and refers to a report that is not in the repository; the Machines and
 BasicItems documents record no result of a run of their checks (`Machines.md` says what was checked, without a result). For those three groups the only record is the results file described in section 12 ("What ran"), which
-lists their GameTests without a failure and says nothing about JUnit. The client side of every event is **unverified** (section 12), and on NeoForge
-none of this is written (section 9). What would not happen there is listed per group.
+lists their GameTests without a failure and says nothing about JUnit. The client side of every event is **unverified** (section 12). On NeoForge the
+posters are written and these five groups' GameTests passed once on a NeoForge GameTest server (section 9, "What ran on NeoForge"; server side only); the
+last bullet of each group says what rests on the NeoForge posters there.
 
 * **Enchantments** (`deviations/Enchantments.md` sections 2 to 4, 9 and 13; registered by `Enchantments.register()` → `ModEnchantments.initEnchantments()`,
   and by `Enchantments.ready()` → `ModEnchantments.initJump()`, section 2).
@@ -412,8 +467,8 @@ none of this is written (section 9). What would not happen there is listed per g
   * Kept on Architectury, not an event of this layer: `BlockEvent.BREAK` (Tunnel's remembered direction, the extra wear) and `TickEvent.PLAYER_PRE`
     (Slow Fall's motion and cloud on the local client). The only other users of Architectury's `EntityEvent.LIVING_HURT` in the add-on are the Cursed Spirit's
     Blade (Machines) and the Imbued effects (SimpleBlocks), both below.
-  * Without NeoForge posters (nothing was run there): no damage factors and no Vampirism, no Shatter, Tunnel, Disintegrate or Flaming Touch, no Ascent
-    Boost, no Slow Fall landing, no Shockwave, no Quick Draw.
+  * Rests on the NeoForge posters (the group's 34 GameTests passed on NeoForge, section 9): the damage factors and Vampirism, Shatter, Tunnel, Disintegrate
+    and Flaming Touch, Ascent Boost, the Slow Fall landing, Shockwave, Quick Draw.
 * **KamiWorld** (`deviations/KamiWorld.md` sections 5, 6 and 10; `KamiWorld.register()` → `SoulHeartHandler.register()`, `DimensionalShardDropHandler.register()`).
   * `LIVING_DAMAGE` (the Soul Hearts, `SoulHeartHandler.onLivingDamage`, `ServerPlayer` victims only) replaced the Architectury `LIVING_HURT` fallback
     (cancel the hit, deal the rest again as a new hit with the difficulty scaling undone, players without hearts left alone) with its `exactDamageHook`,
@@ -423,8 +478,8 @@ none of this is written (section 9). What would not happen there is listed per g
   * `LIVING_DROPS` (`DimensionalShardDropHandler.onLivingDrops`) replaced the loot-table pools added to `minecraft:entities/enderman` and
     `minecraft:entities/zombified_piglin` through `LootEvent.MODIFY_LOOT_TABLE` (deleted with their checks). Pinned by
     `shardDropsFollowTheConditionsOfTheOriginal` and `shardDropsComeFromRealDeathsWithTheChanceOfTheOriginal`.
-  * Without NeoForge posters: the Soul Hearts would not act at all (the Architectury fallback, written for both loaders, is gone; it was never run on
-    NeoForge), and there would be no dimensional shard drops.
+  * Rests on the NeoForge posters (the group's 20 GameTests passed on NeoForge, section 9): the Soul Hearts (the Architectury fallback, written for both
+    loaders, is gone) and the dimensional shard drops.
 * **KamiGear** (`deviations/KamiGear.md` sections 3, 13 and 14; `KamiGear.register()` → `KamiArmorHandler.register()`).
   * `LIVING_JUMP` and `LIVING_FALL` for the Gem Boots replaced an attribute modifier (`JUMP_STRENGTH` + 0.3, which scaled with the block's jump factor)
     and the zeroing of the fall distance of every wearer on every tick. Pinned by `gemBootsRaiseTheJumpOnlyWhileWornAndSwitchedOn`,
@@ -433,8 +488,9 @@ none of this is written (section 9). What would not happen there is listed per g
     `ISpecialArmor`: `IchorAbsorption`. Pinned by `ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone`,
     `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone`, `ichorclothPiecesShowTheOriginalArmourAndNeverWear`, JUnit
     `KamiGearLogicTest`, and the event's own checks in `HooksRuntimeChecks` (section 12).
-  * Without NeoForge posters: the Gem Boots would not jump higher, and switched-off Gem Boots would no longer spare the wearer a fall (the `LIVING_FALL`
-    listener); switched-on boots would still zero the fall distance every tick (`ItemGemBoots.tick`, which stays). The Ichorcloth would be plain 3/8/6/3 armour.
+  * Rests on the NeoForge posters (the group's 36 GameTests passed on NeoForge, section 9): the higher jump of the Gem Boots and the spared fall of
+    switched-off boots (switched-on boots also zero the fall distance every tick, `ItemGemBoots.tick`); the Ichorcloth's absorption (the NeoForge
+    `LivingEntityArmorMixin`; without it, plain 3/8/6/3 armour).
 * **Machines** (`deviations/Machines.md` sections 7, 8 and 12; `Machines.register()` → `ItemBloodSword.registerEvents()`, `MachinesClient.register()`).
   * `LIVING_DROPS` (`ItemBloodSword.onLivingDrops`, the Cursed Spirit's Blade) replaced the note-and-refuse workaround (a note made on `LIVING_DEATH`, a
     filter on `EntityEvent.ADD` and a spawn at the end of the level tick). Pinned by `anActivatedBladeReapsTheSoulAspectsOfTheMobItKills`,
@@ -444,12 +500,14 @@ none of this is written (section 9). What would not happen there is listed per g
     JUnit test `MachinesClientWiringTest`; that the mob is drawn is unverified (section 9).
   * Kept on Architectury, not an event of this layer: the blade's `LivingAttackEvent` handler stays on `EntityEvent.LIVING_HURT`
     (`ItemBloodSword.onDamageTaken`, `deviations/Machines.md` section 8, "Events").
-  * Without NeoForge posters: the blade would not reap (a mob it kills would drop its loot) and the Mob Display would be invisible.
+  * Rests on the NeoForge posters (the group's 47 GameTests passed on NeoForge, section 9): the blade's reaping. The Mob Display rests on the NeoForge
+    `ItemRenderers` backend, client glue that section 9 does not cover.
 * **Foci** (`deviations/Foci.md` section 2; `Foci.register()` → `FociHooks.setFloatingTickReset(FloatingTicks.RESET)`): `FloatingTicks` replaced the
   reflection stop-gap that wrote the kick counter of the connection (two field names and a warning when neither was found), now deleted. Pinned by
   `flightPutsTheKickCounterOfTheConnectionBackToZero` and `flightResetOfTheStartUpClearsTheRealCounterOfTheCaster` (Foci), `floatingTicksReadAndResetTheRealCounter`
-  (Hooks) and the JUnit test `FociLogicTest.theFlightKickResetIsWhatIsInstalledAndNullRemovesIt`. Without a NeoForge mixin the reset would do
-  nothing, and a player who keeps launching himself with the Uprising on a server without `allow-flight` could be kicked after four seconds of climbing.
+  (Hooks) and the JUnit test `FociLogicTest.theFlightKickResetIsWhatIsInstalledAndNullRemovesIt`. On NeoForge the same mixin is written and the three
+  GameTests passed there (section 9); without it the reset would do nothing, and a player who keeps launching himself with the Uprising on a server
+  without `allow-flight` could be kicked after four seconds of climbing.
 * **SimpleBlocks, TileBlocks and BasicItems** never needed an event of this layer that was missing, and do not use it. SimpleBlocks still has one
   Architectury `EntityEvent.LIVING_HURT` listener, the Imbued effects' stand-in for 1.7.10's `LivingAttackEvent` (`PotionEffectHandler.onLivingHurt`; whether
   it fires before the invulnerability checks, as the attack event did, is marked unverified in `deviations/SimpleBlocks.md`, bullet "The hit (forced)").
@@ -513,6 +571,10 @@ The ten mixins of `thaumictinkerer.mixins.json` (`fabric/src/main/java/thaumic/t
   records a run of the two `LIVING_ARMOR_ABSORB` GameTests; the results file above is their only trace.
 * *JUnit.* No document records a run of `TinkererEventsTest` or `HooksResourcesTest`. `docs/PARITY_REPORT.md` section 2 records the parity tests, `TinkererApiOnlyTest`
   and the 30 `kamigear.*` tests as passed.
+* *NeoForge.* The 14 hook GameTests and the GameTests of Enchantments, KamiWorld, KamiGear, Machines and Foci ran on a NeoForge GameTest server on 2026-10-31
+  and passed (`All 14 required tests passed :)`, `All 173 required tests passed :)`), after the change of
+  `livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow` for NeoForge's arithmetic (section 14); section 9 ("What ran on NeoForge") has the commands
+  and what was not verified.
 * *Not run at all:* every client side (below).
 
 JUnit (`./gradlew tinkererTest`): `TinkererEventsTest` (chain order, zero/negative/NaN cancel, a lone listener, no listener, the clamp of the use
@@ -537,7 +599,7 @@ GameTest does not run the callbacks it still has pending):
 | `livingFallIsPostedOnLandingAndCanHalveOrCancel` | four pigs really fall 10.5 blocks (the harness's barrier ceiling at relative y = 9 is opened for the columns): the listener sees the distance vanilla counts (about 9.7: the movement of the landing tick is not in it), the untouched pig takes the damage of that distance, the halved one the damage of half of it, the cancelled one nothing (no frames), the one whose damage multiplier the listener sets to 0.5 the damage of `ceil((distance - safe) * 0.5)` (the multiplier seen is the stone's 1); on the server; a player's `causeFallDamage` cancelled |
 | `useItemTickExtendsABowDraw` | two mock players draw a bow for 12 ticks: the draw clock reads 3× with the listener, the listener always gets the bow that is in use (`stack == getUseItem()`), and the released arrow flies at 3.0 against under 2.0 |
 | `livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff` | a pig in 20 armour points and a player: the listener sees the damage after `LIVING_DAMAGE` and vanilla's amount, can leave it alone, halve the blow, push past the blow or below nothing, answer NaN; chains; starvation and magic are not posted and not reduced; a bystander is left as vanilla; a pig in a Fortress chestplate is posted after Thaumcraft's ward pass (what is left after it) |
-| `livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow` | a real `hurt` of a real pig: the health after a blow whose round trip differs from vanilla's float in the last place is vanilla's exactly, with and without a listener that returns what it is given; an infinite blow kills, leaves no NaN health and is not posted |
+| `livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow` | a real `hurt` of a real pig: the health after a blow whose round trip differs from vanilla's float in the last place is vanilla's exactly, with and without a listener that returns what it is given; an infinite blow kills, leaves no NaN health and is not posted. On NeoForge (`Platform.isNeoForge()`) the expected health is NeoForge's own round trip, the "not the round trip" assertion is dropped, and the infinite blow is only checked for not being posted (section 14) |
 | `livingDropsAreEditedBeforeTheyEnterTheWorld` | a pig killed by the fake player with Looting III: sees pork, level 3, recently hit, the fake player as the attacker, nothing in the world yet; add a diamond / remove the pork / clear / cancel; experience orbs unaffected; a pig killed by plain damage: looting 0, not recently hit, no attacker; a pig that has a bystander spawn an emerald during its death: the list holds its own gold and pork and not the emerald, which is in the world at once; a fox's mouth item (spawned before `super`) is in the list, with a control that it drops with nobody listening; the listener count is back to what it was before; plain again afterwards |
 | `livingDropsCoverAPlayersInventoryButNotADropByHand` | `ServerPlayer.die` offers the inventory and a cleared list drops nothing; a drop by hand is immediate |
 | `floatingTicksReadAndResetTheRealCounter` | the accessor against an independent reflective read of the private field on a real connection, the connection's own `tick()` resetting the same counter, no connection, the fake player's connection |
@@ -557,7 +619,9 @@ The posting code is the vanilla classes' own, shared by both sides; `HOOKS.md` r
 ## 13. Where the events are not posted (vanilla 1.21.1, read from the bytecode)
 
 One list, so that a group author does not assume full coverage. Items 1 and 3 are the same on NeoForge (checked in its patched jar: no `onLivingFall` in `AbstractHorse`
-or `Llama`, bamboo asks `canPerformAction(SWORD_DIG)` and returns 1 without `getDigSpeed`); item 4 was not looked up in NeoForge. The Fabric mixins could close them, none is
+or `Llama`, bamboo asks `canPerformAction(SWORD_DIG)` and returns 1 without `getDigSpeed`); item 4 too (NeoForge's `ArmorStand.hurt` calls neither
+`LivingEntity.hurt` nor `onEntityIncomingDamage`, whose only caller is `LivingEntity.hurt`). On NeoForge `LIVING_JUMP` reaches more entities than on Fabric
+(section 5). The Fabric mixins could close them, none is
 written because no group needs them yet. (The fox's mouth item, which a first reading of the wrapped method would have put here, **is** covered: section 8.)
 
 | # | Gap | Effect | Event |
@@ -622,22 +686,29 @@ ward's share away. Check: the Fortress chestplate case of `livingArmorAbsorbIsPo
 so that an infinite blow, whose `absorbed` is `Infinity - Infinity` = NaN and never `==` to itself, still gets the game's infinity and not a NaN health), and
 `damage - result` otherwise. Nothing in the add-on deals an infinite blow, but other mods can.
 
-*NeoForge* (**not written**; read from the 21.1.259 jars in the Gradle cache, not run): there is no event of this exact shape, but the equivalent exists:
-`LivingIncomingDamageEvent#addReductionModifier(DamageContainer.Reduction.ARMOR, IReductionFunction)`. The patched `LivingEntity.actuallyHurt` and
-`Player.actuallyHurt` call `DamageContainer.setReduction(ARMOR, newDamage - getDamageAfterArmorAbsorb(source, newDamage))` after `hurtArmor` and the
-formula; `setReduction` runs the added functions in insertion order (each gets the container and the reduction so far and returns the new one) and then
-subtracts the result from the container's damage. The handler that the NeoForge module needs for `LIVING_DAMAGE` (section 3) adds on every event:
+*NeoForge* (written; run on a NeoForge GameTest server, section 9): **the same wrapper as on Fabric**, `LivingEntityArmorMixin` of
+`thaumic.tinkerer.neoforge.mixin` (`@WrapMethod` on `getDamageAfterArmorAbsorb`, priority 900, `TinkererEvents.damageAfterArmorAbsorb`), and not the reduction
+modifier of `LivingIncomingDamageEvent` that this section first proposed. Read in the 21.1.259 bytecode: the patched `LivingEntity.actuallyHurt` and
+`Player.actuallyHurt` still call `getDamageAfterArmorAbsorb(source, container.getNewDamage())` (unpatched: it wears the pieces and applies the formula, as in vanilla)
+and pass `newDamage - result` to `DamageContainer.setReduction(ARMOR, ...)`, which runs the functions added with `addReductionModifier` on that value, in insertion
+order, and subtracts the result from `newDamage` without a clamp. **Why not the modifier**: Thaumcraft's `LivingEntityMagicWardMixin` is in its common mixin config,
+which NeoForge loads too, so on NeoForge as on Fabric the runic shield and the worn wards come off the blow inside `getDamageAfterArmorAbsorb`, before the armour
+formula. A reduction function runs after the whole wrapped method: it would get the blow as it came to the armour step (`container.getNewDamage()`) and a reduction
+that already holds the ward's and the shield's share, so a listener that replaces the amount (the Ichorcloth) would throw that share away: the order that the
+priority 900 exists to keep (above). The mixin of priority 900 is the inner wrapper there as well; the Fortress chestplate case of
+`livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff` (6.5 of an explosion of 10) passed on NeoForge. That the modifier would fail it was read,
+not run. The `bypasses_armor` test stays in `postLivingArmorAbsorb` (for such a source `getDamageAfterArmorAbsorb` returns the damage untouched, the absorbed
+amount is 0 and nothing is posted).
 
-```java
-event.addReductionModifier(DamageContainer.Reduction.ARMOR, (container, reduction) ->
-        TinkererEvents.postLivingArmorAbsorb(event.getEntity(), container.getSource(), container.getNewDamage(), reduction));
-```
-
-`container.getNewDamage()` is the damage that comes to the armour step at that moment. **Keep the poster's `bypasses_armor` test**: the Javadoc of
-`DamageContainer#addModifier` says that a function does not run when vanilla's reduction is not triggered, but the patched `actuallyHurt` calls
-`setReduction(ARMOR, ...)` unconditionally, also for a source that bypasses armour (with a reduction of 0), so the functions do run for such sources, and the
-test in `postLivingArmorAbsorb` is what keeps them out. NeoForge also has `ArmorHurtEvent` (the wear of the pieces) and `LivingShieldBlockEvent`; neither changes
-the amount, so neither is used.
+*What NeoForge does with the returned amount* (read, and seen in the GameTest): the damage that goes on is NeoForge's `newDamage - (newDamage - result)`, not
+`result` itself, so the bit-for-bit pass-through of `damageAfterArmorAbsorb` cannot show in the health there: for the blow of
+`livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow` the pig is left with 19.508457 (`health - roundTrip`) where vanilla's float leaves 19.50846, with
+and without a listener and whatever the add-on returns. An infinite blow gets `Infinity - (Infinity - x)`, NaN, for every `x` the armour step could return, so on
+NeoForge an infinite blow leaves a NaN health (the entity does not die), also without the add-on (read from `DamageContainer.setReduction` and `actuallyHurt`; the
+GameTest saw the NaN). The check therefore expects `health - roundTrip` on NeoForge (`Platform.isNeoForge()`), drops its "not the round trip" assertion there, and
+checks the infinite blow on NeoForge only for not being posted; on Fabric it is unchanged. A NeoForge reduction function that turns that NaN back into infinity
+would make the blow kill; it is not written (not this layer's, and no group needs it). NeoForge also has `ArmorHurtEvent` (the wear of the pieces) and
+`LivingShieldBlockEvent`; neither changes the amount, so neither is used.
 
 *Used by*: KamiGear, `IchorAbsorption.onLivingArmorAbsorb`, registered by `KamiArmorHandler.register()`: every Ichorcloth piece takes `0.0425 × its armour points`
 of a blow, flat, plus the formula's share for the armour that is not Ichorcloth (`deviations/KamiGear.md` sections 3 and 13). **Open point, unverified**: the

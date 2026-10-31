@@ -33,11 +33,13 @@ import org.jetbrains.annotations.Nullable;
  *       Fabric client entrypoint before the groups register their client side, registers each renderer with Fabric API's
  *       {@code BuiltinItemRendererRegistry} ({@code fabric-rendering-v1}, a {@code DynamicItemRenderer}, which carries the
  *       display context).</li>
- *   <li><b>NeoForge</b> (not written): the backend only collects the items and their renderers, because the registration
- *       point comes later than the mod's client set-up: a listener of {@code RegisterClientExtensionsEvent} on the mod event
- *       bus then calls {@code event.registerItem(IClientItemExtensions, item)} for every collected item, where the
- *       extension's {@code getCustomRenderer()} returns a {@code BlockEntityWithoutLevelRenderer} whose
- *       {@code renderByItem(stack, context, pose, buffers, light, overlay)} calls the {@link Renderer}.</li>
+ *   <li><b>NeoForge</b>: {@code thaumic.tinkerer.neoforge.client.NeoForgeItemRenderers.install()}, called from the mod
+ *       constructor, only collects the items and their renderers, because NeoForge takes them only inside
+ *       {@code RegisterClientExtensionsEvent}; after the shared client setup ran in that event, the backend calls
+ *       {@code event.registerItem(IClientItemExtensions, item)} for every collected item, where the extension's
+ *       {@code getCustomRenderer()} returns a {@code BlockEntityWithoutLevelRenderer} whose
+ *       {@code renderByItem(stack, context, pose, buffers, light, overlay)} calls the {@link Renderer}. A registration after
+ *       that event is an {@code IllegalStateException} there.</li>
  * </ul>
  *
  * <p>An item has at most one renderer; a second registration for the same item is an error (Fabric API rejects it too).

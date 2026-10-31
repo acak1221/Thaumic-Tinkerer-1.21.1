@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: MIT
-# CI of Thaumic Tinkerer (Fabric, Minecraft 1.21.1).
+# CI of Thaumic Tinkerer (Fabric and NeoForge, Minecraft 1.21.1).
 #
 # The add-on needs Thaumcraft 4 Reload from https://github.com/acak1221/Thaumcraft-1.21.1 (it needs extensions of thaumcraft.api that are on
 # main there since 4c38e3f), so the job checks that repository out next to the add-on at the commit thaumcraft_ref
 # of gradle.properties (a commit, not the branch: the build does not change when the branch moves; move it together with thaumcraft_version),
-# installs Thaumcraft into the local Maven repository of the runner (the add-on build reads it from there) and then builds the add-on:
-# compilation of the main, GameTest and client-smoke source sets and the JUnit tests (`check`), GameTests on a Fabric dedicated server, the
-# release jar. The client smoke (Xvfb + software rendering) is not run here.
+# installs Thaumcraft for Fabric and for NeoForge into the local Maven repository of the runner (the add-on build reads both from there) and
+# then builds the add-on: compilation of the main, GameTest and client-smoke source sets and the JUnit tests (`check`), GameTests on a Fabric
+# dedicated server, the release jar; then the NeoForge build (:neoforge, its jar) and the same GameTests on a NeoForge GameTest server
+# (`:neoforge:runGameTest`, wrappers generated from the Fabric ones by tools/neoforge_gametests.py, docs/NEOFORGE.md). The NeoForge steps
+# run even when a Fabric step failed, so that one run reports both loaders. The client smoke (Xvfb + software rendering) is not run here.
 # The versions of the actions are the ones that the CI of the Thaumcraft repository uses.
 #
 # Manual run: Actions > CI > Run workflow, with another branch, tag or commit of the Thaumcraft repository in `thaumcraft_ref`.
@@ -75,8 +77,9 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Install Thaumcraft 4 Reload into the local Maven repository
+        id: thaumcraft
         working-directory: thaumcraft
-        run: ./gradlew --no-daemon --console=plain :fabric:publishToMavenLocal
+        run: ./gradlew --no-daemon --console=plain :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
 
       - name: Compile all source sets and JUnit (check), GameTests, release jar
         working-directory: thaumic-tinkerer
@@ -101,4 +104,34 @@ jobs:
             thaumic-tinkerer/build/tinkerer-gametest-results.xml
             thaumic-tinkerer/run-tinkerer-gametest/logs
             thaumic-tinkerer/run-tinkerer-gametest/tinkerer-parity-report.txt
+          if-no-files-found: warn
+
+      - name: NeoForge GameTest wrappers in step with the Fabric ones
+        if: ${{ !cancelled() }}
+        working-directory: thaumic-tinkerer
+        run: python3 -I -B tools/neoforge_gametests.py --check
+
+      - name: NeoForge build (jar) and GameTests
+        id: neoforge
+        if: ${{ !cancelled() && steps.thaumcraft.outcome == 'success' }}
+        working-directory: thaumic-tinkerer
+        run: ./gradlew --no-daemon --console=plain --continue :neoforge:assemble :neoforge:runGameTest
+
+      - name: Upload the NeoForge add-on jar
+        if: ${{ !cancelled() && steps.neoforge.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ThaumicTinkerer-neoforge-jar
+          path: thaumic-tinkerer/neoforge/build/libs/ThaumicTinkerer-neoforge-*.jar
+          if-no-files-found: error
+
+      - name: Upload the NeoForge GameTest reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neoforge-test-reports
+          path: |
+            thaumic-tinkerer/neoforge/build/tinkerer-gametest-results.xml
+            thaumic-tinkerer/neoforge/run-gametest/logs
+            thaumic-tinkerer/neoforge/run-gametest/tinkerer-parity-report.txt
           if-no-files-found: warn

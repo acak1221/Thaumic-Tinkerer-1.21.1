@@ -3,7 +3,11 @@
   "package": "thaumic.tinkerer.neoforge.mixin",
   "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8",
-  "mixins": [],
+  "mixins": [
+    "LivingEntityArmorMixin",
+    "LivingEntityLastHurtMixin",
+    "ServerGamePacketListenerFloatingMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

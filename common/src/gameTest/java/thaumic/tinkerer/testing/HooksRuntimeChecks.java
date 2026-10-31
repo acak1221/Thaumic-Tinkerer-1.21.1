@@ -2,6 +2,7 @@ package thaumic.tinkerer.testing;
 
 import com.mojang.authlib.GameProfile;
 import dev.architectury.event.EventResult;
+import dev.architectury.platform.Platform;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -635,6 +636,13 @@ public final class HooksRuntimeChecks {
      * {@code damage - (damage - vanilla)}, which differs from it in the last place for some blows), also with a listener that returns
      * what it was given; and an infinite blow (whose "amount the armour took" is {@code Infinity - Infinity}, NaN) still kills instead of
      * leaving a NaN health. Both go through a real {@code hurt} of a real pig.
+     *
+     * <p>On NeoForge the game makes that round trip itself, with or without the hook: its patched {@code actuallyHurt} records
+     * {@code newDamage - getDamageAfterArmorAbsorb(...)} as the ARMOR reduction of its damage container and subtracts that from
+     * {@code newDamage}. There the game's own result is {@code health - roundTrip}, the health cannot tell the two floats apart, and the
+     * check asserts only that the hook leaves the game's result alone. The same subtraction gives an infinite blow a NaN damage there,
+     * whatever the armour step returns ({@code Infinity - (Infinity - x)}), so on NeoForge the infinite blow is checked only for not being
+     * posted (docs/HOOKS.md section 14).</p>
      */
     public static void livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow(GameTestHelper test) {
         floor(test);
@@ -658,13 +666,17 @@ public final class HooksRuntimeChecks {
             }
         }
         test.assertTrue(!Float.isNaN(blow), "there is a blow whose round trip through the float arithmetic shows in the health");
+        // what the game leaves for its own float: vanilla's on Fabric, NeoForge's own round trip through its damage container there
+        final float gamesOwn = Platform.isNeoForge() ? health - roundTrip : health - vanilla;
 
         pig.setHealth(health);
         pig.invulnerableTime = 0;
         pig.hurt(cactus, blow);
-        test.assertTrue(pig.getHealth() == health - vanilla,
-                "no listener: the health is exactly what vanilla's own float leaves: " + pig.getHealth() + " (expected " + (health - vanilla) + ")");
-        test.assertTrue(pig.getHealth() != health - roundTrip, "and not what the round trip would leave: " + (health - roundTrip));
+        test.assertTrue(pig.getHealth() == gamesOwn,
+                "no listener: the health is exactly what the game's own float leaves: " + pig.getHealth() + " (expected " + gamesOwn + ")");
+        if (!Platform.isNeoForge()) {
+            test.assertTrue(pig.getHealth() != health - roundTrip, "and not what the round trip would leave: " + (health - roundTrip));
+        }
 
         List<Float> seen = new ArrayList<>();
         TinkererEvents.LivingArmorAbsorb leaveAlone = (victim, source, damage, absorbed) -> {
@@ -677,7 +689,7 @@ public final class HooksRuntimeChecks {
             pig.invulnerableTime = 0;
             pig.hurt(cactus, blow);
             test.assertTrue(seen.size() == 1, "the listener was asked: " + seen);
-            test.assertTrue(pig.getHealth() == health - vanilla,
+            test.assertTrue(pig.getHealth() == gamesOwn,
                     "a listener that returns what it was given changes nothing, not even in the last place: " + pig.getHealth());
         } finally {
             TinkererEvents.LIVING_ARMOR_ABSORB.unregister(leaveAlone);
@@ -694,8 +706,12 @@ public final class HooksRuntimeChecks {
         TinkererEvents.LIVING_ARMOR_ABSORB.register(everything);
         try {
             doomed.hurt(cactus, Float.POSITIVE_INFINITY);
-            test.assertTrue(!Float.isNaN(doomed.getHealth()), "an infinite blow does not leave a NaN health");
-            test.assertTrue(doomed.getHealth() == 0F && doomed.isDeadOrDying(), "it kills: " + doomed.getHealth());
+            // NeoForge's container subtracts newDamage - getDamageAfterArmorAbsorb(...) from newDamage, Infinity - (Infinity - x), which is
+            // NaN for every x the armour step could return: the NaN health is the loader's own there, so only the posting is checked
+            if (!Platform.isNeoForge()) {
+                test.assertTrue(!Float.isNaN(doomed.getHealth()), "an infinite blow does not leave a NaN health");
+                test.assertTrue(doomed.getHealth() == 0F && doomed.isDeadOrDying(), "it kills: " + doomed.getHealth());
+            }
             test.assertTrue(asked.isEmpty(), "and is not posted (the damage is not finite): " + asked);
         } finally {
             TinkererEvents.LIVING_ARMOR_ABSORB.unregister(everything);

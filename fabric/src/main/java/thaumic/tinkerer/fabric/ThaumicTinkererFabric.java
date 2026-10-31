@@ -25,5 +25,7 @@ public final class ThaumicTinkererFabric implements ModInitializer, IThaumcraftA
     @Override
     public void onThaumcraftReady() {
         ThaumicTinkerer.onThaumcraftReady();
+        // The loader glue of the Transvector Interface's fluids (FluidStorage.SIDED), once the block entity type exists.
+        ThaumicTinkerer.guard("TileBlocksFabric.register", TileBlocksFabric::register);
     }
 }

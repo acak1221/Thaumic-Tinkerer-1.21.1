@@ -32,7 +32,8 @@ import thaumic.tinkerer.common.lib.LibMisc;
  * Draws the wings of the Robes of the Stratosphere on a player who wears them (1.7.10 {@code ItemGemChest.getArmorModel}).
  * They are drawn with the texture of the awakened armour, and flap while the player flies.
  *
- * <p>The loader's glue adds this layer to the player renderers (Fabric: {@code LivingEntityFeatureRendererRegistrationCallback}).</p>
+ * <p>The loader's glue adds this layer to the player renderers (Fabric: {@code LivingEntityFeatureRendererRegistrationCallback};
+ * NeoForge: {@code EntityRenderersEvent.AddLayers}).</p>
  */
 public class WingsLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {
     /** The sheet of the awakened armour's outer layer: the wings are two regions of it (copied from the 1.7.10 texture {@code ichor_gem1}). */

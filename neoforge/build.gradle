@@ -72,3 +72,70 @@ loom.runs {
   runDir 'run-server'
  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// GameTests on NeoForge (docs/NEOFORGE.md, "GameTests on NeoForge"): the shared checks of common/src/gameTest run on a NeoForge
+// dedicated GameTest server, wrapped by neoforge/src/gameTest (the test mod thaumictinkerer_gametest; its wrappers are generated from the
+// Fabric ones by tools/neoforge_gametests.py). The counterpart of the source set thaumicTinkererGameTest and the run tinkererGameTest of
+// fabric.gradle.
+//
+//   ./gradlew :neoforge:runGameTest                                   every test; the report is neoforge/build/tinkerer-gametest-results.xml
+//   ./gradlew :neoforge:runGameTest -PtinkererGameTestFilter=a,b,x*   only the named tests (the syntax of the Fabric run)
+sourceSets {
+ gameTest {
+  java.srcDirs = [rootProject.file('common/src/gameTest/java'), file('src/gameTest/java')]
+  // common/...: the parity oracle (tt_oracle/*.json); neoforge/...: the test mod (neoforge.mods.toml, mixins, the empty structures, the
+  // flat world preset with the Bedrock dimension)
+  resources.srcDirs = [rootProject.file('common/src/gameTest/resources'), file('src/gameTest/resources')]
+  compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+  runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+ }
+}
+
+def tinkererGameTestFilter = providers.gradleProperty('tinkererGameTestFilter').getOrElse('')
+def tinkererGameTestReport = layout.buildDirectory.file('tinkerer-gametest-results.xml').get().asFile
+def tinkererGameTestRunDir = file('run-gametest')
+
+loom.runs {
+ // Server-side runtime assertions of the add-on on NeoForge. The GameTests of Thaumcraft are not part of its jar and not loaded.
+ gameTest {
+  server()
+  name 'Thaumic Tinkerer NeoForge GameTests'
+  // The same fixed heap as the Fabric run: the suite generates real chunks and must not depend on the size of the machine.
+  vmArg '-Xmx3G'
+  source sourceSets.gameTest
+  // Two mods, like the two classpath groups of the Fabric run: the add-on (main) and the harness (gameTest).
+  mods {
+   thaumictinkerer { sourceSet sourceSets.main }
+   thaumictinkerer_gametest { sourceSet sourceSets.gameTest }
+  }
+  vmArg '-Dneoforge.enableGameTest=true'
+  vmArg '-Dneoforge.gameTestServer=true'
+  // The wrappers name the templates thaumictinkerer:<class>.empty, so their namespace is the add-on's.
+  vmArg '-Dneoforge.enabledGameTestNamespaces=thaumictinkerer'
+  vmArg "-Dthaumictinkerer.gameTestReportFile=${tinkererGameTestReport.absolutePath}"
+  if (!tinkererGameTestFilter.isBlank()) vmArg "-Dthaumictinkerer.gameTestFilter=${tinkererGameTestFilter}"
+  runDir 'run-gametest'
+ }
+}
+// As on Fabric, `check` compiles the GameTest source set (the root project's `./gradlew check` runs this project's `check` too).
+tasks.named('check') { dependsOn tasks.named('gameTestClasses') }
+tasks.named('runGameTest') {
+ dependsOn tasks.named('gameTestClasses')
+ // Every run starts on a new world (and without the report of the last run), so that no result depends on what an earlier run left.
+ doFirst {
+  delete new File(tinkererGameTestRunDir, 'world')
+  delete tinkererGameTestReport
+ }
+ // The server exits with the number of failed tests; but its Main catches a failure to start (an unknown name in the filter, a mod that
+ // fails to load), logs it and exits with 0. Only the report tells a run that tested from one that never started.
+ doLast {
+  def log = new File(tinkererGameTestRunDir, 'logs/latest.log')
+  if (!tinkererGameTestReport.isFile()) {
+   throw new GradleException("The NeoForge GameTest server wrote no report (${tinkererGameTestReport}): it did not run the tests; see ${log}")
+  }
+  def cases = (tinkererGameTestReport.getText('UTF-8') =~ /<testcase\b/).count
+  if (cases == 0) throw new GradleException("The NeoForge GameTest report ${tinkererGameTestReport} has no test; see ${log}")
+  logger.lifecycle("Thaumic Tinkerer NeoForge GameTests: ${cases} tests, report ${tinkererGameTestReport}")
+ }
+}

@@ -72,19 +72,21 @@ played. Nothing to request.
 
 ## 6. Requests to the loader modules (to the lead)
 
-* **Fluids through the Transvector Interface: done for Fabric, to do for NeoForge (P1 for pipe and tank users).**
-  `thaumic.tinkerer.fabric.TileBlocksFabric` (new file of the Fabric module, called by name from `TileBlocks.ready()` on
-  Fabric, like `KamiGearFabricClient`) registers `FluidStorage.SIDED` for `TileBlocks.interfaceType()` and returns the fluid
-  storage of the block `TileTransvector.getTile()` is bound to, for the same side. No change to a shared file was needed.
-  NeoForge still needs the same with `Capabilities.FluidHandler.BLOCK` (and the `RegisterCapabilitiesEvent`), with
-  `TileTransvector.getTile()` as the one source; the common code has no hook for it, so the NeoForge module (the lead)
-  has to call the equivalent of `TileBlocksFabric.register()` once the block entity type is registered.
+* **Fluids through the Transvector Interface: done for Fabric (run), written for NeoForge (not run) (P1 for pipe and tank users).**
+  `thaumic.tinkerer.fabric.TileBlocksFabric` (new file of the Fabric module, called by `ThaumicTinkererFabric.onThaumcraftReady()`)
+  registers `FluidStorage.SIDED` for `TileBlocks.interfaceType()` and returns the fluid storage of the block
+  `TileTransvector.getTile()` is bound to, for the same side. On NeoForge `thaumic.tinkerer.neoforge.NeoForgeCapabilities` registers
+  `Capabilities.FluidHandler.BLOCK` in `RegisterCapabilitiesEvent` with the same refusals, a handler that asks the bound block again on
+  every call, and the invalidation of the Interface's capabilities when its binding changes (the new common hook
+  `TileTransvector.setBindingListener`); it also registers `Capabilities.ItemHandler.BLOCK` over the Interface's `WorldlyContainer`,
+  which NeoForge, unlike Fabric's Transfer API, does not wrap by itself (`docs/deviations/TileBlocks.md` 2.5, `docs/NEOFORGE.md`).
 * **Energy through the Transvector Interface (P2).** The 1.7.10 Interface forwarded CoFH RF and IC2 EU. 1.21.1 needs, per
   loader, an energy capability (Fabric: Team Reborn Energy `EnergyStorage.SIDED`, which is not a dependency of the add-on
   and is outside the import list of PORTING_RULES; NeoForge: `Capabilities.EnergyStorage.BLOCK`) that asks
   `TileTransvector.getTile()` for the bound block's own energy storage. Not done on either loader.
-* **Hook for loader glue (P3).** `TileBlocks.ready()` reaches the Fabric class by name (`Platform.isFabric()`), the way the
-  Kami gear reaches its client glue. A common `ContentGroup` hook for loader modules would replace both.
+* **Hook for loader glue (P3): answered.** Common code no longer reaches a loader class by name: each loader module installs its own
+  glue from its entry (Fabric: `ThaumicTinkererFabric`, `ThaumicTinkererFabricClient`; NeoForge: `NeoForgeCapabilities`,
+  `NeoForgeClientHooks`), through `ThaumicTinkerer.guard` where a failure must be recorded.
 * **Computer peripherals (P3).** The Tablet (`tt_animationTablet`), the Interface and the Golem Connector
   (`tt_golemconnector`) were ComputerCraft and OpenComputers peripherals. The plain-Java surface is there:
   `TileAnimationTablet.trigger/getRotation/setRotation/setLeftClick/setRedstone` (+ fields), and

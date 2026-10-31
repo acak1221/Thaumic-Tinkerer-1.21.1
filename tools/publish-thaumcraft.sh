@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Builds Thaumcraft 4 Reload at the commit this add-on needs and installs it into the local Maven repository (~/.m2), where
-# build.gradle looks for thaumcraft:Thaumcraft-fabric:<thaumcraft_version>.
+# build.gradle looks for thaumcraft:Thaumcraft-fabric:<thaumcraft_version> and neoforge/build.gradle for thaumcraft:Thaumcraft-neoforge:<thaumcraft_version>.
 #
 #   tools/publish-thaumcraft.sh [-b REF] [-d DIR] [-u URL] [-- EXTRA_GRADLE_ARGS...]
 #
@@ -53,13 +53,15 @@ echo "publish-thaumcraft: Thaumcraft at $(git -C "$DIR" rev-parse --short HEAD) 
 GRADLE_CMD="${GRADLE_CMD:-./gradlew}"
 cd "$DIR"
 # shellcheck disable=SC2086  # GRADLE_CMD is a command line on purpose
-$GRADLE_CMD :fabric:publishToMavenLocal --console=plain "$@"
+$GRADLE_CMD :fabric:publishToMavenLocal :neoforge:publishToMavenLocal --console=plain "$@"
 
 VERSION="$(sed -n 's/^mod_version=//p' "$DIR/gradle.properties" | head -n1 | tr -d '\r')"
 WANT="$(sed -n 's/^thaumcraft_version=//p' "$HERE/gradle.properties" | head -n1 | tr -d '\r')"
-JAR="${HOME}/.m2/repository/thaumcraft/Thaumcraft-fabric/$VERSION/Thaumcraft-fabric-$VERSION.jar"
-[ -f "$JAR" ] || { echo "publish-thaumcraft: $JAR was not written; look for the error above (a custom maven.repo.local would put it elsewhere)" >&2; exit 1; }
-echo "publish-thaumcraft: installed thaumcraft:Thaumcraft-fabric:$VERSION ($JAR)" >&2
+for LOADER in fabric neoforge; do
+  JAR="${HOME}/.m2/repository/thaumcraft/Thaumcraft-$LOADER/$VERSION/Thaumcraft-$LOADER-$VERSION.jar"
+  [ -f "$JAR" ] || { echo "publish-thaumcraft: $JAR was not written; look for the error above (a custom maven.repo.local would put it elsewhere)" >&2; exit 1; }
+  echo "publish-thaumcraft: installed thaumcraft:Thaumcraft-$LOADER:$VERSION ($JAR)" >&2
+done
 if [ -n "$WANT" ] && [ "$WANT" != "$VERSION" ]; then
   echo "publish-thaumcraft: WARNING: gradle.properties of this repository asks for thaumcraft_version=$WANT, the checkout built $VERSION; set thaumcraft_version=$VERSION" >&2
   exit 1

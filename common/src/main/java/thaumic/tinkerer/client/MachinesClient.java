@@ -34,8 +34,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * <p>Architectury has no registry for a built-in item renderer (the Mob Display's model is {@code minecraft:builtin/entity},
  * so without one the item is invisible): the group registers {@link RenderMobDisplay#render} with the loader layer's
  * {@link ItemRenderers} ({@code docs/HOOKS.md} section 9), whose backend the loader module installs before the groups
- * register their client side. On Fabric the backend is {@code FabricItemRenderers}; NeoForge's backend is not written yet
- * ({@code docs/api-requests/Machines.md} section 2).</p>
+ * register their client side. On Fabric the backend is {@code FabricItemRenderers}, on NeoForge {@code NeoForgeItemRenderers}
+ * ({@code docs/api-requests/Machines.md} section 2, {@code docs/NEOFORGE.md}).</p>
  */
 public final class MachinesClient {
     private MachinesClient() {}

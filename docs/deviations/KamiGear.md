@@ -338,9 +338,14 @@ ends with it. No permanent change to any mob. Scope, narrowed to what the 1.7.10
 
 - **HUD message.** The mode of a tool, the size of the mirror and the state of an armour piece are drawn above the hotbar by
   `ToolModeHUDHandler` (`ClientGuiEvent.RENDER_HUD`): 400 ticks, fading out, in the 1.7.10 rainbow colour (`cos(ticks / 250)`).
-- **Wings and ghost blocks** need the two loader hooks (`docs/api-requests/KamiGear.md` section 4); Fabric has them
-  (`fabric/.../client/KamiGearFabricClient.java`), which `KamiGearClient.register()` starts by name on Fabric (`Platform.isFabric()`),
-  so `fabric.mod.json` needs no entry (listing the class as a `client` entrypoint as well is harmless: it registers once). NeoForge has none yet.
+- **Wings and ghost blocks** need the two loader hooks (`docs/api-requests/KamiGear.md` section 4). The loader modules install them
+  after the shared client setup; common code names no loader class. Fabric: `fabric/.../client/KamiGearFabricClient.java`, called by
+  `ThaumicTinkererFabricClient`, so `fabric.mod.json` needs no entry (listing the class as a `client` entrypoint as well is harmless: it
+  registers once). NeoForge: `neoforge/.../client/KamiGearNeoForgeClient.java`, installed from the mod constructor by `NeoForgeClientHooks`:
+  `EntityRenderersEvent.AddLayers` adds `WingsLayer` to the player renderer of every skin model, and `RenderLevelStageEvent` at
+  `AFTER_TRANSLUCENT_BLOCKS` calls `PlacementMirrorPredictionRenderer.render` with the event's pose stack and the main buffer source (the
+  same state as Fabric's `AFTER_TRANSLUCENT`: an identity pose stack, the camera rotation on the model view stack; read in the 21.1.259
+  jars). Both compile; neither was looked at in a running client on either loader (`docs/NEOFORGE.md`).
 - **Network.** The two S2C payload types (`armor_status`, `shadow_beam`) are registered by their client receivers
   (`KamiGearClient`); `KamiGear.registerNetwork()` registers them itself only on a dedicated server (`Platform.getEnvironment() ==
   Env.SERVER`), because Fabric's payload registry throws when a client registers a type twice. `PacketToggleArmor` is C2S and is

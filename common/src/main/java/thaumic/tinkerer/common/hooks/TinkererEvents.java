@@ -33,8 +33,9 @@ import org.jetbrains.annotations.Nullable;
  * ({@code LivingHurtEvent}, {@code PlayerEvent.BreakSpeed}, {@code LivingJumpEvent}, {@code LivingFallEvent},
  * {@code LivingDropsEvent}, the {@code itemInUseCount} of the bow and the armour of {@code ISpecialArmor}). They are plain Architectury {@link Event}s: a
  * listener is registered with {@code TinkererEvents.X.register(listener)} and removed with {@code unregister(listener)}.
- * Loader modules post them: on Fabric the mixins in {@code thaumic.tinkerer.fabric.mixin}, on NeoForge (not written yet) the
- * handlers of the matching NeoForge events (see {@code docs/HOOKS.md}). Common code never posts them itself.
+ * Loader modules post them: on Fabric the mixins in {@code thaumic.tinkerer.fabric.mixin}, on NeoForge the handlers of the
+ * matching NeoForge events in {@code NeoForgeEventPosters} and, for the armour step, a mixin (see {@code docs/HOOKS.md}). Common code
+ * never posts them itself.
  *
  * <h2>Rules that hold for every event</h2>
  * <ul>
@@ -323,7 +324,8 @@ public final class TinkererEvents {
      * the ground upwards (it is not the jump key that the server hears, only the movement), so on the server the event also
      * fires for any other take-off with an upward move that the client reports with {@code onGround} false. Not posted when
      * the jump power is zero, and not for a mounted horse's jump, a swimming bob or a slime's own hop that do not use the
-     * method.
+     * method (on Fabric; NeoForge posts its jump event from the slime's and the magma cube's hop and from the ridden jump of horses and
+     * camels too, and so the NeoForge poster posts this one for them as well).
      * The server's player and the client's copy of the same player each run it, so a listener has to change the motion by
      * the same rule on both sides. It cannot be cancelled.
      */

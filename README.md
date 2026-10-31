@@ -53,9 +53,9 @@ All commands run in the root of this repository.
 
 ```bash
 # 1. Thaumcraft 4 Reload into ~/.m2 (once; again when thaumcraft_ref in gradle.properties changes)
-tools/publish-thaumcraft.sh                  # clones ../Thaumcraft-1.21.1 at thaumcraft_ref and runs ./gradlew :fabric:publishToMavenLocal there
+tools/publish-thaumcraft.sh                  # clones ../Thaumcraft-1.21.1 at thaumcraft_ref and runs ./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal there
 #    by hand:  git clone https://github.com/acak1221/Thaumcraft-1.21.1 ../Thaumcraft-1.21.1
-#              cd ../Thaumcraft-1.21.1 && git checkout <thaumcraft_ref> && ./gradlew :fabric:publishToMavenLocal
+#              cd ../Thaumcraft-1.21.1 && git checkout <thaumcraft_ref> && ./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
 
 # 2. The add-on
 ./gradlew tinkererTest                       # JUnit tests of the add-on
@@ -66,6 +66,11 @@ tools/publish-thaumcraft.sh                  # clones ../Thaumcraft-1.21.1 at th
 ./gradlew runTinkererClient                  # a development client with Thaumcraft and the add-on
 tools/client-smoke.sh                        # the client smoke under Xvfb, about 2 minutes after the first compile (docs/CLIENT_VERIFICATION.md)
 ./gradlew exportTinkererClasspath && tools/compile.sh [-g]   # javac outside Gradle, for a quick edit-compile loop (-g: with the GameTest sources)
+
+# 3. NeoForge (the subproject :neoforge; docs/NEOFORGE.md)
+./gradlew :neoforge:runGameTest              # the same GameTests on a NeoForge GameTest server
+./gradlew :neoforge:runGameTest -PtinkererGameTestFilter='kamiworldgametests.*'    # the same filter as the Fabric run
+python3 tools/neoforge_gametests.py          # are the NeoForge GameTest wrappers in step with the Fabric ones? (--write regenerates them)
 ```
 
 * **What a good run looks like** (0.1.0-alpha.7, 2026-10-31; the counts move when tests are added, a failure is what matters):
@@ -76,12 +81,15 @@ tools/client-smoke.sh                        # the client smoke under Xvfb, abou
   | `./gradlew runTinkererGameTest` | the log line `All 312 required tests passed :)` and `BUILD SUCCESSFUL`; `build/tinkerer-gametest-results.xml` has 312 `testcase` elements and no `failure` or `error` |
   | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` and `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (about 2.3 MB) |
   | `./gradlew check` | `BUILD SUCCESSFUL` (the three source sets compile, the Mixin refmap check passes, `tinkererTest` runs) |
+  | `./gradlew :neoforge:runGameTest` | the same as `runTinkererGameTest`: `All 312 required tests passed :)`, and `neoforge/build/tinkerer-gametest-results.xml` with 312 `testcase` elements and no `failure` or `error`. Not reached yet: the last run and its failures are in `docs/NEOFORGE.md`, "GameTests on NeoForge" |
   | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` and 80 screenshots in `build/tinkerer-client-smoke/`; PASS was 725 to 727 in five runs (three fire-block checks depend on random pixels), FAIL 0 and NOT_RUN 1 did not move. `tools/client-smoke.sh -- -PwithEmi -PwithJade` adds the EMI and Jade checks (737 PASS, 88 screenshots), `-- -PwithJei` the JEI ones (730 PASS, 82 screenshots) |
 * The release jar is `build/libs/ThaumicTinkerer-fabric-<version>.jar` (`mod_version` in `gradle.properties`; it is also what `./gradlew assemble` builds). It
   is remapped for production, carries `LICENSE` under `META-INF/` and holds the Mixin refmap. To play with it, put it into `mods/` next to the
   Thaumcraft 4 Reload jar, Architectury API 13.0.11+ and Fabric API.
 * `runTinkererGameTest` writes `build/tinkerer-gametest-results.xml`; its world lives in `run-tinkerer-gametest/` (deleted at the start of every run). The
   JUnit reports are in `build/reports/tests/tinkererTest/`, the client smoke results in `build/tinkerer-client-smoke/`. All of that is git-ignored.
+  `:neoforge:runGameTest` writes `neoforge/build/tinkerer-gametest-results.xml`; its world lives in `neoforge/run-gametest/` (deleted at the start of
+  every run, git-ignored too).
 * `tools/client-smoke.sh` runs `./gradlew` under `xvfb-run`; the environment variable `GRADLE_CMD` replaces the Gradle command (see the header of the script).
 * The compile step fails if the Mixin annotation processor wrote no refmap or one without an entry for a mixin that has an injector (`fabric.gradle`).
 * Files that the documents cite and that belong to the **Thaumcraft 4 Reload repository**, not to this one: `AGENTS.md`, `docs/api/` (`PORTING.md`,

@@ -28,8 +28,9 @@ import thaumic.tinkerer.common.content.TileBlocks;
  * <p><b>Not here: energy.</b> The 1.7.10 interface also forwarded RF and EU. The Fabric energy API (Team Reborn Energy) is
  * not a dependency of this add-on, so power is not forwarded; see docs/deviations/TileBlocks.md, 2.5.</p>
  *
- * <p>{@code TileBlocks.ready()} calls {@link #register()} by name on Fabric (common code cannot link against this
- * module), so nothing has to be listed in {@code fabric.mod.json}. NeoForge has no glue yet.</p>
+ * <p>{@code ThaumicTinkererFabric.onThaumcraftReady()} calls {@link #register()} once the shared phase ran, so nothing has
+ * to be listed in {@code fabric.mod.json}. The NeoForge counterpart is {@code NeoForgeCapabilities} (the fluid capability
+ * and, because NeoForge does not wrap a {@code WorldlyContainer} by itself, the item capability).</p>
  */
 public final class TileBlocksFabric {
     private static boolean registered;

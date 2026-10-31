@@ -36,7 +36,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * The phantom blocks of the Placement Mirror: while a player holds the mirror, the blocks it would place are drawn
  * translucent where they would go, if the player has the blocks (1.7.10: a {@code RenderWorldLastEvent} handler, alpha
  * 0.6). Architectury has no event for the end of the world render, so the loader's glue calls {@link #render} from the
- * render event of its platform (Fabric: {@code WorldRenderEvents.AFTER_TRANSLUCENT}), when
+ * render event of its platform (Fabric: {@code WorldRenderEvents.AFTER_TRANSLUCENT}; NeoForge: {@code RenderLevelStageEvent}
+ * at {@code AFTER_TRANSLUCENT_BLOCKS}), when
  * {@code ConfigHandler.showPlacementMirrorBlocks} is on.
  */
 public final class PlacementMirrorPredictionRenderer {

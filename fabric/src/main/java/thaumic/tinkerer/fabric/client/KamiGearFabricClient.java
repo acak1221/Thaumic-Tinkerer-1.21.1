@@ -24,9 +24,9 @@ import thaumic.tinkerer.common.core.handler.ConfigHandler;
  *       {@code ConfigHandler.showPlacementMirrorBlocks} is on.</li>
  * </ul>
  *
- * <p>{@code KamiGearClient.register()} calls {@link #register()} by name on Fabric, so nothing has to be listed in
- * {@code fabric.mod.json}. {@link #register()} registers only once, so listing this class as a {@code client} entrypoint
- * as well, or calling it from {@code ThaumicTinkererFabricClient}, is harmless.</p>
+ * <p>{@code ThaumicTinkererFabricClient} calls {@link #register()} after the shared client setup, so nothing has to be
+ * listed in {@code fabric.mod.json}. {@link #register()} registers only once, so listing this class as a {@code client}
+ * entrypoint as well is harmless. The NeoForge counterpart is {@code KamiGearNeoForgeClient}.</p>
  */
 public final class KamiGearFabricClient implements ClientModInitializer {
     private static boolean registered;

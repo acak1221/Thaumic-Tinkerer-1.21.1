@@ -102,8 +102,9 @@ public final class ThaumicTinkerer {
     /**
      * Runs one unit of registration. A broken unit is logged with its stack trace and recorded, and the rest of the
      * mod still loads; the GameTests assert that {@link #failures()} is empty, so a broken unit cannot go unnoticed.
+     * The loader modules run their own glue (the hooks Architectury has no registry for) through it as well.
      */
-    private static void guard(String unit, Runnable action) {
+    public static void guard(String unit, Runnable action) {
         try {
             action.run();
         } catch (Throwable t) {

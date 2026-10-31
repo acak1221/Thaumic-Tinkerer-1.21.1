@@ -188,9 +188,12 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
   `MachinesClient.registerItemRenderers(Item)`). On Fabric `FabricItemRenderers` (the backend, installed before the groups
   register their client side) hands it to Fabric API's `BuiltinItemRendererRegistry`; the group's own glue of the first version
   (`MachinesFabricClient`, reached by name from common code, with a second registration of the same item) and the reflection
-  that called it are gone, since two registrations of one item are an error. **The group needs the NeoForge backend of
-  `ItemRenderers`** (a `RegisterClientExtensionsEvent` handler that collects the queue, `docs/HOOKS.md` section 9): until the
-  NeoForge module has it the item is invisible there. What was checked: the code compiles; a JUnit test
+  that called it are gone, since two registrations of one item are an error. On NeoForge `NeoForgeItemRenderers` (the
+  backend, installed from the mod constructor, before the shared client setup runs inside `RegisterClientExtensionsEvent`)
+  collects the queue and, after that setup, registers one `IClientItemExtensions` per item whose custom renderer is a
+  `BlockEntityWithoutLevelRenderer` handing `renderByItem` to `RenderMobDisplay.render`. The model needs nothing more there:
+  NeoForge's `ItemRenderer` asks the item's extensions for that renderer for every `builtin/entity` model (read in the 21.1.259
+  patches). That backend compiles and **was never run on a NeoForge client** (`docs/NEOFORGE.md`). What was checked: the code compiles; a JUnit test
   (`MachinesClientWiringTest`) runs the helper with an item of its own and reads the queue (`ItemRenderers.get`: queued for that
   item and no other, a second registration refused) and reads the source of the registrar (`register()` queues
   `TTRegistry.item("mob_display")` first, once; no other Fabric class uses `BuiltinItemRendererRegistry`); the Fabric backend
@@ -306,8 +309,7 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
 
 - ComputerCraft and OpenComputers peripherals (Aspectalyzer, Attractors), AE2 `IMovableTile`, Tinkers' Construct
   tool repair, NEI integration, Waila providers (not this group's job in the new build).
-- The NeoForge side of the two loader hooks the group uses (the poster of `LIVING_DROPS`, the backend of `ItemRenderers`;
-  section 12), and the enchantability of the blade (shared tag files): the requests in `docs/api-requests/Machines.md`. (The scan
+- The NeoForge poster of `LIVING_DROPS` (section 12; the NeoForge backend of `ItemRenderers` is written, not run), and the enchantability of the blade (shared tag files): the requests in `docs/api-requests/Machines.md`. (The scan
   check, the sparkles, the aspect tag drawing and the Thaumcraft entity keys use the API since the review.)
 - Recipe-viewer pages for the necromancy recipes.
 
@@ -316,4 +318,4 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
 | Hook | Used by | Fabric | NeoForge |
 |---|---|---|---|
 | `TinkererEvents.LIVING_DROPS` (`docs/HOOKS.md` section 8) | `ItemBloodSword.onLivingDrops` (the Cursed Spirit's Blade) | posted by `LivingEntityDropsMixin` and the capture mixins; run by the GameTests of the blade | **needs its poster** (`LivingDropsEvent` handler calling `TinkererEvents.postLivingDrops`); not written |
-| `ItemRenderers` (`docs/HOOKS.md` section 9) | `MachinesClient.register()` (the Mob Display) | `FabricItemRenderers`; run in the client harness (the mobs are drawn in a slot) | **needs its backend** (`RegisterClientExtensionsEvent`); not written |
+| `ItemRenderers` (`docs/HOOKS.md` section 9) | `MachinesClient.register()` (the Mob Display) | `FabricItemRenderers`; run in the client harness (the mobs are drawn in a slot) | `NeoForgeItemRenderers` (an `IClientItemExtensions` per item in `RegisterClientExtensionsEvent`); compiled, not run on a client |

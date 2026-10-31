@@ -64,10 +64,11 @@ steps per tick (a packet each) and the API's sparkles shrink away and fall, unli
 
 ## 4. Loader hooks (to the lead)
 
-Architectury has no event for these two, so the add-on provides the code and the Fabric class
-`thaumic.tinkerer.fabric.client.KamiGearFabricClient` registers them. `KamiGearClient.register()` (common) starts that class by
-name on Fabric, so no change of `fabric.mod.json` is needed (the class implements `ClientModInitializer` and registers only once, so
-listing it as a `client` entrypoint later is harmless). NeoForge needs the same two hooks (deferred):
+Architectury has no event for these two, so the add-on provides the code and the loader modules register them; common code names no
+loader class. Fabric: `thaumic.tinkerer.fabric.client.KamiGearFabricClient`, called by `ThaumicTinkererFabricClient` after the shared client
+setup, so no change of `fabric.mod.json` is needed (the class implements `ClientModInitializer` and registers only once, so listing it as a
+`client` entrypoint later is harmless). NeoForge: `thaumic.tinkerer.neoforge.client.KamiGearNeoForgeClient` (written and compiled, not run;
+`docs/NEOFORGE.md`). The two hooks:
 
 - **Player render layer.** `thaumic.tinkerer.client.render.kami.WingsLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>>, EntityModelSet)`
   must be added to every player renderer (Fabric: `LivingEntityFeatureRendererRegistrationCallback`; NeoForge:
@@ -121,5 +122,5 @@ KamiGear does not reference the KamiWorld classes; it reaches them like this (al
 - **Lead, `client/lib/LibResources.java` lines 59 to 62.** `MODEL_ARMOR_ICHOR_1`, `_2`, `MODEL_ARMOR_ICHOR_GEM_1`, `_2` name files that do not exist
   (`ichor1.png`...). They are unused; delete them, or point them at `textures/models/armor/ichor_layer_1.png`, `ichor_layer_2.png`,
   `ichor_gem_layer_1.png`, `ichor_gem_layer_2.png`.
-- **Lead, `fabric/src/main/resources/fabric.mod.json`: optional.** The Kami client glue is started by name from `KamiGearClient`; listing
+- **Lead, `fabric/src/main/resources/fabric.mod.json`: optional.** The Kami client glue is called by `ThaumicTinkererFabricClient`; listing
   `thaumic.tinkerer.fabric.client.KamiGearFabricClient` as a `client` entrypoint is not needed and harmless.

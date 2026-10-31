@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "thaumic.tinkerer.neoforge.testing.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "mixins": [
+    "TinkererGameTestSelectionMixin",
+    "TinkererMockConnectionMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

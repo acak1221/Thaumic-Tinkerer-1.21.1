@@ -113,8 +113,8 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
 * **Computer peripherals** (ComputerCraft / OpenComputers) of the Animation Tablet, Transvector Interface, Golem Connector, Aspectalyzer and
   the attractors. The method tables exist as plain Java; nothing registers them. The `peripherals` research category exists and is empty. The ComputerCraft turtle
   tool of the Fume Dissipator (`FumeTool`, `FumePeripheral`) is not ported either (`SimpleBlocks.md` section 3).
-* **Energy through the Transvector Interface** (RF and EU in 1.7.10) is written for **neither** loader, and fluids through it for Fabric only (`TileBlocksFabric`,
-  `TileBlocks.md` sections 2.5 and 3, `api-requests/TileBlocks.md` section 6).
+* **Energy through the Transvector Interface** (RF and EU in 1.7.10) is written for **neither** loader; fluids through it are forwarded on both (Fabric
+  `TileBlocksFabric`, run in the GameTests; NeoForge `NeoForgeCapabilities`, compiled, not run; `TileBlocks.md` sections 2.5 and 3, `api-requests/TileBlocks.md` section 6, `NEOFORGE.md`).
 * **The Kami foci's `canApplyUpgrade` override** (the original answered true for every upgrade) is dropped; the base rule applies (`Foci.md` section 10, `KamiGear.md` section 9).
 * **Gregtech hazard protection and the Thaumic Boots mod** (`IHazardProtector`, `IBoots`) for the Ichorcloth armour: neither mod exists for 1.21.1 (`KamiGear.md` section 3).
 * **Golem API** (Golem Connector data): API request A11/A12 is deferred; the Golem Connector block exists without golem data.
@@ -126,10 +126,10 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
   for both loaders, is deleted) and **no dimensional shard drops** (`LIVING_DROPS`; the loot-table pools are deleted too); no damage factors and no Vampirism, no Shatter,
   Tunnel, Disintegrate or Flaming Touch, no Ascent Boost, no Slow Fall landing, no Shockwave, no Quick Draw (the Enchantments); no extra jump in the Gem Boots, switched-off
   Gem Boots that no longer spare the wearer a fall (switched-on boots still zero the fall distance every tick, `ItemGemBoots.tick`), and the Ichorcloth as plain 3/8/6/3
-  armour (`LIVING_JUMP`, `LIVING_FALL`, `LIVING_ARMOR_ABSORB`); no reaping by the Cursed Spirit's Blade (`LIVING_DROPS`) and an invisible Mob Display (`ItemRenderers`); an
-  Uprising that does not reset the kick counter (`FloatingTicks`). **Loader glue that is not an event and is not written for NeoForge either** (`HOOKS.md` section 9, "Other
-  loader glue"): the Kami gear's wings layer and ghost blocks (Fabric: `KamiGearFabricClient`), the Transvector Interface's fluid forwarding (Fabric: `TileBlocksFabric`; energy
-  forwarding is written for neither loader), the flammability hook of the elemental fires (neither loader) and the special effects of the Bedrock dimension (neither loader).
+  armour (`LIVING_JUMP`, `LIVING_FALL`, `LIVING_ARMOR_ABSORB`); no reaping by the Cursed Spirit's Blade (`LIVING_DROPS`); an
+  Uprising that does not reset the kick counter (`FloatingTicks`). **Loader glue that is not an event** (`HOOKS.md` section 9, "Other loader glue"): the NeoForge
+  side of the `ItemRenderers` backend (the Mob Display), of the Kami gear's wings layer and ghost blocks and of the Transvector Interface's fluids (and items) is written and
+  compiles (`NEOFORGE.md`; not run); energy forwarding, the flammability hook of the elemental fires and the special effects of the Bedrock dimension are written for neither loader.
   The add-on is not built for NeoForge yet (`README.md`), so none of this was run there: these are consequences read from the code, not observations.
 
 ## 5. Verification status and what is not verified
@@ -149,7 +149,7 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 | **Thaumcraft repository:** Python porting scripts (`scripts/porting`, all tools of that repository, the add-on's two among them) | 296 tests OK. The add-on's two tools with their tests are in this repository now: `tools/porting.sh test` ran 153 tests OK (2026-10-31, with both checkouts present) | run output |
 | Client, Fabric dev client under Xvfb + Mesa llvmpipe (`tools/client-smoke.sh`) | 726 checks PASS, 0 FAIL, 0 harness errors, 1 NOT_RUN (tool-mode tooltip needs a key press), 80 pictures (read by the engineers in the run before the last, which had 721 PASS); the first run had 3 FAIL and a number of defects seen only in pictures (all fixed, see `CLIENT_VERIFICATION.md`). The last run added a check that the six infused seeds have six different models; with the old model file it fails (5 `override_collapsed`), with the fixed one it passes | `CLIENT_VERIFICATION.md`, `build/tinkerer-client-smoke/report.json` (not committed) |
 | Client with the optional mods (2026-10-31, same harness, phase `integrations`) | with EMI and Jade (`-- -PwithEmi -PwithJade`): 737 PASS, 0 FAIL, 1 NOT_RUN, 88 pictures; with JEI (`-- -PwithJei`): 730 PASS, 0 FAIL, 1 NOT_RUN, 82 pictures; without them: 725 PASS, 0 FAIL, 1 NOT_RUN, 80 pictures. In the viewers: 30 necromancy and 45 seed-drop pages, and all 82 arcane/crucible/infusion recipes of the add-on in Thaumcraft's own categories; Jade's tooltip text read for six blocks (`Tooltips.md`, `RecipeViewers.md`) | `CLIENT_VERIFICATION.md` |
-| NeoForge | **nothing written, nothing run** | `HOOKS.md` sections 9, 10, 14 |
+| NeoForge | the client glue and the block capabilities are written and compile (`:neoforge:compileJava`); **nothing run** | `NEOFORGE.md`, `HOOKS.md` sections 9, 10, 14 |
 
 **Not verified** (a `PASS` of the client harness says a lookup answered and nothing threw; it is not a person looking at the game on a GPU):
 
