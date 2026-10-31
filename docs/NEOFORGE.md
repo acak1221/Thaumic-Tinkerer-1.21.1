@@ -193,12 +193,73 @@ Transvector Interface's block entity type:
 | Fabric: the Interface's fluids, now registered from `ThaumicTinkererFabric` | `:runTinkererGameTest -PtinkererGameTestFilter='tileblocksgametests.*'` | "All 35 required tests passed", `interfaceforwardsfluids` among them |
 | NeoForge: the Interface's fluid capability | `:neoforge:runGameTest -PtinkererGameTestFilter='tileblocksgametests.*'` (the GameTest harness above; its `TileBlocksNeoForgeChecks.interfaceForwardsFluids` asks `level.getCapability` without a cache: unbound none, bound to a barrel tank it fills a bucket and drains half) | "All 35 required tests passed", `interfaceforwardsfluids` among them |
 | NeoForge client start | `:neoforge:runClient` under `xvfb-run` with Mesa llvmpipe (`LIBGL_ALWAYS_SOFTWARE=1`), Kami content on, stopped by a watchdog after the log had been quiet for 60 s (so Gradle reported exit 1) | The client loaded and showed the first-launch screen (the accessibility prompt before the title screen), with no error or recorded failure from the add-on in the log. `WingsLayer`'s constructor bakes `ModelWings.LAYER` and throws if that layer is missing; the `AddLayers` handler builds it at the first reload. So the layer registration from `RegisterClientExtensionsEvent` and the handler are inferred to work; neither writes a log line. |
+| NeoForge client in a world | the client smoke harness ("Client smoke on NeoForge" below): `tools/client-smoke.sh --neoforge`, then with `-- -PwithEmi -PwithJade` and with `-- -PwithJei` | All three runs `COMPLETED`, 0 FAIL, 0 HARNESS_ERROR (730, 739 and 735 PASS; 80, 88 and 82 pictures); the Mob Display drawn through `NeoForgeItemRenderers`, the screens, the block-entity renderers and the HUD as on Fabric |
+
+Since then (2026-10-31): the client smoke harness runs on NeoForge ("Client smoke on NeoForge" below), and two NeoForge-only GameTests
+(`TileBlocksNeoForgeTests`, in every `:neoforge:runGameTest`) cover the capabilities:
+`tileblocksneoforgetests.interfaceItemHandlerReachesTheBoundChest` (`Capabilities.ItemHandler.BLOCK` at the interface: unbound no slots and
+nothing taken; bound, the chest's 27 slots by side and without side, items in and out; a `BlockCapabilityCache` made while unbound reaches the chest
+once bound) and `tileblocksneoforgetests.interfaceFluidCapabilityCacheFollowsTheBinding` (a `BlockCapabilityCache` of
+`Capabilities.FluidHandler.BLOCK`: none while unbound; binding invalidates and the cached handler fills the tank; after the tank is broken the held
+handler reaches nothing, the interface lets the binding go and the cache has none; rebound, then unbound by `setTarget(null)`, none again).
 
 **Not verified on NeoForge:**
 
-* The Mob Display drawn: no world was entered and no item was shown.
-* The wings on a player and the ghost blocks in a world.
-* The item capability of the Interface: no check asks `Capabilities.ItemHandler.BLOCK` there. The shared `interfaceForwardsItems` uses the
-  `Container` methods directly.
-* The cache behaviour: no check holds a `BlockCapabilityCache` at the interface across a binding, an unbinding or a broken tank.
+* The wings on a player and the ghost blocks in a world (`KamiGearNeoForgeClient`): the client smoke does not put on the robes or use the Looking Glass, on
+  either loader.
 * A GPU, a dedicated server with a real client, other mods' pipes and tanks.
+
+## Client smoke on NeoForge
+
+The client smoke harness of `docs/CLIENT_VERIFICATION.md` runs on NeoForge as well: a real client under Xvfb with Mesa llvmpipe builds a flat world,
+draws every block, item, menu, block-entity renderer and HUD element of the add-on, checks the models, textures, translations, screens and renderers, and
+writes `neoforge/build/tinkerer-client-smoke/report.json` and the pictures.
+
+```bash
+tools/client-smoke.sh --neoforge                            # :neoforge:runClientSmoke under xvfb-run; about 2 minutes
+tools/client-smoke.sh --neoforge -- -PwithEmi -PwithJade    # with EMI and Jade in the client
+tools/client-smoke.sh --neoforge -- -PwithJei               # with JEI
+```
+
+**Wiring.** The harness is the loader-neutral tree `common/src/clientSmoke/java` (package `thaumic.tinkerer.clientsmoke`, shared with the Fabric run) and
+the NeoForge side `neoforge/src/clientSmoke`: the client-only test mod `thaumictinkerer_clientsmoke` (`TinkererClientSmokeNeoForge`,
+`@Mod(value = "thaumictinkerer_clientsmoke", dist = Dist.CLIENT)`, its own `META-INF/neoforge.mods.toml`) and `NeoForgeSmokePlatform`, the eight loader
+calls of the harness (`ClientTickEvent.Post`, `RenderLevelStageEvent` at `AFTER_LEVEL`, `ScreenEvent.Render.Post`, the creative-tab pages, `FMLPaths.GAMEDIR`,
+`ModList`). In `neoforge/build.gradle`: the source set `clientSmoke` (`check` compiles it), the run `clientSmoke` with the add-on and the harness as two mods
+(`mods { thaumictinkerer { sourceSet main }; thaumictinkerer_clientsmoke { sourceSet clientSmoke } }`, like the GameTest run), run directory
+`neoforge/run-clientsmoke`, `-Dthaumictinkerer.clientSmoke=true` and the out directory, source root and timeout properties, a 1280x720 window, and
+`prepareClientSmoke` (options and result directory reset, as `prepareTinkererClientSmoke` on Fabric). `runClientSmoke` fails unless the report says
+`COMPLETED`. Neither release jar contains the harness (`build/libs/*.jar`, `neoforge/build/libs/*.jar`: no `clientsmoke` entry, only the add-on's mod id).
+
+**What had to change for NeoForge** (all in the harness; no add-on code):
+
+| Where | Why |
+|---|---|
+| `NeoForgeSmokePlatform.selectCreativeTab` | NeoForge pages the creative tabs itself (`CreativeTabsScreenPage`); its screen has a public `setCurrentPage` but keeps the page list and `selectTab` private (no access transformer for them), so the harness finds the page that holds the tab and calls `selectTab` by reflection. Fabric uses `FabricCreativeInventoryScreen` |
+| `LogExcerpt` (shared) | NeoForge's client log writes `[31Oct2026 12:34:56.789] [thread/LEVEL] [logger/]:` after the launcher's first lines (`[12:34:56] [thread/LEVEL]`); the excerpt and `LogWatcher` read both. A Fabric line still matches exactly as before |
+| `HarnessJeiPlugin`, `HarnessJadePlugin` (shared) | NeoForge's JEI and Jade find plugins by annotation: `@JeiPlugin`, `@WailaPlugin` (Fabric's read only the entrypoints of `fabric.mod.json`, which stay) |
+| `SourceKeysCheck` (shared) | reads the shared sources and the running loader's glue (`neoforge/src/main/java` here, `fabric/src/main/java` on Fabric) |
+
+**Last runs (2026-10-31):**
+
+| Optional mods | PASS | FAIL | HARNESS_ERROR | NOT_RUN | INFO | pictures |
+|---|---|---|---|---|---|---|
+| none | 730 | 0 | 0 | 1 | 52 | 80 |
+| EMI, Jade | 739 | 0 | 0 | 1 | 52 | 88 |
+| JEI | 735 | 0 | 0 | 1 | 50 | 82 |
+
+All three `COMPLETED`; the `NOT_RUN` is the Kami tool-mode tooltip (no input device), as on Fabric. Compared check by check with the Fabric runs of the same
+mods, the only differences are the three states of Gaseous Tenebrae, drawn as "visible" on NeoForge only because vanilla's smooth lighting (NeoForge, with
+`experimentalForgeLightPipelineEnabled` off) darkens the floor under the gas cell (light opacity 15) where Fabric API's Indigo renderer does not (its
+`fix-mean-light-calculation` replaces a 0 light sample by the smallest non-zero one), and the `up=true` states of the three fire blocks, which vary from
+run to run on both loaders. The EMI, JEI and Jade checks (necromancy and seed-drop pages, catalysts and workstations, the add-on's recipes in Thaumcraft's
+categories, the six Jade tooltips) pass as on Fabric. The pictures were compared pixel by pixel and read; the details are in `docs/CLIENT_VERIFICATION.md`
+("Results on each loader").
+
+**Client glue seen in a world for the first time:** the built-in item renderer backend (`NeoForgeItemRenderers`) draws the Mob Display of every mob
+(`items-machines-02.png`, equal to Fabric's in all but 0.01 % of the pixels); the screens registered through Architectury from `RegisterClientExtensionsEvent`
+open (seven menus and the warp gate's destinations), the block-entity renderers draw (twelve close-ups), the soul hearts and the Dislocation readout are on the
+HUD, and the Russian pass reloads the resources. The log has no warning or error of the add-on.
+
+**NeoForge client defects found by the harness: none.** Not seen by it (on either loader): the wings of the Robes of the Stratosphere and the Placement
+Mirror's ghost blocks (`KamiGearNeoForgeClient`), the Kami tool-mode tooltip, input handling, a GPU.

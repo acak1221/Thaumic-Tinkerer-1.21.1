@@ -69,8 +69,8 @@ steps per tick (a packet each) and the API's sparkles shrink away and fall, unli
 Architectury has no event for these two, so the add-on provides the code and the loader modules register them; common code names no
 loader class. Fabric: `thaumic.tinkerer.fabric.client.KamiGearFabricClient`, called by `ThaumicTinkererFabricClient` after the shared client
 setup, so no change of `fabric.mod.json` is needed (the class implements `ClientModInitializer` and registers only once, so listing it as a
-`client` entrypoint later is harmless). NeoForge: `thaumic.tinkerer.neoforge.client.KamiGearNeoForgeClient` (written and compiled; a NeoForge dev
-client started with it without an error from the add-on, but no world was entered, so the wings and the ghost blocks were not seen there;
+`client` entrypoint later is harmless). NeoForge: `thaumic.tinkerer.neoforge.client.KamiGearNeoForgeClient` (written and compiled; the NeoForge client smoke ran
+in a world with it without an error from the add-on, but it does not visit the wings or the ghost blocks, so they were not seen there, as on Fabric;
 `docs/NEOFORGE.md`). The two hooks:
 
 - **Player render layer.** `thaumic.tinkerer.client.render.kami.WingsLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>>, EntityModelSet)`

@@ -36,8 +36,8 @@ backend; a duplicate for one item is an `IllegalStateException`. On Fabric the b
 `BuiltinItemRendererRegistry` (read in fabric-rendering-v1 5.2.1: it registers the same `(stack, display context, pose, buffers, light,
 overlay)` and throws on a second renderer for an item). On NeoForge the backend is `NeoForgeItemRenderers`
 (`RegisterClientExtensionsEvent` → `IClientItemExtensions#getCustomRenderer` → a `BlockEntityWithoutLevelRenderer` calling the renderer,
-for every queued item; `docs/NEOFORGE.md`): compiled, and a NeoForge dev client started with it without an error from the add-on,
-but **the Mob Display has not been seen drawn on NeoForge** (no world was entered there).
+for every queued item; `docs/NEOFORGE.md`): compiled, and the NeoForge client smoke drew the Mob Display of every mob through it in the item grid
+(the pictures equal Fabric's in all but 0.01 % of the pixels; `docs/CLIENT_VERIFICATION.md`).
 Verified: compile; a JUnit test of the helper and the queue (`ItemRenderers.get`) and of the wiring in the source; the Fabric
 backend read. **Not verified on NeoForge: the drawing** (a GameTest server cannot load the client classes; on Fabric the client harness
 drew the Mob Display, `docs/HOOKS.md` section 9).

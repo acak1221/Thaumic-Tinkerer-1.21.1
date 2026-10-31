@@ -7,7 +7,8 @@ them (Enchantments, KamiWorld, KamiGear, Machines, Foci) **are rewired** to them
 per group which workaround went, which event replaced it and which check pins it. The posters exist for **Fabric** (Mixin) and, since
 2026-10-31, for **NeoForge** (handlers of NeoForge's events and three mixins of this layer, section 9; a fourth NeoForge mixin, the Infused Farmland's soil rule, is not an event of this layer, `docs/NEOFORGE.md`). On NeoForge the hook GameTests and the GameTests of the
 five groups that use the events have run and passed on a NeoForge GameTest server, and so has the whole suite since (section 9, "What ran on NeoForge"); a
-NeoForge development client was started and reached its first screen, but no world was entered with them on NeoForge yet (`docs/NEOFORGE.md`).
+NeoForge development client ran the client smoke in a world with them (`docs/CLIENT_VERIFICATION.md`); it draws, it does not play, so the client side of
+the events is not exercised there.
 
 How the words are used: *implemented* means the code exists; a *check* is a JUnit test or a GameTest in the source that was written for the thing it
 is named for, and a check counts as *run* only where a document or a results file says so (section 12, "What ran", says what that is for the hooks); *read*
@@ -425,7 +426,7 @@ not measured.
 **Other loader glue that is not an event of this layer** (the groups' own loader code). Common code names no loader class: each loader entry installs its
 own glue (the former `Class.forName` calls of `KamiGearClient.register()` and `TileBlocks.ready()` are gone). The NeoForge side of the first two items is
 written; its details and verification status are in `docs/NEOFORGE.md`, section "Client glue and block capabilities on NeoForge" (compiled, the TileBlocks
-GameTests pass on both loaders, a NeoForge client loaded without errors, nothing seen drawn in a world):
+GameTests pass on both loaders, the Mob Display drawn in the NeoForge client smoke; the wings and ghost blocks not seen on either loader):
 
 * **Wings and ghost blocks of the Kami gear.** Fabric: `fabric/.../client/KamiGearFabricClient.java`, which `ThaumicTinkererFabricClient` calls after
   `initClient()`: the Robes of the Stratosphere's wings layer on every player renderer and the Worldshaper's Looking Glass's ghost blocks after the translucent

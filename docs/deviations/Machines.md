@@ -193,8 +193,8 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
   collects the queue and, after that setup, registers one `IClientItemExtensions` per item whose custom renderer is a
   `BlockEntityWithoutLevelRenderer` handing `renderByItem` to `RenderMobDisplay.render`. The model needs nothing more there:
   NeoForge's `ItemRenderer` asks the item's extensions for that renderer for every `builtin/entity` model (read in the 21.1.259
-  patches). That backend compiles, and a NeoForge dev client started with it without an error from the add-on, but **the Mob Display has not been
-  seen drawn on NeoForge** (no world was entered there, `docs/NEOFORGE.md`). What was checked: the code compiles; a JUnit test
+  patches). That backend compiles, and the NeoForge client smoke drew the Mob Display of every mob through it in the item grid (2026-10-31; the
+  pictures equal Fabric's in all but 0.01 % of the pixels, `docs/CLIENT_VERIFICATION.md`). What was checked: the code compiles; a JUnit test
   (`MachinesClientWiringTest`) runs the helper with an item of its own and reads the queue (`ItemRenderers.get`: queued for that
   item and no other, a second registration refused) and reads the source of the registrar (`register()` queues
   `TTRegistry.item("mob_display")` first, once; no other Fabric class uses `BuiltinItemRendererRegistry`); the Fabric backend
