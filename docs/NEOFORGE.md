@@ -5,7 +5,8 @@
 The 312 GameTests of the add-on run on a NeoForge dedicated GameTest server as well as on Fabric: the same shared checks
 (`common/src/gameTest/java/thaumic/tinkerer/testing/*RuntimeChecks.java`), under the same test names, with the same timeouts and batches.
 The NeoForge wrappers are not written by hand: `tools/neoforge_gametests.py` generates them from the Fabric ones, and a JUnit test fails
-when the two drift apart.
+when the two drift apart. Two NeoForge-only scenarios (the block capabilities of the Transvector Interface) come on top, so a NeoForge run has
+314 tests.
 
 ```bash
 ./gradlew :neoforge:runGameTest                                              # every test
@@ -14,7 +15,7 @@ python3 tools/neoforge_gametests.py                                          # -
 python3 tools/neoforge_gametests.py --write                                  # regenerate them after a change of the Fabric wrappers
 ```
 
-A good run ends with the log line `All 312 required tests passed :)` and `BUILD SUCCESSFUL`, like the Fabric run; a run with failures ends
+A good run ends with the log line `All 314 required tests passed :)` and `BUILD SUCCESSFUL`, like the Fabric run; a run with failures ends
 with `N required tests failed :(`, the list of the failed tests, and the exit code N of the server (so the Gradle task fails). The report is
 `neoforge/build/tinkerer-gametest-results.xml` (JUnit XML, one `testcase` per test); every failure is also logged with its stack trace by the
 logger `ThaumicTinkererGameTest`. The run directory is `neoforge/run-gametest/` (git-ignored); its `world/` and the report of the last run are
@@ -34,6 +35,8 @@ deleted before every run, so that no result depends on an earlier one. The parit
 | The report: vanilla's `JUnitLikeTestReporter` plus the stack trace of each failure in the log | `ThaumicTinkererGameTestMod` | Fabric API, `-Dfabric-api.gametest.report-file` |
 | Negotiated channels for mock players (see below) | mixin `testing/mixin/TinkererMockConnectionMixin.java` | not needed |
 | The NeoForge body of a Fabric-native wrapper (see below) | `testing/TileBlocksNeoForgeChecks.java` | the inline body of `TileBlocksGameTests.interfaceForwardsFluids` |
+| NeoForge-only scenarios: hand-written classes `*NeoForgeTests`, listed in `TinkererGameTestCatalogue.NEOFORGE_ONLY` (generated) | `testing/TileBlocksNeoForgeTests.java` | none |
+| A run that never started fails the task (the server's `Main` catches a failure to start and exits with 0): no report, or one without a test, is an error | `neoforge/build.gradle`, `runGameTest` | none (`fabric.gradle` has no such check) |
 
 **Test names.** NeoForge names a test `<class in lower case>.<method in lower case>`, the name it has on Fabric, only when the class name
 prefixes the template too (`@PrefixGameTestTemplate(true)`, NeoForge's default). With `@PrefixGameTestTemplate(false)` (one shared template,
@@ -47,6 +50,18 @@ Fabric's transfer API); its NeoForge wrapper calls the method of the same name o
 (`TileBlocksNeoForgeChecks.interfaceForwardsFluids`: the same steps through `Capabilities.FluidHandler.BLOCK`, with a four-bucket tank that the
 test mod gives every barrel). The generator refuses a Fabric-native wrapper without such a method, and a method that no wrapper needs. A new
 check belongs in the shared checks, so that it needs no counterpart.
+
+**NeoForge-only scenarios.** What exists only on NeoForge is tested in hand-written classes whose name ends in `NeoForgeTests` (in the same
+package, with the template and the `@PrefixGameTestTemplate(true)` of the wrappers; the generator lists them in
+`TinkererGameTestCatalogue.NEOFORGE_ONLY`, gives each its structure and checks the template). Today `TileBlocksNeoForgeTests`:
+
+* `tileblocksneoforgetests.interfaceItemHandlerReachesTheBoundChest`: items put in through `Capabilities.ItemHandler.BLOCK` at a bound
+  Interface (a side and no side) go into the bound chest and come out of it; unbound the handler has no slots and takes nothing; a
+  `BlockCapabilityCache` made while unbound reaches the chest once bound.
+* `tileblocksneoforgetests.interfaceFluidCapabilityCacheFollowsTheBinding`: a `BlockCapabilityCache` of `Capabilities.FluidHandler.BLOCK` at the
+  Interface has no handler while unbound; `setTarget` invalidates it (its listener is called) and it then has a handler that fills the tank;
+  after the tank is broken the handler it still holds fills nothing, the Interface lets the binding go and the cache has no handler; bound to a
+  second tank it fills that one, and after `setTarget(null)` it is invalidated again, has no handler, and the handler it had fills nothing.
 
 **Mock players.** NeoForge refuses to send a mod's payload over a connection that has not negotiated its channel (`Payload ... may not be sent to
 the client!`, an exception in the sender), and `GameTestHelper.makeMockServerPlayerInLevel` joins with a bare connection. Thaumcraft and the
@@ -65,7 +80,7 @@ bodies, the counterparts, the templates and the world preset. The CI runs both, 
 ### Last run
 
 The first runs of the add-on on NeoForge at all (2026-10-31, NeoForge 21.1.259, Thaumcraft `0.1.0-alpha.7` from mavenLocal), while the event
-posters and the capabilities were being written. Every run started all 312 tests; each took about 17 s of test time and 45 s in all.
+posters and the capabilities were being written. Runs 1 to 4 started all 312 tests, run 5 the 314; each took about 17 s of test time and 45 s in all.
 
 | Run | Result |
 |---|---|
@@ -73,6 +88,8 @@ posters and the capabilities were being written. Every run started all 312 tests
 | 2, with the event posters | 3 failed: `tileblocksgametests.interfaceforwardsfluids` (no capabilities yet), `simpleblocksgametests.acropneedsfarmland`, `hooksgametests.livingarmorabsorbhandsbackthegamesownfloatandsurvivesaninfiniteblow` |
 | 3, with the capabilities (`NeoForgeCapabilities.java`) | 2 failed: `simpleblocksgametests.acropneedsfarmland`, `hooksgametests.livingarmorabsorbhandsbackthegamesownfloatandsurvivesaninfiniteblow` |
 | 4, after the armour check had been adapted to NeoForge (docs/HOOKS.md) | **311 passed, 1 failed**: `simpleblocksgametests.acropneedsfarmland` |
+| filtered: the two NeoForge-only scenarios with `tileblocksgametests.interfaceForwardsFluids` and `interfaceForwardsItems` | `All 4 required tests passed :)` |
+| 5, with the two NeoForge-only scenarios | 314 ran, **313 passed, 1 failed**: `simpleblocksgametests.acropneedsfarmland` |
 | filtered: `-PtinkererGameTestFilter='kamiworldgametests.*,tileblocksgametests.interfaceForwardsFluids'`, then `'coregametests.*'` | `All 21 required tests passed :)`, `All 3 required tests passed :)` |
 | filtered: `-PtinkererGameTestFilter=kamiworldgametests.nosuchtest` | the server refuses to start (`Expected one GameTest for 'kamiworldgametests.nosuchtest', found 0`) and the task fails because there is no report |
 
