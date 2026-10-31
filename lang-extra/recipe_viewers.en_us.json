@@ -1,0 +1,15 @@
+{
+  "emi.category.thaumictinkerer.necromancy": "Tablet of Necromancy",
+  "emi.category.thaumictinkerer.infused_seed_drops": "Infused Seed Drops",
+  "thaumictinkerer.recipe_viewers.necromancy.pedestals": "On 3 Arcane Pedestals",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.pedestals": "Put the three soul aspects, in any order, on Arcane Pedestals at most 5 blocks from the tablet, at its height.",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.cycle": "Every 300 ticks (15 seconds) the tablet summons the mob on top of itself and uses the soul aspects up.",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.infused": "Three infused soul aspects are kept, but work only every 1200 ticks (one minute); another tablet first only takes them over, summoning nothing.",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.redstone": "A redstone signal stops the tablet.",
+  "thaumictinkerer.recipe_viewers.seed_drops.header": "A ripe crop yields one of:",
+  "thaumictinkerer.recipe_viewers.seed_drops.rule.roll": "Each harvest of a ripe crop draws one of these, with the chance shown on it.",
+  "thaumictinkerer.recipe_viewers.seed_drops.rule.order": "An Ordo tendency of n draws once more with a chance of n in 75, again and again.",
+  "thaumictinkerer.recipe_viewers.seed_drops.rule.seeds": "The crop also drops its seeds; an unripe crop drops only the seeds.",
+  "thaumictinkerer.recipe_viewers.chance": "Drop Chance: %s",
+  "thaumictinkerer.recipe_viewers.page": "Page %s of %s"
+}

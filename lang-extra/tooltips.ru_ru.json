@@ -1,0 +1,21 @@
+{
+  "config.jade.plugin_thaumictinkerer.animation_tablet": "Динамическая дощечка",
+  "config.jade.plugin_thaumictinkerer.interface": "Трансвектор",
+  "config.jade.plugin_thaumictinkerer.repairer": "Таум-восстановитель",
+  "config.jade.plugin_thaumictinkerer.warp_gate": "Небесный портал",
+  "config.jade.plugin_thaumictinkerer.magnet": "Кинетический притяжатель / Материальный притяжатель",
+  "ttwaila.allowIncoming": "Принимает входящие телепортации",
+  "ttwaila.disallowIncoming": "Не принимает входящие телепортации",
+  "ttwaila.finishedRepairing": "Восстановление завершено: %s",
+  "ttwaila.redstone": "Активируется красным камнем",
+  "ttwaila.pullingMode": "Режим: притягивание",
+  "ttwaila.pushingMode": "Режим: отталкивание",
+  "ttwaila.pullingAdult": "Притягивает взрослых",
+  "ttwaila.pullingChild": "Притягивает детёнышей",
+  "ttwaila.pushingAdult": "Отталкивает взрослых",
+  "ttwaila.pushingChild": "Отталкивает детёнышей",
+  "ttwaila.pullingAdultType": "Притягивает взрослых: %s",
+  "ttwaila.pullingChildType": "Притягивает детёнышей: %s",
+  "ttwaila.pushingAdultType": "Отталкивает взрослых: %s",
+  "ttwaila.pushingChildType": "Отталкивает детёнышей: %s"
+}

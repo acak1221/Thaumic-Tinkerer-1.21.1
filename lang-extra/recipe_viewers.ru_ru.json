@@ -1,0 +1,15 @@
+{
+  "emi.category.thaumictinkerer.necromancy": "Пьедестал некроманта",
+  "emi.category.thaumictinkerer.infused_seed_drops": "Добыча наполненных семян",
+  "thaumictinkerer.recipe_viewers.necromancy.pedestals": "На 3 магических пьедесталах",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.pedestals": "Положите три аспекта души в любом порядке на магические пьедесталы не дальше 5 блоков от пьедестала некроманта, на его высоте.",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.cycle": "Каждые 300 тиков (15 секунд) пьедестал некроманта призывает моба над собой и расходует аспекты души.",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.infused": "Три наполненных аспекта души не расходуются, но действуют лишь раз в 1200 тиков (минуту); другой пьедестал некроманта сначала только перенимает их, ничего не призывая.",
+  "thaumictinkerer.recipe_viewers.necromancy.rule.redstone": "Сигнал красного камня останавливает пьедестал некроманта.",
+  "thaumictinkerer.recipe_viewers.seed_drops.header": "Зрелый урожай даёт одно из:",
+  "thaumictinkerer.recipe_viewers.seed_drops.rule.roll": "Каждый сбор зрелого урожая вытягивает одно из этого, с указанным шансом.",
+  "thaumictinkerer.recipe_viewers.seed_drops.rule.order": "Склонность Ordo, равная n, тянет ещё раз с шансом n из 75, снова и снова.",
+  "thaumictinkerer.recipe_viewers.seed_drops.rule.seeds": "Урожай также роняет свои семена; незрелый роняет только семена.",
+  "thaumictinkerer.recipe_viewers.chance": "Шанс выпадения: %s",
+  "thaumictinkerer.recipe_viewers.page": "Страница %s из %s"
+}

@@ -376,10 +376,11 @@ is required" for a non-player. The three words are literal English texts, as in 
 
 - **Gateway tooltip (Jade).** The original `TTinkererProvider` (Waila, lines 94-98) showed one line over the Celestial Gateway:
   `ttwaila.allowIncoming` when the block entity's `locked` flag is **true** and `ttwaila.disallowIncoming` when it is false. That is
-  the inverse of what the flag does (`teleportPlayer` refuses a gateway whose `locked` is true), so the original tooltip lies; the
-  lead decides whether the Jade port copies it or fixes it. The keys are in the generated base language files; nothing reads them
-  yet because the Waila/Jade providers are not a class of this group. They belong to the lead's Waila-to-Jade port
-  (`docs/API_GAPS.md` item 10). **Not done.**
+  the inverse of what the flag does (`teleportPlayer` refuses a gateway whose `locked` is true), so the original tooltip lies.
+  **Done in the Jade port, fixed** (the lead's decision): `WarpGateTooltip` (`compat/src/main/java/thaumic/tinkerer/compat/tooltip`)
+  shows `ttwaila.disallowIncoming` when `locked` is true and `ttwaila.allowIncoming` when it is false; the lock comes from the
+  server. The GameTest `TooltipsRuntimeChecks.warpGateTellsWhetherItAcceptsTeleports` checks the line against the gate's real
+  answer to a teleport. Details, and what was not verified (a client with Jade was not run), in `docs/deviations/Tooltips.md`.
 - **Classes of the KamiGear group that this group uses** (PORTING_RULES 1.3 says groups reach each other by registry path):
   `ItemSkyPearl` (the static `isAttuned`, `getPos`, `getDim`, `getX`, `getZ`, `addInfo` and the `instanceof` test in
   `TileWarpGate`, `ContainerWarpGate` and `GuiWarpGateDestinations`), `SlotSkyPearl` (`ContainerWarpGate`), `ModelSpinningCubes`
