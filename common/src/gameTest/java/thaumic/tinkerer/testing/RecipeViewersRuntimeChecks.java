@@ -227,6 +227,7 @@ public final class RecipeViewersRuntimeChecks {
         Set<ResourceLocation> ids = new HashSet<>();
         int drops = 0;
         double worstSum = 0, worstShownSum = 0;
+        List<String> floatMismatches = new ArrayList<>();
         StringBuilder sizes = new StringBuilder();
         for (SeedDropView view : views) {
             String tag = view.aspect().getTag();
@@ -250,6 +251,11 @@ public final class RecipeViewersRuntimeChecks {
                         tag + " drop " + i + ": " + drop.chance() + "% is " + entry.weight + "/" + total);
                 sum += drop.chance();
                 shown += Double.parseDouble(DropChances.format(drop.chance()));
+                // 1.7.10 computed ((float) weight / totalWeight) * 100f and formatted that float
+                float legacy = ((float) entry.weight / total) * 100f;
+                if (!DropChances.format(legacy).equals(DropChances.format(drop.chance()))) {
+                    floatMismatches.add(tag + " " + entry.stack + ": " + DropChances.format(legacy) + " vs " + DropChances.format(drop.chance()));
+                }
             }
             test.assertTrue(Math.abs(sum - 100) < 1e-9, tag + ": the chances add up to 100, " + sum);
             // every shown number is rounded to 0.005 at most
@@ -264,8 +270,10 @@ public final class RecipeViewersRuntimeChecks {
         test.assertTrue(dropCount(views, Aspect.PLANT) > 4, "herba lists the grasses and #minecraft:saplings: " + dropCount(views, Aspect.PLANT));
         test.assertTrue(views.stream().filter(v -> v.aspect() == Aspect.CROP).flatMap(v -> v.drops().stream())
                 .anyMatch(d -> d.stack().is(Items.WHEAT_SEEDS)), "messis lists the seeds of #c:seeds");
-        LOG.info("Recipe viewers: {} seed pages, {} drops; largest deviation of a page's chances from 100: {} (as shown: {});{}",
-                views.size(), drops, worstSum, worstShownSum, sizes);
+        test.assertTrue(floatMismatches.isEmpty(), "the shown chances are the numbers 1.7.10's float arithmetic showed: " + floatMismatches);
+        LOG.info("Recipe viewers: {} seed pages, {} drops; largest deviation of a page's chances from 100: {} (as shown: {}); "
+                + "{} shown chances differ from the 1.7.10 float arithmetic;{}", views.size(), drops, worstSum, worstShownSum,
+                floatMismatches.size(), sizes);
         test.succeed();
     }
 
