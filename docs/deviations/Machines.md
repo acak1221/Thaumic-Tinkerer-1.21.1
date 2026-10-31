@@ -193,7 +193,8 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
   collects the queue and, after that setup, registers one `IClientItemExtensions` per item whose custom renderer is a
   `BlockEntityWithoutLevelRenderer` handing `renderByItem` to `RenderMobDisplay.render`. The model needs nothing more there:
   NeoForge's `ItemRenderer` asks the item's extensions for that renderer for every `builtin/entity` model (read in the 21.1.259
-  patches). That backend compiles and **was never run on a NeoForge client** (`docs/NEOFORGE.md`). What was checked: the code compiles; a JUnit test
+  patches). That backend compiles, and a NeoForge dev client started with it without an error from the add-on, but **the Mob Display has not been
+  seen drawn on NeoForge** (no world was entered there, `docs/NEOFORGE.md`). What was checked: the code compiles; a JUnit test
   (`MachinesClientWiringTest`) runs the helper with an item of its own and reads the queue (`ItemRenderers.get`: queued for that
   item and no other, a second registration refused) and reads the source of the registrar (`register()` queues
   `TTRegistry.item("mob_display")` first, once; no other Fabric class uses `BuiltinItemRendererRegistry`); the Fabric backend
@@ -270,8 +271,10 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
     `ready()` (after every group's `register()`) made exactly this check fail ("three soul aspects and one shard ...: [three soul
     aspects]").
   - **Sides.** The event is server only, so the handler needs no side test; the soul aspects are made by the server.
-  **The group needs the NeoForge poster of `LIVING_DROPS`** (`docs/HOOKS.md` section 8: a handler of `LivingDropsEvent`): until the
-  NeoForge module posts it the blade does not reap there, and a mob it kills drops its loot.
+  **The group needs the poster of `LIVING_DROPS` on every loader**: on Fabric `LivingEntityDropsMixin` with the capture mixins, on NeoForge
+  `NeoForgeEventPosters.onLivingDrops` (a handler of `LivingDropsEvent`, `docs/HOOKS.md` section 8, written 2026-10-31). Without it the blade
+  would not reap, and a mob it kills would drop its loot. The group's 47 GameTests, the reaping checks and the order against the shards
+  among them, passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9; server side only).
 - **Model.** `blood_sword_0` / `blood_sword_active` with the override described in section 2.
 - **Enchanting (open, shared files).** The blade is not in `#minecraft:swords`, so the vanilla sword enchantments (Sharpness,
   Smite, Bane of Arthropods, Looting, Knockback, Fire Aspect, Sweeping Edge, Unbreaking, Mending) cannot be put on it, while
@@ -308,14 +311,16 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
 ## 11. Not done / not ported
 
 - ComputerCraft and OpenComputers peripherals (Aspectalyzer, Attractors), AE2 `IMovableTile`, Tinkers' Construct
-  tool repair, NEI integration, Waila providers (not this group's job in the new build).
-- The NeoForge poster of `LIVING_DROPS` (section 12; the NeoForge backend of `ItemRenderers` is written, not run), and the enchantability of the blade (shared tag files): the requests in `docs/api-requests/Machines.md`. (The scan
+  tool repair. (NEI integration and Waila providers were not this group's job; they are ported now as EMI/JEI pages and Jade
+  tooltips, `RecipeViewers.md`, `Tooltips.md`.)
+- The enchantability of the blade (shared tag files): the request in `docs/api-requests/Machines.md`. (The NeoForge poster of `LIVING_DROPS`, listed here
+  before, is written now, section 12; the NeoForge backend of `ItemRenderers` is written, not seen drawn.) (The scan
   check, the sparkles, the aspect tag drawing and the Thaumcraft entity keys use the API since the review.)
-- Recipe-viewer pages for the necromancy recipes.
+- Recipe-viewer pages for the necromancy recipes: done since 2026-10-31 as an EMI and a JEI category (`RecipeViewers.md`).
 
 ## 12. What the group needs from the loader modules
 
 | Hook | Used by | Fabric | NeoForge |
 |---|---|---|---|
-| `TinkererEvents.LIVING_DROPS` (`docs/HOOKS.md` section 8) | `ItemBloodSword.onLivingDrops` (the Cursed Spirit's Blade) | posted by `LivingEntityDropsMixin` and the capture mixins; run by the GameTests of the blade | **needs its poster** (`LivingDropsEvent` handler calling `TinkererEvents.postLivingDrops`); not written |
-| `ItemRenderers` (`docs/HOOKS.md` section 9) | `MachinesClient.register()` (the Mob Display) | `FabricItemRenderers`; run in the client harness (the mobs are drawn in a slot) | `NeoForgeItemRenderers` (an `IClientItemExtensions` per item in `RegisterClientExtensionsEvent`); compiled, not run on a client |
+| `TinkererEvents.LIVING_DROPS` (`docs/HOOKS.md` section 8) | `ItemBloodSword.onLivingDrops` (the Cursed Spirit's Blade) | posted by `LivingEntityDropsMixin` and the capture mixins; run by the GameTests of the blade | `NeoForgeEventPosters.onLivingDrops` (a `LivingDropsEvent` handler calling `TinkererEvents.postLivingDrops`; no capture mixins); run by the same GameTests on a NeoForge GameTest server |
+| `ItemRenderers` (`docs/HOOKS.md` section 9) | `MachinesClient.register()` (the Mob Display) | `FabricItemRenderers`; run in the client harness (the mobs are drawn in a slot) | `NeoForgeItemRenderers` (an `IClientItemExtensions` per item in `RegisterClientExtensionsEvent`); compiled, installed in a NeoForge dev client that started without an error from the add-on; not seen drawn (no world entered) |

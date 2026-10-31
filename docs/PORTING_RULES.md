@@ -12,7 +12,7 @@ cannot do, or a reproducible crash/exploit, and is written down in `docs/deviati
    any existing file under `common/src/main/java/thaumic/tinkerer/common/lib`). A file that is new in the port (no
    1.7.10 counterpart: tests, 1.21.1 glue) says so in its header instead of claiming Vazkii as author.
 2. **API only.** The add-on imports `java.*`, `net.minecraft.*`, `com.mojang.*`, `dev.architectury.*`,
-   `net.fabricmc.*` (Fabric tree only), `com.google.*`, `org.slf4j.*` and `thaumcraft.api.*`. Never
+   `net.fabricmc.*` (Fabric tree only), `net.neoforged.*` (NeoForge tree only), `com.google.*`, `org.slf4j.*` and `thaumcraft.api.*`. Never
    `thaumcraft.common.*` or `thaumcraft.client.*`. If the API lacks something the original used, do **not** reach
    into the mod: write the need into `docs/api-requests/<group>.md` (what, proposed signature in 1.21.1 types, which
    class of the mod backs it) and stub the feature behind a clearly named method so it compiles; the lead extends the
@@ -63,7 +63,8 @@ cannot do, or a reproducible crash/exploit, and is written down in `docs/deviati
   your report (the lead adds a loader hook) instead of using a Fabric-only API in common code. The loader hooks that exist are
   in `docs/HOOKS.md` (`thaumic.tinkerer.common.hooks.TinkererEvents`: damage amount, armour absorption (`LIVING_ARMOR_ABSORB`, what 1.7.10 asked
   `ISpecialArmor`), dig speed, jump, fall, item use tick, death drops; `FloatingTicks`; `thaumic.tinkerer.client.hooks.ItemRenderers`): use them instead of a
-  workaround. They are posted on Fabric only; the NeoForge posters are not written (HOOKS.md section 9).
+  workaround. They are posted on both loaders: on Fabric by mixins, on NeoForge by handlers of NeoForge's events and three mixins
+  (`neoforge/src/main`, HOOKS.md section 9).
 - Config: the static fields of `ConfigHandler` (same names as 1.7.10). Enchantments, dimensions, damage types are data
   (`data/thaumictinkerer/...`); 1.7.10 numeric ids are gone.
 - Do not hold a `Level`, `Player` or `BlockEntity` in a static field. Server logic runs on the server thread; check
@@ -92,6 +93,9 @@ Language keys: the converted base already carries the 1.7.10 texts. New 1.21.1-o
   as `public static void name(GameTestHelper test)`; the Fabric wrappers go in
   `fabric/src/gameTest/java/thaumic/tinkerer/fabric/testing/<Group>GameTests.java` (a stub per group exists: Core, SimpleBlocks, TileBlocks, Machines, BasicItems, Foci, Enchantments, KamiGear, KamiWorld):
   `@GameTest(template = FabricGameTest.EMPTY_STRUCTURE) public void name(GameTestHelper h) { Checks.name(h); }`.
+  The NeoForge wrappers (`neoforge/src/gameTest/java/thaumic/tinkerer/neoforge/testing/`) are generated from the Fabric ones:
+  after a change of a Fabric wrapper run `python3 tools/neoforge_gametests.py --write` (the JUnit test `NeoForgeGameTestCatalogueTest`
+  fails while the two differ; `docs/NEOFORGE.md`).
   Test real behaviour (state transitions, drops, costs, persistence through `saveWithFullMetadata`/`loadWithComponents`),
   never "the class exists".
 - Always assert `ThaumicTinkerer.failures().isEmpty()` in one check of your group.

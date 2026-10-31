@@ -4,7 +4,7 @@ Group KamiWorld: the Bedrock dimension, the Bedrock portal, the Celestial Gatewa
 and `/iskamiunlocked`. The numbers `A1`..`A13` are those of `docs/API_GAPS.md` section 2. Nothing in the group reaches into
 `thaumcraft.common.*` (the test `TinkererApiOnlyTest` passes over every source, and a text scan of the group's files found no
 internal name): the one real gap was a loader hook (sections 1 and 1b: **answered** by `TinkererEvents.LIVING_DAMAGE` and `LIVING_DROPS`,
-`docs/HOOKS.md`, which need a NeoForge poster); everything else is answered by the API or by Architectury.
+`docs/HOOKS.md`, posted on Fabric and, since 2026-10-31, on NeoForge); everything else is answered by the API or by Architectury.
 
 ## 0. What the group uses from the API (verified in the sources of 2026-10-28)
 
@@ -25,7 +25,7 @@ which needs no client particle API.
 ## 1. A hook that changes the amount of a hit (S1, new, P2; shared with K1 of `KamiGear.md`) - ANSWERED
 
 **Answered by** `TinkererEvents.LIVING_DAMAGE` (`docs/HOOKS.md` section 3; Fabric: `LivingEntityHurtMixin`; NeoForge: the
-`LivingIncomingDamageEvent` handler, **not written yet**). The group uses it: `SoulHeartHandler.onLivingDamage` is registered by
+`LivingIncomingDamageEvent` handler `NeoForgeEventPosters.onLivingIncomingDamage`, written 2026-10-31). The group uses it: `SoulHeartHandler.onLivingDamage` is registered by
 `SoulHeartHandler.register()` and applies the exact rule `SoulHeartHandler.modifyIncomingDamage` (the 1.7.10 handler: `(int) amount`
 off the pool for every hit of every player, the rest as the new amount, the client told). The Architectury `LIVING_HURT` fallback
 and its flag `exactDamageHook` are deleted. K1 of `KamiGear.md` (`ISpecialArmor`) is **not** served by this event (it sat after the
@@ -65,15 +65,16 @@ a listener may return another amount; hits that the game's frames certainly refu
 - *The game's `lastHurt` cannot be read from common code.* The pool tracks the last amount it handed back instead. A shield (the game
   sets `lastHurt` to 0 after the block) and a helmet against a falling block change it behind the pool's back, and the next stronger hit
   inside the game's frames is then dealt as another amount than the rest. **Request to the lead (optional):** a reader of the entity's
-  `lastHurt` in `TinkererEvents` (the posters already read it for `framesRefuse`; Fabric has the `@Shadow`, NeoForge needs the accessor
-  anyway); the group would read it instead of tracking it and the corner cases of section 5 would go.
-- *No poster on NeoForge yet*: the Soul Hearts do not act there until the `LIVING_DAMAGE` handler of `HOOKS.md` section 3 exists.
+  `lastHurt` in `TinkererEvents` (the posters already read it for `framesRefuse`; Fabric has the `@Shadow`, NeoForge the accessor
+  `LastHurtAccess` of the mixin `LivingEntityLastHurtMixin`); the group would read it instead of tracking it and the corner cases of section 5 would go.
+- *The NeoForge poster* (an earlier round listed it as missing): the `LIVING_DAMAGE` handler of `HOOKS.md` section 3 is written, and the
+  group's Soul Hearts checks passed on a NeoForge GameTest server (`HOOKS.md` section 9; server side only).
 
 ## 1b. The drops of a death (the dimensional shards) - ANSWERED
 
 The first version had no event for `LivingDropsEvent`, and added a loot pool to the two entity loot tables instead (`LootEvent.MODIFY_LOOT_TABLE`).
 `TinkererEvents.LIVING_DROPS` (`docs/HOOKS.md` section 8; Fabric: `LivingEntityDropsMixin` and the capture mixins; NeoForge: the
-`LivingDropsEvent` handler, **not written yet**) answers it, and `DimensionalShardDropHandler.onLivingDrops` is the 1.7.10 handler on it; the
+`LivingDropsEvent` handler `NeoForgeEventPosters.onLivingDrops`, written 2026-10-31) answers it, and `DimensionalShardDropHandler.onLivingDrops` is the 1.7.10 handler on it; the
 loot-table pools are deleted. What the event gives: the victim, the source (so `getEntity() instanceof Player`), the list of item entities
 before they are in the world, which a listener appends to. What it does not: nothing the group needed (the experience is not an item, which
 the shard is). The one thing a test needs is a certain roll, so the chance is drawn from `DimensionalShardDropHandler.dice` (default
@@ -86,9 +87,11 @@ Nothing else of this group needs a loader hook:
 - the HUD, the screens, the menu, the block entity renderer, the render type, the S2C payload, the commands, the chunk generator
   type and the player events (join, respawn, clone, quit, server stop) are Architectury; the damage of a hit (the Soul Hearts) and the
   drops of a death (the dimensional shards) are the add-on's own events of `docs/HOOKS.md` (`LIVING_DAMAGE`, `LIVING_DROPS`), which
-  need a poster on each loader: Fabric has them, **NeoForge does not yet** (the group's effects do not happen there until it does);
+  need a poster on each loader: Fabric has them, and NeoForge since 2026-10-31 (the group's 20 GameTests passed on a NeoForge GameTest
+  server, `docs/HOOKS.md` section 9);
 - the dimension and its biome and dimension type are data (`data/thaumictinkerer/...`), loaded by both loaders as part of the
-  mod's data pack. NeoForge parity was not looked at (`AGENTS.md`: Fabric first).
+  mod's data pack. On NeoForge the dimension checks of the group passed on the GameTest server (with its own copy of the flat preset that
+  adds `thaumictinkerer:bedrock`, `docs/NEOFORGE.md`); the dimension has not been entered in a NeoForge client.
 
 Two files in the shared `minecraft` namespace are new in this group (tags that keep the portal block from the Wither and the
 Ender Dragon, the 1.7.10 `canEntityDestroy == false`): `data/minecraft/tags/block/wither_immune.json` and `dragon_immune.json`,

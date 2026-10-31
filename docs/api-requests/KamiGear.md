@@ -41,7 +41,9 @@ The armour points of the materials (3/8/6/3, the original's `getArmorDisplay`) s
 *What the event does not give*: it is not `ISpecialArmor`. There is no per-piece `getProperties`/`damageArmor` call, no priority levels of its own (the one Thaumcraft pass of
 priority 1, the wards, runs before the event by the order of the two mixins), no `AbsorbMax`, and no hook on the wear of other armour. The mixed-set share is the 1.21.1 formula's, not
 the original's 4% a point. A hit that bypasses armour is not posted (the original's `getProperties` had no such look; whether Forge applied it to those hits could not be checked).
-On NeoForge the equivalent is `LivingIncomingDamageEvent#addReductionModifier(Reduction.ARMOR, ...)`; the poster is still to be written (`docs/deviations/KamiGear.md` section 13).
+On NeoForge the poster is written (2026-10-31): the same armour-step wrapper as on Fabric, a NeoForge `LivingEntityArmorMixin`, and not the reduction modifier
+`LivingIncomingDamageEvent#addReductionModifier(Reduction.ARMOR, ...)` that this request first named, which would lose Thaumcraft's ward share (`docs/HOOKS.md` section 14,
+`docs/deviations/KamiGear.md` section 13); the group's GameTests passed on a NeoForge GameTest server.
 
 ## 2. Stable keys for Thaumcraft's sounds (K2 = A7, P3)
 
@@ -67,7 +69,8 @@ steps per tick (a packet each) and the API's sparkles shrink away and fall, unli
 Architectury has no event for these two, so the add-on provides the code and the loader modules register them; common code names no
 loader class. Fabric: `thaumic.tinkerer.fabric.client.KamiGearFabricClient`, called by `ThaumicTinkererFabricClient` after the shared client
 setup, so no change of `fabric.mod.json` is needed (the class implements `ClientModInitializer` and registers only once, so listing it as a
-`client` entrypoint later is harmless). NeoForge: `thaumic.tinkerer.neoforge.client.KamiGearNeoForgeClient` (written and compiled, not run;
+`client` entrypoint later is harmless). NeoForge: `thaumic.tinkerer.neoforge.client.KamiGearNeoForgeClient` (written and compiled; a NeoForge dev
+client started with it without an error from the add-on, but no world was entered, so the wings and the ghost blocks were not seen there;
 `docs/NEOFORGE.md`). The two hooks:
 
 - **Player render layer.** `thaumic.tinkerer.client.render.kami.WingsLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>>, EntityModelSet)`

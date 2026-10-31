@@ -72,14 +72,16 @@ played. Nothing to request.
 
 ## 6. Requests to the loader modules (to the lead)
 
-* **Fluids through the Transvector Interface: done for Fabric (run), written for NeoForge (not run) (P1 for pipe and tank users).**
+* **Fluids through the Transvector Interface: done for Fabric and for NeoForge, both run on a GameTest server (P1 for pipe and tank users).**
   `thaumic.tinkerer.fabric.TileBlocksFabric` (new file of the Fabric module, called by `ThaumicTinkererFabric.onThaumcraftReady()`)
   registers `FluidStorage.SIDED` for `TileBlocks.interfaceType()` and returns the fluid storage of the block
   `TileTransvector.getTile()` is bound to, for the same side. On NeoForge `thaumic.tinkerer.neoforge.NeoForgeCapabilities` registers
   `Capabilities.FluidHandler.BLOCK` in `RegisterCapabilitiesEvent` with the same refusals, a handler that asks the bound block again on
   every call, and the invalidation of the Interface's capabilities when its binding changes (the new common hook
   `TileTransvector.setBindingListener`); it also registers `Capabilities.ItemHandler.BLOCK` over the Interface's `WorldlyContainer`,
-  which NeoForge, unlike Fabric's Transfer API, does not wrap by itself (`docs/deviations/TileBlocks.md` 2.5, `docs/NEOFORGE.md`).
+  which NeoForge, unlike Fabric's Transfer API, does not wrap by itself (`docs/deviations/TileBlocks.md` 2.5, `docs/NEOFORGE.md`). The NeoForge
+  side is checked by `interfaceForwardsFluids` and two NeoForge-only GameTests (the item handler, the cache invalidation), which passed on
+  2026-10-31; other mods' pipes and tanks were not tried.
 * **Energy through the Transvector Interface (P2).** The 1.7.10 Interface forwarded CoFH RF and IC2 EU. 1.21.1 needs, per
   loader, an energy capability (Fabric: Team Reborn Energy `EnergyStorage.SIDED`, which is not a dependency of the add-on
   and is outside the import list of PORTING_RULES; NeoForge: `Capabilities.EnergyStorage.BLOCK`) that asks

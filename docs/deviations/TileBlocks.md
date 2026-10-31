@@ -234,7 +234,7 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   is a `Container`; `getAspects`, `addToContainer`, ... when it is an `IAspectContainer`; the transport methods when it is
   an `IEssentiaTransport` (both are the API's interfaces, which the tubes and jars ask of any block entity). The face rules
   of a non-sided inventory (all slots, insert and extract allowed) are kept.
-* **Fluids are forwarded by loader glue (Fabric run, NeoForge written); energy is not forwarded (forced).** The original implemented `IFluidHandler`, CoFH RF
+* **Fluids are forwarded by loader glue (run on Fabric and on NeoForge GameTest servers); energy is not forwarded (forced).** The original implemented `IFluidHandler`, CoFH RF
   (`IEnergyHandler`, `IEnergyReceiver`, `IEnergyProvider`) and IC2 EU (`IEnergySink`, `IEnergySource`,
   `IEnergyConductor`) and forwarded them. 1.21.1 has no interface for these that common code can implement: fluid and
   energy storage are loader capabilities (Fabric Transfer API and Team Reborn Energy, NeoForge capabilities).
@@ -253,8 +253,12 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   capabilities at the Interface's position (`TileTransvector.setBindingListener`, new, called by `setTarget` and when `getTile()` ends a
   binding), so a cache that saw "none" asks again. It also registers `Capabilities.ItemHandler.BLOCK` (the Interface's own
   `WorldlyContainer` in NeoForge's `InvWrapper`, or `SidedInvWrapper` for a side), because NeoForge wraps only the vanilla containers,
-  where Fabric's Transfer API wraps any; a vanilla hopper reaches the Interface either way. Compiled; **not run** (no NeoForge GameTest of
-  it yet, `docs/NEOFORGE.md`). *Not done:* energy on either loader (Team Reborn Energy is not a dependency, and it is outside the import
+  where Fabric's Transfer API wraps any; a vanilla hopper reaches the Interface either way. Run on a NeoForge GameTest server (2026-10-31,
+  `docs/NEOFORGE.md`, "GameTests on NeoForge"): `interfaceForwardsFluids` through `Capabilities.FluidHandler.BLOCK` (its NeoForge body,
+  `TileBlocksNeoForgeChecks.interfaceForwardsFluids`, asks `level.getCapability` without a cache), and two NeoForge-only checks,
+  `interfaceItemHandlerReachesTheBoundChest` (the item handler, with and without a side, and a cache made while unbound) and
+  `interfaceFluidCapabilityCacheFollowsTheBinding` (the invalidation on binding, on a broken tank and on unbinding); all passed. Not tried:
+  other mods' pipes and tanks. *Not done:* energy on either loader (Team Reborn Energy is not a dependency, and it is outside the import
   list of PORTING_RULES; NeoForge's `Capabilities.EnergyStorage.BLOCK` is not registered either).
   On Fabric items go through the Interface's `WorldlyContainer`, which the Transfer API wraps itself; essentia goes through the
   Thaumcraft interfaces on both loaders.
@@ -373,8 +377,8 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 ## 3. Not done (kept visible)
 
-* Energy forwarding of the Interface (2.5), on both loaders: needs the loader modules. (Fluids are forwarded on both; the NeoForge
-  capabilities were not run.)
+* Energy forwarding of the Interface (2.5), on both loaders: needs the loader modules. (Fluids are forwarded on both, and on NeoForge
+  items through a capability as well; the GameTests of both loaders run them, 2.5.)
 * ComputerCraft/OpenComputers peripherals of the Tablet, the Interface and the Golem Connector (2.1, 2.4, 2.5): the method
   tables exist as plain Java, nothing registers them.
 * Golem data of the Golem Connector (2.4): API request A11.
@@ -386,6 +390,10 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   described in this document from those pictures.
 
 ## 4. Unverified
+
+NeoForge (2026-10-31, `docs/NEOFORGE.md`): the group's 35 GameTests passed on a NeoForge GameTest server
+(`-PtinkererGameTestFilter='tileblocksgametests.*'`: "All 35 required tests passed"), and the two NeoForge-only checks of the
+Interface (2.5) passed with them in the full run of 314. Nothing of the group has been seen in a NeoForge client yet.
 
 Round of 2026-10-30 (the first client run, 2.8): the add-on's JUnit suite (`tinkererTest`, 364 tests of all groups, 37 of
 them in the `tileblocks` package) and the 35 GameTests of the group (`-PtinkererGameTestFilter=tileblocksgametests.*`: the 34
@@ -403,7 +411,7 @@ fixed: the relay fix above (a stale partner hung the server thread), and six che
 `GameTestHelper.relativePos` of 1.21.1 is not the inverse of `absolutePos`; `GameTestHelper.destroyBlock` drops nothing;
 the relays of neighbouring checks found each other, see "keeps the last relay it finds"). **Still not run:** the Fabric glue
 `TileBlocksFabric` is only exercised through `interfaceForwardsFluids`; the NeoForge capabilities of the Interface
-(`NeoForgeCapabilities`, 2.5) never ran; the client ran only in the smoke harness (2.8: the
+(`NeoForgeCapabilities`, 2.5) had not run in that round (they have since, on a NeoForge GameTest server, above); the client ran only in the smoke harness (2.8: the
 camouflage renderer, `renderBatched`, drew in it on a software renderer); multiplayer, survival play and any run on a GPU
 have never happened. Every behaviour above that says "as the
 original" is by reading the original code, not by running both; the claims about 1.7.10 engine code (the break-speed rule,

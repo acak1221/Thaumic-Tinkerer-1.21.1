@@ -152,7 +152,9 @@ These are not parity differences (the port equals the original) but they came ou
 * Data recipes are matched to the original by output item (the port renamed them); two original recipes for the same output (coal/charcoal quartz, the
   two staircases) share one port recipe, which is a documented difference and is checked as described in section 3.
 * Client-side display, the book and the research table were not looked at; this is a registration check.
-* The Fabric build only. NeoForge was not run.
+* The runs of section 2 were on the Fabric build. On NeoForge the same 7 `ParityGameTests` passed later, as part of the full NeoForge GameTest
+  run of 2026-10-31 ("All 314 required tests passed", `docs/NEOFORGE.md`); the parity report that run wrote
+  (`neoforge/run-gametest/tinkerer-parity-report.txt`) is not quoted or compared here.
 
 ## 7. How strong the comparison is, and how to run it again
 

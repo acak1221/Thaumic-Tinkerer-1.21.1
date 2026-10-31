@@ -36,7 +36,7 @@ dial to the bottom finds the readout above the hotbar corner where nothing else 
 
 **Proposed.** `ThaumcraftApi.isWandDialAtBottom()` (client side, `false` on a server), backed by `thaumcraft.common.config.Config.dialBottom`.
 
-## 3. The server's "flying is not enabled" check (F3, answered by the loader layer; NeoForge mixin still to write)
+## 3. The server's "flying is not enabled" check (F3, answered by the loader layer on Fabric and NeoForge)
 
 **Need.** The Focus of Uprising launches the player along his sight on every cast, and 1.7.10 reset
 `playerNetServerHandler.floatingTickCount` on each cast so that the server never counted the player as floating. In 1.21.1 the counter is
@@ -49,11 +49,12 @@ reflection stop-gap of the first version (`FociHooks` with the two field names, 
 `setAboveGroundTicks`) is deleted, so there is one path. *What it gives:* `get`, `set`, `reset`, `isAvailable` on the connection of a
 `ServerPlayer` through an interface that the Fabric mixin `ServerGamePacketListenerFloatingMixin` adds to the connection class (no reflection,
 no dependence on the mod's own accessor); a player without a connection (a player just created, or a fake player without one) gives `-1`/`false` and
-`reset` does nothing. *What it does not give:* anything on NeoForge, where **the same mixin is still to be written**; until then the
-reset silently does nothing there (no warning: the old warning for an unreachable field went with the reflection). The heads-up about
+`reset` does nothing. On NeoForge the same interface is added by the mixin `ServerGamePacketListenerFloatingMixin` of
+`thaumic.tinkerer.neoforge.mixin` (written 2026-10-31, `docs/HOOKS.md` section 9; until then the reset did nothing there). *What it does not give:*
+a warning on a loader without the mixin: the reset then silently does nothing (the old warning for an unreachable field went with the reflection). The heads-up about
 `thaumcraft.common.lib.utils.Utils.resetFloatCounter` (it writes `tickCount`, not `aboveGroundTickCount`) still holds for anyone who
 thinks of using it. Verified by GameTests on the real connection of a mock player (`flightPutsTheKickCounterOfTheConnectionBackToZero`,
-`flightResetOfTheStartUpClearsTheRealCounterOfTheCaster`); the kick itself (80 ticks of a floating player on a server without
+`flightResetOfTheStartUpClearsTheRealCounterOfTheCaster`), on Fabric and on a NeoForge GameTest server; the kick itself (80 ticks of a floating player on a server without
 `allow-flight`) was not run.
 
 ## 4. What the wand's ray hit (F4, P3, documentation)

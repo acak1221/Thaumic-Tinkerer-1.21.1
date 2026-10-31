@@ -29,9 +29,11 @@ sourceSets {
  }
  // The client smoke harness of the add-on (docs/CLIENT_VERIFICATION.md): runs a real client under
  // Xvfb and looks at the models, textures, translations, screens and renderers. Compiled by check, loaded only by the
- // tinkererClientSmoke run; no jar task includes its output.
+ // tinkererClientSmoke run; no jar task includes its output. common/...: the loader-neutral harness (package
+ // thaumic.tinkerer.clientsmoke, shared with the NeoForge run of neoforge/build.gradle); fabric/...: its Fabric side (the
+ // entrypoint and FabricSmokePlatform) and the harness mod's fabric.mod.json.
  thaumicTinkererClientSmoke {
-  java.srcDirs = [new File(ttDir, 'fabric/src/clientSmoke/java')]
+  java.srcDirs = [new File(ttDir, 'common/src/clientSmoke/java'), new File(ttDir, 'fabric/src/clientSmoke/java')]
   resources.srcDirs = [new File(ttDir, 'fabric/src/clientSmoke/resources')]
   compileClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.compileClasspath
   runtimeClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.runtimeClasspath

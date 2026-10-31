@@ -5,9 +5,9 @@ around each gap and wrote the loss down (`docs/api-requests/*.md`, `docs/deviati
 the gaps: **real events**, posted from the vanilla code paths themselves, and two small registries. The five groups that needed
 them (Enchantments, KamiWorld, KamiGear, Machines, Foci) **are rewired** to them and their workarounds are deleted; section 10 says
 per group which workaround went, which event replaced it and which check pins it. The posters exist for **Fabric** (Mixin) and, since
-2026-10-31, for **NeoForge** (handlers of NeoForge's events and three mixins, section 9). On NeoForge the hook GameTests and the GameTests of the
-five groups that use the events have run and passed once on a NeoForge GameTest server (section 9, "What ran on NeoForge"); no client and no
-real NeoForge game has been started with them.
+2026-10-31, for **NeoForge** (handlers of NeoForge's events and three mixins of this layer, section 9; a fourth NeoForge mixin, the Infused Farmland's soil rule, is not an event of this layer, `docs/NEOFORGE.md`). On NeoForge the hook GameTests and the GameTests of the
+five groups that use the events have run and passed on a NeoForge GameTest server, and so has the whole suite since (section 9, "What ran on NeoForge"); a
+NeoForge development client was started and reached its first screen, but no world was entered with them on NeoForge yet (`docs/NEOFORGE.md`).
 
 How the words are used: *implemented* means the code exists; a *check* is a JUnit test or a GameTest in the source that was written for the thing it
 is named for, and a check counts as *run* only where a document or a results file says so (section 12, "What ran", says what that is for the hooks); *read*
@@ -411,11 +411,12 @@ Mojang names, and the build makes none). All the rules stay in `TinkererEvents`;
 * `./gradlew :neoforge:runGameTest -PtinkererGameTestFilter='enchantmentsgametests.*,kamiworldgametests.*,kamigeargametests.*,machinesgametests.*,focigametests.*'`:
   `All 173 required tests passed :)` (34, 20, 36, 47 and 36 tests, the counts of the Fabric results file).
 * One run of all 312 tests: 311 passed; the failure is `simpleblocksgametests.acropneedsfarmland` (wheat on the Infused Farmland), which is not an event of this layer
-  (`docs/NEOFORGE.md`, "Last run").
+  (`docs/NEOFORGE.md`, "Last run"). After the NeoForge mixin `InfusedFarmlandSoilMixin` the whole suite passed: `All 314 required tests passed :)` (the 312 generated from
+  the Fabric wrappers and two NeoForge-only checks of the Transvector Interface's capabilities).
 
 What sections 3 to 8 and 14 say about NeoForge's own code was read with `javap` in the 21.1.259 jars of the Gradle cache (Loom's Mojang-named merged Minecraft jar,
 NeoForge's universal and sources jars, `bus` 8.0.5), including a search of the whole patched jar for the callers of each hook. **Not verified on NeoForge**: the client
-side of every "both sides" event (no NeoForge client was started; the GameTests run the server only); a real dedicated server with real clients (the FloatingTicks
+side of every "both sides" event (no NeoForge client entered a world with them; the GameTests run the server only); a real dedicated server with real clients (the FloatingTicks
 checks used mock connections); the order against other mods' handlers of the same events (the priorities were chosen by reading Architectury's and Thaumcraft's
 NeoForge code; Thaumcraft and Architectury are the only other mods in the runs); no mutation check was made on NeoForge; the reduction-modifier variant of `LIVING_ARMOR_ABSORB`
 was not run (that it would lose Thaumcraft's ward share is read, section 14); the container left on the stack by a cancelled `LivingIncomingDamageEvent` was read,

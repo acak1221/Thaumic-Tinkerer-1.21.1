@@ -139,3 +139,75 @@ tasks.named('runGameTest') {
   logger.lifecycle("Thaumic Tinkerer NeoForge GameTests: ${cases} tests, report ${tinkererGameTestReport}")
  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// The client smoke on NeoForge (docs/CLIENT_VERIFICATION.md, docs/NEOFORGE.md "Client smoke on NeoForge"): the loader-neutral harness of
+// common/src/clientSmoke (package thaumic.tinkerer.clientsmoke, shared with the Fabric run) and its NeoForge side, neoforge/src/clientSmoke
+// (the client-only test mod thaumictinkerer_clientsmoke: its neoforge.mods.toml, the @Mod entry and NeoForgeSmokePlatform), in a real client
+// with a 1280x720 window. The counterpart of the source set thaumicTinkererClientSmoke and the run tinkererClientSmoke of fabric.gradle.
+// Compiled by check; loaded only by runClientSmoke; no jar task includes its output. Started by tools/client-smoke.sh under Xvfb:
+//
+//   tools/client-smoke.sh --neoforge                              the whole run; results in neoforge/build/tinkerer-client-smoke
+//   tools/client-smoke.sh --neoforge -- -PwithEmi -PwithJade      with EMI and Jade in the client (-PwithJei separately)
+sourceSets {
+ clientSmoke {
+  java.srcDirs = [rootProject.file('common/src/clientSmoke/java'), file('src/clientSmoke/java')]
+  resources.srcDirs = [file('src/clientSmoke/resources')]
+  compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+  runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+ }
+}
+
+def tinkererClientSmokeOut = layout.buildDirectory.dir('tinkerer-client-smoke').get().asFile
+def tinkererClientSmokeRunDir = file('run-clientsmoke')
+// The harness stops itself after this many seconds with a partial report and a non-zero exit (the watchdog); the script's -t.
+def tinkererClientSmokeTimeout = providers.gradleProperty('tinkererClientSmokeTimeout').getOrElse('1500')
+
+loom.runs {
+ clientSmoke {
+  client()
+  name 'Thaumic Tinkerer NeoForge client smoke'
+  vmArg '-Xmx3G'
+  source sourceSets.clientSmoke
+  // Two mods, like the two classpath groups of the Fabric run: the add-on (main) and the harness (clientSmoke).
+  mods {
+   thaumictinkerer { sourceSet sourceSets.main }
+   thaumictinkerer_clientsmoke { sourceSet sourceSets.clientSmoke }
+  }
+  vmArg '-Dthaumictinkerer.clientSmoke=true'
+  vmArg "-Dthaumictinkerer.clientSmoke.outDir=${tinkererClientSmokeOut.absolutePath}"
+  vmArg "-Dthaumictinkerer.clientSmoke.sourceRoot=${rootProject.projectDir.absolutePath}"
+  vmArg "-Dthaumictinkerer.clientSmoke.timeoutSeconds=${tinkererClientSmokeTimeout}"
+  programArgs '--width', '1280', '--height', '720'
+  // Git-ignored (run-*/); the results go to neoforge/build/tinkerer-client-smoke.
+  runDir 'run-clientsmoke'
+ }
+}
+tasks.named('check') { dependsOn tasks.named('clientSmokeClasses') }
+
+// The owned run directory of the client smoke, as on Fabric (prepareTinkererClientSmoke): fixed options (English, GUI scale 2, no sound,
+// small view distance), a clean output directory. The singleplayer world is made by the harness itself and is deleted first.
+tasks.register('prepareClientSmoke') {
+ group = 'verification'
+ description = 'Resets neoforge/run-clientsmoke/options.txt and the result directory of the Thaumic Tinkerer client smoke on NeoForge.'
+ doLast {
+  tinkererClientSmokeRunDir.mkdirs()
+  new File(tinkererClientSmokeRunDir, 'options.txt').setText('onboardAccessibility:false\nlang:en_us\nguiScale:2\npauseOnLostFocus:false\n' +
+    'renderDistance:8\nsimulationDistance:6\nmaxFps:60\nenableVsync:false\ntutorialStep:none\nnarrator:0\n' +
+    'soundCategory_master:0.0\nskipMultiplayerWarning:true\nhideBundleTutorial:true\n', 'UTF-8')
+  delete new File(tinkererClientSmokeRunDir, 'saves')
+  delete tinkererClientSmokeOut
+  tinkererClientSmokeOut.mkdirs()
+ }
+}
+tasks.named('runClientSmoke') {
+ dependsOn tasks.named('clientSmokeClasses'), tasks.named('prepareClientSmoke')
+ // The exit code says whether the harness itself completed; what the checks found is in report.json, not here.
+ doLast {
+  def report = new File(tinkererClientSmokeOut, 'report.json')
+  if (!report.isFile()) throw new GradleException("The NeoForge client smoke wrote no report: ${report}")
+  def status = new groovy.json.JsonSlurper().parse(report, 'UTF-8').harness?.status
+  if (status != 'COMPLETED') throw new GradleException("The NeoForge client smoke harness did not complete (status ${status}); see ${report}")
+  logger.lifecycle("Thaumic Tinkerer NeoForge client smoke: harness completed, results in ${report}")
+ }
+}

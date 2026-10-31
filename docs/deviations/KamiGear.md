@@ -19,7 +19,8 @@ test; a pouch menu is opened for the *selected* hotbar slot; the target of a pig
 `AbstractPiglin.getTarget` reads, not the field that `Mob.setTarget` writes). After the corrections all 30 pass. The client
 side was looked at once in a Fabric dev client under software rendering (`docs/CLIENT_VERIFICATION.md`, 2026-10-30): every Kami item and the Ichor Pouch screen (also in
 ru_ru) were drawn without an exception and the pictures were read. The Ghost blocks, the wings layer, the tool-mode tooltip (needs a key press) and anything that needs input
-were **not seen**.
+were **not seen**. On NeoForge (2026-10-31) the group's 36 GameTests passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9); nothing of the group has been
+seen in a NeoForge client yet.
 
 ## 1. Identity: registry paths, components, models
 
@@ -114,7 +115,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
     adding to it: with twenty points on the HUD a blow of 10 leaves 1.5, not 4.0 (nor any sum of the two), and a blow of 40 leaves 6.0, not 33.6. The
     **toughness of 5 per piece is gone** (it was the stand-in for the missing absorption; the tooltip listed an "Armor Toughness" the original never had, and it would have counted in
     the share of any other armour worn with the pieces); the pieces have none, as in 1.7.10. Without a poster of
-    the event (NeoForge until its module exists) the pieces are plain 3/8/6/3 armour: 60% of a blow of 10, 16% of a blow of 40.
+    the event (a loader without the armour-step wrapper; Fabric and NeoForge both have it, section 13) the pieces are plain 3/8/6/3 armour: 60% of a blow of 10, 16% of a blow of 40.
   - **Order with Thaumcraft's own ward pass.** Thaumcraft's `LivingEntityMagicWardMixin` wraps the same method for the priority-1 pieces of the
     original's `ISpecialArmor` (the void robes and the Fortress armour: their share comes off the damage first, then the ordinary armour sees what
     is left), which is the order of `ApplyArmor`. The add-on's `LivingEntityArmorMixin` has priority 900 so that it is applied first and is the inner
@@ -123,9 +124,11 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   - **Known corner.** The share of the *other* armour is worked out from the entity's armour value less the Ichorcloth points. When Thaumcraft's
     ward pieces are worn together with Ichorcloth, Thaumcraft leaves a ward piece out of the formula's armour value for a hit it took a share of, and
     the listener does not repeat that adjustment (it cannot: it is Thaumcraft's internal), so such a piece also counts in the formula's share.
-  - **Needs a poster on NeoForge.** The group needs the NeoForge poster of `LIVING_ARMOR_ABSORB` (section 13), of `LIVING_JUMP` and of `LIVING_FALL`; without
+  - **Needs a poster on every loader.** The group needs the poster of `LIVING_ARMOR_ABSORB` (section 13), of `LIVING_JUMP` and of `LIVING_FALL`; without
     them the Gem Boots would not jump higher, switched-off Gem Boots would no longer spare the wearer a fall (switched-on boots still zero the fall distance every
-    tick, below), and the Ichorcloth would be plain armour (nothing of it was run on NeoForge).
+    tick, below), and the Ichorcloth would be plain armour. On NeoForge they are written (2026-10-31: the same armour-step wrapper as on Fabric, a NeoForge
+    `LivingEntityArmorMixin`, and handlers of NeoForge's jump and fall events, `docs/HOOKS.md` section 9), and the group's 36 GameTests passed on a NeoForge
+    GameTest server (server side only; nothing of the group was looked at in a NeoForge client).
 - **Gregtech hazard protection and the Thaumic Boots mod** (`IHazardProtector`, `IBoots`, optional in the pinned fork) are not ported:
   neither mod exists for 1.21.1.
 - **The toggle key** "Toggle Awakened Armor" (category "Thaumic Tinkerer") is bound to **no key**, as `Keyboard.KEY_NONE` in the
@@ -385,8 +388,10 @@ are registered once, from `KamiArmorHandler.register()` (which `KamiGear.registe
 | `LIVING_FALL` | `ItemGemBoots.onLivingFall` | a player in the Gem Boots (switched on or off): fall distance 0 | both (changes the distance both compute; no world effect) |
 | `LIVING_ARMOR_ABSORB` | `IchorAbsorption.onLivingArmorAbsorb` | a wearer of Ichorcloth pieces: the armour takes `0.0425 x points` per piece plus the other armour's share | server (the armour step runs only there) |
 
-**The group needs the NeoForge poster of each of these three events** (`TinkererEvents.postLivingJump`, `postLivingFall`, `postLivingArmorAbsorb`); the first two are in
-`docs/HOOKS.md` sections 5 and 6, the third is new and described here.
+**The group needs a poster of each of these three events on every loader** (`TinkererEvents.postLivingJump`, `postLivingFall`, `postLivingArmorAbsorb`); the first two are in
+`docs/HOOKS.md` sections 5 and 6, the third is new and described here. Fabric has them (mixins), and so has NeoForge since 2026-10-31 (`NeoForgeEventPosters` for the jump
+and the fall, the armour-step mixin for `LIVING_ARMOR_ABSORB`, `docs/HOOKS.md` section 9); the group's 36 GameTests passed on a NeoForge GameTest server (server side only).
+On NeoForge `LIVING_JUMP` is also posted for slimes, magma cubes and ridden horses and camels; the Gem Boots' listener looks at boots those entities do not wear (`docs/HOOKS.md` section 5).
 
 ### `LIVING_ARMOR_ABSORB`
 
@@ -414,12 +419,19 @@ invulnerability frames; `absorbed` is vanilla's amount, or what the listeners be
 *Fabric*: `LivingEntityArmorMixin`, a `@WrapMethod` on `getDamageAfterArmorAbsorb` with `priority = 900` (inner to Thaumcraft's wrapper; see section 3), registered in
 `thaumictinkerer.mixins.json` under the usual `defaultRequire: 1`. It runs the original and hands its value to `TinkererEvents.damageAfterArmorAbsorb`, which computes `absorbed = damage - vanilla`, asks `postLivingArmorAbsorb` and
 returns `vanilla` itself when the poster returned `absorbed` unchanged (compared **bit for bit**, so that an infinite blow, whose `absorbed` is `Infinity - Infinity` = NaN and never `==`
-to itself, still gets the game's infinity and not a NaN health), `damage - result` otherwise. (Nothing in the add-on deals an infinite blow, but other mods can.) NeoForge needs no such step: its reduction modifier takes the amount directly.
+to itself, still gets the game's infinity and not a NaN health), `damage - result` otherwise. (Nothing in the add-on deals an infinite blow, but other mods can.)
 
-*NeoForge* (read from the 21.1.259 jars in the Gradle cache, not run): there is no event with this exact shape, but the equivalent exists. `LivingIncomingDamageEvent#addReductionModifier(DamageContainer.Reduction.ARMOR, IReductionFunction)`:
+*NeoForge* (written 2026-10-31; run on a NeoForge GameTest server): **the same wrapper as on Fabric**, a NeoForge `LivingEntityArmorMixin` (`@WrapMethod` on
+`getDamageAfterArmorAbsorb`, priority 900, `TinkererEvents.damageAfterArmorAbsorb`), not the reduction modifier that the next paragraph proposed: a reduction function runs
+after the whole wrapped method and would throw away the share that Thaumcraft's ward pass takes off inside it (`docs/HOOKS.md` section 14 has the reasoning and the run). What
+NeoForge does with the returned amount is its own arithmetic: the damage that goes on is `newDamage - (newDamage - result)`, so the bit-for-bit pass-through cannot show in the
+health there, and an infinite blow leaves a NaN health whatever the add-on returns, also without the add-on; the hook check expects that on NeoForge (`docs/HOOKS.md`
+section 14). The Ichorcloth checks of the group (section 14 here) passed on NeoForge with that arithmetic.
+
+*NeoForge, the first plan* (an earlier round, read from the 21.1.259 jars in the Gradle cache before the NeoForge module existed; **not what was written**, see above): there is no event with this exact shape, but the equivalent exists. `LivingIncomingDamageEvent#addReductionModifier(DamageContainer.Reduction.ARMOR, IReductionFunction)`:
 the patched `LivingEntity.actuallyHurt` and `Player.actuallyHurt` call `DamageContainer.setReduction(ARMOR, newDamage - getDamageAfterArmorAbsorb(source, newDamage))` after `hurtArmor` and the formula; `setReduction`
 runs the added functions in insertion order (each gets the container and the reduction so far and returns the new one) and then subtracts the result from the container's damage.
-The handler that the NeoForge module needs (it already handles `LivingIncomingDamageEvent` for `LIVING_DAMAGE`) adds on every event:
+The handler that the plan proposed for the NeoForge module (which handles `LivingIncomingDamageEvent` for `LIVING_DAMAGE`) would have added on every event:
 `event.addReductionModifier(DamageContainer.Reduction.ARMOR, (container, reduction) -> TinkererEvents.postLivingArmorAbsorb(event.getEntity(), container.getSource(), container.getNewDamage(), reduction))`.
 `container.getNewDamage()` is the damage that comes to the armour step at that moment. **Note**: the Javadoc of `DamageContainer#addModifier` says that a function does not run when vanilla's reduction is not triggered,
 but the patched `actuallyHurt` calls `setReduction(ARMOR, ...)` unconditionally (also for a source that bypasses armour, with a reduction of 0), so the functions do run for such sources; the poster's `bypasses_armor` test is therefore needed on NeoForge too, and it

@@ -20,7 +20,7 @@ block entity as `IAspectContainer`; (c) contents through `IEssentiaContainerItem
 **Proposed.** `BlocksTC.isJarItem(ItemStack)`, `BlocksTC.isVoidJar(ItemStack | BlockState)`,
 `@Nullable Aspect BlocksTC.getJarLabel(ItemStack)` (backed by `ItemJar.isJar/isVoid/getFilter`).
 
-## 2. Loader hook: built-in item renderer for `mob_display` (answered; NeoForge backend written, not run)
+## 2. Loader hook: built-in item renderer for `mob_display` (answered; NeoForge backend written, not seen drawn)
 
 **Need.** `mob_display` stands for a mob (the output of a necromancy recipe, shown in recipe viewers). 1.7.10 drew the
 mob in place of the item with an `IItemRenderer`. In 1.21.1 that is a built-in item renderer, which has no Architectury
@@ -36,12 +36,14 @@ backend; a duplicate for one item is an `IllegalStateException`. On Fabric the b
 `BuiltinItemRendererRegistry` (read in fabric-rendering-v1 5.2.1: it registers the same `(stack, display context, pose, buffers, light,
 overlay)` and throws on a second renderer for an item). On NeoForge the backend is `NeoForgeItemRenderers`
 (`RegisterClientExtensionsEvent` → `IClientItemExtensions#getCustomRenderer` → a `BlockEntityWithoutLevelRenderer` calling the renderer,
-for every queued item; `docs/NEOFORGE.md`): compiled, **never run on a NeoForge client**.
+for every queued item; `docs/NEOFORGE.md`): compiled, and a NeoForge dev client started with it without an error from the add-on,
+but **the Mob Display has not been seen drawn on NeoForge** (no world was entered there).
 Verified: compile; a JUnit test of the helper and the queue (`ItemRenderers.get`) and of the wiring in the source; the Fabric
-backend read. **Not verified: the drawing** (no client was run; a GameTest server cannot load the client classes).
+backend read. **Not verified on NeoForge: the drawing** (a GameTest server cannot load the client classes; on Fabric the client harness
+drew the Mob Display, `docs/HOOKS.md` section 9).
 `RenderMobDisplay.clearCache()` is still called by `MachinesClient` when the client leaves a world.
 
-## 3. Drops of a killed mob (loader event; answered, NeoForge poster still to write)
+## 3. Drops of a killed mob (loader event; answered on Fabric and NeoForge)
 
 **Need.** The Cursed Spirit's Blade replaces the drops of the mob it kills with soul aspects (`LivingDropsEvent` in
 1.7.10: `event.drops.clear()` and add).
@@ -56,8 +58,9 @@ they enter the world, so the soul aspects appear in the call of the death, as in
 neither editable nor refused: the old workaround refused any item that appeared at the victim's position), and the items of a mob
 of another mod that spawns them before it calls `super.dropAllDeathLoot` (`docs/HOOKS.md` section 13 item 2; in vanilla 1.21.1 only the
 fox is such a mob, it is handled and has no row in the table). **NeoForge needs
-its poster** (a handler of `LivingDropsEvent` calling `TinkererEvents.postLivingDrops`); not written, so the blade does not reap there
-until it is.
+its poster** (a handler of `LivingDropsEvent` calling `TinkererEvents.postLivingDrops`): written 2026-10-31 (`NeoForgeEventPosters.onLivingDrops`,
+NeoForge's own capture instead of the capture mixins, `docs/HOOKS.md` section 8), and the group's GameTests, the blade's reaping among them,
+passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9).
 
 ## 4. Not requested, for the record
 
@@ -82,7 +85,7 @@ These need a file that this group does not own; nothing was edited there.
      would then include the blade, while the original `EnchantmentVampirism.canApply` refused `ItemBloodSword`. Replace the
      `#minecraft:swords` entry by a dedicated tag `thaumictinkerer:swords_without_blood_sword` (the same sword list without
      the blade) or by an explicit list of the swords. The four strike enchantments list `blood_sword` explicitly already.
-2. **NeoForge backend of `ItemRenderers` for `mob_display`:** written (`NeoForgeItemRenderers`, section 2 above), not run.
+2. **NeoForge backend of `ItemRenderers` for `mob_display`:** written (`NeoForgeItemRenderers`, section 2 above), not seen drawn.
 3. **`assets/minecraft/atlases/blocks.json`** carries the five entity-style textures of this group's JSON models (`models/repairer`,
    `magnet_n`, `magnet_s`, `mob_magnet_n`, `mob_magnet_s`). Two groups must not both create that file in the same jar: if
    another group needs sources in the block atlas, merge them into this one file.
@@ -97,6 +100,6 @@ These need a file that this group does not own; nothing was edited there.
 | A7 keys of Thaumcraft's entities and the key sound | `ThaumcraftEntities.WISP / FIREBAT / BRAINY_ZOMBIE / GIANT_BRAINY_ZOMBIE` in `EnumMobAspect`, `ThaumcraftSoundIds.KEY` in `BlockMagnet` |
 | A8 client sparkles | `ThaumcraftClientFX.sparkle(level, x, y, z, type)` in `TileRepairer` (type 0) and `TileMagnet` (2 pulling, 4 pushing) |
 | A9 drawing an aspect tag with its amount | `AspectRenderer.draw(graphics, aspect, x, y, amount, 0)` in `GuiAspectAnalyzer` |
-| Section 2: built-in item renderer of the Mob Display | `ItemRenderers.register(...)` from `MachinesClient.register()`; Fabric backend `FabricItemRenderers`, NeoForge backend `NeoForgeItemRenderers` (not run) |
-| Section 3: drops of a killed mob | `TinkererEvents.LIVING_DROPS` in `ItemBloodSword.onLivingDrops` (Fabric poster done, NeoForge poster still open) |
+| Section 2: built-in item renderer of the Mob Display | `ItemRenderers.register(...)` from `MachinesClient.register()`; Fabric backend `FabricItemRenderers`, NeoForge backend `NeoForgeItemRenderers` (not seen drawn) |
+| Section 3: drops of a killed mob | `TinkererEvents.LIVING_DROPS` in `ItemBloodSword.onLivingDrops` (Fabric and NeoForge posters done; run by the GameTests of both) |
 

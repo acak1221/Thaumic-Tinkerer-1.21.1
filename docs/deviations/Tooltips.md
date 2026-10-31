@@ -32,7 +32,7 @@ Body lines only (head, tail and the stack were left alone), with these keys of t
   takes), `TinkererTooltips.ALL`. The block entities are read through their own accessors (`getItem(0)`, `leftClick`,
   `redstone`, `getTile()`, `locked`, `isPulling()`, `adult`, `ItemSoulMould.getPatternName`).
 - `compat/src/main/java/thaumic/tinkerer/compat/jade/`: `TinkererJadePlugin` (`IWailaPlugin`, the `jade` entrypoint of
-  `fabric.mod.json`, also `@WailaPlugin` for a NeoForge build) and `TooltipProvider` (one object per tooltip that is both the
+  `fabric.mod.json`, and `@WailaPlugin`, by which Jade finds it in the NeoForge build) and `TooltipProvider` (one object per tooltip that is both the
   `IServerDataProvider<BlockAccessor>` and the `IBlockComponentProvider`, the way Jade's own providers are written; it only
   hands the block entity to `BlockTooltip.appendServerData` and adds `BlockTooltip.linesFromServerData` to the tooltip).
 - Jade sends one tag per looked-at block for all providers; each tooltip writes its own tag under its uid
@@ -135,6 +135,8 @@ shown as it is. The interface's block and the mould's entity type are sent as id
   the Russian lines in Jade, a GPU.
 - Not run: a dedicated server with a separate client; Jade on the client only (expected: no extra line, section 4.4); several
   players.
-- Not run: NeoForge (there is no NeoForge build; `@WailaPlugin` is untested).
+- On NeoForge: the NeoForge build (`:neoforge`) compiles `compat/` against Jade for NeoForge (compile-only, as on Fabric), and the group's
+  GameTests passed on a NeoForge GameTest server (2026-10-31, in the full run of 314); they check the tooltip lines, not Jade. Not run:
+  Jade on NeoForge (`@WailaPlugin` is untested); nothing of the group has been seen in a NeoForge client yet.
 - The Russian, German, French, Korean and Chinese texts were not seen in a game; the Russian lines were rendered only by the JUnit
   test above.

@@ -80,7 +80,8 @@ bodies, the counterparts, the templates and the world preset. The CI runs both, 
 ### Last run
 
 The first runs of the add-on on NeoForge at all (2026-10-31, NeoForge 21.1.259, Thaumcraft `0.1.0-alpha.7` from mavenLocal), while the event
-posters and the capabilities were being written. Runs 1 to 4 started all 312 tests, run 5 the 314; each took about 17 s of test time and 45 s in all.
+posters, the capabilities and the soil mixin were being written. Runs 1 to 4 started all 312 tests, runs 5 and 6 the 314; each of runs 1 to 5 took
+about 17 s of test time and 45 s in all. **The last full run is run 6: all 314 passed.**
 
 | Run | Result |
 |---|---|
@@ -92,16 +93,19 @@ posters and the capabilities were being written. Runs 1 to 4 started all 312 tes
 | 5, with the two NeoForge-only scenarios | 314 ran, **313 passed, 1 failed**: `simpleblocksgametests.acropneedsfarmland` |
 | filtered: `-PtinkererGameTestFilter='kamiworldgametests.*,tileblocksgametests.interfaceForwardsFluids'`, then `'coregametests.*'` | `All 21 required tests passed :)`, `All 3 required tests passed :)` |
 | filtered: `-PtinkererGameTestFilter=kamiworldgametests.nosuchtest` | the server refuses to start (`Expected one GameTest for 'kamiworldgametests.nosuchtest', found 0`) and the task fails because there is no report |
+| 6 (the last full run), with the soil mixin of the Infused Farmland (`InfusedFarmlandSoilMixin`, below) | 314 ran: **`All 314 required tests passed :)`**, the hook test of the armour step and `acropneedsfarmland` among them |
 
-The one failure left, **`simpleblocksgametests.acropneedsfarmland`**, `wheat does not`: on NeoForge wheat can stand on the Infused Farmland.
+The failure of runs 2 to 5, **`simpleblocksgametests.acropneedsfarmland`**, `wheat does not`: on NeoForge wheat could stand on the Infused Farmland.
 NeoForge patches `CropBlock.mayPlaceOn` to `state.getBlock() instanceof FarmBlock` (vanilla, and so Fabric: `state.is(Blocks.FARMLAND)`), and
 `BlockInfusedFarmland` extends `FarmBlock`; NeoForge's `BushBlock.canSurvive` asks the soil's `canSustainPlant` first, which the farmland does not
 override, so the patched `mayPlaceOn` decides (read from the NeoForge 21.1.259 bytecode). The sapling, the next assertion of the check, would get
 in the same way (NeoForge's `BushBlock.mayPlaceOn` takes any `FarmBlock` too). Not the harness: the farmland needs a NeoForge `canSustainPlant`
 that refuses every plant but the Infused Grain (1.7.10: the soil refused every other plant itself), which shared code cannot declare because
-`TriState` is NeoForge's, so NeoForge glue (a mixin on `BlockInfusedFarmland` that overrides `IBlockExtension.canSustainPlant`).
+`TriState` is NeoForge's, so NeoForge glue: the mixin `neoforge/.../mixin/InfusedFarmlandSoilMixin.java` on `BlockInfusedFarmland` gives it a
+`canSustainPlant` (`IBlockExtension`) that answers `FALSE` for every plant but the Infused Grain and `DEFAULT` for the grain (which keeps its own
+`mayPlaceOn`). With it the check passed (run 6; `deviations/SimpleBlocks.md` section 2.6).
 
-The armour check of runs 2 and 3, for the record: NeoForge's patched `LivingEntity.actuallyHurt` records the armour step as the reduction
+The armour check of runs 2 and 3, for the record (passing since run 4): NeoForge's patched `LivingEntity.actuallyHurt` records the armour step as the reduction
 `newDamage - getDamageAfterArmorAbsorb(...)` of its `DamageContainer`, which subtracts it from `newDamage` again, so even with no listener (and
 without the add-on) the damage is `damage - (damage - vanilla)`, not vanilla's float (run 2: `no listener: the health is exactly what vanilla's own
 float leaves: 19.508457 (expected 19.50846)`), and an infinite blow leaves a NaN health (run 3: `an infinite blow does not leave a NaN health`).

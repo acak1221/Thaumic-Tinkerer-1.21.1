@@ -21,7 +21,9 @@ that round changed in the tests and why), 19 of 19 after the hooks round (the gr
 rendering (`docs/CLIENT_VERIFICATION.md`, 2026-10-30): the gateway block and item, its renderer close-up, the two gateway screens (the menu and the destinations
 screen, also in ru_ru) and the Soul Hearts row (a value written directly in survival mode) were drawn without an exception and the pictures were read. **Not seen:** clicks and
 keys on the gateway screens, a hit taken in the survival of a real client (the HUD row was fed a value, not damage), the Bedrock dimension itself (sky, light, the portal in use),
-a GPU, multiplayer.
+a GPU, multiplayer. **On NeoForge** (2026-10-31, the posters of `docs/HOOKS.md` section 9): the group's 20 GameTests passed on a NeoForge GameTest server
+(`kamiworldgametests.*` together with the four other event groups, 173 of 173, and in the full run of 314; its own preset with the dimension
+`thaumictinkerer:bedrock`, `docs/NEOFORGE.md`). Nothing of the group has been seen in a NeoForge client yet.
 
 ## 1. Identity: registry paths, data
 
@@ -214,9 +216,10 @@ bedrock and the click goes on (a held block is placed against it), as in `onBloc
   the rest again as a new hit with the difficulty scaling undone; players without hearts left alone; `exactDamageHook`,
   `beforeDifficultyScaling`) is **deleted**: there is no second path. The scaling by difficulty happens before the event in
   both games (`Player.hurt` / `EntityPlayer.attackEntityFrom`), so the amount the pool sees is the scaled one as in 1.7.10.
-  **The group needs the poster of `LIVING_DAMAGE` on every loader: on Fabric it is `LivingEntityHurtMixin`; on NeoForge (the
-  `LivingIncomingDamageEvent` handler of `HOOKS.md` section 3, with `TinkererEvents.framesRefuse`) it does not exist yet, and
-  until it does the Soul Hearts would not act there at all** (the Architectury fallback, written for both loaders, is gone; it was never run on NeoForge).
+  **The group needs the poster of `LIVING_DAMAGE` on every loader: on Fabric it is `LivingEntityHurtMixin`; on NeoForge it is
+  `NeoForgeEventPosters.onLivingIncomingDamage`** (the `LivingIncomingDamageEvent` handler of `HOOKS.md` section 3, with
+  `TinkererEvents.framesRefuse`, written 2026-10-31); without it the Soul Hearts would not act at all (the Architectury fallback, written for
+  both loaders, is gone; it was never run on NeoForge). The group's Soul Hearts checks passed on a NeoForge GameTest server with it (header).
 - **The invulnerability frames (what the event contract changes).** In 1.7.10 `EntityLivingBase.attackEntityFrom` set
   `hurtResistantTime = 20` **before** `damageEntity` posted the event. So a hit that the pool swallowed completely still began
   the frames: while `hurtResistantTime > 10` (nine more ticks) a hit that was not stronger than `lastDamage` (the *raw*
@@ -336,8 +339,10 @@ a data pack's replacement of the tables modified as well) are **deleted**, and w
 uses another loot table dropping nothing; the shard rolled by the loot system, where a data pack could change it). If the shard item
 is not registered (the Kami gear group failed to load) the listener logs one warning and drops nothing: an exception in a listener
 would be thrown into the mob's death. Differences that remain: none known in behaviour. **The group needs the poster of
-`LIVING_DROPS` on every loader**: on Fabric it is `LivingEntityDropsMixin` with the capture mixins; on NeoForge (`LivingDropsEvent`,
-`HOOKS.md` section 8) it does not exist yet, and until it does there would be no shard drops there (the loot-table pools, written for both loaders, are gone; they were never run on NeoForge).
+`LIVING_DROPS` on every loader**: on Fabric it is `LivingEntityDropsMixin` with the capture mixins; on NeoForge it is `NeoForgeEventPosters.onLivingDrops`
+(a handler of `LivingDropsEvent`, `HOOKS.md` section 8, written 2026-10-31; no capture mixins there), and without it there would be no shard drops (the loot-table
+pools, written for both loaders, are gone; they were never run on NeoForge). The shard checks passed on a NeoForge GameTest server with it (header); whether the NeoForge
+poster, like the Fabric one, posts whatever `doMobLoot` says is not recorded.
 
 The chance is rolled with `DimensionalShardDropHandler.dice` (`Math::random`), a public field that only the GameTests replace to make a roll
 certain; the real dice are checked on 12,800 real deaths (`shardDropsComeFromRealDeathsWithTheChanceOfTheOriginal`).
@@ -484,4 +489,5 @@ is required" for a non-player. The three words are literal English texts, as in 
   - *Not machine-checked:* that `bypasses_cooldown` sources start new frames (the tag is empty in vanilla; the branch is one condition),
     the client side of the damage event (what the player sees and hears: no client was run), what the client does with `PacketSoulHearts` (only that
     the server sends it, with the right number), the shield, helmet and sleeping cases of section 5 (read from the bytecode of 1.21.1, not run),
-    and NeoForge (no poster).
+    and NeoForge (no poster at the time of that round; the posters were written later and the group's 20 GameTests have since passed on a NeoForge
+    GameTest server, header).

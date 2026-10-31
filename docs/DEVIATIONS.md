@@ -115,28 +115,32 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
   the attractors. The method tables exist as plain Java; nothing registers them. The `peripherals` research category exists and is empty. The ComputerCraft turtle
   tool of the Fume Dissipator (`FumeTool`, `FumePeripheral`) is not ported either (`SimpleBlocks.md` section 3).
 * **Energy through the Transvector Interface** (RF and EU in 1.7.10) is written for **neither** loader; fluids through it are forwarded on both (Fabric
-  `TileBlocksFabric`, run in the GameTests; NeoForge `NeoForgeCapabilities`, compiled, not run; `TileBlocks.md` sections 2.5 and 3, `api-requests/TileBlocks.md` section 6, `NEOFORGE.md`).
+  `TileBlocksFabric`, run in the GameTests; NeoForge `NeoForgeCapabilities`, which also offers the Interface's items as a capability, run in the NeoForge GameTests; `TileBlocks.md` sections 2.5 and 3, `api-requests/TileBlocks.md` section 6, `NEOFORGE.md`).
 * **The Kami foci's `canApplyUpgrade` override** (the original answered true for every upgrade) is dropped; the base rule applies (`Foci.md` section 10, `KamiGear.md` section 9).
 * **Gregtech hazard protection and the Thaumic Boots mod** (`IHazardProtector`, `IBoots`) for the Ichorcloth armour: neither mod exists for 1.21.1 (`KamiGear.md` section 3).
 * **Golem API** (Golem Connector data): API request A11/A12 is deferred; the Golem Connector block exists without golem data.
 * **Configurable dimension id and disabling the Bedrock dimension** (a datapack dimension has a resource id and is switched off by the
   data pack; `KamiWorld.md` section 9).
 * **Multiblock diagram page** of the Levitational Locomotive research, EnderStorage page of the Ender Rift research.
-* **NeoForge**: the subproject `:neoforge` builds the add-on for NeoForge (`NEOFORGE.md`), and the posters of `docs/HOOKS.md` are written (section 9 there:
+* **NeoForge** (listed here while it was not ported; it is ported now, and what is still missing there is what is missing on Fabric too, below): the subproject
+  `:neoforge` builds the add-on for NeoForge (`neoforge/build.gradle`, the same shared code plus `neoforge/src/main`; release jar
+  `neoforge/build/libs/ThaumicTinkerer-neoforge-<version>.jar`, `NEOFORGE.md`), and the posters of `docs/HOOKS.md` are written (section 9 there:
   handlers of `LivingIncomingDamageEvent`, `PlayerEvent.BreakSpeed`, `LivingJumpEvent`, `LivingFallEvent`, `LivingEntityUseItemEvent.Tick` and `LivingDropsEvent`, and
-  mixins for the armour step, `lastHurt` and the kick counter). On a NeoForge GameTest server (2026-10-31) the 14 hook GameTests and the 173 GameTests of Enchantments,
-  KamiWorld, KamiGear, Machines and Foci passed, so the Soul Hearts, the shard drops, the enchantment effects, the Gem Boots, the Ichorcloth, the blade's reaping and the
-  Uprising's reset ran there on the server; their client side was not run. Where NeoForge differs from Fabric (`HOOKS.md` section 9): `LIVING_JUMP` is also posted for
+  mixins for the armour step, `lastHurt` and the kick counter); a fourth NeoForge mixin gives the Infused Farmland its soil rule (`SimpleBlocks.md` section 2.6). On a
+  NeoForge GameTest server (2026-10-31) all 314 GameTests passed (the 312 of the Fabric run plus 2 NeoForge-only checks of the Interface's capabilities), so the Soul
+  Hearts, the shard drops, the enchantment effects, the Gem Boots, the Ichorcloth, the blade's reaping and the Uprising's reset ran there on the server; their client
+  side was not run, and nothing has been seen in a world on a NeoForge client yet. Where NeoForge differs from Fabric (`HOOKS.md` section 9): `LIVING_JUMP` is also posted for
   slimes, magma cubes and ridden horses and camels; NeoForge's damage container does its own float round trip after the armour step and leaves a NaN health after an
   infinite blow, whatever the add-on returns. **Loader glue that is not an event** (`HOOKS.md` section 9, "Other loader glue"): the NeoForge side of the `ItemRenderers`
   backend (the Mob Display), of the Kami gear's wings layer and ghost blocks and of the Transvector Interface's fluids (and items) is written (`NEOFORGE.md`, "Client glue
   and block capabilities on NeoForge": compiled, the TileBlocks GameTests pass on both loaders, a NeoForge client loaded without errors, nothing seen drawn in a world);
-  energy forwarding, the flammability hook of the elemental fires and the special effects of the Bedrock dimension are written for neither loader. Open on NeoForge:
-  `simpleblocksgametests.acropneedsfarmland` (wheat stands on the Infused Farmland there, `NEOFORGE.md`).
+  energy forwarding, the flammability hook of the elemental fires and the special effects of the Bedrock dimension are written for neither loader. The one failure
+  of the first full NeoForge runs, `simpleblocksgametests.acropneedsfarmland` (wheat stood on the Infused Farmland, because NeoForge lets crops stand on any
+  `FarmBlock`), is fixed by that soil mixin (`NEOFORGE.md`, "Last run").
 
 ## 5. Verification status and what is not verified
 
-What was run, with the numbers of the last run (2026-10-30, Fabric only; each line is what a log or a result file recorded, nothing else is claimed).
+What was run, with the numbers of the last run (2026-10-30 and 2026-10-31; on Fabric except the NeoForge row; each line is what a log or a result file recorded, nothing else is claimed).
 The runs up to 2026-10-30 were made while the add-on was still part of the Thaumcraft 4 Reload repository (its tasks then had the prefix
 `:fabric:`, its build output was below `fabric/build/`; `NOTICE.md`, "History"); the rows of the add-on's own suites give the runs of 2026-10-31 in
 this repository. The two rows marked **Thaumcraft repository**
@@ -144,14 +148,14 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 
 | What | Result | Where it is recorded |
 |---|---|---|
-| Add-on JUnit (`tinkererTest`) | 406 tests, 0 failures, 0 skipped (2026-10-31; 364 before the integrations). Since 2026-10-30 16:28 the documents, language fragments and source trees the tests read are inputs of the task (before, Gradle could restore a result from its cache after a document was edited) | `build/test-results/tinkererTest/*.xml` |
+| Add-on JUnit (`tinkererTest`) | 411 tests, 0 failures, 0 skipped (2026-10-31; 364 before the integrations). Since 2026-10-30 16:28 the documents, language fragments and source trees the tests read are inputs of the task (before, Gradle could restore a result from its cache after a document was edited) | `build/test-results/tinkererTest/*.xml` |
 | Add-on GameTests on a Fabric dedicated server (`runTinkererGameTest`) | "All 312 required tests passed" (2026-10-31; 299 before the 7 Jade-tooltip and 6 recipe-viewer checks) | Gradle log of the run, `build/tinkerer-gametest-results.xml` |
 | Parity with the 1.7.10 source (research, recipes, object tags) | 74 research entries and 127 recipes compared field by field; 11 documented differences, 0 undocumented | `PARITY_REPORT.md`, `ParityGameTests` |
 | **Thaumcraft repository:** Mod regression after the add-on's changes (`:common:test :fabric:runGameTest`) | JUnit 2761 tests, 5 skipped, 0 failures (the results of 2026-10-29, Gradle found the inputs unchanged); GameTests: "All 515 required tests passed" (2026-10-30 16:26, new world). Two earlier runs the same afternoon on the world that a previous run had left behind failed `mazeAuditGeneratesRealRegionAndReloadsMap` (the test opens, and so removes, the boss lock it generated; the next run finds no lock). Not caused by the add-on; `fabric/build.gradle` now deletes `run-gametest/world` before every run, and `fabric.gradle` does the same for the add-on's run | Gradle logs, `fabric/build/gametest-results.xml` of that repository |
 | **Thaumcraft repository:** Python porting scripts (`scripts/porting`, all tools of that repository, the add-on's two among them) | 296 tests OK. The add-on's two tools with their tests are in this repository now: `tools/porting.sh test` ran 153 tests OK (2026-10-31, with both checkouts present) | run output |
 | Client, Fabric dev client under Xvfb + Mesa llvmpipe (`tools/client-smoke.sh`) | 726 checks PASS, 0 FAIL, 0 harness errors, 1 NOT_RUN (tool-mode tooltip needs a key press), 80 pictures (read by the engineers in the run before the last, which had 721 PASS); the first run had 3 FAIL and a number of defects seen only in pictures (all fixed, see `CLIENT_VERIFICATION.md`). The last run added a check that the six infused seeds have six different models; with the old model file it fails (5 `override_collapsed`), with the fixed one it passes | `CLIENT_VERIFICATION.md`, `build/tinkerer-client-smoke/report.json` (not committed) |
 | Client with the optional mods (2026-10-31, same harness, phase `integrations`) | with EMI and Jade (`-- -PwithEmi -PwithJade`): 737 PASS, 0 FAIL, 1 NOT_RUN, 88 pictures; with JEI (`-- -PwithJei`): 730 PASS, 0 FAIL, 1 NOT_RUN, 82 pictures; without them: 725 PASS, 0 FAIL, 1 NOT_RUN, 80 pictures. In the viewers: 30 necromancy and 45 seed-drop pages, and all 82 arcane/crucible/infusion recipes of the add-on in Thaumcraft's own categories; Jade's tooltip text read for six blocks (`Tooltips.md`, `RecipeViewers.md`) | `CLIENT_VERIFICATION.md` |
-| NeoForge | `:neoforge:compileJava` passes. On a NeoForge GameTest server (2026-10-31): the 14 hook GameTests "All 14 required tests passed", Enchantments, KamiWorld, KamiGear, Machines and Foci "All 173 required tests passed", the TileBlocks GameTests passed (`NEOFORGE.md`); a run of all 312 had 311 passed and `simpleblocksgametests.acropneedsfarmland` failed. A NeoForge client started without an error from the add-on; nothing was seen drawn in a world | `NEOFORGE.md`, `HOOKS.md` sections 9, 10, 14 |
+| NeoForge (`:neoforge`) | Written: the build, the posters, four mixins, the client glue and the Interface's capabilities. On a NeoForge GameTest server (`./gradlew :neoforge:runGameTest`, 2026-10-31): "All 314 required tests passed" (the 312 generated from the Fabric wrappers plus 2 NeoForge-only capability checks; the earlier runs and their failures are in `NEOFORGE.md`, "Last run"). The jar `neoforge/build/libs/ThaumicTinkerer-neoforge-0.1.0-alpha.7.jar` is built by `:neoforge:assemble`. Client: a NeoForge dev client reached its first screen without an error from the add-on; **nothing has been seen in a world on NeoForge yet** | `NEOFORGE.md`, `HOOKS.md` sections 9, 10, 14 |
 
 **Not verified** (a `PASS` of the client harness says a lookup answered and nothing threw; it is not a person looking at the game on a GPU):
 
@@ -167,8 +171,9 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
   changing them is a decision for the owner.
 * The network behaviour of the packets between a real client and a real server.
 * The client's copy of the events the groups listen to (`Enchantments.md` section 12): a server cannot show it, and the client harness does not exercise them.
-* On **NeoForge**: the client side of every event and everything drawn (no world was entered on a NeoForge client), a dedicated server with real clients, other mods
-  (`NEOFORGE.md`, `HOOKS.md` section 9).
+* On **NeoForge**: the client side of every event and everything drawn (no world was entered on a NeoForge client; a dev client reached its first screen only), a
+  dedicated server with real clients, other mods, EMI, JEI and Jade among them, and other mods' pipes and tanks at the Interface (`NEOFORGE.md`, `HOOKS.md` section 9).
+* The **CI workflow** (`.github/workflows/ci.yml`) builds and tests both loaders; it has not run on GitHub yet.
 
 The per-group documents say what each group's own checks were; they record runs in different amounts (KamiWorld, Foci and the first round of KamiGear with numbers; Machines and BasicItems
 record no result of their own server-side tests; Enchantments a statement without a result): `README.md` and `HOOKS.md` section 12 say what is recorded.

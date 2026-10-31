@@ -28,7 +28,8 @@ that existed then except the three that assert "no registration failures" (a Kam
 checks added in the review round were not in it. After the Uprising was moved to the loader hook (section 2) the Foci GameTests were
 run again through Gradle (`runTinkererGameTest`, filter `focigametests.*` together with the Machines group): 36 checks, all passed
 (the 35 above, with the kick-counter check rewritten to read the counter through `FloatingTicks`, and one new check, section 2). The
-interplay with the other groups (the Magnet that pulls with the Telekinesis focus) was not run. **Client:** the client smoke
+same 36 passed on a NeoForge GameTest server (2026-10-31, `docs/HOOKS.md` section 9, "What ran on NeoForge"; server side only, the
+Foci were not looked at in a NeoForge client). The interplay with the other groups (the Magnet that pulls with the Telekinesis focus) was not run. **Client:** the client smoke
 harness (`docs/CLIENT_VERIFICATION.md`, a Minecraft 1.21.1 client under Xvfb with Mesa software rendering, run of 2026-10-30) loaded the
 seven item models and textures without a missing model, texture or translation, and the pictures `items-foci-01.png` (and the `ru_ru`
 one) and `hud-dislocation.png` (the Dislocation readout beside the dial, with a Dislocation focus on a staff in the hand) were looked at by
@@ -67,15 +68,17 @@ is **not** overridden to `true` as `ItemModFocus` did (see `docs/API_GAPS.md` 3b
   (`ServerGamePacketListenerImpl.aboveGroundTickCount`, an int; the server disconnects a floating player above 80) is private.
   The group's first version wrote it by reflection (two field names, a warning when neither was found); that stop-gap is
   **deleted**. The loader layer now owns the access: `thaumic.tinkerer.common.hooks.FloatingTicks` (`docs/HOOKS.md` section 9) reads
-  and writes the field through an accessor mixin of the Fabric module, no reflection. `Foci.register()` installs
+  and writes the field through an accessor mixin of the loader module (Fabric and NeoForge, below), no reflection. `Foci.register()` installs
   `FociHooks.setFloatingTickReset(FloatingTicks.RESET)` once, and every cast of the focus on the server calls
   `FociHooks.resetFloatingTicks(player)`, which runs whatever is installed; nothing is installed by default, so the start-up
   call is what makes the cast reset the counter (a GameTest pins it). The rule is the 1.7.10 one: only a cast that does something
   (config on, vis paid) resets, only the caster's counter, and a player without a connection (a fake player) has nothing to reset.
-  What the hook does not give: a platform whose module has no mixin (NeoForge today) gives `isAvailable == false`, and then the
-  reset silently does nothing. **The group needs the NeoForge poster of `FloatingTicks`** (the same interface on the same class by a
-  mixin, `docs/HOOKS.md` section 9): until the NeoForge module has it a player who keeps launching himself with the Uprising on a
-  server without `allow-flight` can be kicked after four seconds of climbing. On a single-player world and on a server that allows
+  What the hook does not give: a platform whose module has no mixin gives `isAvailable == false`, and then the reset silently
+  does nothing. **The group needs the loader's mixin of `FloatingTicks` on every loader**: on Fabric and on NeoForge it is written
+  (on NeoForge `ServerGamePacketListenerFloatingMixin` of `thaumic.tinkerer.neoforge.mixin`, the same interface on the same class,
+  `docs/HOOKS.md` section 9; the group's GameTests passed on a NeoForge GameTest server with mock players' connections, no real
+  client connection was tried). Without it a player who keeps launching himself with the Uprising on a server without
+  `allow-flight` could be kicked after four seconds of climbing. On a single-player world and on a server that allows
   flight there is no difference. Checked by GameTests on the real connection of a mock player: a cast through the wand's own
   `use` puts 79 back to 0 for the caster and leaves another player's counter, and a cast of another focus, alone; no vis, the
   config switch off, and no installed reset leave the counter as it was.

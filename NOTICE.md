@@ -2,7 +2,7 @@
 
 This repository is a port of **Thaumic Tinkerer** (Minecraft 1.7.10, an add-on for Thaumcraft 4) to Minecraft 1.21.1,
 written against the public `thaumcraft.api` of Thaumcraft 4 Reload. It is a separate mod (`thaumictinkerer`) with its
-own jar; it is not part of the Thaumcraft jar.
+own jar for each loader (Fabric and NeoForge); it is not part of the Thaumcraft jar.
 
 ## Licence
 
@@ -15,19 +15,22 @@ ported to 1.21.1, with a pointer to this file.
 
 Which files are under which licence:
 
-- **CC BY-NC-SA 3.0** (`LICENSE`): the add-on itself, that is `common/`, `fabric/` (Java sources, data, assets, language files, the
-  `fabric.mod.json` files), `lang-extra/`, `docs/`, `README.md`, `README.ru.md` and this `NOTICE.md`. It must not be sold or
+- **CC BY-NC-SA 3.0** (`LICENSE`): the add-on itself, that is `common/`, `compat/` (the optional EMI, JEI and Jade integrations), `fabric/`
+  (Java sources, data, assets, language files, the `fabric.mod.json` files), the sources and resources of `neoforge/` (`neoforge/src/`: the Java
+  sources, the mixin configs, the `neoforge.mods.toml` files and the generated GameTest structures and world preset), `lang-extra/`, `docs/`,
+  `README.md`, `README.ru.md` and this `NOTICE.md`. It must not be sold or
   used commercially, and further adaptations must carry the same licence.
 - **MIT** (`LICENSE-MIT`, the licence of Thaumcraft 4 Reload, from which these files come): the files that build and check the add-on and
-  contain no Thaumic Tinkerer code: `settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `.gitignore`, `.gitattributes`, `.github/`
-  (the CI workflow), `tools/` and `scripts/porting/` (the Python tools that produced the resources and the parity
+  contain no Thaumic Tinkerer code: `settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `neoforge/build.gradle`,
+  `neoforge/gradle.properties`, `.gitignore`, `.gitattributes`, `.github/` (the CI workflow), `tools/` (with `tools/neoforge_gametests.py`, which
+  generates the NeoForge GameTest wrappers from the Fabric ones and writes no Thaumic Tinkerer code of its own) and `scripts/porting/` (the Python tools that produced the resources and the parity
   oracle from the 1.7.10 source; they carry no Thaumic Tinkerer text). The scripts, the Gradle files and the workflow say so in an
   `SPDX-License-Identifier: MIT` line, the Python tools too (`scripts/porting/README.md` repeats it).
 - **Apache-2.0** (Gradle's own licence, not relicensed): `gradlew`, `gradlew.bat` and `gradle/wrapper/` (the wrapper jar and its properties), copied
   unchanged from the Thaumcraft repository; `gradlew` and `gradlew.bat` carry the Apache-2.0 notice of Gradle.
 - `LICENSE-MIT` is a byte copy of the licence file of the Thaumcraft 4 Reload repository, so its second line still names the original Thaumcraft 4.2.3.5
   (c) Azanor, as it does there. The MIT files listed above contain no Thaumcraft code; the line is inherited, it is not a statement about them.
-- The add-on jar is a separate download; the Thaumcraft jar contains none of it, and this repository contains no Thaumcraft 4 jar, no
+- The add-on jars (Fabric and NeoForge) are separate downloads; the Thaumcraft jars contain none of them, and this repository contains no Thaumcraft 4 jar, no
   Thaumcraft assets and no Thaumcraft 4 source.
 - Publishing the port does not establish rights in Thaumcraft 4 (Azanor), which Thaumic Tinkerer is a derivative work
   of, nor in Minecraft.

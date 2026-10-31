@@ -376,7 +376,8 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
 
 ## 12. What is not verified
 
-- The GameTests of the group and the JUnit tests of `EnchantmentFormulasTest` (and the others) ran on Fabric; they show the
+- The GameTests of the group and the JUnit tests of `EnchantmentFormulasTest` (and the others) ran on Fabric, and the group's 34
+  GameTests also on a NeoForge GameTest server (2026-10-31, `docs/HOOKS.md` section 9); they show the
   **server side** of every event. **Not run, because a server cannot:** the client's copy of the events this group listens to,
   which `docs/HOOKS.md` section 12 lists for all of them: the client's prediction of the dig with Shatter, Tunnel, Disintegrate
   and Flaming Touch, the client's own jump with Ascent Boost, the motion and the cloud of Slow Fall on the local player (the
@@ -417,8 +418,13 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
 
 ## 13. What the group needs from the loaders
 
-Fabric posts all five events (the mixins of `docs/HOOKS.md`). **NeoForge has no poster yet**, so on NeoForge the group needs the
-poster of each event it uses, as `docs/HOOKS.md` sections 3 to 7 describe them, or its enchantments do nothing there:
+Fabric posts all five events (the mixins of `docs/HOOKS.md`); NeoForge posts them too (handlers of NeoForge's events in
+`NeoForgeEventPosters`, written 2026-10-31, `docs/HOOKS.md` section 9). On either loader the group needs the poster of each event it
+uses, as `docs/HOOKS.md` sections 3 to 7 describe them, or its enchantments do nothing there. The group's 34 GameTests passed on a
+NeoForge GameTest server (server side only; the client's copy of the events was not run on either loader, section 12). Where NeoForge's
+event reaches more than Fabric's: `LIVING_JUMP` is also posted for the hop of slimes and magma cubes and the ridden jump of horses and
+camels (`docs/HOOKS.md` section 5); Ascent Boost looks at leggings, which those entities do not wear, so nothing of it changes (read,
+not run with such an entity).
 
 | Event | What the group does with it | Without the poster |
 |---|---|---|

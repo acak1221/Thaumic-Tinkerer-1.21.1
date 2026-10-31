@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Runs the Thaumic Tinkerer client smoke: a real Minecraft 1.21.1 client with Thaumcraft and the add-on, under Xvfb with Mesa
-# software rendering, driven by the harness in fabric/src/clientSmoke of the add-on (docs/CLIENT_VERIFICATION.md).
+# software rendering, driven by the harness of the add-on (common/src/clientSmoke, with its Fabric side in fabric/src/clientSmoke and
+# its NeoForge side in neoforge/src/clientSmoke; docs/CLIENT_VERIFICATION.md).
 #
-#   tools/client-smoke.sh [-l GRADLE_LOG] [-t TIMEOUT_SECONDS] [-- EXTRA_GRADLE_ARGS...]
+#   tools/client-smoke.sh [--fabric|--neoforge] [-l GRADLE_LOG] [-t TIMEOUT_SECONDS] [-- EXTRA_GRADLE_ARGS...]
 #
-# Results go to build/tinkerer-client-smoke/: report.json, screenshots/*.png,
+# --fabric (the default) runs runTinkererClientSmoke of the root project; results go to build/tinkerer-client-smoke/, the run directory
+# is run-tinkerer-clientsmoke/. --neoforge runs :neoforge:runClientSmoke; results go to neoforge/build/tinkerer-client-smoke/, the run
+# directory is neoforge/run-clientsmoke/. The results are report.json, screenshots/*.png,
 # client-log-excerpt.txt, plus gradle.log and client-latest.log (copies). The exit code is 0 only when the harness itself completed;
 # what the checks found is in report.json.
 #
@@ -16,9 +19,30 @@
 # Do not wrap the script in flock when the wrapper takes a lock itself; it holds it for the whole run (some minutes).
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="$ROOT/build/tinkerer-client-smoke"
-RUN="$ROOT/run-tinkerer-clientsmoke"
-LOG="${TMPDIR:-/tmp}/tt-client-smoke-gradle.log"
+# The loader switch may stand anywhere before "--"; everything else goes to getopts.
+LOADER=fabric
+OPTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --fabric) LOADER=fabric; shift;;
+    --neoforge) LOADER=neoforge; shift;;
+    --) break;;
+    *) OPTS+=("$1"); shift;;
+  esac
+done
+set -- ${OPTS[@]+"${OPTS[@]}"} "$@"
+case "$LOADER" in
+  fabric)
+    OUT="$ROOT/build/tinkerer-client-smoke"
+    RUN="$ROOT/run-tinkerer-clientsmoke"
+    TASK=runTinkererClientSmoke
+    LOG="${TMPDIR:-/tmp}/tt-client-smoke-gradle.log";;
+  neoforge)
+    OUT="$ROOT/neoforge/build/tinkerer-client-smoke"
+    RUN="$ROOT/neoforge/run-clientsmoke"
+    TASK=:neoforge:runClientSmoke
+    LOG="${TMPDIR:-/tmp}/tt-client-smoke-neoforge-gradle.log";;
+esac
 TIMEOUT=1500
 while getopts "l:t:" opt; do
   case "$opt" in l) LOG="$OPTARG";; t) TIMEOUT="$OPTARG";; *) exit 2;; esac
@@ -41,15 +65,15 @@ export LIBGL_ALWAYS_SOFTWARE=1
 export GALLIUM_DRIVER=llvmpipe
 export LP_NUM_THREADS="${LP_NUM_THREADS:-$(nproc)}"
 
-echo "client-smoke: gradle log $LOG, results $OUT" >&2
+echo "client-smoke: $LOADER, gradle log $LOG, results $OUT" >&2
 cd "$ROOT" || exit 2
 if [ "$TEE" = 1 ]; then
   xvfb-run -a -s "-screen 0 1280x720x24 -nolisten tcp" \
-    "${GRADLE[@]}" runTinkererClientSmoke -PtinkererClientSmokeTimeout="$TIMEOUT" "$@" 2>&1 | tee "$LOG"
+    "${GRADLE[@]}" "$TASK" -PtinkererClientSmokeTimeout="$TIMEOUT" "$@" 2>&1 | tee "$LOG"
   status=${PIPESTATUS[0]}
 else
   xvfb-run -a -s "-screen 0 1280x720x24 -nolisten tcp" \
-    "${GRADLE[@]}" runTinkererClientSmoke -PtinkererClientSmokeTimeout="$TIMEOUT" "$@"
+    "${GRADLE[@]}" "$TASK" -PtinkererClientSmokeTimeout="$TIMEOUT" "$@"
   status=$?
 fi
 
@@ -69,7 +93,7 @@ if [ -f "$OUT/report.json" ]; then
 import json, sys
 report = json.load(open(sys.argv[1]))
 summary = report.get("summary", {})
-print("client-smoke: harness %s; checks %s" % (report["harness"].get("status"), {k: v for k, v in summary.items() if k != "failures_by_group"}))
+print("client-smoke: %s harness %s; checks %s" % (report["harness"].get("loader", "fabric"), report["harness"].get("status"), {k: v for k, v in summary.items() if k != "failures_by_group"}))
 for group, kinds in summary.get("failures_by_group", {}).items():
     print("client-smoke:   %-14s %s" % (group, dict(kinds)))
 print("client-smoke: %d screenshots" % len(report.get("screenshots", [])))

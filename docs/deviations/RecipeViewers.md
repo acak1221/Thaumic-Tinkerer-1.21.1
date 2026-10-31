@@ -226,7 +226,10 @@ imports neither EMI, JEI, Jade nor client classes.
   client by `onThaumcraftReady` (both sides), so on a dedicated server the tag entries are the server's tags and the rest
   is the client's own table (the same code).
 - **EMI with JEI installed**: the skip of the JEI plugin was read in EMI's sources, not run.
-- **NeoForge**: `@EmiEntrypoint` and `@JeiPlugin` are there for a future NeoForge build; there is none.
+- **NeoForge**: the NeoForge build (`:neoforge`, `neoforge/build.gradle`) compiles `compat/` against the NeoForge APIs of EMI and JEI
+  (compile-only, as on Fabric), and the plugins are found there by `@EmiEntrypoint` and `@JeiPlugin`. The group's GameTests passed on a
+  NeoForge GameTest server (2026-10-31, in the full run of 314); they check the shared views, not EMI or JEI. Neither viewer was run on
+  NeoForge, and nothing of the group has been seen in a NeoForge client yet.
 - **The Russian texts** were written for the port and not proofread by a native speaker.
 - **The 1.7.10 NEI behaviour** of section 1 is read from the 1.7.10 sources; NEI and ARI themselves were not run, and
   NEI's own source (stack matching, item panel) is not in this checkout.

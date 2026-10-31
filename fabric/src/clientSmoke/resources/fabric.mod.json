@@ -11,10 +11,10 @@
       "thaumic.tinkerer.fabric.clientsmoke.TinkererClientSmoke"
     ],
     "jade": [
-      "thaumic.tinkerer.fabric.clientsmoke.HarnessJadePlugin"
+      "thaumic.tinkerer.clientsmoke.HarnessJadePlugin"
     ],
     "jei_mod_plugin": [
-      "thaumic.tinkerer.fabric.clientsmoke.HarnessJeiPlugin"
+      "thaumic.tinkerer.clientsmoke.HarnessJeiPlugin"
     ]
   },
   "depends": {

@@ -179,6 +179,14 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   (`randomTick` does nothing) and is not trampled (`fallOn` only does the fall damage). `canSustainPlant` (only
   `BlockInfusedGrain`) has no equivalent: vanilla crops accept only `Blocks.FARMLAND`, saplings and flowers accept dirt-like
   tags and farmland, so nothing else grows on the infused soil; a modded crop that accepts any `FarmBlock` would.
+  **On NeoForge** that is not enough: NeoForge patches `CropBlock.mayPlaceOn` (and `BushBlock.mayPlaceOn`) to accept any `FarmBlock`, so
+  wheat and saplings would stand on the infused soil there (seen: the GameTest `aCropNeedsFarmland` failed with "wheat does not" in the
+  first NeoForge runs, `docs/NEOFORGE.md`). NeoForge glue restores the rule: the mixin `InfusedFarmlandSoilMixin` of the NeoForge module
+  gives `BlockInfusedFarmland` a `canSustainPlant` that answers `FALSE` for every plant but the Infused Grain (`DEFAULT` for the grain, which
+  keeps its own `mayPlaceOn`); NeoForge's `BushBlock.canSurvive` asks the soil first, so there a modded crop that goes through that check
+  does **not** grow on it either, even if it accepts any `FarmBlock`, which is the 1.7.10 rule (read in the 21.1.259 bytecode; no modded crop
+  was tried). Shared code cannot declare that method (`TriState` is NeoForge's). The check passed on NeoForge with it (the full
+  run of 314, 2026-10-31).
 * **Growth is the tile entity's (forced).** `TileInfusedGrain.serverTick` is `updateEntity` on the server: the chance
   `1 / ((2510 - water^2) * 6)` per tick when the cell above has light 9 (`getRawBrightness(pos, level.getSkyDarken())`:
   as `getBlockLightValue` did, the sky light is reduced by the darkening of the time of day, so a crop under open sky
@@ -409,6 +417,7 @@ stand-ins), the spreading of the gases against the light engine, the Nether tick
 behaviour of the fires over time (the checks drive the tick by hand, so the real rate of the random ticks is unseen), the
 flung victims of the Air potion, the hoe handler, the unloaded-chunk guards, the two sides of the platform's collision on
 a dedicated server, a player who is ticked by a real connection (the mock player of the GameTests is not ticked by anybody; the water check
-calls `doTick` itself), the day and night rule of the crop growth, and the first creation of the group on NeoForge
-(not attempted: Fabric first). The `config` switches `enableCake`, `enableFire` and `enableKami` were read from the defaults
+calls `doTick` itself), the day and night rule of the crop growth, and anything of the group in a NeoForge client (not seen yet; on a NeoForge
+GameTest server the group's GameTests passed in the full run of 314 on 2026-10-31, after the NeoForge soil mixin of the Infused Farmland,
+section 2.6, `docs/NEOFORGE.md`). The `config` switches `enableCake`, `enableFire` and `enableKami` were read from the defaults
 only.
