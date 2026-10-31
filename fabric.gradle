@@ -13,7 +13,8 @@ def ttDir = projectDir
 
 sourceSets {
  thaumicTinkerer {
-  java.srcDirs = [new File(ttDir, 'common/src/main/java'), new File(ttDir, 'fabric/src/main/java')]
+  // compat: the optional EMI, JEI and Jade plugins (their APIs are compile-only; nothing else names those classes)
+  java.srcDirs = [new File(ttDir, 'common/src/main/java'), new File(ttDir, 'fabric/src/main/java'), new File(ttDir, 'compat/src/main/java')]
   resources.srcDirs = [new File(ttDir, 'common/src/main/resources'), new File(ttDir, 'fabric/src/main/resources')]
   compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
   runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath

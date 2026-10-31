@@ -20,10 +20,10 @@ CPFILE="$ROOT/.tmp/classpath.txt"; [ "$GAMETEST" = 1 ] && CPFILE="$ROOT/.tmp/cla
 [ -f "$CPFILE" ] || { echo "missing $CPFILE: run ./gradlew exportTinkererClasspath" >&2; exit 2; }
 [ -n "$OUT" ] || OUT="$(mktemp -d -t tt-javac.XXXXXX)"
 mkdir -p "$OUT"
-SRCPATH="$ROOT/common/src/main/java:$ROOT/fabric/src/main/java"
+SRCPATH="$ROOT/common/src/main/java:$ROOT/fabric/src/main/java:$ROOT/compat/src/main/java"
 [ "$GAMETEST" = 1 ] && SRCPATH="$SRCPATH:$ROOT/common/src/gameTest/java:$ROOT/fabric/src/gameTest/java"
 if [ "$#" -eq 0 ]; then
-  mapfile -t FILES < <(find "$ROOT/common/src/main/java" "$ROOT/fabric/src/main/java" -name '*.java')
+  mapfile -t FILES < <(find "$ROOT/common/src/main/java" "$ROOT/fabric/src/main/java" "$ROOT/compat/src/main/java" -name '*.java' 2>/dev/null)
   [ "$GAMETEST" = 1 ] && mapfile -t -O "${#FILES[@]}" FILES < <(find "$ROOT/common/src/gameTest/java" "$ROOT/fabric/src/gameTest/java" -name '*.java' 2>/dev/null)
 else
   FILES=()

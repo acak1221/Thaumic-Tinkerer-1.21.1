@@ -30,6 +30,15 @@
     ],
     "thaumcraft": [
       "thaumic.tinkerer.fabric.ThaumicTinkererFabric"
+    ],
+    "emi": [
+      "thaumic.tinkerer.compat.emi.TinkererEmiPlugin"
+    ],
+    "jei_mod_plugin": [
+      "thaumic.tinkerer.compat.jei.TinkererJeiPlugin"
+    ],
+    "jade": [
+      "thaumic.tinkerer.compat.jade.TinkererJadePlugin"
     ]
   },
   "mixins": [
@@ -42,5 +51,10 @@
     "architectury": ">=13.0.11",
     "fabric-api": "*",
     "thaumcraft": "*"
+  },
+  "suggests": {
+    "emi": "*",
+    "jei": "*",
+    "jade": "*"
   }
 }

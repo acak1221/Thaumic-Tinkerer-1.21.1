@@ -16,7 +16,9 @@
       "thaumic.tinkerer.fabric.testing.KamiGearGameTests",
       "thaumic.tinkerer.fabric.testing.KamiWorldGameTests",
       "thaumic.tinkerer.fabric.testing.HooksGameTests",
-      "thaumic.tinkerer.fabric.testing.ParityGameTests"
+      "thaumic.tinkerer.fabric.testing.ParityGameTests",
+      "thaumic.tinkerer.fabric.testing.TooltipsGameTests",
+      "thaumic.tinkerer.fabric.testing.RecipeViewersGameTests"
     ]
   },
   "depends": {

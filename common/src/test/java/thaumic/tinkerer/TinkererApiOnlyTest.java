@@ -24,13 +24,16 @@ class TinkererApiOnlyTest {
             "org.jetbrains.", "org.joml.", "com.electronwill.", "thaumcraft.api.", "thaumic.tinkerer.");
     // The Fabric tree also holds mixins (thaumic.tinkerer.fabric.mixin): Mixin and MixinExtras are the loader's, not the mod's.
     private static final List<String> FABRIC_ALLOWED = List.of("net.fabricmc.", "org.spongepowered.", "com.llamalad7.");
+    // The optional integrations: the APIs of EMI, JEI and Jade, and nothing of Thaumcraft's own plugins for them.
+    private static final List<String> COMPAT_ALLOWED = List.of("dev.emi.emi.api.", "mezz.jei.api.", "snownee.jade.api.");
 
     @Test
     void thePluginSourcesImportOnlyThePublicApi() throws IOException {
         List<String> offending = new ArrayList<>();
         int files = scan(Path.of("common", "src", "main", "java"), COMMON_ALLOWED, offending)
                 + scan(Path.of("fabric", "src", "main", "java"), concat(COMMON_ALLOWED, FABRIC_ALLOWED), offending)
-                + scan(Path.of("neoforge", "src", "main", "java"), concat(COMMON_ALLOWED, List.of("net.neoforged.", "org.objectweb.")), offending);
+                + scan(Path.of("neoforge", "src", "main", "java"), concat(COMMON_ALLOWED, List.of("net.neoforged.", "org.objectweb.")), offending)
+                + scan(Path.of("compat", "src", "main", "java"), concat(COMMON_ALLOWED, COMPAT_ALLOWED), offending);
         assertTrue(files > 0, "the add-on has sources: " + Path.of(".").toAbsolutePath());
         assertEquals(List.of(), offending, "the add-on reaches past thaumcraft.api");
     }

@@ -26,6 +26,10 @@ repositories {
  mavenCentral()
  maven { url = 'https://maven.architectury.dev/' }
  maven { url = 'https://maven.fabricmc.net/' }
+ // The optional integrations (compat/): EMI, JEI and Jade, compile-only, never bundled.
+ maven { url = 'https://maven.terraformersmc.com/releases/'; content { includeGroup 'dev.emi' } }
+ maven { url = 'https://maven.blamejared.com/'; content { includeGroup 'mezz.jei' } }
+ maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
 }
 
 // Without Thaumcraft in the local Maven repository Gradle (and Loom) fail with a bare "Could not resolve thaumcraft:Thaumcraft-fabric",
@@ -47,6 +51,15 @@ dependencies {
  modImplementation "net.fabricmc.fabric-api:fabric-api:$fabric_api_version"
  modImplementation "dev.architectury:architectury-fabric:$architectury_api_version"
  modImplementation "thaumcraft:Thaumcraft-fabric:$thaumcraft_version"
+
+ // Optional integrations (compat/src/main/java): compiled against the APIs only; the add-on runs without them. `-PwithEmi`, `-PwithJei`
+ // and `-PwithJade` add the mod itself to the development runs (runTinkererClient, runTinkererClientSmoke) for checks by hand or by the harness.
+ modCompileOnly "dev.emi:emi-fabric:$emi_version:api"
+ modCompileOnly "mezz.jei:jei-1.21.1-fabric-api:$jei_version"
+ modCompileOnly "maven.modrinth:jade:$jade_version+fabric"
+ if (providers.gradleProperty('withEmi').isPresent()) modLocalRuntime "dev.emi:emi-fabric:$emi_version"
+ if (providers.gradleProperty('withJei').isPresent()) modLocalRuntime "mezz.jei:jei-1.21.1-fabric:$jei_version"
+ if (providers.gradleProperty('withJade').isPresent()) modLocalRuntime "maven.modrinth:jade:$jade_version+fabric"
 }
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
