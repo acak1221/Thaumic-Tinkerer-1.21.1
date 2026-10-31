@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# CI of the standalone repository of Thaumic Tinkerer (Fabric, Minecraft 1.21.1).
+# CI of Thaumic Tinkerer (Fabric, Minecraft 1.21.1).
 #
 # The add-on needs Thaumcraft 4 Reload from https://github.com/acak1221/Thaumcraft-1.21.1 (it needs extensions of thaumcraft.api that exist
 # only on the branch claude/hopeful-hamilton-v8m5pi), so the job checks that repository out next to the add-on at the commit thaumcraft_ref

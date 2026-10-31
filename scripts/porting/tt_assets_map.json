@@ -5,7 +5,7 @@
     "license": "CC BY-NC-SA 3.0",
     "generator": "scripts/porting/tt_assets.py",
     "source_resources_root": "src/main/resources",
-    "target_resources_root": "addons/thaumic-tinkerer/common/src/main/resources",
+    "target_resources_root": "common/src/main/resources",
     "source_namespace": "ttinkerer",
     "target_namespace": "thaumictinkerer",
     "note": "Texture bytes are copied unchanged. Paths in 'mapping' are relative to the two resource roots."

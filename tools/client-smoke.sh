@@ -5,9 +5,7 @@
 #
 #   tools/client-smoke.sh [-l GRADLE_LOG] [-t TIMEOUT_SECONDS] [-- EXTRA_GRADLE_ARGS...]
 #
-# Works in the standalone repository (the add-on is the Gradle root project, task runTinkererClientSmoke) and in the Thaumcraft
-# monorepo (addons/thaumic-tinkerer, task :fabric:runTinkererClientSmoke); it finds out which by the settings.gradle next to tools/.
-# Results go to build/tinkerer-client-smoke/ (monorepo: fabric/build/tinkerer-client-smoke/): report.json, screenshots/*.png,
+# Results go to build/tinkerer-client-smoke/: report.json, screenshots/*.png,
 # client-log-excerpt.txt, plus gradle.log and client-latest.log (copies). The exit code is 0 only when the harness itself completed;
 # what the checks found is in report.json.
 #
@@ -17,14 +15,9 @@
 #   GRADLE_CMD='my-gradle-wrapper.sh /path/to/project {LOG}' tools/client-smoke.sh
 # Do not wrap the script in flock when the wrapper takes a lock itself; it holds it for the whole run (some minutes).
 set -uo pipefail
-ADDON="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if [ -f "$ADDON/settings.gradle" ]; then      # standalone repository
-  ROOT="$ADDON"; PROJECT=""; BUILD="$ROOT/build"
-else                                          # monorepo: the add-on is wired into the :fabric project
-  ROOT="$(cd "$ADDON/../.." && pwd)"; PROJECT=":fabric:"; BUILD="$ROOT/fabric/build"
-fi
-OUT="$BUILD/tinkerer-client-smoke"
-RUN="$(dirname "$BUILD")/run-tinkerer-clientsmoke"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+OUT="$ROOT/build/tinkerer-client-smoke"
+RUN="$ROOT/run-tinkerer-clientsmoke"
 LOG="${TMPDIR:-/tmp}/tt-client-smoke-gradle.log"
 TIMEOUT=1500
 while getopts "l:t:" opt; do
@@ -52,11 +45,11 @@ echo "client-smoke: gradle log $LOG, results $OUT" >&2
 cd "$ROOT" || exit 2
 if [ "$TEE" = 1 ]; then
   xvfb-run -a -s "-screen 0 1280x720x24 -nolisten tcp" \
-    "${GRADLE[@]}" "${PROJECT}runTinkererClientSmoke" -PtinkererClientSmokeTimeout="$TIMEOUT" "$@" 2>&1 | tee "$LOG"
+    "${GRADLE[@]}" runTinkererClientSmoke -PtinkererClientSmokeTimeout="$TIMEOUT" "$@" 2>&1 | tee "$LOG"
   status=${PIPESTATUS[0]}
 else
   xvfb-run -a -s "-screen 0 1280x720x24 -nolisten tcp" \
-    "${GRADLE[@]}" "${PROJECT}runTinkererClientSmoke" -PtinkererClientSmokeTimeout="$TIMEOUT" "$@"
+    "${GRADLE[@]}" runTinkererClientSmoke -PtinkererClientSmokeTimeout="$TIMEOUT" "$@"
   status=$?
 fi
 

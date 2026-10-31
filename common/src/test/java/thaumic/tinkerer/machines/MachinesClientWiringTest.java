@@ -32,7 +32,7 @@ import thaumic.tinkerer.client.hooks.ItemRenderers;
  * the first version is gone, because two registrations of the same item are an error. The queue is read with
  * {@code ItemRenderers.get}; the registration of the real item {@code mob_display} is checked on the source, because a JUnit
  * test has no registry of the mod. Nothing here draws anything: the rendering of the mob has not been seen on a frame. The tests
- * run in {@code addons/thaumic-tinkerer}.</p>
+ * run in the repository root.</p>
  */
 class MachinesClientWiringTest {
     private static final Path CLIENT = Path.of("common", "src", "main", "java", "thaumic", "tinkerer", "client", "MachinesClient.java");

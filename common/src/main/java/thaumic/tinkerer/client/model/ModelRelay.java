@@ -8,7 +8,7 @@
  * (http://www.minecraftforum.net/topic/1585216-)
  *
  * File Created @ [12 Sep 2013, 17:56:17 (GMT)]
- * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see addons/thaumic-tinkerer/NOTICE.md).
+ * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see NOTICE.md).
  */
 package thaumic.tinkerer.client.model;
 

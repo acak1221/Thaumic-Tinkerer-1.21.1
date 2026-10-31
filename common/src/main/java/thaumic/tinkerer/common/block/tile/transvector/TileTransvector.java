@@ -8,7 +8,7 @@
  * (http://www.minecraftforum.net/topic/1585216-)
  *
  * File Created @ [Nov 24, 2013, 6:40:49 PM (GMT)]
- * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see addons/thaumic-tinkerer/NOTICE.md).
+ * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see NOTICE.md).
  */
 package thaumic.tinkerer.common.block.tile.transvector;
 

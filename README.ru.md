@@ -11,10 +11,9 @@ English version: [README.md](README.md).
 > исходники аддона. Файлы сборки этого репозитория (`settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `tools/`,
 > workflow CI, `scripts/porting/`) под MIT (`LICENSE-MIT`); Gradle wrapper — собственная работа Gradle (Apache-2.0); их перечень в `NOTICE.md`.
 
-> **Где ведётся разработка.** Этот репозиторий — сгенерированная копия: аддон развивается в `addons/thaumic-tinkerer`
-> [монорепозитория Thaumcraft 4 Reload](https://github.com/acak1221/Thaumcraft-1.21.1), пока этот репозиторий не станет основным, а
-> `tools/export-standalone.sh` монорепозитория записывает это дерево (`EXPORTED-FROM-MONOREPO.txt` называет коммит). Пока это так, файлы здесь не
-> правят вручную: следующий экспорт отказывается работать с изменённым деревом (и затирает правки, только если ему так велено). См. `docs/EXPORT.md`.
+Аддон разрабатывается в этом репозитории. До 2026-10-31 он писался внутри
+[репозитория Thaumcraft 4 Reload](https://github.com/acak1221/Thaumcraft-1.21.1) (`NOTICE.md`, раздел «History»); там остаются расширения
+`thaumcraft.api`, которые нужны аддону, а самого аддона там больше нет.
 
 ## Состояние
 
@@ -87,15 +86,12 @@ tools/client-smoke.sh                        # клиентский осмотр
   Отчёты JUnit — в `build/reports/tests/tinkererTest/`, результаты клиентского осмотра — в `build/tinkerer-client-smoke/`. Всё это игнорируется git.
 * `tools/client-smoke.sh` запускает `./gradlew` под `xvfb-run`; переменная окружения `GRADLE_CMD` заменяет команду Gradle (см. заголовок скрипта).
 * Компиляция падает, если процессор аннотаций Mixin не записал refmap или записал refmap без записи для миксина с инжектором (`fabric.gradle`).
-* Документы в `docs/` написаны в монорепозитории. Где в них `./gradlew :fabric:tinkererTest`, здесь `./gradlew tinkererTest` (без `:fabric:`);
-  `fabric/build/` — это `build/`, `fabric/run-tinkerer-*` — `run-tinkerer-*`, а `addons/thaumic-tinkerer/` — корень этого репозитория.
-  Заголовки лицензии Java-файлов ссылаются на `addons/thaumic-tinkerer/NOTICE.md`: здесь это `NOTICE.md`.
 * Файлы, на которые ссылаются документы и которые принадлежат **репозиторию Thaumcraft 4 Reload**, а не этому: `AGENTS.md`, `docs/api/` (`PORTING.md`,
   `LEGACY_IDS.md`, руководства), `docs/MIGRATION_STATUS.md`, `common/src/main/java/thaumcraft/` и `common/src/main/resources/*/thaumcraft/` (исходники и ресурсы Thaumcraft; `docs/API_GAPS.md` сокращает их до `API/` и `INT/`), `fabric/build.gradle`
   и `neoforge/build.gradle`. Результаты, которые документы приводят по запускам собственных наборов тестов Thaumcraft (JUnit 2761, 515 GameTest,
-  296 Python-тестов, `docs/DEVIATIONS.md` раздел 5), — запуски монорепозитория и здесь не воспроизводятся; раздел 5 говорит, какие строки это.
-* В `scripts/porting/` лежат Python-инструменты, которыми конвертировались ресурсы 1.7.10 и извлекался оракул паритета (MIT, скопированы из
-  монорепозитория; см. их `README.md`). Им нужен checkout исходников оригинала 1.7.10; `tools/porting.sh` запускает их для этой структуры.
+  296 Python-тестов, `docs/DEVIATIONS.md` раздел 5), — запуски в репозитории Thaumcraft, а не в этом; раздел 5 говорит, какие строки это.
+* В `scripts/porting/` лежат Python-инструменты, которыми конвертировались ресурсы 1.7.10 и извлекался оракул паритета (MIT; см. их `README.md`).
+  Им нужен checkout исходников оригинала 1.7.10 (а `tt_oracle.py` ещё и checkout Thaumcraft); `tools/porting.sh` запускает их.
 
 ## Структура
 
@@ -107,10 +103,10 @@ fabric/src/main      точки входа Fabric, Mixin, реализация �
 fabric/src/gameTest  обёртки GameTest и тестовый мод Fabric
 fabric/src/clientSmoke  стенд клиентского осмотра (инструмент разработки, в jar не попадает)
 build.gradle         проект: Loom, Minecraft, Fabric, Architectury и jar Thaumcraft
-fabric.gradle        наборы исходников, запуски и задачи аддона (тот же файл, что монорепозиторий подключает из проекта :fabric)
+fabric.gradle        наборы исходников, запуски и задачи аддона
 tools/               compile.sh, client-smoke.sh, publish-thaumcraft.sh, porting.sh
 scripts/porting/     Python-инструменты конвейера ресурсов и оракула (MIT)
-docs/                правила переноса, отступления, запросы к API и пробелы, хуки, отчёт о паритете, клиентская проверка, экспорт
+docs/                правила переноса, отступления, запросы к API и пробелы, хуки, отчёт о паритете, клиентская проверка
 lang-extra/          фрагменты локализации, сливаемые в языковые файлы
 ```
 
@@ -125,4 +121,3 @@ lang-extra/          фрагменты локализации, сливаемы
 - `docs/HOOKS.md` — события загрузчика и как они отправляются.
 - `docs/PARITY_REPORT.md` — сверка исследований и рецептов с исходником оригинала.
 - `docs/CLIENT_VERIFICATION.md` — стенд клиентского осмотра и то, чего он показать не может.
-- `docs/EXPORT.md` — как этот репозиторий связан с монорепозиторием.

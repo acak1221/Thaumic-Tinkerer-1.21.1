@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Extract the research tree and the recipes of Thaumic Tinkerer 1.7.10 into the parity oracle.
 
 Source (read only): a checkout of https://github.com/GTNewHorizons/ThaumicTinkerer pinned to ``SOURCE_COMMIT``
@@ -7,7 +8,7 @@ the add-on uses and a symbolic interpreter, so builder chains, helper methods, l
 flag or a loaded mod and the instances of the multi-variant classes are understood, not pattern-matched. It
 replays what the 1.7.10 mod does at start-up (``TTRegistry`` loads the blocks and items, ``init`` registers
 every recipe, ``ResearchHelper.initResearch`` and ``postInit`` register the research) and writes, below
-``addons/thaumic-tinkerer/common/src/gameTest/resources/tt_oracle``:
+``common/src/gameTest/resources/tt_oracle``:
 
 * ``research.json``  every research entry: key, category, aspects (in order), column, row, complexity, parents,
   hidden parents, flags, warp, pages, the enabling condition, the class that registers it and file:line;
@@ -29,7 +30,8 @@ helper registers it (``ownerKind``), and ``research.json`` carries the defaults 
 depend on (``configDefaults``, read from the original ``ConfigHandler``).
 
 An item expression is recorded as source text and, where that is mechanical, resolved to a 1.21.1 id:
-``ConfigItems``/``ConfigBlocks`` (field, meta) through ``common/src/main/resources/data/thaumcraft/tc4/legacy_ids.json``,
+``ConfigItems``/``ConfigBlocks`` (field, meta) through ``common/src/main/resources/data/thaumcraft/tc4/legacy_ids.json`` of a
+Thaumcraft 4 Reload checkout (``--thaumcraft``, which also gives the aspect constants of ``thaumcraft.api``),
 Thaumic Tinkerer classes through the ``Lib*Names`` constants of the port and the ``getItemName()`` /
 ``getBlockName()`` of the original, vanilla 1.7.10 names through the explicit table ``VANILLA`` below. What
 cannot be resolved is marked ``unresolved`` with the reason, never guessed.
@@ -44,7 +46,10 @@ understood or not reached; it lists them. "Reached" is checked against a token s
 verified by this script.
 
 Usage:
-    tt_oracle.py [--source CHECKOUT] [--check] [--allow-unpinned]
+    tt_oracle.py [--source CHECKOUT] [--thaumcraft THAUMCRAFT_CHECKOUT] [--check] [--allow-unpinned]
+
+``--source`` defaults to ``$TT_1710_SOURCE``, else ``../ThaumicTinkerer-1.7.10`` next to this repository; ``--thaumcraft``
+to ``$THAUMCRAFT_DIR``, else ``../Thaumcraft-1.21.1`` (where ``tools/publish-thaumcraft.sh`` clones it).
 
 ``--check`` recomputes everything and fails (exit 1) when the checked-in output differs; it writes nothing.
 """
@@ -54,6 +59,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -62,7 +68,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SOURCE = Path("/home/user/gtnewhorizons/thaumictinkerer")
+# The pinned checkout of the 1.7.10 mod (--source, or the environment variable TT_1710_SOURCE).
+DEFAULT_SOURCE = Path(os.environ.get("TT_1710_SOURCE") or ROOT.parent / "ThaumicTinkerer-1.7.10")
+# A checkout of Thaumcraft 4 Reload (--thaumcraft, or THAUMCRAFT_DIR): the aspect constants of thaumcraft.api and the legacy id table
+# are read from it. The default is where tools/publish-thaumcraft.sh clones it.
+THAUMCRAFT_DIR = Path(os.environ.get("THAUMCRAFT_DIR") or ROOT.parent / "Thaumcraft-1.21.1")
 SOURCE_REPO = "https://github.com/GTNewHorizons/ThaumicTinkerer"
 SOURCE_COMMIT = "28f4def938e80d7a0b6f433c2b84300dfb7c35ce"
 LICENSE_NAME = "CC BY-NC-SA 3.0"
@@ -70,10 +80,12 @@ GENERATOR = "scripts/porting/tt_oracle.py"
 
 JAVA_ROOT = "src/main/java"
 REGISTRY_FILE = "thaumic/tinkerer/common/registry/TTRegistry.java"
-OUT_DIR = "addons/thaumic-tinkerer/common/src/gameTest/resources/tt_oracle"
+OUT_DIR = "common/src/gameTest/resources/tt_oracle"
+PORT_LIB = "common/src/main/java/thaumic/tinkerer/common/lib"
+# Files of the Thaumcraft checkout; in provenance.json their names carry the prefix THAUMCRAFT_LABEL.
 LEGACY_IDS = "common/src/main/resources/data/thaumcraft/tc4/legacy_ids.json"
-PORT_LIB = "addons/thaumic-tinkerer/common/src/main/java/thaumic/tinkerer/common/lib"
 ASPECT_JAVA = "common/src/main/java/thaumcraft/api/aspects/Aspect.java"
+THAUMCRAFT_LABEL = "Thaumcraft-1.21.1/"
 CATEGORY_CONSTANT = ("LibResearch", "CATEGORY_THAUMICTINKERER")
 
 
@@ -3188,8 +3200,8 @@ def load_port_names(root: Path, hashes: dict[str, str]) -> dict[str, dict[str, s
     return names
 
 
-def load_legacy(root: Path, hashes: dict[str, str]) -> dict:
-    document = json.loads(read_text(root / LEGACY_IDS, hashes, LEGACY_IDS))
+def load_legacy(thaumcraft: Path, hashes: dict[str, str]) -> dict:
+    document = json.loads(read_text(thaumcraft / LEGACY_IDS, hashes, THAUMCRAFT_LABEL + LEGACY_IDS))
     return {(row["kind"], row["field"], row["meta"]): row for row in document["rows"]}
 
 
@@ -3233,11 +3245,14 @@ def read_config_defaults(source: Path, docs: list[dict], hashes: dict[str, str])
     return {"values": values, "evidence": evidence}
 
 
-def build(source: Path, root: Path = ROOT) -> Plan:
+def build(source: Path, root: Path = ROOT, thaumcraft: Path | None = None) -> Plan:
     plan = Plan()
     java = source / JAVA_ROOT
     if not java.is_dir():
         raise OracleError(f"{java} is not a Thaumic Tinkerer checkout")
+    thaumcraft = THAUMCRAFT_DIR if thaumcraft is None else thaumcraft
+    if not (thaumcraft / ASPECT_JAVA).is_file():
+        raise OracleError(f"{thaumcraft} is not a Thaumcraft 4 Reload checkout ({ASPECT_JAVA} not found): pass --thaumcraft or set THAUMCRAFT_DIR")
     hashes: dict[str, str] = {}
     inputs: dict[str, str] = {}
     classes: dict[str, ClassInfo] = {}
@@ -3250,9 +3265,9 @@ def build(source: Path, root: Path = ROOT) -> Plan:
         toks = scan_file(label, text, classes)
         sites.extend(scan_sites(label, toks))
         token_files += 1
-    aspects = load_aspects(read_text(root / ASPECT_JAVA, inputs, ASPECT_JAVA))
+    aspects = load_aspects(read_text(thaumcraft / ASPECT_JAVA, inputs, THAUMCRAFT_LABEL + ASPECT_JAVA))
     port_names = load_port_names(root, inputs)
-    legacy = load_legacy(root, inputs)
+    legacy = load_legacy(thaumcraft, inputs)
     interp = Interp(classes, aspects)
     try:
         research, recipes = interp.simulate()
@@ -3396,16 +3411,18 @@ def check(plan: Plan, root: Path) -> list[str]:
     return problems
 
 
-def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
+def main(argv: list[str] | None = None, root: Path = ROOT, thaumcraft: Path | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE, help="checkout of ThaumicTinkerer")
+    parser.add_argument("--thaumcraft", type=Path, default=THAUMCRAFT_DIR if thaumcraft is None else thaumcraft,
+                        help="checkout of Thaumcraft 4 Reload (thaumcraft.api and the legacy id table are read from it)")
     parser.add_argument("--check", action="store_true", help="verify the checked-in output, write nothing")
     parser.add_argument("--allow-unpinned", action="store_true", help=f"do not require commit {SOURCE_COMMIT[:12]}")
     args = parser.parse_args(argv)
     try:
         if not args.allow_unpinned:
             verify_pin(args.source)
-        plan = build(args.source, root)
+        plan = build(args.source, root, args.thaumcraft)
     except OracleError as error:
         print(f"tt_oracle: {error}", file=sys.stderr)
         return 2

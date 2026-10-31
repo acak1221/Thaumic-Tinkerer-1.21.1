@@ -98,45 +98,45 @@ Kami keys without a `ttresearch.lore.<KEY>` in en_US: none.
 
 ## Lang fragments
 
-New 1.21.1-only keys live in `addons/thaumic-tinkerer/lang-extra/<group>.<lang>.json` (flat string objects) and are merged into `lang/<lang>.json` after the conversion; a fragment key replaces a converted key of the same name and the script prints a warning for it.
+New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objects) and are merged into `lang/<lang>.json` after the conversion; a fragment key replaces a converted key of the same name and the script prints a warning for it.
 
 | Locale | Fragment | Keys | Replaced keys |
 | --- | --- | --- | --- |
-| `en_us` | `addons/thaumic-tinkerer/lang-extra/basic_items.en_us.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `en_us` | `addons/thaumic-tinkerer/lang-extra/core.en_us.json` | 1 | none |
-| `en_us` | `addons/thaumic-tinkerer/lang-extra/foci.en_us.json` | 1 | none |
-| `en_us` | `addons/thaumic-tinkerer/lang-extra/kami_gear.en_us.json` | 1 | none |
-| `en_us` | `addons/thaumic-tinkerer/lang-extra/kami_world.en_us.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
-| `en_us` | `addons/thaumic-tinkerer/lang-extra/simple_blocks.en_us.json` | 4 | none |
-| `en_us` | `addons/thaumic-tinkerer/lang-extra/tile_blocks.en_us.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
-| `de_de` | `addons/thaumic-tinkerer/lang-extra/basic_items.de_de.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `de_de` | `addons/thaumic-tinkerer/lang-extra/core.de_de.json` | 1 | none |
-| `de_de` | `addons/thaumic-tinkerer/lang-extra/kami_world.de_de.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
-| `de_de` | `addons/thaumic-tinkerer/lang-extra/machines.de_de.json` | 1 | none |
-| `de_de` | `addons/thaumic-tinkerer/lang-extra/tile_blocks.de_de.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
-| `fr_fr` | `addons/thaumic-tinkerer/lang-extra/basic_items.fr_fr.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `fr_fr` | `addons/thaumic-tinkerer/lang-extra/core.fr_fr.json` | 1 | none |
-| `fr_fr` | `addons/thaumic-tinkerer/lang-extra/kami_world.fr_fr.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
-| `fr_fr` | `addons/thaumic-tinkerer/lang-extra/machines.fr_fr.json` | 1 | none |
-| `fr_fr` | `addons/thaumic-tinkerer/lang-extra/tile_blocks.fr_fr.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
-| `ko_kr` | `addons/thaumic-tinkerer/lang-extra/basic_items.ko_kr.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `ko_kr` | `addons/thaumic-tinkerer/lang-extra/core.ko_kr.json` | 1 | none |
-| `ko_kr` | `addons/thaumic-tinkerer/lang-extra/kami_world.ko_kr.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
-| `ko_kr` | `addons/thaumic-tinkerer/lang-extra/machines.ko_kr.json` | 1 | none |
-| `ko_kr` | `addons/thaumic-tinkerer/lang-extra/tile_blocks.ko_kr.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/basic_items.ru_ru.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/core.ru_ru.json` | 1 | none |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/foci.ru_ru.json` | 1 | none |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/kami_gear.ru_ru.json` | 1 | none |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/kami_world.ru_ru.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/machines.ru_ru.json` | 1 | none |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/simple_blocks.ru_ru.json` | 10 | none |
-| `ru_ru` | `addons/thaumic-tinkerer/lang-extra/tile_blocks.ru_ru.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
-| `zh_cn` | `addons/thaumic-tinkerer/lang-extra/basic_items.zh_cn.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `zh_cn` | `addons/thaumic-tinkerer/lang-extra/core.zh_cn.json` | 1 | none |
-| `zh_cn` | `addons/thaumic-tinkerer/lang-extra/kami_world.zh_cn.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
-| `zh_cn` | `addons/thaumic-tinkerer/lang-extra/machines.zh_cn.json` | 1 | none |
-| `zh_cn` | `addons/thaumic-tinkerer/lang-extra/tile_blocks.zh_cn.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
+| `en_us` | `lang-extra/basic_items.en_us.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `en_us` | `lang-extra/core.en_us.json` | 1 | none |
+| `en_us` | `lang-extra/foci.en_us.json` | 1 | none |
+| `en_us` | `lang-extra/kami_gear.en_us.json` | 1 | none |
+| `en_us` | `lang-extra/kami_world.en_us.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
+| `en_us` | `lang-extra/simple_blocks.en_us.json` | 4 | none |
+| `en_us` | `lang-extra/tile_blocks.en_us.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
+| `de_de` | `lang-extra/basic_items.de_de.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `de_de` | `lang-extra/core.de_de.json` | 1 | none |
+| `de_de` | `lang-extra/kami_world.de_de.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
+| `de_de` | `lang-extra/machines.de_de.json` | 1 | none |
+| `de_de` | `lang-extra/tile_blocks.de_de.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
+| `fr_fr` | `lang-extra/basic_items.fr_fr.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `fr_fr` | `lang-extra/core.fr_fr.json` | 1 | none |
+| `fr_fr` | `lang-extra/kami_world.fr_fr.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
+| `fr_fr` | `lang-extra/machines.fr_fr.json` | 1 | none |
+| `fr_fr` | `lang-extra/tile_blocks.fr_fr.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
+| `ko_kr` | `lang-extra/basic_items.ko_kr.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `ko_kr` | `lang-extra/core.ko_kr.json` | 1 | none |
+| `ko_kr` | `lang-extra/kami_world.ko_kr.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
+| `ko_kr` | `lang-extra/machines.ko_kr.json` | 1 | none |
+| `ko_kr` | `lang-extra/tile_blocks.ko_kr.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
+| `ru_ru` | `lang-extra/basic_items.ru_ru.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `ru_ru` | `lang-extra/core.ru_ru.json` | 1 | none |
+| `ru_ru` | `lang-extra/foci.ru_ru.json` | 1 | none |
+| `ru_ru` | `lang-extra/kami_gear.ru_ru.json` | 1 | none |
+| `ru_ru` | `lang-extra/kami_world.ru_ru.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
+| `ru_ru` | `lang-extra/machines.ru_ru.json` | 1 | none |
+| `ru_ru` | `lang-extra/simple_blocks.ru_ru.json` | 10 | none |
+| `ru_ru` | `lang-extra/tile_blocks.ru_ru.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
+| `zh_cn` | `lang-extra/basic_items.zh_cn.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `zh_cn` | `lang-extra/core.zh_cn.json` | 1 | none |
+| `zh_cn` | `lang-extra/kami_world.zh_cn.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
+| `zh_cn` | `lang-extra/machines.zh_cn.json` | 1 | none |
+| `zh_cn` | `lang-extra/tile_blocks.zh_cn.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 
 ## Verbatim-kept `tile.` / `item.` keys (decide by hand)
 

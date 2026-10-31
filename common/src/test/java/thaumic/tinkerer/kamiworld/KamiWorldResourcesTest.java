@@ -1,6 +1,6 @@
 /**
  * New in the 1.21.1 port of Thaumic Tinkerer (no 1.7.10 counterpart): JUnit tests of the data files and registry contracts of the KamiWorld group. Distributed under the same licence as the add-on
- * (CC BY-NC-SA 3.0, see addons/thaumic-tinkerer/NOTICE.md).
+ * (CC BY-NC-SA 3.0, see NOTICE.md).
  */
 package thaumic.tinkerer.kamiworld;
 
@@ -184,12 +184,12 @@ class KamiWorldResourcesTest {
      * override that preset with the three vanilla dimensions plus a copy of the Bedrock dimension (a normal world needs only the
      * data-pack file). The copy must be the file; {@code KamiWorldRuntimeChecks} compares them again in the running server.
      * The file is not on the JUnit class path (it belongs to the GameTest source set): it is read from the add-on directory,
-     * the working directory of {@code :fabric:tinkererTest}, and the test is skipped when it is run from elsewhere.
+     * the working directory of {@code tinkererTest} (the repository root), and the test is skipped when it is run from elsewhere.
      */
     @Test
     void theFlatPresetOfTheGameTestWorldHoldsTheDimensionFileAsItIs() throws IOException {
         java.nio.file.Path preset = java.nio.file.Path.of("fabric/src/gameTest/resources/data/minecraft/worldgen/world_preset/flat.json");
-        org.junit.jupiter.api.Assumptions.assumeTrue(java.nio.file.Files.isRegularFile(preset), "run from addons/thaumic-tinkerer");
+        org.junit.jupiter.api.Assumptions.assumeTrue(java.nio.file.Files.isRegularFile(preset), "run from the repository root");
         JsonObject dimensions;
         try (java.io.Reader reader = java.nio.file.Files.newBufferedReader(preset, StandardCharsets.UTF_8)) {
             dimensions = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("dimensions");

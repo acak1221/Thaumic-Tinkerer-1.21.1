@@ -9,7 +9,7 @@
  *
  * File Created @ [28 Sep 2013, 20:24:39 (GMT)]
  *
- * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see addons/thaumic-tinkerer/NOTICE.md).
+ * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see NOTICE.md).
  */
 package thaumic.tinkerer.client.render.tile;
 

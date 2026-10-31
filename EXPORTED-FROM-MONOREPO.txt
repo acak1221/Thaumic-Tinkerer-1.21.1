@@ -1,9 +1,0 @@
-This directory was written by addons/thaumic-tinkerer/tools/export-standalone.sh of the Thaumcraft 4 Reload monorepo.
-The monorepo is the place of development for now: do not edit files here by hand, the next export refuses a tree that differs from this one (and overwrites the edits only with -d).
-When this repository takes over, delete this file (docs/EXPORT.md, "Making the standalone repository the primary one").
-
-monorepo:          https://github.com/acak1221/Thaumcraft-1.21.1
-monorepo_branch:   claude/hopeful-hamilton-v8m5pi
-monorepo_commit:   4315aedabdd5ec54bdffe1c33e6fcb35096a8b3d
-monorepo_worktree: clean
-tree_sha256:       a23cb847d8d430bd90874eb9ad1022d94a7ba355c2a3d2a2119dbe303cef8646   (sha256 of the sha256 list of every other file of this tree)

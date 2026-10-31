@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: MIT
 # Fast compile of the Thaumic Tinkerer sources with javac, outside Gradle.
 #
-#   tools/compile.sh [-o OUTDIR] [-g] [FILE_OR_DIR ...]     (monorepo: addons/thaumic-tinkerer/tools/compile.sh)
+#   tools/compile.sh [-o OUTDIR] [-g] [FILE_OR_DIR ...]
 #
 # With no FILE_OR_DIR the whole add-on (common + fabric main sources) is compiled. Given files or directories, only
 # those are compiled and javac finds the rest of the add-on through the source path, so a group can check its own
 # files while another group is half way through its edits.  -g adds the GameTest sources and classpath.
-# The classpath comes from `./gradlew exportTinkererClasspath` (monorepo: `./gradlew :fabric:exportTinkererClasspath`); run it once per checkout.
+# The classpath comes from `./gradlew exportTinkererClasspath`; run it once per checkout and after a dependency change.
 # Output goes to OUTDIR (default: a fresh directory under the system temp dir) and is not used by Gradle.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,10 +17,7 @@ while getopts "o:g" opt; do
 done
 shift $((OPTIND-1))
 CPFILE="$ROOT/.tmp/classpath.txt"; [ "$GAMETEST" = 1 ] && CPFILE="$ROOT/.tmp/classpath-gametest.txt"
-if [ ! -f "$CPFILE" ]; then
-  TASK="exportTinkererClasspath"; [ -f "$ROOT/settings.gradle" ] || TASK=":fabric:exportTinkererClasspath"   # no settings.gradle next to tools/: the monorepo
-  echo "missing $CPFILE: run ./gradlew $TASK" >&2; exit 2
-fi
+[ -f "$CPFILE" ] || { echo "missing $CPFILE: run ./gradlew exportTinkererClasspath" >&2; exit 2; }
 [ -n "$OUT" ] || OUT="$(mktemp -d -t tt-javac.XXXXXX)"
 mkdir -p "$OUT"
 SRCPATH="$ROOT/common/src/main/java:$ROOT/fabric/src/main/java"

@@ -362,7 +362,7 @@ Written without being able to run Gradle or the game; the GameTests were run lat
 * `SimpleBlocksLogicTest` (17 tests) and `SimpleBlocksResourcesTest` (17 tests), and the existing `TinkererApiOnlyTest`,
   were run with the **real JUnit engine** (Jupiter 5.11.4 and the platform launcher 1.11.4 from the Gradle cache, driven by a
   small `Launcher` main outside Gradle, the main resources on the class path, working directory
-  `addons/thaumic-tinkerer`): 35 tests, 35 passed. That is still not Gradle's own test task.
+  the add-on directory): 35 tests, 35 passed. That is still not Gradle's own test task.
 * `python3 -I scripts/porting/tt_assets.py --check` was run (`check: ok (329 files)`), and every JSON file of the add-on
   parses.
 * A plain JVM with the vanilla bootstrap (`Bootstrap.bootStrap()`, the block registry unfrozen by reflection so that blocks can
@@ -371,7 +371,7 @@ Written without being able to run Gradle or the game; the GameTests were run lat
   random ticks and is replaceable; the four potions glint and have the description ids of their names; the command
   node `setCropTendency <aspect> <count>` exists. That checks the block properties only, not the behaviour in a level.
 * The 48 GameTest checks (`SimpleBlocksRuntimeChecks`, wrapped by `SimpleBlocksGameTests`) were first run on a Fabric
-  dedicated server (`:fabric:runTinkererGameTest`, filter `simpleblocksgametests.*`) after the lead's integration. Three
+  dedicated server (`runTinkererGameTest`, filter `simpleblocksgametests.*`) after the lead's integration. Three
   failed. One was a defect of the implementation: the imbued fires and the gases are `randomTicks()` blocks but 1.21.1's
   default `randomTick` is empty (1.7.10 `updateTick` served both kinds of tick), so a fire of age 15 never burned out;
   `BlockFireBase` and `BlockGas` now override `randomTick` to call `tick` (section 2.3 and 2.9). The other two were wrong
@@ -385,7 +385,7 @@ Written without being able to run Gradle or the game; the GameTests were run lat
   the free cells. A fourth check (`aCropGrowsInItsTileAndNotByRandomTicks`) failed in the first whole-group run because
   the crop's real ticker grew it during the ten ticks of waiting for the light (chance 1 in 6): it compares the age before
   and after the 2000 random ticks inside one server tick.
-  Result of the last run of the whole group: 48 of 48 passed (`:fabric:runTinkererGameTest`,
+  Result of the last run of the whole group: 48 of 48 passed (`runTinkererGameTest`,
   `-PtinkererGameTestFilter='simpleblocksgametests.*'`).
 
 * **Client smoke, 2026-10-30** (`docs/CLIENT_VERIFICATION.md`: a real 1.21.1 client under Xvfb and Mesa software rendering, one flat
@@ -398,7 +398,7 @@ Written without being able to run Gradle or the game; the GameTests were run lat
   six cells matches the mean colours of `seed_*.png`. The new JUnit check `everyTextureGroupOfTheSeedsSurvivesTheClampOfTheItemPropertyAndPicksItsOwnModel`
   feeds the value of each group through vanilla's `ClampedItemPropertyFunction.call` and the override rule of `ItemOverrides`; with the
   old function and the old model file it fails at group 2. `SimpleBlocksResourcesTest` has 18 tests now. Runs of 2026-10-30: add-on JUnit
-  (`:fabric:tinkererTest --rerun`) 364 tests, 0 failures; the 48 GameTests of the group (`simpleblocksgametests.*`) all passed. These
+  (`tinkererTest --rerun`) 364 tests, 0 failures; the 48 GameTests of the group (`simpleblocksgametests.*`) all passed. These
   pictures show what a software renderer drew; they are not an acceptance on a GPU, and the other pictures of the group
   (block rows, the crop at every age, the tint of the generic crop, the camouflage) were not judged in that pass.
 

@@ -9,7 +9,7 @@
  *
  * File Created @ [14 Sep 2013, 21:56:21 (GMT)]
  *
- * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see addons/thaumic-tinkerer/NOTICE.md).
+ * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see NOTICE.md).
  */
 package thaumic.tinkerer.client.gui.button;
 

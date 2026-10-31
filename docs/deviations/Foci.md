@@ -15,7 +15,7 @@ the Dislocation's load) and the resources (models, ornaments, depth layers, lang
 all but the flight-kick installation test, were first **run outside Gradle** with a hand-built JUnit launcher (the
 `junit-platform-launcher` jars of the Gradle cache, the Minecraft jar bootstrapped, no world) and passed, as did `TinkererApiOnlyTest`.
 `FociLogicTest.theFlightKickResetIsWhatIsInstalledAndNullRemovesIt`, which replaced the test of the reflective accessors when the
-Uprising moved to the loader hook, was written later and has only run under Gradle, with the whole add-on suite (`:fabric:tinkererTest`,
+Uprising moved to the loader hook, was written later and has only run under Gradle, with the whole add-on suite (`tinkererTest`,
 which includes `FociLogicTest` and `FociResourcesTest`). 35 GameTests (`FociRuntimeChecks`) cast the foci with a real wand and
 mock players in a running server: they were **run outside Gradle** in a scratch Fabric GameTest server (Fabric Loader's `KnotServer`
 with the classpath of the Gradle run configuration `runGameTest`, the Thaumcraft mod as built in `fabric/build`, and a copy of the
@@ -23,7 +23,7 @@ add-on whose `ContentGroups` lists only `Foci`) and all 35 passed in the last ru
 a mistake of the new rose-bush test, which stood on stone). Deliberate changes in the copy made checks fail, so they bite: in the
 first round the Mending threshold, the removal of a block entity before its block and the shield's shift (five checks); in the review
 round the missing flight-kick reset, the missing two-part refusal and the missing flowing-water refusal (one check each). The
-whole-add-on Gradle run of the lead (`runTinkererGameTest`, `fabric/build/tinkerer-gametest-results.xml`, 17:44) passed every Foci check
+whole-add-on Gradle run of the lead (`runTinkererGameTest`, `build/tinkerer-gametest-results.xml`, 17:44) passed every Foci check
 that existed then except the three that assert "no registration failures" (a KamiGear resource-location error, not a Foci one); the
 checks added in the review round were not in it. After the Uprising was moved to the loader hook (section 2) the Foci GameTests were
 run again through Gradle (`runTinkererGameTest`, filter `focigametests.*` together with the Machines group): 36 checks, all passed

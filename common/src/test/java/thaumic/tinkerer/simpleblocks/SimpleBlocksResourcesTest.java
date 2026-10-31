@@ -1,7 +1,7 @@
 /**
  * This file is new in the port of Thaumic Tinkerer to Minecraft 1.21.1 for Thaumcraft 4 Reload (no 1.7.10
  * counterpart); it is distributed under the same licence as the add-on (Creative Commons
- * Attribution-NonCommercial-ShareAlike 3.0, see addons/thaumic-tinkerer/NOTICE.md).
+ * Attribution-NonCommercial-ShareAlike 3.0, see NOTICE.md).
  */
 package thaumic.tinkerer.simpleblocks;
 
@@ -422,7 +422,7 @@ class SimpleBlocksResourcesTest {
     void theRussianFragmentHasEveryKeyOfTheEnglishOne() throws IOException {
         Path en = Path.of("lang-extra", "simple_blocks.en_us.json");
         Path ru = Path.of("lang-extra", "simple_blocks.ru_ru.json");
-        assertTrue(Files.isRegularFile(en) && Files.isRegularFile(ru), "the fragments exist (tests run in addons/thaumic-tinkerer)");
+        assertTrue(Files.isRegularFile(en) && Files.isRegularFile(ru), "the fragments exist (tests run in the repository root)");
         JsonObject english = JsonParser.parseString(Files.readString(en)).getAsJsonObject();
         JsonObject russian = JsonParser.parseString(Files.readString(ru)).getAsJsonObject();
         assertTrue(russian.keySet().containsAll(english.keySet()));

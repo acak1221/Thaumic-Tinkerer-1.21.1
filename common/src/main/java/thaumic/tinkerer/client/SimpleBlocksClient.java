@@ -2,7 +2,7 @@
  * This class is new in the port of Thaumic Tinkerer to Minecraft 1.21.1 for Thaumcraft 4 Reload (the client side of
  * the 1.7.10 renderers RenderInfusedCrops and RenderGenericSeeds, which have no counterpart as classes); it is
  * distributed under the same licence as the add-on (Creative Commons Attribution-NonCommercial-ShareAlike 3.0, see
- * addons/thaumic-tinkerer/NOTICE.md).
+ * NOTICE.md).
  */
 package thaumic.tinkerer.client;
 

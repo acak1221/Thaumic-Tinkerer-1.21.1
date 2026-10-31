@@ -26,9 +26,8 @@ import thaumic.tinkerer.testing.parity.KnownDifference;
  */
 class KnownDifferencesTest {
     private static Path deviations() {
-        for (Path p : List.of(Path.of("docs/deviations"), Path.of("addons/thaumic-tinkerer/docs/deviations"))) {
-            if (Files.isDirectory(p)) return p;
-        }
+        Path p = Path.of("docs/deviations");
+        if (Files.isDirectory(p)) return p;
         throw new AssertionError("docs/deviations not found from " + Path.of("").toAbsolutePath());
     }
 

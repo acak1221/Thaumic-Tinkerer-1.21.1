@@ -1,7 +1,7 @@
 /**
  * New in the 1.21.1 port of Thaumic Tinkerer (no 1.7.10 counterpart: the 1.7.10 client proxy did this in
  * {@code TTClientProxy} and in each item's {@code registerIcons}/{@code getColorFromItemStack}). Distributed under the same
- * licence as the add-on (CC BY-NC-SA 3.0, see addons/thaumic-tinkerer/NOTICE.md).
+ * licence as the add-on (CC BY-NC-SA 3.0, see NOTICE.md).
  */
 package thaumic.tinkerer.client;
 

@@ -475,19 +475,21 @@ The ten mixins of `thaumictinkerer.mixins.json` (`fabric/src/main/java/thaumic/t
 `HooksResourcesTest` checks that the config lists exactly the mixin classes of that package.
 
 * The mixins are compiled with the add-on's source set `thaumicTinkerer`. Architectury Loom 1.11 puts every source set that exists when it initialises on the
-  Mixin annotation processor, each with its own refmap `<sourceSet>-<archivesName>-<project>-refmap.json` (here
-  `fabric/build/classes/java/thaumicTinkerer/thaumicTinkerer-Thaumcraft-fabric-fabric-refmap.json`), and the processor also knows the MixinExtras
+  Mixin annotation processor, each with its own refmap `<sourceSet>-<archivesName>-refmap.json` (here
+  `build/classes/java/thaumicTinkerer/thaumicTinkerer-ThaumicTinkerer-refmap.json`), and the processor also knows the MixinExtras
   annotations. **Do not call `loom.mixin.add(sourceSet, name)` for the add-on**: the first explicit `add` switches that default off for every other source
-  set, Thaumcraft's own included. `fabric.gradle` checks after `compileThaumicTinkererJava` that the refmap exists and names every mixin that has an
+  set. `fabric.gradle` checks after `compileThaumicTinkererJava` that the refmap exists and names every mixin that has an
   injector (`GradleException` otherwise).
 * The release path (`remapThaumicTinkererJar`) adds `"refmap"` to `thaumictinkerer.mixins.json` in the jar (Loom's `MixinRefmapService` does it for the
   configs listed in `fabric.mod.json`), and the development run reads the mixins by their Mojang names without a refmap, like the Thaumcraft mod's own.
 * `@Shadow` fields (`lastHurt`, `useItemRemaining`, `lastHurtByPlayerTime`, `aboveGroundTickCount`) have no refmap entry, as in the mod's own mixins; Loom's remap of the jar renames them in the
   mixin classes.
-* **Checked on a built jar** (`./gradlew :fabric:remapThaumicTinkererJar`, `fabric/build/libs/ThaumicTinkerer-fabric-<version>.jar`): it contains
-  `thaumicTinkerer-Thaumcraft-fabric-fabric-refmap.json`, its `thaumictinkerer.mixins.json` carries `"refmap": "thaumicTinkerer-Thaumcraft-fabric-fabric-refmap.json"`, and in the
-  remapped mixin classes the shadowed field is `field_6222` (intermediary). That jar was inspected, not started in a production environment. This bullet was written when
-the config held nine mixins (before `LivingEntityArmorMixin`); no later inspection of a built jar is recorded in this document.
+* **Checked on a built jar** (`./gradlew remapThaumicTinkererJar`, `build/libs/ThaumicTinkerer-fabric-<version>.jar`), when the add-on was still built in
+  the Thaumcraft repository, where the refmap was named `thaumicTinkerer-Thaumcraft-fabric-fabric-refmap.json`: the jar contained it, its
+  `thaumictinkerer.mixins.json` carried `"refmap"` with that name, and in the remapped mixin classes the shadowed field is `field_6222` (intermediary). That
+  jar was inspected, not started in a production environment. This bullet was written when the config held nine mixins (before `LivingEntityArmorMixin`).
+  The jar built from this repository's own build on 2026-10-30 was compared with the one of the Thaumcraft build of the same tree: they differed only in the
+  name of the refmap (`thaumicTinkerer-ThaumicTinkerer-refmap.json`) and the `"refmap"` value that names it; the content of the refmap was the same.
 * MixinExtras 0.4.1 comes with Fabric Loader 0.16.14 (the add-on does not shade it). All mixins use `injectors.defaultRequire: 1` and `required: true`: a
   Minecraft change that moves a target stops the game at start-up with the mixin's name instead of silently losing a hook.
 * The `TinkererApiOnlyTest` lets the Fabric tree import `org.spongepowered.` and `com.llamalad7.` besides `net.fabricmc.`; `thaumcraft.common.` and
@@ -497,13 +499,13 @@ the config held nine mixins (before `LivingEntityArmorMixin`); no later inspecti
 
 **What ran** (only what a document or a file says; everything else is *not recorded*, which is not the same as failed):
 
-* *GameTests, a results file.* `fabric/build/tinkerer-gametest-results.xml` (written by `:fabric:runTinkererGameTest`, time stamp 2026-10-30 10:29) lists
+* *GameTests, a results file.* `build/tinkerer-gametest-results.xml` (written by `runTinkererGameTest`, time stamp 2026-10-30 10:29) lists
   298 cases and no `failure`, `error` or `skipped` element: simpleblocks 48, tileblocks 34, machines 47, basicitems 19, foci 36, enchantments 34, kamigear 36,
   kamiworld 20, hooks 14, parity 7, core 3. Its 14 `hooksgametests` cases are the 14 `@GameTest` methods of `HooksGameTests`, among them the two of
   `LIVING_ARMOR_ABSORB`, and it lists `gemBootsAndAscentBoostLeggingsComposeTheirJumps`. The console log of that run was not read, and a results file does not
   say which tree it ran: when this was written the only sources of the add-on's `main`, `test` and `gameTest` trees that were newer than it were
   `ItemGemBoots.java` (a comment) and the build script `fabric.gradle`. That is a statement about file time stamps, not a record of the run.
-  *A later record.* The same task wrote the file again in later runs of the tree on 2026-10-30 (in the monorepo, and in an export of it outside the monorepo;
+  *A later record.* The same task wrote the file again in later runs of the tree on 2026-10-30 (in the Thaumcraft repository, and in a copy of the add-on built on its own outside it;
   their Gradle logs end in `All 299 required tests passed :)` and `BUILD SUCCESSFUL`; the logs are in the scratch directory of the development machine, not
   committed): 299 cases and no `failure`, `error` or `skipped` element, the groups as above except tileblocks 35 (one more than at 10:29).
 * *GameTests, the groups' documents.* `deviations/KamiWorld.md` records that its GameTests passed together with the 12 `hooksgametests.*` of its hooks round (31 of 31) and, with its
@@ -513,7 +515,7 @@ the config held nine mixins (before `LivingEntityArmorMixin`); no later inspecti
   and the 30 `kamigear.*` tests as passed.
 * *Not run at all:* every client side (below).
 
-JUnit (`./gradlew :fabric:tinkererTest`): `TinkererEventsTest` (chain order, zero/negative/NaN cancel, a lone listener, no listener, the clamp of the use
+JUnit (`./gradlew tinkererTest`): `TinkererEventsTest` (chain order, zero/negative/NaN cancel, a lone listener, no listener, the clamp of the use
 tick, drops listeners and `hasLivingDropsListeners`, `ItemRenderers` queue and duplicate, and the armour event: chain order, a lone listener clamped like a chain,
 NaN, a source that bypasses armour, no damage, the bit-for-bit pass-through, `armorStepGivesBackTheGamesOwnFloatUnlessAListenerChangedTheAmount` and
 `armorStepOfABlowThatIsNotFiniteIsTheGamesOwnValueNotNaN`), `HooksResourcesTest` (the mixin config lists exactly the

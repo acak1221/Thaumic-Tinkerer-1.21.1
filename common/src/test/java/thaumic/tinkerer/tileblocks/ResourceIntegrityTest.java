@@ -147,7 +147,7 @@ class ResourceIntegrityTest {
     void theLangFragmentsAgreeAcrossLanguages() throws IOException {
         Path en = Path.of("lang-extra", "tile_blocks.en_us.json");
         Path ru = Path.of("lang-extra", "tile_blocks.ru_ru.json");
-        assertTrue(Files.isRegularFile(en) && Files.isRegularFile(ru), "the fragments exist (tests run in addons/thaumic-tinkerer)");
+        assertTrue(Files.isRegularFile(en) && Files.isRegularFile(ru), "the fragments exist (tests run in the repository root)");
         JsonObject english = JsonParser.parseString(Files.readString(en)).getAsJsonObject();
         JsonObject russian = JsonParser.parseString(Files.readString(ru)).getAsJsonObject();
         assertEquals(english.keySet(), russian.keySet());

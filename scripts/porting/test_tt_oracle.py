@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Thaumic Tinkerer oracle: the Java reader, the interpreter, the extraction and the --check mode.
 
 Most tests build a small synthetic checkout (a registry, a block, an item, a few constants) in a temporary
@@ -200,11 +201,16 @@ def make_checkout(base: Path, files: dict | None = None) -> Path:
 
 def make_root(base: Path) -> Path:
     root = base / "repo"
-    write(root / oracle.ASPECT_JAVA, ASPECT_JAVA)
     write(root / oracle.PORT_LIB / "LibItemNames.java", LIB_ITEM_NAMES)
     write(root / oracle.PORT_LIB / "LibBlockNames.java", LIB_BLOCK_NAMES)
-    write(root / oracle.LEGACY_IDS, json.dumps(LEGACY))
     return root
+
+
+def make_thaumcraft(base: Path) -> Path:
+    thaumcraft = base / "thaumcraft"
+    write(thaumcraft / oracle.ASPECT_JAVA, ASPECT_JAVA)
+    write(thaumcraft / oracle.LEGACY_IDS, json.dumps(LEGACY))
+    return thaumcraft
 
 
 class TempCase(unittest.TestCase):
@@ -213,6 +219,7 @@ class TempCase(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.base = Path(self.tmp.name)
         self.root = make_root(self.base)
+        self.thaumcraft = make_thaumcraft(self.base)
 
     def checkout(self, **overrides):
         files = dict(GAME_FILES)
@@ -221,7 +228,7 @@ class TempCase(unittest.TestCase):
         return make_checkout(self.base, files)
 
     def plan(self, **overrides):
-        return oracle.build(self.checkout(**overrides), self.root)
+        return oracle.build(self.checkout(**overrides), self.root, self.thaumcraft)
 
     def docs(self, plan):
         rel = oracle.OUT_DIR
@@ -231,7 +238,7 @@ class TempCase(unittest.TestCase):
     def run_main(self, *arguments):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = oracle.main([*arguments], root=self.root)
+            code = oracle.main([*arguments], root=self.root, thaumcraft=self.thaumcraft)
         return code, out.getvalue(), err.getvalue()
 
 
@@ -651,19 +658,19 @@ class ExtractionTest(TempCase):
 
     def test_provenance_hashes_every_source_file_read(self):
         source = self.checkout()
-        plan = oracle.build(source, self.root)
+        plan = oracle.build(source, self.root, self.thaumcraft)
         _, _, prov = self.docs(plan)
         for rel, digest in prov["sources"].items():
             self.assertEqual(hashlib.sha256((source / rel).read_bytes()).hexdigest(), digest)
         self.assertEqual(sorted(prov["sources"]), sorted(p.relative_to(source).as_posix() for p in source.rglob("*.java")))
-        self.assertEqual(set(prov["inputs"]), {oracle.ASPECT_JAVA, oracle.LEGACY_IDS, f"{oracle.PORT_LIB}/LibItemNames.java",
-                                               f"{oracle.PORT_LIB}/LibBlockNames.java"})
+        self.assertEqual(set(prov["inputs"]), {oracle.THAUMCRAFT_LABEL + oracle.ASPECT_JAVA, oracle.THAUMCRAFT_LABEL + oracle.LEGACY_IDS,
+                                               f"{oracle.PORT_LIB}/LibItemNames.java", f"{oracle.PORT_LIB}/LibBlockNames.java"})
         self.assertEqual(prov["totals"]["research_sites"], 5)
         self.assertEqual(prov["constructions"]["src/main/java/t/ResearchHelper.java"]["research"], 2)
 
     def test_the_output_is_deterministic(self):
         first = self.plan()
-        second = oracle.build(self.checkout(), self.root)
+        second = oracle.build(self.checkout(), self.root, self.thaumcraft)
         self.assertEqual(first.files, second.files)
 
     def test_a_construction_that_is_never_reached_is_an_error(self):
@@ -927,11 +934,12 @@ def pinned_checkout() -> Path | None:
 
 
 @unittest.skipIf(pinned_checkout() is None, "the pinned Thaumic Tinkerer checkout is not available")
+@unittest.skipIf(not (oracle.THAUMCRAFT_DIR / oracle.ASPECT_JAVA).is_file(), "no Thaumcraft 4 Reload checkout at THAUMCRAFT_DIR")
 class RealCheckoutTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = pinned_checkout()
-        cls.plan = oracle.build(cls.source, oracle.ROOT)
+        cls.plan = oracle.build(cls.source, oracle.ROOT, oracle.THAUMCRAFT_DIR)
         cls.research = json.loads(cls.plan.files[f"{oracle.OUT_DIR}/research.json"]) if cls.plan.files else None
         cls.recipes = json.loads(cls.plan.files[f"{oracle.OUT_DIR}/recipes.json"]) if cls.plan.files else None
         cls.prov = json.loads(cls.plan.files[f"{oracle.OUT_DIR}/provenance.json"]) if cls.plan.files else None

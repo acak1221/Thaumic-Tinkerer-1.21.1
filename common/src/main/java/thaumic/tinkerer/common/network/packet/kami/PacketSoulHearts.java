@@ -8,7 +8,7 @@
  * (http://www.minecraftforum.net/topic/1585216-)
  *
  * File Created @ [Dec 29, 2013, 9:41:05 PM (GMT)]
- * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see addons/thaumic-tinkerer/NOTICE.md).
+ * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see NOTICE.md).
  */
 package thaumic.tinkerer.common.network.packet.kami;
 

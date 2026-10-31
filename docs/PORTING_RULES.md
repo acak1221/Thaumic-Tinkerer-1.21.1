@@ -8,7 +8,7 @@ cannot do, or a reproducible crash/exploit, and is written down in `docs/deviati
 ## 1. Hard rules
 
 1. **Header.** Every ported Java file keeps the original license header and gets the line
-   ` * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see addons/thaumic-tinkerer/NOTICE.md).` (copy it from
+   ` * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see NOTICE.md).` (copy it from
    any existing file under `common/src/main/java/thaumic/tinkerer/common/lib`). A file that is new in the port (no
    1.7.10 counterpart: tests, 1.21.1 glue) says so in its header instead of claiming Vazkii as author.
 2. **API only.** The add-on imports `java.*`, `net.minecraft.*`, `com.mojang.*`, `dev.architectury.*`,
@@ -23,7 +23,7 @@ cannot do, or a reproducible crash/exploit, and is written down in `docs/deviati
 4. **Edit only your own files.** Your group's registrar (`common/content/<Group>.java` and `client/<Group>Client.java`
    if you need one), new files under your own packages, resources listed in section 4. Shared files (`TTRegistry`,
    `ThaumicTinkerer`, `ResearchHelper`, `ConfigHandler`, the build files) are the lead's; ask for a change in your report.
-5. **No Gradle, no git.** Compile with `addons/thaumic-tinkerer/tools/compile.sh` (javac, section 5). Do not commit.
+5. **No Gradle, no git.** Compile with `tools/compile.sh` (javac, section 5). Do not commit.
 6. **Annotations.** `@Nullable` is `org.jetbrains.annotations.Nullable` (the one the mod uses); `javax.annotation` is not on the classpath.
 7. **Do not weaken tests** and do not delete content because it is hard; list it as missing in your report.
 
@@ -80,7 +80,7 @@ loot tables (`data/thaumictinkerer/loot_table/blocks/<path>.json`), recipes. Blo
 include `#thaumictinkerer:mineable/<group>/<tool>` and `#thaumictinkerer:needs/<group>/<tier>_tool` for the groups
 `simple_blocks`, `tile_blocks`, `machines` and `kami`; the (empty) files exist, fill yours.
 Language keys: the converted base already carries the 1.7.10 texts. New 1.21.1-only keys go into
-`addons/thaumic-tinkerer/lang-extra/<group>.<lang>.json` (flat objects; at least `en_us` and `ru_ru`); never edit
+`lang-extra/<group>.<lang>.json` (flat objects; at least `en_us` and `ru_ru`); never edit
 `assets/thaumictinkerer/lang/*.json` directly (generated). 1.21.1 keys: `block.thaumictinkerer.<path>`,
 `item.thaumictinkerer.<path>`, `container.thaumictinkerer.<path>`, `enchantment.thaumictinkerer.<path>`,
 `effect.thaumictinkerer.<path>`, `itemGroup.thaumictinkerer`.
@@ -99,11 +99,11 @@ Language keys: the converted base already carries the 1.7.10 texts. New 1.21.1-o
 ## 5. Compiling
 
 ```bash
-addons/thaumic-tinkerer/tools/compile.sh                       # everything
-addons/thaumic-tinkerer/tools/compile.sh common/src/main/java/thaumic/tinkerer/common/block   # a directory (relative to addons/thaumic-tinkerer)
-addons/thaumic-tinkerer/tools/compile.sh -g                    # with the GameTest sources
+tools/compile.sh                       # everything
+tools/compile.sh common/src/main/java/thaumic/tinkerer/common/block   # a directory (relative to the repository root)
+tools/compile.sh -g                    # with the GameTest sources
 ```
-It needs `addons/thaumic-tinkerer/.tmp/classpath.txt` (written by the lead's Gradle task); the output goes to a
+It needs `.tmp/classpath.txt` (written by `./gradlew exportTinkererClasspath`); the output goes to a
 temporary directory.  Fix every error in your own files; an error in another group's file is not yours: tell the lead.
 
 ## 6. Report

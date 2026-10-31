@@ -10,7 +10,7 @@ import thaumic.tinkerer.common.registry.TTRegistry;
 
 /**
  * Test-only code of the port (no 1.7.10 counterpart): the add-on as a whole in a running world. Distributed under
- * the same licence as the add-on (CC BY-NC-SA 3.0, see addons/thaumic-tinkerer/NOTICE.md).
+ * the same licence as the add-on (CC BY-NC-SA 3.0, see NOTICE.md).
  */
 public final class CoreRuntimeChecks {
     private CoreRuntimeChecks() {}

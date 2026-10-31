@@ -20,7 +20,7 @@ import com.google.gson.JsonParser;
  * The research and the recipes of Thaumic Tinkerer 1.7.10, as {@code scripts/porting/tt_oracle.py} extracted them
  * from the original source ({@code tt_oracle/research.json}, {@code recipes.json}). Test-only code of the port (no
  * 1.7.10 counterpart), plain Java so the comparison logic can be tested without a world. Distributed under the same
- * licence as the add-on (CC BY-NC-SA 3.0, see addons/thaumic-tinkerer/NOTICE.md).
+ * licence as the add-on (CC BY-NC-SA 3.0, see NOTICE.md).
  */
 public final class OracleData {
     public static final String RESEARCH_RESOURCE = "/tt_oracle/research.json";

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-// Thaumic Tinkerer for Thaumcraft 4 Reload (Fabric, Minecraft 1.21.1): the build of the standalone repository.
-// A build file of Thaumcraft 4 Reload (MIT, see LICENSE-MIT and NOTICE.md); the add-on sources are CC BY-NC-SA 3.0 (LICENSE).
+// Thaumic Tinkerer for Thaumcraft 4 Reload (Fabric, Minecraft 1.21.1): the build.
+// MIT (LICENSE-MIT, NOTICE.md); the add-on sources are CC BY-NC-SA 3.0 (LICENSE).
 //
-// One Gradle project, the root project is the Fabric add-on. fabric.gradle (the very file that the Thaumcraft monorepo applies
-// from its fabric/build.gradle) declares the source sets, the runs and the tasks: tinkererTest, runTinkererGameTest,
+// One Gradle project, the root project is the Fabric add-on. fabric.gradle declares the source sets, the runs and the tasks: tinkererTest, runTinkererGameTest,
 // runTinkererClientSmoke, runTinkererClient, remapThaumicTinkererJar, exportTinkererClasspath. Here sourceSets.main is empty
 // and its compile classpath carries Thaumcraft 4 Reload (the jar from mavenLocal), Minecraft, Fabric Loader, Fabric API and
 // Architectury, which is what fabric.gradle expects of it. The plugin architectury-plugin is for multi-module builds
@@ -60,6 +59,6 @@ apply from: 'fabric.gradle'
 tasks.named('jar') { enabled = false }
 tasks.named('remapJar') { enabled = false }
 tasks.named('assemble') { dependsOn 'remapThaumicTinkererJar' }
-// In the monorepo `check` compiles the add-on's three source sets (fabric.gradle); here the JUnit tests of the add-on belong to it as well.
+// `check` compiles the add-on's three source sets (fabric.gradle) and runs the JUnit tests of the add-on.
 // The GameTests (runTinkererGameTest) and the client smoke (runTinkererClientSmoke) are started by name.
 tasks.named('check') { dependsOn 'tinkererTest' }

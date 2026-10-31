@@ -1,6 +1,6 @@
 /**
  * This file is new in the Minecraft 1.21.1 port of Thaumic Tinkerer for Thaumcraft 4 Reload (no 1.7.10 counterpart, see
- * addons/thaumic-tinkerer/NOTICE.md); its rule is the {@code ISpecialArmor} part of Vazkii's {@code ItemIchorclothArmor}.
+ * NOTICE.md); its rule is the {@code ISpecialArmor} part of Vazkii's {@code ItemIchorclothArmor}.
  * Thaumic Tinkerer was created by Vazkii; the port is distributed under a Creative Commons
  * Attribution-NonCommercial-ShareAlike 3.0 License (http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_GB)
  *

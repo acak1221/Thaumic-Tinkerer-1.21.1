@@ -9,7 +9,7 @@
  *
  * File Created @ [12 Sep 2013, 18:43:26 (GMT)]
  *
- * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see addons/thaumic-tinkerer/NOTICE.md).
+ * Ported to Minecraft 1.21.1 for Thaumcraft 4 Reload (see NOTICE.md).
  */
 package thaumic.tinkerer.common.block.tile.container.slot;
 

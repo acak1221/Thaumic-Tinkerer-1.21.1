@@ -1,5 +1,5 @@
 /**
- * New in the 1.21.1 port of Thaumic Tinkerer (no 1.7.10 counterpart, see addons/thaumic-tinkerer/NOTICE.md): test-only
+ * New in the 1.21.1 port of Thaumic Tinkerer (no 1.7.10 counterpart, see NOTICE.md): test-only
  * code, distributed under the same licence as the add-on (CC BY-NC-SA 3.0).
  */
 package thaumic.tinkerer.fabric.testing;

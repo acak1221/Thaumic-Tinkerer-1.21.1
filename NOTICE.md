@@ -11,8 +11,7 @@ Thaumic Tinkerer was created by **Vazkii** (continuing his *Elemental Tinkerer*)
 **Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported** licence (`LICENSE` in the root of this repository, legal code
 unchanged from the upstream repository). Every Java file ported from the original keeps its original header
 ("created by Vazkii ... Derivative Work on Thaumcraft 4. Thaumcraft 4 (c) Azanor 2012") and adds the line that it was
-ported to 1.21.1. The headers say "see addons/thaumic-tinkerer/NOTICE.md": that is the path of this file in the monorepo the
-port was written in; here it is `NOTICE.md` at the root.
+ported to 1.21.1, with a pointer to this file.
 
 Which files are under which licence:
 
@@ -23,13 +22,11 @@ Which files are under which licence:
   contain no Thaumic Tinkerer code: `settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `.gitignore`, `.gitattributes`, `.github/`
   (the CI workflow), `tools/` and `scripts/porting/` (the Python tools that produced the resources and the parity
   oracle from the 1.7.10 source; they carry no Thaumic Tinkerer text). The scripts, the Gradle files and the workflow say so in an
-  `SPDX-License-Identifier: MIT` line; the Python tools are MIT by this paragraph (`scripts/porting/README.md` repeats it) and carry no identifier,
-  because they are copied unchanged from the Thaumcraft repository.
+  `SPDX-License-Identifier: MIT` line, the Python tools too (`scripts/porting/README.md` repeats it).
 - **Apache-2.0** (Gradle's own licence, not relicensed): `gradlew`, `gradlew.bat` and `gradle/wrapper/` (the wrapper jar and its properties), copied
   unchanged from the Thaumcraft repository; `gradlew` and `gradlew.bat` carry the Apache-2.0 notice of Gradle.
 - `LICENSE-MIT` is a byte copy of the licence file of the Thaumcraft 4 Reload repository, so its second line still names the original Thaumcraft 4.2.3.5
   (c) Azanor, as it does there. The MIT files listed above contain no Thaumcraft code; the line is inherited, it is not a statement about them.
-- `EXPORTED-FROM-MONOREPO.txt` is a generated note without creative content.
 - The add-on jar is a separate download; the Thaumcraft jar contains none of it, and this repository contains no Thaumcraft 4 jar, no
   Thaumcraft assets and no Thaumcraft 4 source.
 - Publishing the port does not establish rights in Thaumcraft 4 (Azanor), which Thaumic Tinkerer is a derivative work
@@ -52,3 +49,10 @@ Every deviation from the 1.7.10 behaviour is listed in `docs/DEVIATIONS.md` with
 no OreDictionary, no numeric ids, no `EnumHelper`; enchantments, dimensions and recipes are data; the ComputerCraft and
 OpenComputers peripherals, NEI, Forge Multipart, EnderIO, Botania, Blood Magic, IC2 and Tinkers' Construct integrations
 depend on 1.7.10 mods that do not exist on 1.21.1).
+
+## History
+
+The port was written inside the Thaumcraft 4 Reload repository, <https://github.com/acak1221/Thaumcraft-1.21.1>, in the directory
+`addons/thaumic-tinkerer` of the branch `claude/hopeful-hamilton-v8m5pi`, up to commit `4315aedabdd5ec54bdffe1c33e6fcb35096a8b3d`; the
+history of those files is there. Since then this repository is where the add-on is developed, and the Thaumcraft repository no longer
+contains it. The extensions of `thaumcraft.api` that the port asked for (`docs/API_GAPS.md`, `docs/api-requests/`) stay in Thaumcraft.

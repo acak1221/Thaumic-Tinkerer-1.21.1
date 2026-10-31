@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
  * <p>The wiring of the Fabric mixins that no compiler checks: every mixin class is in {@code thaumictinkerer.mixins.json} and
  * the other way round, the config is listed in the mod's {@code fabric.mod.json} (the game test mod's list of mixins is
  * separate), no other class names a mixin class (Mixin refuses to load one directly), the handler methods carry the mod's
- * prefix, and common code never reaches into the Fabric tree. The tests run in {@code addons/thaumic-tinkerer}.</p>
+ * prefix, and common code never reaches into the Fabric tree. The tests run in the repository root.</p>
  */
 class HooksResourcesTest {
     private static final Path MIXIN_DIR = Path.of("fabric", "src", "main", "java", "thaumic", "tinkerer", "fabric", "mixin");

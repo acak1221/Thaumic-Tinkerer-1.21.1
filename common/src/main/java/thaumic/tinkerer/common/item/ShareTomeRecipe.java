@@ -1,7 +1,7 @@
 /**
  * New in the 1.21.1 port of Thaumic Tinkerer (no 1.7.10 counterpart): the survival recipe of the Tome of Knowledge Sharing
  * as a recipe type that honours the option {@code shareTome.survival.enabled}. Distributed under the same licence as the
- * add-on (CC BY-NC-SA 3.0, see addons/thaumic-tinkerer/NOTICE.md).
+ * add-on (CC BY-NC-SA 3.0, see NOTICE.md).
  */
 package thaumic.tinkerer.common.item;
 

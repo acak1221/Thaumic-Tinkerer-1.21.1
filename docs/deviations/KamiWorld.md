@@ -13,11 +13,11 @@ dimension type and biome JSON were parsed with the game's own codecs (`Dimension
 `ChunkGeneratorBedrock.CODEC` over the dimension file's generator object) in a throw-away program on the game classes, and the
 chunk fill, the ore selection with bound item tags and the ore clusters through `applyBiomeDecoration` (with a proxy world) were
 run there as well. The GameTests (`KamiWorldRuntimeChecks`, 20 checks) run on a real Fabric dedicated server
-(`:fabric:runTinkererGameTest`, filter `kamiworldgametests.*`) and **pass there**: 17 of 17 in the integration round (section 10 says what
+(`runTinkererGameTest`, filter `kamiworldgametests.*`) and **pass there**: 17 of 17 in the integration round (section 10 says what
 that round changed in the tests and why), 19 of 19 after the hooks round (the groups moved from their workarounds to the real events of
 `docs/HOOKS.md`: the hooks-round bullet of section 10; run with the 12 `hooksgametests.*` of that day, 31 of 31) and 20 of 20 after the review round
 (the review-round bullet of section 10; run with the 13 `hooksgametests.*` that existed then, 33 of 33; `HooksGameTests` has 14 methods now, one more than in that run). The JUnit tests of the group
-(`KamiWorldLogicTest` 24, `KamiWorldResourcesTest` 14) pass under the real JUnit Jupiter (`:fabric:tinkererTest --tests 'thaumic.tinkerer.kamiworld.*'`). The client side was looked at once in a Fabric dev client under software
+(`KamiWorldLogicTest` 24, `KamiWorldResourcesTest` 14) pass under the real JUnit Jupiter (`tinkererTest --tests 'thaumic.tinkerer.kamiworld.*'`). The client side was looked at once in a Fabric dev client under software
 rendering (`docs/CLIENT_VERIFICATION.md`, 2026-10-30): the gateway block and item, its renderer close-up, the two gateway screens (the menu and the destinations
 screen, also in ru_ru) and the Soul Hearts row (a value written directly in survival mode) were drawn without an exception and the pictures were read. **Not seen:** clicks and
 keys on the gateway screens, a hit taken in the survival of a real client (the HUD row was fed a value, not damage), the Bedrock dimension itself (sky, light, the portal in use),
@@ -408,7 +408,7 @@ is required" for a non-player. The three words are literal English texts, as in 
     `bedrockDimensionFileDecodesAndIsTheLevelOfTheTestWorld`, decodes the real file with the server's registries (the path of the data
     pack loader, so what a normal world gets), compares it to the copy in the preset and to the running level; a JUnit test
     (`theFlatPresetOfTheGameTestWorldHoldsTheDimensionFileAsItIs`) pins the copy to the file. The leftover world of
-    `fabric/run-tinkerer-gametest` did not hide the dimension (the list of levels is rebuilt from the preset at every start and was
+    `run-tinkerer-gametest` did not hide the dimension (the list of levels is rebuilt from the preset at every start and was
     never read from the saved `level.dat`; only saved chunks persist between runs); the saved chunks of the Bedrock dimension were
     deleted once (`world/dimensions/thaumictinkerer`) before the run that proved it from a cold start.
   - *`soulHeartsAbsorbDamageBeforeHealth` failed with "it costs 3 soul hearts: 5"*: a wrong set-up. A new `ServerPlayer` refuses every

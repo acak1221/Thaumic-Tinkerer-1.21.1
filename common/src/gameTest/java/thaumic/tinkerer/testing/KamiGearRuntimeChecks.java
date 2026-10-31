@@ -1,6 +1,6 @@
 /**
  * New in the 1.21.1 port of Thaumic Tinkerer (no 1.7.10 counterpart): runtime checks of the KamiGear group, run by the Fabric GameTests. Distributed under the same licence as the add-on
- * (CC BY-NC-SA 3.0, see addons/thaumic-tinkerer/NOTICE.md).
+ * (CC BY-NC-SA 3.0, see NOTICE.md).
  */
 package thaumic.tinkerer.testing;
 

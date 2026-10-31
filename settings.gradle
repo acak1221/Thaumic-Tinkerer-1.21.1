@@ -1,6 +1,5 @@
-// Thaumic Tinkerer for Thaumcraft 4 Reload (Fabric, Minecraft 1.21.1): the settings of the standalone repository.
 // SPDX-License-Identifier: MIT
-// A build file of Thaumcraft 4 Reload (MIT, see LICENSE-MIT and NOTICE.md).
+// Thaumic Tinkerer for Thaumcraft 4 Reload (Fabric, Minecraft 1.21.1): the settings (MIT, see LICENSE-MIT and NOTICE.md).
 pluginManagement {
  // The same plugin repositories as the Thaumcraft build, so that Architectury Loom resolves the same way.
  repositories {

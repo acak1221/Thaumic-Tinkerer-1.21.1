@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Thaumic Tinkerer asset conversion: naming rules, collisions, lang keys, research keys, fragments.
 
 Most tests build a tiny synthetic checkout in a temporary directory, so they need neither the real
@@ -491,7 +492,7 @@ class FragmentTest(TempCase):
         self.assertIn("block.thaumictinkerer.foo_bar", plan.warnings[0])
         self.assertNotIn(f"{tt.LANG_EXTRA}/.gitkeep", plan.outputs, "a populated directory needs no placeholder")
         doc = plan.outputs[tt.DOC_PATH].decode("utf-8")
-        self.assertIn("| `en_us` | `addons/thaumic-tinkerer/lang-extra/simple_blocks.en_us.json` | 2 | "
+        self.assertIn("| `en_us` | `lang-extra/simple_blocks.en_us.json` | 2 | "
                       "`block.thaumictinkerer.foo_bar` |", doc)
 
     def test_fragments_can_replace_a_derived_research_key(self):

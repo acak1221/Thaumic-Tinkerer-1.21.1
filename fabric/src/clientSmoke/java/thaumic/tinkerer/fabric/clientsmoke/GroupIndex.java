@@ -43,7 +43,7 @@ final class GroupIndex {
 
     private GroupIndex() {}
 
-    /** Reads the group sources under {@code sourceRoot} (the directory addons/thaumic-tinkerer). */
+    /** Reads the group sources under {@code sourceRoot} (the repository root). */
     static GroupIndex load(Path sourceRoot) {
         GroupIndex index = new GroupIndex();
         for (String group : GROUPS) {

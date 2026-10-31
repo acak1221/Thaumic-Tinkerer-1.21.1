@@ -376,17 +376,17 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 ## 4. Unverified
 
-Round of 2026-10-30 (the first client run, 2.8): the add-on's JUnit suite (`:fabric:tinkererTest`, 364 tests of all groups, 37 of
+Round of 2026-10-30 (the first client run, 2.8): the add-on's JUnit suite (`tinkererTest`, 364 tests of all groups, 37 of
 them in the `tileblocks` package) and the 35 GameTests of the group (`-PtinkererGameTestFilter=tileblocksgametests.*`: the 34
 below and the new `camouflagedDevicesLeaveTheFacesOfTheirNeighbours`) ran with no failure, error or skipped entry. The new
 check was also run once with the occlusion override of `CamoDeviceBlock` taken out: it failed at its first assertion
 ("interface camouflaged occludes nothing"), so it does see the missing override; the assertions about the Golem Connector's
 floor face were not reached in that run.
 
-An earlier round, before the camouflage check above existed: on a Fabric dedicated server (`:fabric:runTinkererGameTest`, filter
+An earlier round, before the camouflage check above existed: on a Fabric dedicated server (`runTinkererGameTest`, filter
 `tileblocksgametests.*`) the 34 GameTests of the group (the 33 checks of `TileBlocksRuntimeChecks` and `interfaceForwardsFluids`
 of the Fabric wrapper) passed, in two runs whose test areas lay at different random positions. The add-on's JUnit suite of that
-round (`:fabric:tinkererTest`, 296 tests then, 37 of them in the group's `tileblocks` package) passed. What the first real run showed, and was
+round (`tinkererTest`, 296 tests then, 37 of them in the group's `tileblocks` package) passed. What the first real run showed, and was
 fixed: the relay fix above (a stale partner hung the server thread), and six checks whose set-up was wrong, not the code
 (the Interface was bound to a stone block, which has no block entity to stand in for and so ends the binding at once;
 `GameTestHelper.relativePos` of 1.21.1 is not the inverse of `absolutePos`; `GameTestHelper.destroyBlock` drops nothing;

@@ -11,13 +11,11 @@ a source file imports anything else of Thaumcraft.
 > files of this repository (`settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `tools/`, the CI workflow,
 > `scripts/porting/`) are MIT (`LICENSE-MIT`); the Gradle wrapper is Gradle's own (Apache-2.0); `NOTICE.md` lists them.
 
-> **Where this is developed.** This repository is a generated copy: the add-on is developed in `addons/thaumic-tinkerer` of the
-> [Thaumcraft 4 Reload monorepo](https://github.com/acak1221/Thaumcraft-1.21.1) until this repository takes over, and
-> `tools/export-standalone.sh` of the monorepo writes this tree (`EXPORTED-FROM-MONOREPO.txt` says from which commit). Do not edit files here by
-> hand while that is so: the next export refuses a tree that was edited (and overwrites the edits only when told to). See `docs/EXPORT.md`.
+The add-on is developed in this repository. Until 2026-10-31 it was written inside the
+[Thaumcraft 4 Reload repository](https://github.com/acak1221/Thaumcraft-1.21.1) (`NOTICE.md`, "History"); that repository keeps the
+extensions of `thaumcraft.api` the add-on needs and no longer contains the add-on.
 
 ## Status
-
 
 Fabric first (as for the whole project); NeoForge is **not** built for the add-on yet.
 
@@ -86,15 +84,12 @@ tools/client-smoke.sh                        # the client smoke under Xvfb, abou
   JUnit reports are in `build/reports/tests/tinkererTest/`, the client smoke results in `build/tinkerer-client-smoke/`. All of that is git-ignored.
 * `tools/client-smoke.sh` runs `./gradlew` under `xvfb-run`; the environment variable `GRADLE_CMD` replaces the Gradle command (see the header of the script).
 * The compile step fails if the Mixin annotation processor wrote no refmap or one without an entry for a mixin that has an injector (`fabric.gradle`).
-* The documents in `docs/` were written in the monorepo. Where they say `./gradlew :fabric:tinkererTest`, here it is `./gradlew tinkererTest` (drop
-  `:fabric:`); `fabric/build/` is `build/`, `fabric/run-tinkerer-*` is `run-tinkerer-*`, and `addons/thaumic-tinkerer/` is the root of this repository.
-  The licence headers of the Java files point to `addons/thaumic-tinkerer/NOTICE.md`: that is `NOTICE.md` here.
 * Files that the documents cite and that belong to the **Thaumcraft 4 Reload repository**, not to this one: `AGENTS.md`, `docs/api/` (`PORTING.md`,
   `LEGACY_IDS.md`, the guides), `docs/MIGRATION_STATUS.md`, `common/src/main/java/thaumcraft/` and `common/src/main/resources/*/thaumcraft/` (the sources and resources of Thaumcraft; `docs/API_GAPS.md` abbreviates them as `API/` and `INT/`), `fabric/build.gradle`
   and `neoforge/build.gradle`. Results that the documents quote from runs of Thaumcraft's own suites (JUnit 2761, 515 GameTests, 296 Python tests,
-  `docs/DEVIATIONS.md` section 5) were monorepo runs and cannot be reproduced here; section 5 says which rows those are.
-* `scripts/porting/` holds the Python tools that converted the 1.7.10 resources and extracted the parity oracle (MIT, copied from the monorepo; see its
-  `README.md`). They need a checkout of the original 1.7.10 source; `tools/porting.sh` runs them against this layout.
+  `docs/DEVIATIONS.md` section 5) were runs in the Thaumcraft repository, not in this one; section 5 says which rows those are.
+* `scripts/porting/` holds the Python tools that converted the 1.7.10 resources and extracted the parity oracle (MIT; see its `README.md`). They need a
+  checkout of the original 1.7.10 source (and `tt_oracle.py` one of Thaumcraft); `tools/porting.sh` runs them.
 
 ## Layout
 
@@ -106,10 +101,10 @@ fabric/src/main      Fabric entry points, Mixins, Fabric item-renderer backend
 fabric/src/gameTest  GameTest wrappers and the Fabric GameTest mod
 fabric/src/clientSmoke  the client smoke harness (a development tool, never in the jar)
 build.gradle         the project: Loom, Minecraft, Fabric, Architectury and the Thaumcraft jar
-fabric.gradle        source sets, runs and tasks of the add-on (the same file the monorepo applies from its :fabric project)
+fabric.gradle        source sets, runs and tasks of the add-on
 tools/               compile.sh, client-smoke.sh, publish-thaumcraft.sh, porting.sh
 scripts/porting/     Python tools of the resource and oracle pipeline (MIT)
-docs/                porting rules, deviations, API requests and gaps, hooks, parity report, client verification, export
+docs/                porting rules, deviations, API requests and gaps, hooks, parity report, client verification
 lang-extra/          language fragments merged into the language files
 ```
 
@@ -124,4 +119,3 @@ The registry layer is in `thaumic.tinkerer.common.registry` (`TTRegistry`, `TTRe
 - `docs/HOOKS.md` – the loader events and how they are posted.
 - `docs/PARITY_REPORT.md` – the research/recipe comparison with the original source.
 - `docs/CLIENT_VERIFICATION.md` – the client smoke harness and what it cannot show.
-- `docs/EXPORT.md` – how this repository relates to the monorepo.

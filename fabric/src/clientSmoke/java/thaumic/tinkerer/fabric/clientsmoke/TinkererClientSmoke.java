@@ -11,14 +11,14 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
  * like the add-on, not distributed.
  *
  * <p>Armed only by {@code -Dthaumictinkerer.clientSmoke=true}, which the {@code tinkererClientSmoke} run sets; in any other
- * launch the class does nothing. See {@code addons/thaumic-tinkerer/docs/CLIENT_VERIFICATION.md}.</p>
+ * launch the class does nothing. See {@code docs/CLIENT_VERIFICATION.md}.</p>
  */
 public final class TinkererClientSmoke implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         if (!Boolean.getBoolean("thaumictinkerer.clientSmoke")) return;
         Path outDir = Path.of(System.getProperty("thaumictinkerer.clientSmoke.outDir", "build/tinkerer-client-smoke")).toAbsolutePath();
-        Path sourceRoot = Path.of(System.getProperty("thaumictinkerer.clientSmoke.sourceRoot", "addons/thaumic-tinkerer")).toAbsolutePath();
+        Path sourceRoot = Path.of(System.getProperty("thaumictinkerer.clientSmoke.sourceRoot", ".")).toAbsolutePath();
         int timeoutSeconds = Integer.getInteger("thaumictinkerer.clientSmoke.timeoutSeconds", 1500);
         try {
             Files.createDirectories(outDir.resolve("screenshots"));

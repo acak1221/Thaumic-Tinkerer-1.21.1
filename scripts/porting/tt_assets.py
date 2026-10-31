@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Convert the Thaumic Tinkerer 1.7.10 resources into the add-on's 1.21.1 resource tree.
 
 Source (read only): a checkout of https://github.com/GTNewHorizons/ThaumicTinkerer pinned to
-``SOURCE_COMMIT`` (CC BY-NC-SA 3.0). Target: ``addons/thaumic-tinkerer/common/src/main/resources/
-assets/thaumictinkerer``. The script writes
+``SOURCE_COMMIT`` (CC BY-NC-SA 3.0). Target: ``common/src/main/resources/assets/thaumictinkerer``. The script writes
 
 * every texture of ``assets/ttinkerer/textures`` (and the duplicate root ``remotePlacer.png`` when it
   is not already produced) byte-for-byte under a mechanically snake_cased name:
@@ -18,15 +18,17 @@ assets/thaumictinkerer``. The script writes
   ``ttresearch.prefix`` (``ttresearch.prefix.kami`` for the keys created with
   ``new KamiResearchItem(`` in the Java source) followed by ``ttresearch.lore.<KEY>``, exactly as
   ``TTResearchItem.getText()`` builds it;
-* every per-group fragment ``addons/thaumic-tinkerer/lang-extra/<group>.<lang>.json`` (new 1.21.1-only
+* every per-group fragment ``lang-extra/<group>.<lang>.json`` (new 1.21.1-only
   keys, flat string -> string objects) merged into the same ``lang/<lang>.json``: fragments win over the
   converted base, every collision is printed as a warning, an invalid fragment is a hard error;
 * ``scripts/porting/tt_assets_map.json`` (provenance, sha256 of every source file, the complete old ->
   new path mapping, the lang key mapping and the Kami key list) and
-  ``addons/thaumic-tinkerer/docs/lang-key-families.md`` (the key family report).
+  ``docs/lang-key-families.md`` (the key family report).
 
 Usage:
     tt_assets.py [--source CHECKOUT] [--check] [--allow-unpinned]
+
+``--source`` defaults to ``$TT_1710_SOURCE``, else ``../ThaumicTinkerer-1.7.10`` next to this repository.
 
 ``--check`` recomputes everything and fails (exit 1) when the checked-in output differs; it writes
 nothing. Without ``--check`` the output is (re)written and files that an earlier run produced but this
@@ -38,6 +40,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import struct
 import subprocess
@@ -47,7 +50,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SOURCE = Path("/home/user/gtnewhorizons/thaumictinkerer")
+# The pinned checkout of the 1.7.10 mod (--source, or the environment variable TT_1710_SOURCE).
+DEFAULT_SOURCE = Path(os.environ.get("TT_1710_SOURCE") or ROOT.parent / "ThaumicTinkerer-1.7.10")
 SOURCE_REPO = "https://github.com/GTNewHorizons/ThaumicTinkerer"
 SOURCE_COMMIT = "28f4def938e80d7a0b6f433c2b84300dfb7c35ce"
 LICENSE_NAME = "CC BY-NC-SA 3.0"
@@ -58,10 +62,10 @@ NEW_NS = "thaumictinkerer"
 SOURCE_RESOURCES = "src/main/resources"
 SOURCE_JAVA = "src/main/java"
 LIB_RESEARCH = "thaumic/tinkerer/common/lib/LibResearch.java"
-TARGET_RESOURCES = "addons/thaumic-tinkerer/common/src/main/resources"
+TARGET_RESOURCES = "common/src/main/resources"
 MAP_PATH = "scripts/porting/tt_assets_map.json"
-DOC_PATH = "addons/thaumic-tinkerer/docs/lang-key-families.md"
-LANG_EXTRA = "addons/thaumic-tinkerer/lang-extra"
+DOC_PATH = "docs/lang-key-families.md"
+LANG_EXTRA = "lang-extra"
 
 OLD_ASSETS = f"assets/{OLD_NS}"
 NEW_ASSETS = f"assets/{NEW_NS}"

@@ -1,27 +1,15 @@
 // SPDX-License-Identifier: MIT
-// Thaumic Tinkerer for Fabric: a separate mod (id thaumictinkerer) that is built next to Thaumcraft 4 Reload and
-// depends on it through thaumcraft.api only. This script works in two builds, from the same file:
+// Thaumic Tinkerer for Fabric: a separate mod (id thaumictinkerer) that depends on Thaumcraft 4 Reload through thaumcraft.api only.
+// Applied from build.gradle. sourceSets.main is the (empty) main source set of the Java plugin; its compile classpath carries
+// Thaumcraft (the jar thaumcraft:Thaumcraft-fabric:<thaumcraft_version> from mavenLocal), Minecraft, Fabric Loader, Fabric API and
+// Architectury, and the source sets below build on it.
 //
-//  * the monorepo (Thaumcraft-1.21.1): applied from fabric/build.gradle, so it runs in the :fabric project and sees its Loom
-//    setup, exactly like the exampleAddon source set of that file. The add-on directory is addons/thaumic-tinkerer, and
-//    sourceSets.main is Thaumcraft's own Fabric code.
-//  * the standalone repository (Thaumic-Tinkerer-1.21.1): applied from the build.gradle at its root, which is the add-on
-//    directory. There is one Gradle project and sourceSets.main is the (empty) main source set of the Java plugin; Thaumcraft
-//    arrives as the jar thaumcraft:Thaumcraft-fabric:<thaumcraft_version> (modImplementation, mavenLocal) with Minecraft, Fabric
-//    Loader, Fabric API and Architectury, so the compile classpath of sourceSets.main means the same thing in both.
+// The sources of the add-on are the loader-neutral tree common and the Fabric entrypoints in fabric. There is no NeoForge build of
+// the add-on yet; a NeoForge build is meant to compile the same common tree.
 //
-// Everything below therefore uses sourceSets.main only through its output and its compile/runtime classpath, and finds the
-// add-on directory from the location of this file, never from rootProject.
-//
-// The sources of the add-on are the loader-neutral tree common and the Fabric entrypoints in fabric (both in the add-on
-// directory). There is no NeoForge build of the add-on yet (no neoforge.gradle; nothing in neoforge/build.gradle names the
-// add-on); a NeoForge build is meant to compile the same common tree.
-//
-// This build script is a build file of Thaumcraft 4 Reload (MIT); the add-on sources it compiles are under
-// CC BY-NC-SA 3.0 (LICENSE in the add-on directory).
+// This build script is MIT (LICENSE-MIT); the add-on sources it compiles are under CC BY-NC-SA 3.0 (LICENSE).
 
-// The add-on directory: where this script lives (addons/thaumic-tinkerer in the monorepo, the project root in the standalone).
-def ttDir = buildscript.sourceFile.parentFile.canonicalFile
+def ttDir = projectDir
 
 sourceSets {
  thaumicTinkerer {
@@ -38,7 +26,7 @@ sourceSets {
   compileClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.compileClasspath
   runtimeClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.runtimeClasspath
  }
- // The client smoke harness of the add-on (docs/CLIENT_VERIFICATION.md in the add-on directory): runs a real client under
+ // The client smoke harness of the add-on (docs/CLIENT_VERIFICATION.md): runs a real client under
  // Xvfb and looks at the models, textures, translations, screens and renderers. Compiled by check, loaded only by the
  // tinkererClientSmoke run; no jar task includes its output.
  thaumicTinkererClientSmoke {
@@ -74,17 +62,15 @@ tasks.named('processThaumicTinkererResources') {
 }
 tasks.named('check') { dependsOn 'compileThaumicTinkererJava', 'compileThaumicTinkererGameTestJava', 'compileThaumicTinkererClientSmokeJava' }
 
-// Mixin refmap of the add-on (the mixins are in fabric/src/main/java/thaumic/tinkerer/fabric/mixin of the add-on directory,
-// the config is fabric/src/main/resources/thaumictinkerer.mixins.json, listed under "mixins" of its fabric.mod.json).
+// Mixin refmap of the add-on (the mixins are in fabric/src/main/java/thaumic/tinkerer/fabric/mixin, the config is
+// fabric/src/main/resources/thaumictinkerer.mixins.json, listed under "mixins" of its fabric.mod.json).
 // Loom (architectury-loom 1.11) puts EVERY source set that exists when it initialises on the Mixin annotation processor, each
-// with its own refmap named <sourceSet>-<archivesName>[-<project>]-refmap.json next to the classes (in the monorepo
-// thaumicTinkerer-Thaumcraft-fabric-fabric-refmap.json; in the standalone, whose single project is the root project,
-// thaumicTinkerer-ThaumicTinkerer-refmap.json).
+// with its own refmap named <sourceSet>-<archivesName>-refmap.json next to the classes (thaumicTinkerer-ThaumicTinkerer-refmap.json).
 // The processor of the source set carries MixinExtras as well, so @WrapOperation / @WrapMethod / @Local are in the refmap.
 // remapThaumicTinkererJar then adds "refmap" to the mixin config in the jar (MixinRefmapService: the config is listed in
 // fabric.mod.json and the jar holds the refmap), so nothing has to be declared here. Do NOT call
 // loom.mixin.add(sourceSet, name) for this source set: the first explicit add() switches the defaults off for all the other
-// source sets, Thaumcraft's own included (their refmaps would stop being written).
+// source sets (their refmaps would stop being written).
 // What this does is to fail the compile if the processor wrote no refmap, or one without an entry for a mixin that has an
 // injector (@Inject, @WrapOperation, @WrapMethod, @Accessor, ...), so a production jar cannot silently lose its remapping.
 tasks.named('compileThaumicTinkererJava') {
@@ -138,7 +124,7 @@ loom.runs {
   vmArg "-Dthaumictinkerer.clientSmoke.timeoutSeconds=${tinkererClientSmokeTimeout}"
   programArgs '--width', '1280', '--height', '720'
  }
- // Server-side runtime assertions of the add-on. The Thaumcraft suites are not loaded.
+ // Server-side runtime assertions of the add-on. The GameTests of Thaumcraft are not loaded.
  tinkererGameTest {
   server()
   vmArg '-Xmx3G'
@@ -194,7 +180,7 @@ tasks.register('tinkererTest', Test) {
  workingDir = ttDir
  // Tests read the documents (KnownDifferencesTest), the language fragments and the source trees from the working directory. They are
  // inputs of the task, else Gradle takes a run for up to date (or restores it from the build cache) after a document was edited.
- // Not inputs: what the builds and runs write into that directory (in the standalone it is the project root).
+ // Not inputs: what the builds and runs write into that directory.
  inputs.files(fileTree(ttDir) { exclude '.git/**', '.gradle/**', '.tmp/**', '**/logs/**', '**/*.log', '**/build/**', '**/run*/**', '**/__pycache__/**' }).withPropertyName('addonTree').withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
@@ -222,9 +208,9 @@ tasks.register('remapThaumicTinkererJar', remapJarType) {
 // sharing a Gradle lock. Re-run this task after a dependency change.
 tasks.register('exportTinkererClasspath') {
  group = 'help'
- description = 'Writes the compile classpath of the add-on to .tmp in the add-on directory (it never compiles the add-on).'
- // Thaumcraft (its classes in the monorepo, its jar in the standalone), Minecraft, Architectury and Fabric. The add-on's own
- // output is deliberately not on it: tools/compile.sh compiles the add-on sources together.
+ description = 'Writes the compile classpath of the add-on to .tmp (it never compiles the add-on).'
+ // Thaumcraft (its jar), Minecraft, Architectury and Fabric. The add-on's own output is deliberately not on it: tools/compile.sh
+ // compiles the add-on sources together.
  def mainCp = sourceSets.main.output.classesDirs + sourceSets.main.compileClasspath
  def outDir = new File(ttDir, '.tmp')
  inputs.files(mainCp)

@@ -26,7 +26,7 @@ final class ScreenshotIndex {
         }
         StringBuilder text = new StringBuilder();
         text.append("# Thaumic Tinkerer client smoke: screenshots\n\n");
-        text.append(shots.size()).append(" pictures of one run, 1280x720, taken by the harness in `addons/thaumic-tinkerer/fabric/src/clientSmoke` ")
+        text.append(shots.size()).append(" pictures of one run, 1280x720, taken by the harness in `fabric/src/clientSmoke` ")
                 .append("under Xvfb with Mesa software rendering (`docs/CLIENT_VERIFICATION.md`). Names say the kind: `blocks-` block rows (labels over the cells give ")
                 .append("the block and the state that differs from the default; left to right = the order of the description), `items-` item grids (registry path, ")
                 .append("then the translated name under each icon), `menu-` screens opened by a real interaction, `renderer-` close-ups of block entities with a renderer, ")
