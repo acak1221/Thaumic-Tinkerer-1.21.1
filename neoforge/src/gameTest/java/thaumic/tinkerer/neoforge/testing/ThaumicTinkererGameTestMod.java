@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
  *   structure of air in this mod's resources, the counterpart of Fabric's {@code fabric-gametest-api-v1:empty}; the class name prefixes
  *   it, so that the tests have the names of the Fabric run, {@code <class>.<method>}), and the run enables the namespace
  *   {@code thaumictinkerer}.</li>
+ *   <li>The NeoForge-only scenarios ({@link TinkererGameTestCatalogue#NEOFORGE_ONLY}, hand-written classes {@code *NeoForgeTests}): the
+ *   capabilities of the Transvector Interface ({@link TileBlocksNeoForgeTests}).</li>
  *   <li>The NeoForge-only fixtures: the fluid tank of the barrels that the fluid test of the Transvector Interface fills
  *   ({@link TileBlocksNeoForgeChecks}), the negotiated channels of the mock players (mixin {@code TinkererMockConnectionMixin}) and the
  *   test filter (mixin {@code TinkererGameTestSelectionMixin}, the Fabric harness's {@code -PtinkererGameTestFilter}).</li>
@@ -47,6 +49,7 @@ public final class ThaumicTinkererGameTestMod {
     public ThaumicTinkererGameTestMod(IEventBus bus) {
         bus.addListener(RegisterGameTestsEvent.class, event -> {
             for (Class<?> wrappers : TinkererGameTestCatalogue.CLASSES) event.register(wrappers);
+            for (Class<?> scenarios : TinkererGameTestCatalogue.NEOFORGE_ONLY) event.register(scenarios);
         });
         bus.addListener(RegisterCapabilitiesEvent.class, TileBlocksNeoForgeChecks::registerCapabilities);
         String report = System.getProperty(REPORT_FILE_PROPERTY, "").trim();

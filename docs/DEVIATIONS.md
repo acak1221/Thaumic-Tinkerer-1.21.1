@@ -83,11 +83,11 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
 
 Architectury has no events for several things the original used Forge events for. The groups first worked around each gap and wrote the loss down;
 `docs/HOOKS.md` describes the loader layer that closes the gaps with real events (`LIVING_DAMAGE`, `LIVING_ARMOR_ABSORB`, `BREAK_SPEED`, `LIVING_JUMP`,
-`LIVING_FALL`, `USE_ITEM_TICK`, `LIVING_DROPS`) and two registries (floating ticks, item renderers). It exists for **Fabric** (Mixins); the NeoForge
-counterpart is specified there but **not written**. **The groups are rewired to it now**: Enchantments, KamiWorld, KamiGear, Machines and Foci no longer use
+`LIVING_FALL`, `USE_ITEM_TICK`, `LIVING_DROPS`) and two registries (floating ticks, item renderers). It exists for **Fabric** (Mixins) and for **NeoForge**
+(handlers of NeoForge's events and three mixins, `HOOKS.md` section 9; run on a NeoForge GameTest server only, server side). **The groups are rewired to it now**: Enchantments, KamiWorld, KamiGear, Machines and Foci no longer use
 their workarounds (SimpleBlocks, TileBlocks and BasicItems never needed an event of this layer that was missing; SimpleBlocks' Imbued effects and the Cursed Spirit's
 Blade still use the Architectury `EntityEvent.LIVING_HURT` for 1.7.10's `LivingAttackEvent`). `HOOKS.md` section 10 says, per group, which workaround was removed, which event
-replaces it and which check pins it, and what would not happen on NeoForge. What the events change against the original, each in the group's document (what is said
+replaces it and which check pins it, and what rests on the NeoForge posters. What the events change against the original, each in the group's document (what is said
 about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled, not read**: its source is not on this machine, section 6, point 5):
 
 * **The damage event stands before the shield, the invulnerability frames and the armour**, where Forge's stood after the frames had taken the last hit off.
@@ -96,7 +96,8 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
   1.7.10 behaved differently, and a sweep of a sword is a hit for each entity it reaches (`Enchantments.md` section 2, `HOOKS.md` section 3).
 * **Armour absorption of Kami armour (`ISpecialArmor`) is ported through `LIVING_ARMOR_ABSORB`** (`KamiGear.md` sections 3 and 13, `HOOKS.md` section 14): every
   Ichorcloth piece takes `0.0425 × its armour points` of a blow, flat, the set 85%, and the pieces never wear. It was listed as "not written" before the
-  event existed. It is **Fabric only** (no NeoForge poster: without it the pieces are plain 3/8/6/3 armour). The caveats, all in `KamiGear.md` section 3:
+  event existed. It is posted on both loaders (on NeoForge by the same wrapper of the armour step as on Fabric, not by a reduction function of NeoForge's damage
+  container, so that Thaumcraft's ward pass keeps its order; the KamiGear GameTests passed on NeoForge, `HOOKS.md` section 14). The caveats, all in `KamiGear.md` section 3:
   * **UNVERIFIED: the slot index that 1.7.10 gave `getProperties` and `getArmorDisplay`.** The port keeps the intended assignment (chestplate 8, leggings 6);
     if Forge passed the `armorInventory` index, a chestplate alone took 25.5% and leggings alone 34% (section 6, open point 1).
   * Damage that bypasses armour (starvation, drowning, magic, falling, the void) is not reduced, and the event is not posted for it; whether 1.7.10 reduced such a
@@ -121,16 +122,17 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
 * **Configurable dimension id and disabling the Bedrock dimension** (a datapack dimension has a resource id and is switched off by the
   data pack; `KamiWorld.md` section 9).
 * **Multiblock diagram page** of the Levitational Locomotive research, EnderStorage page of the Ender Rift research.
-* **NeoForge**: the add-on has no NeoForge module and no NeoForge build file yet, and **none of the NeoForge posters of `docs/HOOKS.md` is written** (section 9 there lists
-  what each must do). So on NeoForge everything that rests on a loader event would not happen: **no Soul Hearts** (`LIVING_DAMAGE`; the Architectury fallback, written
-  for both loaders, is deleted) and **no dimensional shard drops** (`LIVING_DROPS`; the loot-table pools are deleted too); no damage factors and no Vampirism, no Shatter,
-  Tunnel, Disintegrate or Flaming Touch, no Ascent Boost, no Slow Fall landing, no Shockwave, no Quick Draw (the Enchantments); no extra jump in the Gem Boots, switched-off
-  Gem Boots that no longer spare the wearer a fall (switched-on boots still zero the fall distance every tick, `ItemGemBoots.tick`), and the Ichorcloth as plain 3/8/6/3
-  armour (`LIVING_JUMP`, `LIVING_FALL`, `LIVING_ARMOR_ABSORB`); no reaping by the Cursed Spirit's Blade (`LIVING_DROPS`); an
-  Uprising that does not reset the kick counter (`FloatingTicks`). **Loader glue that is not an event** (`HOOKS.md` section 9, "Other loader glue"): the NeoForge
-  side of the `ItemRenderers` backend (the Mob Display), of the Kami gear's wings layer and ghost blocks and of the Transvector Interface's fluids (and items) is written and
-  compiles (`NEOFORGE.md`; not run); energy forwarding, the flammability hook of the elemental fires and the special effects of the Bedrock dimension are written for neither loader.
-  The add-on is not built for NeoForge yet (`README.md`), so none of this was run there: these are consequences read from the code, not observations.
+* **NeoForge**: the subproject `:neoforge` builds the add-on for NeoForge (`NEOFORGE.md`), and the posters of `docs/HOOKS.md` are written (section 9 there:
+  handlers of `LivingIncomingDamageEvent`, `PlayerEvent.BreakSpeed`, `LivingJumpEvent`, `LivingFallEvent`, `LivingEntityUseItemEvent.Tick` and `LivingDropsEvent`, and
+  mixins for the armour step, `lastHurt` and the kick counter). On a NeoForge GameTest server (2026-10-31) the 14 hook GameTests and the 173 GameTests of Enchantments,
+  KamiWorld, KamiGear, Machines and Foci passed, so the Soul Hearts, the shard drops, the enchantment effects, the Gem Boots, the Ichorcloth, the blade's reaping and the
+  Uprising's reset ran there on the server; their client side was not run. Where NeoForge differs from Fabric (`HOOKS.md` section 9): `LIVING_JUMP` is also posted for
+  slimes, magma cubes and ridden horses and camels; NeoForge's damage container does its own float round trip after the armour step and leaves a NaN health after an
+  infinite blow, whatever the add-on returns. **Loader glue that is not an event** (`HOOKS.md` section 9, "Other loader glue"): the NeoForge side of the `ItemRenderers`
+  backend (the Mob Display), of the Kami gear's wings layer and ghost blocks and of the Transvector Interface's fluids (and items) is written (`NEOFORGE.md`, "Client glue
+  and block capabilities on NeoForge": compiled, the TileBlocks GameTests pass on both loaders, a NeoForge client loaded without errors, nothing seen drawn in a world);
+  energy forwarding, the flammability hook of the elemental fires and the special effects of the Bedrock dimension are written for neither loader. Open on NeoForge:
+  `simpleblocksgametests.acropneedsfarmland` (wheat stands on the Infused Farmland there, `NEOFORGE.md`).
 
 ## 5. Verification status and what is not verified
 
@@ -149,7 +151,7 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 | **Thaumcraft repository:** Python porting scripts (`scripts/porting`, all tools of that repository, the add-on's two among them) | 296 tests OK. The add-on's two tools with their tests are in this repository now: `tools/porting.sh test` ran 153 tests OK (2026-10-31, with both checkouts present) | run output |
 | Client, Fabric dev client under Xvfb + Mesa llvmpipe (`tools/client-smoke.sh`) | 726 checks PASS, 0 FAIL, 0 harness errors, 1 NOT_RUN (tool-mode tooltip needs a key press), 80 pictures (read by the engineers in the run before the last, which had 721 PASS); the first run had 3 FAIL and a number of defects seen only in pictures (all fixed, see `CLIENT_VERIFICATION.md`). The last run added a check that the six infused seeds have six different models; with the old model file it fails (5 `override_collapsed`), with the fixed one it passes | `CLIENT_VERIFICATION.md`, `build/tinkerer-client-smoke/report.json` (not committed) |
 | Client with the optional mods (2026-10-31, same harness, phase `integrations`) | with EMI and Jade (`-- -PwithEmi -PwithJade`): 737 PASS, 0 FAIL, 1 NOT_RUN, 88 pictures; with JEI (`-- -PwithJei`): 730 PASS, 0 FAIL, 1 NOT_RUN, 82 pictures; without them: 725 PASS, 0 FAIL, 1 NOT_RUN, 80 pictures. In the viewers: 30 necromancy and 45 seed-drop pages, and all 82 arcane/crucible/infusion recipes of the add-on in Thaumcraft's own categories; Jade's tooltip text read for six blocks (`Tooltips.md`, `RecipeViewers.md`) | `CLIENT_VERIFICATION.md` |
-| NeoForge | the client glue and the block capabilities are written and compile (`:neoforge:compileJava`); **nothing run** | `NEOFORGE.md`, `HOOKS.md` sections 9, 10, 14 |
+| NeoForge | `:neoforge:compileJava` passes. On a NeoForge GameTest server (2026-10-31): the 14 hook GameTests "All 14 required tests passed", Enchantments, KamiWorld, KamiGear, Machines and Foci "All 173 required tests passed", the TileBlocks GameTests passed (`NEOFORGE.md`); a run of all 312 had 311 passed and `simpleblocksgametests.acropneedsfarmland` failed. A NeoForge client started without an error from the add-on; nothing was seen drawn in a world | `NEOFORGE.md`, `HOOKS.md` sections 9, 10, 14 |
 
 **Not verified** (a `PASS` of the client harness says a lookup answered and nothing threw; it is not a person looking at the game on a GPU):
 
@@ -165,7 +167,8 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
   changing them is a decision for the owner.
 * The network behaviour of the packets between a real client and a real server.
 * The client's copy of the events the groups listen to (`Enchantments.md` section 12): a server cannot show it, and the client harness does not exercise them.
-* Everything on **NeoForge**.
+* On **NeoForge**: the client side of every event and everything drawn (no world was entered on a NeoForge client), a dedicated server with real clients, other mods
+  (`NEOFORGE.md`, `HOOKS.md` section 9).
 
 The per-group documents say what each group's own checks were; they record runs in different amounts (KamiWorld, Foci and the first round of KamiGear with numbers; Machines and BasicItems
 record no result of their own server-side tests; Enchantments a statement without a result): `README.md` and `HOOKS.md` section 12 say what is recorded.

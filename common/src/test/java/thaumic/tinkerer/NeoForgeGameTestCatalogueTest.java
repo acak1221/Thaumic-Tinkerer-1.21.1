@@ -29,7 +29,8 @@ import org.junit.jupiter.api.Test;
  * one (fabric/src/gameTest/.../testing, the authored wrappers): every Fabric wrapper class has a NeoForge class of the same name that the
  * test mod registers in the same order, with the same tests in the same order, the same attributes (the template translated) and the same
  * body (one call of a shared check), and with its template {@code thaumictinkerer:<class>.empty}. A Fabric wrapper with any other body is Fabric-native; its NeoForge wrapper calls the method of the same
- * name of {@code <Group>NeoForgeChecks}, which must exist. It reads the sources itself (no Python needed); the generator's {@code --check}
+ * name of {@code <Group>NeoForgeChecks}, which must exist. The hand-written NeoForge-only classes ({@code *NeoForgeTests}) are registered as
+ * well and have the template of the wrappers. It reads the sources itself (no Python needed); the generator's {@code --check}
  * compares the files byte for byte as well.
  */
 class NeoForgeGameTestCatalogueTest {
@@ -99,14 +100,28 @@ class NeoForgeGameTestCatalogueTest {
     }
 
     @Test
-    void theTestModRegistersTheFabricClassesInTheirOrder() throws IOException {
+    void theTestModRegistersTheFabricClassesInTheirOrderAndTheNeoForgeOnlyOnes() throws IOException {
         String catalogue = read(NEOFORGE_DIR.resolve("TinkererGameTestCatalogue.java"));
-        List<String> registered = new ArrayList<>();
-        Matcher m = Pattern.compile("(\\w+)\\.class").matcher(catalogue);
-        while (m.find()) registered.add(m.group(1));
-        assertEquals(fabricClasses(), registered, "TinkererGameTestCatalogue lists the classes of fabric.mod.json in their order");
-        assertTrue(read(NEOFORGE_DIR.resolve("ThaumicTinkererGameTestMod.java")).contains("TinkererGameTestCatalogue.CLASSES"),
-                "the test mod registers the catalogue");
+        assertEquals(fabricClasses(), listed(catalogue, "CLASSES"), "TinkererGameTestCatalogue.CLASSES lists the classes of fabric.mod.json in their order");
+        assertEquals(neoForgeOnlyClasses(), listed(catalogue, "NEOFORGE_ONLY"), "TinkererGameTestCatalogue.NEOFORGE_ONLY lists the *NeoForgeTests classes");
+        String mod = read(NEOFORGE_DIR.resolve("ThaumicTinkererGameTestMod.java"));
+        assertTrue(mod.contains("TinkererGameTestCatalogue.CLASSES") && mod.contains("TinkererGameTestCatalogue.NEOFORGE_ONLY"),
+                "the test mod registers both lists of the catalogue");
+    }
+
+    /** The hand-written NeoForge-only scenarios have the template and the test names of the wrappers. */
+    @Test
+    void theNeoForgeOnlyClassesUseTheTemplateOfTheWrappers() throws IOException {
+        List<String> problems = new ArrayList<>();
+        for (String name : neoForgeOnlyClasses()) {
+            String src = read(NEOFORGE_DIR.resolve(name + ".java"));
+            List<Wrapper> tests = wrappers(src, name);
+            if (tests.isEmpty()) problems.add(name + " has no @GameTest method");
+            if (!src.contains("@PrefixGameTestTemplate(true)")) problems.add(name + " is not @PrefixGameTestTemplate(true)");
+            for (Wrapper w : tests) if (!norm(w.attributes()).contains(norm(NEOFORGE_TEMPLATE))) problems.add(name + "." + w.name() + " has another template");
+            if (!Files.isRegularFile(STRUCTURES.resolve(name.toLowerCase(Locale.ROOT) + ".empty.nbt"))) problems.add(name + " has no template structure");
+        }
+        assertEquals(List.of(), problems, "the NeoForge-only GameTest classes");
     }
 
     @Test
@@ -141,6 +156,22 @@ class NeoForgeGameTestCatalogueTest {
         }
         assertTrue(!names.isEmpty(), "fabric.mod.json lists the Fabric wrappers: " + Path.of(".").toAbsolutePath());
         return names;
+    }
+
+    private static List<String> listed(String catalogue, String field) {
+        Matcher block = Pattern.compile("List<Class<\\?>>\\s+" + field + "\\s*=\\s*List\\.of\\(([^)]*)\\)").matcher(catalogue);
+        assertTrue(block.find(), "TinkererGameTestCatalogue has the list " + field);
+        List<String> names = new ArrayList<>();
+        Matcher m = Pattern.compile("(\\w+)\\.class").matcher(block.group(1));
+        while (m.find()) names.add(m.group(1));
+        return names;
+    }
+
+    private static List<String> neoForgeOnlyClasses() throws IOException {
+        try (Stream<Path> files = Files.list(NEOFORGE_DIR)) {
+            return files.map(f -> f.getFileName().toString()).filter(n -> n.endsWith("NeoForgeTests.java"))
+                    .map(n -> n.substring(0, n.length() - ".java".length())).sorted().toList();
+        }
     }
 
     private static boolean delegatesToASharedCheck(Wrapper w, String src) {

@@ -377,9 +377,10 @@ and the group's own Fabric glue `MachinesFabricClient` is deleted (two registrat
 `MachinesClientWiringTest` (the helper, the queue and the wiring in the source; no document records a run of it); the Fabric backend was run once on a client: the client harness
 (`CLIENT_VERIFICATION.md`, 2026-10-30) drew a Mob Display for every mob in the item grid through it, English and Russian (its first picture showed the mobs too big and pitched 90 degrees;
 fixed in `RenderMobDisplay`, see `deviations/Machines.md` section 7). Not seen: the item in a hand, on the ground, in an item frame, its break particles, a GPU.
-NeoForge (**not written**): the backend collects the items and renderers, and a `RegisterClientExtensionsEvent` handler on the mod bus does
-`event.registerItem(new IClientItemExtensions() { getCustomRenderer() → a BlockEntityWithoutLevelRenderer whose renderByItem(stack, ctx, pose,
-buffers, light, overlay) calls the Renderer }, item)` for each entry. Without it the Mob Display is invisible there.
+NeoForge (written): `neoforge/.../client/NeoForgeItemRenderers.java`, installed from the mod constructor (`NeoForgeClientHooks.register`), so it collects
+what the groups queue in `initClient()`; after `initClient()`, in the same `RegisterClientExtensionsEvent`, it registers one `IClientItemExtensions` per item whose
+`getCustomRenderer()` is a `BlockEntityWithoutLevelRenderer` that calls the `Renderer`. Compiled, and a NeoForge client started without an error from the add-on;
+the Mob Display has not been seen drawn there. Details and what was verified: `docs/NEOFORGE.md`, section "Client glue and block capabilities on NeoForge".
 
 **NeoForge: the posters (written 2026-10-31).** The subproject `:neoforge` (`neoforge/build.gradle`) compiles `common/src/main/java`, `compat/src/main/java`
 and `neoforge/src/main/java` against NeoForge 21.1.259 and Thaumcraft's NeoForge jar from mavenLocal. `ThaumicTinkererNeoForge` calls
@@ -399,7 +400,7 @@ Mojang names, and the build makes none). All the rules stay in `TinkererEvents`;
 | `USE_ITEM_TICK` | `onUseItemTick`: `LivingEntityUseItemEvent.Tick`, `NORMAL`; `setDuration(postUseItemTick(entity, event.getItem(), event.getDuration()))`. The duration **is** `useItemRemaining` (read) | not posted for an empty stack; NeoForge's own `updateUsingItem` completes a use at `<= 0` (vanilla `== 0`) | section 7 |
 | `LIVING_DROPS` | `onLivingDrops`: `LivingDropsEvent`, `NORMAL`; nothing when nobody listens; a copy of `getDrops()` is posted and written back when it changed; cancel on an interrupt. No capture mixins | NeoForge's capture instead of `DropCapture`: the same set for the vanilla paths that were read (the fox's mouth item included) | section 8 |
 | `FloatingTicks` | `ServerGamePacketListenerFloatingMixin`, a copy of the Fabric mixin | none | above |
-| `ItemRenderers` | not one of the posters: the NeoForge backend is client glue (`neoforge/.../client/`), not covered by this account | | above |
+| `ItemRenderers` | not an event: the backend `NeoForgeItemRenderers` (`IClientItemExtensions` with a `BlockEntityWithoutLevelRenderer`, registered in `RegisterClientExtensionsEvent` after `initClient()`) | client only; not seen drawn (`docs/NEOFORGE.md`, "Client glue and block capabilities on NeoForge") | above |
 
 **What ran on NeoForge** (2026-10-31, NeoForge 21.1.259, the Gradle logs in `/tmp/tt-split/nf-hooks-*.log` of the development machine, not committed):
 
@@ -420,15 +421,19 @@ NeoForge code; Thaumcraft and Architectury are the only other mods in the runs);
 was not run (that it would lose Thaumcraft's ward share is read, section 14); the container left on the stack by a cancelled `LivingIncomingDamageEvent` was read,
 not measured.
 
-**Other loader glue that NeoForge needs and that is not an event of this layer. None of it is written for NeoForge** (the groups' own loader code; the
-Fabric side is named where it exists):
+**Other loader glue that is not an event of this layer** (the groups' own loader code). Common code names no loader class: each loader entry installs its
+own glue (the former `Class.forName` calls of `KamiGearClient.register()` and `TileBlocks.ready()` are gone). The NeoForge side of the first two items is
+written; its details and verification status are in `docs/NEOFORGE.md`, section "Client glue and block capabilities on NeoForge" (compiled, the TileBlocks
+GameTests pass on both loaders, a NeoForge client loaded without errors, nothing seen drawn in a world):
 
-* **Wings and ghost blocks of the Kami gear.** Fabric: `fabric/.../client/KamiGearFabricClient.java`, started by name from `KamiGearClient.register()`: the
-  Robes of the Stratosphere's wings layer on every player renderer and the Worldshaper's Looking Glass's ghost blocks after the translucent terrain.
-  NeoForge: `EntityRenderersEvent.AddLayers` and `RenderLevelStageEvent` (`api-requests/KamiGear.md` section 4, `deviations/KamiGear.md` section 10).
-* **Fluids through the Transvector Interface.** Fabric: `fabric/.../TileBlocksFabric.java` (`FluidStorage.SIDED`), reached by name from `TileBlocks.ready()`.
-  NeoForge: the same with `Capabilities.FluidHandler.BLOCK`, rated P1 in `api-requests/TileBlocks.md` section 6. Energy through the Interface is written for
-  **neither** loader (the same section).
+* **Wings and ghost blocks of the Kami gear.** Fabric: `fabric/.../client/KamiGearFabricClient.java`, which `ThaumicTinkererFabricClient` calls after
+  `initClient()`: the Robes of the Stratosphere's wings layer on every player renderer and the Worldshaper's Looking Glass's ghost blocks after the translucent
+  terrain. NeoForge: `neoforge/.../client/KamiGearNeoForgeClient.java`, registered from the mod constructor: the wings through `EntityRenderersEvent.AddLayers`,
+  the ghost blocks through `RenderLevelStageEvent` at `AFTER_TRANSLUCENT_BLOCKS` (`api-requests/KamiGear.md` section 4, `deviations/KamiGear.md` section 10).
+* **Fluids through the Transvector Interface.** Fabric: `fabric/.../TileBlocksFabric.java` (`FluidStorage.SIDED`), which `ThaumicTinkererFabric.onThaumcraftReady()`
+  calls through `ThaumicTinkerer.guard`. NeoForge: `neoforge/.../NeoForgeCapabilities.java`, `Capabilities.FluidHandler.BLOCK` and `Capabilities.ItemHandler.BLOCK`
+  registered in `RegisterCapabilitiesEvent` (rated P1 in `api-requests/TileBlocks.md` section 6). Energy through the Interface is written for **neither** loader
+  (the same section).
 * **Flammability of other mods' blocks for the elemental fires.** A platform hook (`api-requests/SimpleBlocks.md` section 3, P3), written for **neither**
   loader: the fires burn the vanilla blocks only.
 * **The special effects of the Bedrock dimension** (the constant fog of 1.7.10; `api-requests/KamiWorld.md` section 3, optional): not requested and written for
@@ -501,7 +506,7 @@ last bullet of each group says what rests on the NeoForge posters there.
   * Kept on Architectury, not an event of this layer: the blade's `LivingAttackEvent` handler stays on `EntityEvent.LIVING_HURT`
     (`ItemBloodSword.onDamageTaken`, `deviations/Machines.md` section 8, "Events").
   * Rests on the NeoForge posters (the group's 47 GameTests passed on NeoForge, section 9): the blade's reaping. The Mob Display rests on the NeoForge
-    `ItemRenderers` backend, client glue that section 9 does not cover.
+    `ItemRenderers` backend (section 9), which has not been seen drawn.
 * **Foci** (`deviations/Foci.md` section 2; `Foci.register()` → `FociHooks.setFloatingTickReset(FloatingTicks.RESET)`): `FloatingTicks` replaced the
   reflection stop-gap that wrote the kick counter of the connection (two field names and a warning when neither was found), now deleted. Pinned by
   `flightPutsTheKickCounterOfTheConnectionBackToZero` and `flightResetOfTheStartUpClearsTheRealCounterOfTheCaster` (Foci), `floatingTicksReadAndResetTheRealCounter`

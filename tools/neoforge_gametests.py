@@ -20,10 +20,15 @@ A Fabric wrapper whose body is one call of a shared check (thaumic.tinkerer.test
 is Fabric-native (it uses the Fabric API or fixtures of its class); its NeoForge wrapper calls the method of the same name
 of the hand-written class <Group>NeoForgeChecks (TileBlocksGameTests -> TileBlocksNeoForgeChecks), which must exist.
 
+NeoForge-only scenarios (no Fabric wrapper) are hand-written classes named *NeoForgeTests in the same package. They are
+not generated; the generator lists them in TinkererGameTestCatalogue.NEOFORGE_ONLY (sorted by name), gives each its
+structure like a wrapper class, and checks that they use the same template and @PrefixGameTestTemplate(true).
+
     --check  (default) the NeoForge files are exactly what --write would write, every Fabric-native wrapper has its
              NeoForge counterpart, no counterpart is left over, no NeoForge wrapper class lacks a Fabric one.
     --write  (re)write the generated files: one wrapper class per Fabric class, TinkererGameTestCatalogue.java (the
-             classes the test mod registers, in the order of fabric.mod.json), the flat world preset (a byte copy of the
+             classes the test mod registers: the wrappers in the order of fabric.mod.json, then the NeoForge-only
+             classes), the flat world preset (a byte copy of the
              Fabric one; it carries the Bedrock dimension the KamiWorld checks need) and the empty 8x8x8 structure of
              each class (the air of Fabric's fabric-gametest-api-v1:empty).
 
@@ -170,6 +175,27 @@ def fabric_classes(root):
     return names
 
 
+def neoforge_only_classes(root):
+    """The hand-written NeoForge-only test classes (*NeoForgeTests.java), sorted by name."""
+    return sorted(p.stem for p in (root / NEOFORGE_DIR).glob("*NeoForgeTests.java"))
+
+
+def neoforge_only_problems(root, name):
+    """What is wrong with the NeoForge-only class ``name``: the template and the prefix must be those of the wrappers."""
+    rel = NEOFORGE_DIR / (name + ".java")
+    src = (root / rel).read_text(encoding="utf-8")
+    methods = wrappers(src, str(rel))
+    problems = []
+    if not methods:
+        problems.append("%s has no @GameTest method" % rel.as_posix())
+    if "@PrefixGameTestTemplate(true)" not in src:
+        problems.append("%s is not @PrefixGameTestTemplate(true)" % rel.as_posix())
+    for method in methods:
+        if NEOFORGE_TEMPLATE not in method["attributes"]:
+            problems.append("%s.%s does not use %s" % (name, method["name"], NEOFORGE_TEMPLATE))
+    return problems
+
+
 def structure_of(fabric_class):
     return STRUCTURE_DIR / (fabric_class.lower() + ".empty.nbt")
 
@@ -250,15 +276,23 @@ def generate_wrapper(name, src):
     return out, [m["name"] for m in methods], native
 
 
-def generate_catalogue(names):
-    out = HEADER % FABRIC_MOD_JSON.as_posix()
+def generate_catalogue(names, only):
+    out = HEADER % (FABRIC_MOD_JSON.as_posix() + " and the *NeoForgeTests classes")
     out += "package %s;\n\n" % NEOFORGE_PACKAGE
     out += "import java.util.List;\n\n"
-    out += ("/** The wrapper classes that {@link ThaumicTinkererGameTestMod} registers: those of the Fabric harness, in its order. */\n"
+    out += ("/** The GameTest classes that {@link ThaumicTinkererGameTestMod} registers. */\n"
             "public final class %s {\n"
+            "    /** The wrappers generated from the Fabric harness, in the order of its fabric.mod.json. */\n"
             "    public static final List<Class<?>> CLASSES = List.of(\n" % CATALOGUE)
     out += ",\n".join("            %s.class" % n for n in names)
     out += ");\n\n"
+    out += "    /** The NeoForge-only scenarios (hand-written, no Fabric wrapper), sorted by name. */\n"
+    if only:
+        out += "    public static final List<Class<?>> NEOFORGE_ONLY = List.of(\n"
+        out += ",\n".join("            %s.class" % n for n in only)
+        out += ");\n\n"
+    else:
+        out += "    public static final List<Class<?>> NEOFORGE_ONLY = List.of();\n\n"
     out += "    private %s() {}\n}\n" % CATALOGUE
     return out
 
@@ -303,10 +337,13 @@ def expected_files(root):
         text, _, native = generate_wrapper(name, src)
         files[NEOFORGE_DIR / (name + ".java")] = text.encode("utf-8")
         native_by_class[name] = native
-    files[NEOFORGE_DIR / (CATALOGUE + ".java")] = generate_catalogue(names).encode("utf-8")
+    only = neoforge_only_classes(root)
+    files[NEOFORGE_DIR / (CATALOGUE + ".java")] = generate_catalogue(names, only).encode("utf-8")
     files[NEOFORGE_PRESET] = (root / FABRIC_PRESET).read_bytes()
-    for name in names:
+    for name in names + only:
         files[structure_of(name)] = empty_structure()
+    for name in only:
+        problems += neoforge_only_problems(root, name)
     # The hand-written counterparts of the Fabric-native wrappers.
     for name, native in native_by_class.items():
         path = root / NEOFORGE_DIR / (counterpart_class(name) + ".java")
@@ -324,11 +361,11 @@ def expected_files(root):
         group = path.stem[:-len("NeoForgeChecks")] + "GameTests"
         if group not in native_by_class:
             problems.append("%s has no Fabric wrapper class %s" % ((NEOFORGE_DIR / path.name).as_posix(), group))
-    return files, problems, names
+    return files, problems, names, only
 
 
 def check(root):
-    files, problems, names = expected_files(root)
+    files, problems, names, only = expected_files(root)
     for rel, data in files.items():
         path = root / rel
         if not path.is_file():
@@ -343,7 +380,7 @@ def check(root):
 
 
 def write(root):
-    files, problems, names = expected_files(root)
+    files, problems, names, only = expected_files(root)
     for rel, data in files.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -375,7 +412,10 @@ def main(argv=None):
     if problems:
         return 1
     total = sum(len(wrappers((args.root / FABRIC_DIR / (n + ".java")).read_text(encoding="utf-8"), n)) for n in names)
-    print("The NeoForge GameTest catalogue matches the Fabric one (%d classes, %d wrappers)" % (len(names), total))
+    only = neoforge_only_classes(args.root)
+    extra = sum(len(wrappers((args.root / NEOFORGE_DIR / (n + ".java")).read_text(encoding="utf-8"), n)) for n in only)
+    print("The NeoForge GameTest catalogue matches the Fabric one (%d classes, %d wrappers; NeoForge only: %d classes, %d tests)"
+          % (len(names), total, len(only), extra))
     return 0
 
 

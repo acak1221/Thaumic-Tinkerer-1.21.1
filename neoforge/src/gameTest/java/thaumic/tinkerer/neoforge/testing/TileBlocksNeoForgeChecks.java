@@ -26,7 +26,7 @@ import thaumic.tinkerer.common.content.TileBlocks;
 /**
  * The NeoForge counterparts of the Fabric-native wrappers of {@code TileBlocksGameTests}: the Fabric bodies use Fabric's transfer API,
  * these the NeoForge capabilities, and check the same things. tools/neoforge_gametests.py makes the generated
- * {@link TileBlocksGameTests} call them under the Fabric names.
+ * {@link TileBlocksGameTests} call them under the Fabric names. The NeoForge-only scenarios are in {@link TileBlocksNeoForgeTests}.
  */
 public final class TileBlocksNeoForgeChecks {
     private static final int BUCKET = FluidType.BUCKET_VOLUME;
@@ -40,7 +40,8 @@ public final class TileBlocksNeoForgeChecks {
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, BlockEntityType.BARREL, (barrel, side) -> tankOf(barrel));
     }
 
-    private static synchronized FluidTank tankOf(BlockEntity barrel) {
+    /** The tank of a barrel (made on the first query; also for {@link TileBlocksNeoForgeTests}). */
+    static synchronized FluidTank tankOf(BlockEntity barrel) {
         return TANKS.computeIfAbsent(barrel, b -> new FluidTank(4 * BUCKET) {
             @Override
             protected void onContentsChanged() {
