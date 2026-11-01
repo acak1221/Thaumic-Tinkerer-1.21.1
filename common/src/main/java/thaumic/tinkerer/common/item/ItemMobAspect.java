@@ -12,13 +12,12 @@
 package thaumic.tinkerer.common.item;
 
 import java.util.List;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.CustomData;
+import org.jetbrains.annotations.Nullable;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
@@ -54,10 +53,6 @@ public class ItemMobAspect extends Item implements ITTinkererRegisterable {
 
     /** The name of the data recipe the research page of the necromancy shows (1.7.10: the key {@code SUMMON1}). */
     public static final String CONDENSE_RECIPE_NAME = LibResearch.KEY_SUMMON.toLowerCase() + "1";
-
-    private static final String TAG_LAST_X = "LastX";
-    private static final String TAG_LAST_Y = "LastY";
-    private static final String TAG_LAST_Z = "LastZ";
 
     public final Aspect aspect;
     public final Form form;
@@ -103,25 +98,27 @@ public class ItemMobAspect extends Item implements ITTinkererRegisterable {
         return item.getItem() instanceof ItemMobAspect mobAspect && mobAspect.form == Form.INFUSED;
     }
 
-    /** An infused soul aspect remembers the tablet that used it last (the keys {@code LastX/Y/Z} of 1.7.10). */
-    public static void markLastUsedTablet(ItemStack stack, BlockPos tablet) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> {
-            tag.putInt(TAG_LAST_X, tablet.getX());
-            tag.putInt(TAG_LAST_Y, tablet.getY());
-            tag.putInt(TAG_LAST_Z, tablet.getZ());
-        });
+    /**
+     * An infused soul aspect remembers the tablet that used it last (1.7.10: the keys {@code LastX/Y/Z}; the component
+     * {@link MachineComponents#LAST_TABLET} adds the dimension).
+     */
+    public static void markLastUsedTablet(ItemStack stack, GlobalPos tablet) {
+        stack.set(MachineComponents.LAST_TABLET.get(), tablet);
     }
 
-    /** True for a stack that was never used and for one whose last tablet is this one. */
-    public static boolean lastUsedTabletMatches(ItemStack stack, BlockPos tablet) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        if (data == null) {
-            return true;
-        }
+    /** The tablet that used the stack last, or null for a stack that was never used. */
+    @Nullable
+    public static GlobalPos lastUsedTablet(ItemStack stack) {
+        return stack.get(MachineComponents.LAST_TABLET.get());
+    }
 
-        net.minecraft.nbt.CompoundTag tag = data.copyTag();
-        return tag.getInt(TAG_LAST_X) == tablet.getX() && tag.getInt(TAG_LAST_Y) == tablet.getY()
-                && tag.getInt(TAG_LAST_Z) == tablet.getZ();
+    /**
+     * True for a stack that was never used and for one whose last tablet is this one: the same position in the same
+     * dimension (1.7.10 compared the coordinates only).
+     */
+    public static boolean lastUsedTabletMatches(ItemStack stack, GlobalPos tablet) {
+        GlobalPos last = lastUsedTablet(stack);
+        return last == null || last.equals(tablet);
     }
 
     /** The translation key of 1.7.10: {@code item.mobAspect}, {@code .condensed} and {@code .infused}. */

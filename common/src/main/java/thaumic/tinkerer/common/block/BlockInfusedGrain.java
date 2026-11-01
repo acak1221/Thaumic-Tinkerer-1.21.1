@@ -64,6 +64,13 @@ public class BlockInfusedGrain extends CropBlock implements EntityBlock {
 
     public static final int BREEDING_CHANCE = 10;
 
+    /**
+     * The most rolls of each repeating harvest roll (the bounty of ordo, the residue of terra). 1.7.10 repeated them while
+     * the dice stayed below the tendency, which never ends for a tendency of 75 (ordo) or 55 (terra) and more. With the
+     * tendencies clamped to fifty the chance to reach this many rolls is below 1 in 10^10 (terra, 50 against 55).
+     */
+    public static final int MAX_HARVEST_ROLLS = 256;
+
     /** 0..5 for the primal aspects ({@link #getNumberFromAspectForTexture}), 6 for the others. */
     public static final IntegerProperty ASPECT_TEXTURE = IntegerProperty.create("texture", 0, 6);
 
@@ -175,33 +182,36 @@ public class BlockInfusedGrain extends CropBlock implements EntityBlock {
             fertilizeSoil(world, pos, metadata, tileGrain, rand);
         }
         if (metadata >= 7) {
+            int rolls = 0;
             do {
                 Aspect aspect = tileGrain == null ? null : tileGrain.aspect;
-                ItemStack retItem = AspectCropLootManager.getLootForAspect(aspect);
+                ItemStack retItem = AspectCropLootManager.getLootForAspect(aspect, rand);
                 if (retItem != null) ret.add(retItem);
 
-            } while (rand.nextInt(75) < getPrimalTendencyCount(tileGrain, Aspect.ORDER));
+            } while (++rolls < MAX_HARVEST_ROLLS && rand.nextInt(75) < getPrimalTendencyCount(tileGrain, Aspect.ORDER));
         }
 
         return ret;
     }
 
+    /** The tendency of the crop as the harvest reads it: clamped to {@code 0..50} ({@link TileInfusedGrain#tendency}). */
     public static int getPrimalTendencyCount(@Nullable TileInfusedGrain tileGrain, Aspect aspect) {
-        return tileGrain != null ? tileGrain.primalTendencies.getAmount(aspect) : 0;
+        return tileGrain != null ? tileGrain.tendency(aspect) : 0;
     }
 
     private void fertilizeSoil(Level world, BlockPos pos, int metadata, @Nullable TileInfusedGrain tileGrain, RandomSource rand) {
         if (metadata >= 7) {
+            int rolls = 0;
             do {
                 if (world.getBlockEntity(pos.below()) instanceof TileInfusedFarmland farmland) {
                     Aspect currentAspect = tileGrain == null ? null : tileGrain.aspect;
                     farmland.aspectList.add(currentAspect, 1);
-                    farmland.reduceSaturatedAspects();
+                    farmland.reduceSaturatedAspects(rand);
                     farmland.setChanged();
                     BlockState soil = world.getBlockState(pos.below());
                     world.sendBlockUpdated(pos.below(), soil, soil, 3);
                 }
-            } while (rand.nextInt(55) < getPrimalTendencyCount(tileGrain, Aspect.EARTH));
+            } while (++rolls < MAX_HARVEST_ROLLS && rand.nextInt(55) < getPrimalTendencyCount(tileGrain, Aspect.EARTH));
         }
     }
 

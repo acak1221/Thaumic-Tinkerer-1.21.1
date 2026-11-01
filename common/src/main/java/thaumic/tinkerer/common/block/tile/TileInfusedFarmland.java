@@ -11,9 +11,13 @@
  */
 package thaumic.tinkerer.common.block.tile;
 
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import thaumcraft.api.TileThaumcraft;
 import thaumcraft.api.aspects.Aspect;
@@ -51,20 +55,34 @@ public class TileInfusedFarmland extends TileThaumcraft implements IAspectContai
         nbt.put(NBT_ASPECT_LIST, compound);
     }
 
-    // Ensures that the farmland only holds a maximum of 20 aspects
+    /** {@link #reduceSaturatedAspects(RandomSource)} with the random source of the tile's level (a new one without a level). */
     public void reduceSaturatedAspects() {
-        int sum = 0;
-        for (Integer i : aspectList.aspects.values()) {
-            sum += i;
+        Level level = getLevel();
+        reduceSaturatedAspects(level != null ? level.random : RandomSource.create());
+    }
+
+    /**
+     * Ensures that the farmland only holds a maximum of 20 aspects: while it holds more, one point of a random aspect is
+     * removed. Fixes, as for the crop ({@code TileInfusedGrain.reduceSaturatedAspects}): the amounts are clamped to
+     * {@code 0..20} first and summed as a long, the dice are the given random source (1.7.10 made a {@code new Random()}
+     * per point), and only an aspect that still holds a point is drawn.
+     */
+    public void reduceSaturatedAspects(RandomSource rand) {
+        long sum = 0;
+        for (Map.Entry<Aspect, Integer> entry : aspectList.aspects.entrySet()) {
+            Integer amount = entry.getValue();
+            int clamped = amount == null ? 0 : Math.max(0, Math.min(MAX_ASPECTS, amount));
+            if (amount == null || amount != clamped) entry.setValue(clamped);
+            if (entry.getKey() != null) sum += clamped;
         }
-        if (sum > MAX_ASPECTS) {
-            int toRemove = sum - MAX_ASPECTS;
-            while (toRemove > 0) {
-                Random rand = new Random();
-                Aspect target = aspectList.getAspects()[rand.nextInt(aspectList.getAspects().length)];
-                aspectList.remove(target, 1);
-                toRemove--;
+        while (sum > MAX_ASPECTS) {
+            List<Aspect> held = new ArrayList<>();
+            for (Map.Entry<Aspect, Integer> entry : aspectList.aspects.entrySet()) {
+                if (entry.getKey() != null && entry.getValue() > 0) held.add(entry.getKey());
             }
+            if (held.isEmpty()) break;
+            aspectList.remove(held.get(rand.nextInt(held.size())), 1);
+            sum--;
         }
     }
 

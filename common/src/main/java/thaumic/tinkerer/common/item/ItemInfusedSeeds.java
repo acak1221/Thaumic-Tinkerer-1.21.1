@@ -73,10 +73,12 @@ public class ItemInfusedSeeds extends Item implements ITTinkererRegisterable {
         else stack.set(InfusedSeedComponents.aspectType(), aspect.getTag());
     }
 
+    /** The tendencies of the stack, a new list; every amount clamped to {@code 0..50} ({@link InfusedSeedComponents#toList}). */
     public static AspectList getAspectTendencies(ItemStack stack) {
         return InfusedSeedComponents.toList(stack.get(InfusedSeedComponents.tendenciesType()));
     }
 
+    /** Puts a copy of the tendencies on the stack (an unmodifiable map, every amount clamped to {@code 0..50}). */
     public static void setAspectTendencies(ItemStack stack, AspectList aspectList) {
         stack.set(InfusedSeedComponents.tendenciesType(), InfusedSeedComponents.toMap(aspectList));
     }
@@ -144,7 +146,8 @@ public class ItemInfusedSeeds extends Item implements ITTinkererRegisterable {
      * the crop is planted above it with the aspect and the tendencies of the stack.
      *
      * <p>Deviation: the crop is planted only into an empty or replaceable cell; 1.7.10 replaced whatever stood above
-     * the farmland.</p>
+     * the farmland. Fix: the tendencies of the stack (each amount already clamped to fifty) are trimmed to fifty points
+     * in all as soon as they are planted, as every other change of the crop's tendencies is.</p>
      */
     @Override
     public InteractionResult useOn(UseOnContext context) {
@@ -177,6 +180,7 @@ public class ItemInfusedSeeds extends Item implements ITTinkererRegisterable {
             BlockInfusedGrain.setAspect(world, above, aspect);
             if (world.getBlockEntity(above) instanceof TileInfusedGrain tile) {
                 tile.primalTendencies = getAspectTendencies(stack);
+                tile.reduceSaturatedAspects(world.random);
                 tile.setChanged();
                 BlockState planted = world.getBlockState(above);
                 world.sendBlockUpdated(above, planted, planted, Block.UPDATE_ALL);

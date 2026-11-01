@@ -6,7 +6,7 @@
   "overrides": [
     {
       "predicate": {
-        "custom_model_data": 1
+        "thaumictinkerer:activated": 1
       },
       "model": "thaumictinkerer:item/blood_sword_active"
     }

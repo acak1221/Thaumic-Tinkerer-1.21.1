@@ -107,6 +107,16 @@ public class ItemIchorPouch extends KamiItemBase implements IBauble, IFocusPouch
         return true;
     }
 
+    /**
+     * New in the port: the pouch does not go into the containers that are items or travel as items (a shulker box, a bundle;
+     * {@code ShulkerBoxSlot}, the shulker box's hopper face and {@code BundleContents} ask this), as vanilla keeps a shulker box
+     * out of them: a pouch of 117 cells inside a box inside a pouch would nest without limit. 1.7.10 had neither container.
+     */
+    @Override
+    public boolean canFitInsideContainerItems() {
+        return false;
+    }
+
     // ---- use ------------------------------------------------------------------------------------------------
 
     @Override

@@ -47,6 +47,11 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * The Ethereal Platform: solid only for whoever stands above it. Players are solid above two blocks of it (their feet
  * at 0.38 above the bottom of the block, with the 1.62 eye height the 1.7.10 client compared) and while not sneaking;
  * every other entity is solid when its feet are above the bottom of the block. Everything else walks through.
+ *
+ * <p>For the rules of the game the block is solid ({@code forceSolidOn}): its collision shape without an entity is
+ * empty, so 1.21.1 would derive {@code blocksMotion()} and {@code isSolid()} false from it, and flowing water and lava
+ * would wash the platform away like a flower. The 1.7.10 block was {@code Material.wood}, which blocks movement and is
+ * solid. The collision shapes above are not affected; docs/deviations/SimpleBlocks.md 2.4 lists what else follows.</p>
  */
 public class BlockPlatform extends BlockCamo implements ITTinkererRegisterable {
     public static final MapCodec<BlockPlatform> CODEC = simpleCodec(BlockPlatform::new);
@@ -58,10 +63,13 @@ public class BlockPlatform extends BlockCamo implements ITTinkererRegisterable {
         super(properties);
     }
 
-    /** Wood, hardness 2, resistance 5 in the 1.7.10 setter (3 now); no occlusion, it lets light and sight through. */
+    /**
+     * Wood, hardness 2, resistance 5 in the 1.7.10 setter (3 now); no occlusion, it lets light and sight through; solid
+     * for the rules of the game (liquids do not flow into it), as {@code Material.wood} was.
+     */
     public static BlockBehaviour.Properties defaultProperties() {
         return BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0F, 3.0F).sound(SoundType.WOOD)
-                .noOcclusion().ignitedByLava();
+                .noOcclusion().ignitedByLava().forceSolidOn();
     }
 
     @Override

@@ -10,12 +10,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
+import io.netty.buffer.Unpooled;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -150,12 +160,59 @@ class SimpleBlocksLogicTest {
         assertTrue(list.getAspects()[0] == Aspect.AIR && list.getAmount(Aspect.AIR) == 0);
     }
 
+    @Test
+    void everyAmountOutsideZeroToFiftyIsClampedOnTheWayInAndOut() {
+        Map<String, Integer> raw = new LinkedHashMap<>();
+        raw.put("terra", 1000);
+        raw.put("ordo", -5);
+        raw.put("aer", Integer.MAX_VALUE);
+        raw.put("aqua", 7);
+        AspectList list = InfusedSeedComponents.toList(raw);
+        assertEquals(50, list.getAmount(Aspect.EARTH));
+        assertEquals(0, list.getAmount(Aspect.ORDER));
+        assertEquals(50, list.getAmount(Aspect.AIR));
+        assertEquals(7, list.getAmount(Aspect.WATER));
+
+        Map<String, Integer> map = InfusedSeedComponents.toMap(new AspectList().add(Aspect.EARTH, 80).add(Aspect.FIRE, -2));
+        assertEquals(Map.of("terra", 50, "ignis", 0), map);
+        assertThrows(UnsupportedOperationException.class, () -> map.put("aer", 1), "the component map is unmodifiable");
+    }
+
+    @Test
+    void theCodecsOfTheTendenciesClampAndHandOutUnmodifiableMaps() {
+        JsonElement json = JsonParser.parseString("{\"terra\": 100, \"ordo\": -3, \"aqua\": 12}");
+        Map<String, Integer> decoded = InfusedSeedComponents.TENDENCIES_CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
+        assertEquals(50, (int) decoded.get("terra"), "a larger amount is clamped, not refused (the stack is kept)");
+        assertEquals(0, (int) decoded.get("ordo"));
+        assertEquals(12, (int) decoded.get("aqua"));
+        assertThrows(UnsupportedOperationException.class, () -> decoded.put("aer", 1));
+
+        Map<String, Integer> raw = new LinkedHashMap<>();
+        raw.put("terra", 999);
+        JsonElement written = InfusedSeedComponents.TENDENCIES_CODEC.encodeStart(JsonOps.INSTANCE, raw).getOrThrow();
+        assertEquals(50, written.getAsJsonObject().get("terra").getAsInt(), "and written clamped");
+
+        // the network: what a creative client could send, written by hand
+        RegistryFriendlyByteBuf buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+        ByteBufCodecs.VAR_INT.encode(buffer, 2);
+        ByteBufCodecs.STRING_UTF8.encode(buffer, "ordo");
+        ByteBufCodecs.VAR_INT.encode(buffer, 100000);
+        ByteBufCodecs.STRING_UTF8.encode(buffer, "terra");
+        ByteBufCodecs.VAR_INT.encode(buffer, -1);
+        Map<String, Integer> received = InfusedSeedComponents.TENDENCIES_STREAM_CODEC.decode(buffer);
+        assertEquals(List.of("ordo", "terra"), List.copyOf(received.keySet()), "the order is kept");
+        assertEquals(50, (int) received.get("ordo"));
+        assertEquals(0, (int) received.get("terra"));
+        assertThrows(UnsupportedOperationException.class, () -> received.put("aer", 1));
+    }
+
     // ---- the weighted loot of a ripe crop ----------------------------------------------------------------------
 
     @Test
     void anAspectWithoutLootYieldsNothing() {
-        assertNull(AspectCropLootManager.getLootForAspect(null));
-        assertNull(AspectCropLootManager.getLootForAspect(Aspect.DARKNESS));
+        RandomSource random = RandomSource.create(1L);
+        assertNull(AspectCropLootManager.getLootForAspect(null, random));
+        assertNull(AspectCropLootManager.getLootForAspect(Aspect.DARKNESS, random));
     }
 
     @Test
@@ -167,8 +224,9 @@ class SimpleBlocksLogicTest {
 
         int diamonds = 0;
         int coal = 0;
+        RandomSource random = RandomSource.create(20261101L);
         for (int i = 0; i < 4000; i++) {
-            ItemStack drawn = AspectCropLootManager.getLootForAspect(Aspect.COLD);
+            ItemStack drawn = AspectCropLootManager.getLootForAspect(Aspect.COLD, random);
             assertNotNull(drawn);
             if (drawn.is(Items.DIAMOND)) diamonds++;
             else if (drawn.is(Items.COAL)) {

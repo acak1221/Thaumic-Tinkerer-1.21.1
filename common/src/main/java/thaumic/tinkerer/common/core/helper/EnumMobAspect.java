@@ -16,7 +16,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -65,44 +67,44 @@ import thaumcraft.api.entities.ThaumcraftEntities;
  * <p>The order of the constants matters: {@link #getAspectsForEntity} answers with the first constant that matches, so
  * a subclass comes before its superclass ({@code MushroomCow} before {@code Cow}, {@code PigZombie} before
  * {@code Zombie}...), exactly as 1.7.10 ordered them. 1.7.10 held the entity class and made the mob with its
- * constructor; here an entity type is looked up in the registry when it is needed (the Thaumcraft ones are not
- * constants of the API).</p>
+ * constructor; here each row holds the registry key of its entity type (the vanilla ones and the
+ * {@link ThaumcraftEntities} keys of the API), and the type itself is looked up in the registry when it is needed.</p>
  */
 public enum EnumMobAspect {
 
     // Passive
-    Chicken("minecraft:chicken", new Aspect[] { Aspect.CROP, Aspect.FLIGHT, Aspect.BEAST }, 1.0f, 0,
+    Chicken(vanilla("chicken"), new Aspect[] { Aspect.CROP, Aspect.FLIGHT, Aspect.BEAST }, 1.0f, 0,
             e -> e instanceof Chicken),
-    Pig("minecraft:pig", new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.TRAVEL }, 1.0f, 0, e -> e instanceof Pig),
+    Pig(vanilla("pig"), new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.TRAVEL }, 1.0f, 0, e -> e instanceof Pig),
     /// Must be before Cow because MushroomCow extends Cow
-    MushroomCow("minecraft:mooshroom", new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.CROP }, 0.9f, 0,
+    MushroomCow(vanilla("mooshroom"), new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.CROP }, 0.9f, 0,
             e -> e instanceof MushroomCow),
-    Cow("minecraft:cow", new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.BEAST }, 0.9f, 0, e -> e instanceof Cow),
-    Sheep("minecraft:sheep", new Aspect[] { Aspect.EARTH, Aspect.CLOTH, Aspect.BEAST }, 0.9f, 0,
+    Cow(vanilla("cow"), new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.BEAST }, 0.9f, 0, e -> e instanceof Cow),
+    Sheep(vanilla("sheep"), new Aspect[] { Aspect.EARTH, Aspect.CLOTH, Aspect.BEAST }, 0.9f, 0,
             e -> e instanceof Sheep),
     /** 1.7.10 ocelots covered the wild ocelot and the tamed cats. */
-    Ozelot("minecraft:ocelot", new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.ELDRITCH }, 1.0f, 0,
+    Ozelot(vanilla("ocelot"), new Aspect[] { Aspect.BEAST, Aspect.EARTH, Aspect.ELDRITCH }, 1.0f, 0,
             e -> e instanceof Ocelot || e instanceof Cat),
-    Wolf("minecraft:wolf", new Aspect[] { Aspect.BEAST, Aspect.BEAST, Aspect.BEAST }, 1.0f, 0, e -> e instanceof Wolf),
+    Wolf(vanilla("wolf"), new Aspect[] { Aspect.BEAST, Aspect.BEAST, Aspect.BEAST }, 1.0f, 0, e -> e instanceof Wolf),
     /** 1.7.10 horses covered the horse, donkey, mule and the two undead horses (not the llamas of later versions). */
-    EntityHorse("minecraft:horse", new Aspect[] { Aspect.BEAST, Aspect.BEAST, Aspect.TRAVEL }, 0.8f, 0,
+    EntityHorse(vanilla("horse"), new Aspect[] { Aspect.BEAST, Aspect.BEAST, Aspect.TRAVEL }, 0.8f, 0,
             e -> e instanceof Horse || e instanceof Donkey || e instanceof Mule || e instanceof SkeletonHorse
                     || e instanceof ZombieHorse),
-    SnowMan("minecraft:snow_golem", new Aspect[] { Aspect.WATER, Aspect.WATER, Aspect.MAN }, 0.8f, 0,
+    SnowMan(vanilla("snow_golem"), new Aspect[] { Aspect.WATER, Aspect.WATER, Aspect.MAN }, 0.8f, 0,
             e -> e instanceof SnowGolem),
-    VillagerGolem("minecraft:iron_golem", new Aspect[] { Aspect.METAL, Aspect.METAL, Aspect.MAN }, 0.6f, 0,
+    VillagerGolem(vanilla("iron_golem"), new Aspect[] { Aspect.METAL, Aspect.METAL, Aspect.MAN }, 0.6f, 0,
             e -> e instanceof IronGolem),
-    Villager("minecraft:villager", new Aspect[] { Aspect.MAN, Aspect.MAN, Aspect.MAN }, 0.8f, 0,
+    Villager(vanilla("villager"), new Aspect[] { Aspect.MAN, Aspect.MAN, Aspect.MAN }, 0.8f, 0,
             e -> e instanceof Villager),
-    Squid("minecraft:squid", new Aspect[] { Aspect.WATER, Aspect.WATER, Aspect.WATER }, 0.6f, 0.75f,
+    Squid(vanilla("squid"), new Aspect[] { Aspect.WATER, Aspect.WATER, Aspect.WATER }, 0.6f, 0.75f,
             e -> e instanceof Squid),
-    Bat("minecraft:bat", new Aspect[] { Aspect.AIR, Aspect.AIR, Aspect.FLIGHT }, 1.9f, 0, e -> e instanceof Bat),
+    Bat(vanilla("bat"), new Aspect[] { Aspect.AIR, Aspect.AIR, Aspect.FLIGHT }, 1.9f, 0, e -> e instanceof Bat),
     // Hostiles
-    Blaze("minecraft:blaze", new Aspect[] { Aspect.FIRE, Aspect.FIRE, Aspect.FIRE }, 0.8f, 0, e -> e instanceof Blaze),
-    PigZombie("minecraft:zombified_piglin", new Aspect[] { Aspect.UNDEAD, Aspect.FLESH, Aspect.FIRE }, 0.8f, 0,
+    Blaze(vanilla("blaze"), new Aspect[] { Aspect.FIRE, Aspect.FIRE, Aspect.FIRE }, 0.8f, 0, e -> e instanceof Blaze),
+    PigZombie(vanilla("zombified_piglin"), new Aspect[] { Aspect.UNDEAD, Aspect.FLESH, Aspect.FIRE }, 0.8f, 0,
             e -> e instanceof ZombifiedPiglin),
     /// Must be before Slime because MagmaCube extends Slime
-    LavaSlime("minecraft:magma_cube", new Aspect[] { Aspect.FIRE, Aspect.SLIME, Aspect.SLIME }, 1.5f, 0,
+    LavaSlime(vanilla("magma_cube"), new Aspect[] { Aspect.FIRE, Aspect.SLIME, Aspect.SLIME }, 1.5f, 0,
             e -> e instanceof MagmaCube) {
 
         @Override
@@ -115,31 +117,31 @@ public enum EnumMobAspect {
             return setSlimeSize(mob, 1);
         }
     },
-    Ghast("minecraft:ghast", new Aspect[] { Aspect.FIRE, Aspect.FLIGHT, Aspect.FLIGHT }, 0.2f, 0.6f,
+    Ghast(vanilla("ghast"), new Aspect[] { Aspect.FIRE, Aspect.FLIGHT, Aspect.FLIGHT }, 0.2f, 0.6f,
             e -> e instanceof Ghast),
-    Firebat(ThaumcraftEntities.FIREBAT.location().toString(), new Aspect[] { Aspect.FLIGHT, Aspect.FIRE, Aspect.MAGIC }, 1.9f,
+    Firebat(ThaumcraftEntities.FIREBAT, new Aspect[] { Aspect.FLIGHT, Aspect.FIRE, Aspect.MAGIC }, 1.9f,
             0f, e -> ThaumcraftEntities.is(e, ThaumcraftEntities.FIREBAT)),
     /// Must be before Zombie because the brainy zombies of Thaumcraft extend Zombie
-    BrainyZombie(ThaumcraftEntities.BRAINY_ZOMBIE.location().toString(), new Aspect[] { Aspect.MAGIC, Aspect.UNDEAD, Aspect.FLESH },
+    BrainyZombie(ThaumcraftEntities.BRAINY_ZOMBIE, new Aspect[] { Aspect.MAGIC, Aspect.UNDEAD, Aspect.FLESH },
             0.8f, 0, e -> ThaumcraftEntities.is(e, ThaumcraftEntities.BRAINY_ZOMBIE)
                     || ThaumcraftEntities.is(e, ThaumcraftEntities.GIANT_BRAINY_ZOMBIE)),
-    Zombie("minecraft:zombie", new Aspect[] { Aspect.FLESH, Aspect.FLESH, Aspect.UNDEAD }, 0.8f, 0,
+    Zombie(vanilla("zombie"), new Aspect[] { Aspect.FLESH, Aspect.FLESH, Aspect.UNDEAD }, 0.8f, 0,
             e -> e instanceof Zombie),
     /** Plain skeletons only: 1.7.10 skeletons had type 0 (skeleton) and 1 (wither skeleton). */
-    Skeleton("minecraft:skeleton", new Aspect[] { Aspect.UNDEAD, Aspect.MAN, Aspect.UNDEAD }, 0.8f, 0,
+    Skeleton(vanilla("skeleton"), new Aspect[] { Aspect.UNDEAD, Aspect.MAN, Aspect.UNDEAD }, 0.8f, 0,
             e -> e instanceof Skeleton),
-    WitherSkeleton("minecraft:wither_skeleton", new Aspect[] { Aspect.UNDEAD, Aspect.POISON, Aspect.FIRE }, 0.8f, 0,
+    WitherSkeleton(vanilla("wither_skeleton"), new Aspect[] { Aspect.UNDEAD, Aspect.POISON, Aspect.FIRE }, 0.8f, 0,
             e -> e instanceof WitherSkeleton),
-    Creeper("minecraft:creeper", new Aspect[] { Aspect.MAGIC, Aspect.BEAST, Aspect.ELDRITCH }, 0.8f, 0,
+    Creeper(vanilla("creeper"), new Aspect[] { Aspect.MAGIC, Aspect.BEAST, Aspect.ELDRITCH }, 0.8f, 0,
             e -> e instanceof Creeper),
-    Witch("minecraft:witch", new Aspect[] { Aspect.MAGIC, Aspect.UNDEAD, Aspect.ELDRITCH }, 0.8f, 0,
+    Witch(vanilla("witch"), new Aspect[] { Aspect.MAGIC, Aspect.UNDEAD, Aspect.ELDRITCH }, 0.8f, 0,
             e -> e instanceof Witch),
     /// Must be before Spider because CaveSpider extends Spider
-    CaveSpider("minecraft:cave_spider", new Aspect[] { Aspect.BEAST, Aspect.POISON, Aspect.POISON }, 0.8f, 0,
+    CaveSpider(vanilla("cave_spider"), new Aspect[] { Aspect.BEAST, Aspect.POISON, Aspect.POISON }, 0.8f, 0,
             e -> e instanceof CaveSpider),
-    Spider("minecraft:spider", new Aspect[] { Aspect.BEAST, Aspect.UNDEAD, Aspect.UNDEAD }, 0.8f, 0,
+    Spider(vanilla("spider"), new Aspect[] { Aspect.BEAST, Aspect.UNDEAD, Aspect.UNDEAD }, 0.8f, 0,
             e -> e instanceof Spider),
-    Slime("minecraft:slime", new Aspect[] { Aspect.SLIME, Aspect.SLIME, Aspect.BEAST }, 1.5f, 0,
+    Slime(vanilla("slime"), new Aspect[] { Aspect.SLIME, Aspect.SLIME, Aspect.BEAST }, 1.5f, 0,
             e -> e instanceof Slime) {
 
         @Override
@@ -152,11 +154,11 @@ public enum EnumMobAspect {
             return setSlimeSize(mob, 1);
         }
     },
-    Silverfish("minecraft:silverfish", new Aspect[] { Aspect.METAL, Aspect.METAL, Aspect.EARTH }, 1.2f, 0,
+    Silverfish(vanilla("silverfish"), new Aspect[] { Aspect.METAL, Aspect.METAL, Aspect.EARTH }, 1.2f, 0,
             e -> e instanceof Silverfish),
-    Enderman("minecraft:enderman", new Aspect[] { Aspect.ELDRITCH, Aspect.ELDRITCH, Aspect.MAN }, 0.7f, 0,
+    Enderman(vanilla("enderman"), new Aspect[] { Aspect.ELDRITCH, Aspect.ELDRITCH, Aspect.MAN }, 0.7f, 0,
             e -> e instanceof EnderMan),
-    Wisp(ThaumcraftEntities.WISP.location().toString(), new Aspect[] { Aspect.AIR, Aspect.MAGIC, Aspect.MAGIC }, 1.0f, 0,
+    Wisp(ThaumcraftEntities.WISP, new Aspect[] { Aspect.AIR, Aspect.MAGIC, Aspect.MAGIC }, 1.0f, 0,
             e -> ThaumcraftEntities.is(e, ThaumcraftEntities.WISP));
 
     private static final Map<String, EnumMobAspect> LOOKUP = new LinkedHashMap<>();
@@ -166,14 +168,14 @@ public enum EnumMobAspect {
     }
 
     public final Aspect[] aspects;
-    private final ResourceLocation entityTypeId;
+    private final ResourceKey<EntityType<?>> entityType;
     private final Predicate<Entity> matcher;
     private final float scale;
     private final float offset;
 
-    EnumMobAspect(String entityTypeId, Aspect[] aspects, float scale, float offset, Predicate<Entity> matcher) {
+    EnumMobAspect(ResourceKey<EntityType<?>> entityType, Aspect[] aspects, float scale, float offset, Predicate<Entity> matcher) {
         this.aspects = aspects;
-        this.entityTypeId = ResourceLocation.parse(entityTypeId);
+        this.entityType = entityType;
         this.scale = scale;
         this.offset = offset;
         this.matcher = matcher;
@@ -181,6 +183,11 @@ public enum EnumMobAspect {
 
     public static EnumMobAspect get(String name) {
         return LOOKUP.get(name);
+    }
+
+    /** The key of a vanilla entity type ({@code minecraft:<path>}). */
+    private static ResourceKey<EntityType<?>> vanilla(String path) {
+        return ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.withDefaultNamespace(path));
     }
 
     private static Mob setSlimeSize(Mob entity, int size) {
@@ -218,9 +225,14 @@ public enum EnumMobAspect {
         return scale;
     }
 
+    /** The registry key of the entity type of the mob (it exists whether or not the type is registered). */
+    public ResourceKey<EntityType<?>> getEntityTypeKey() {
+        return entityType;
+    }
+
     /** The entity type of the mob, or null when the mod that provides it is not loaded. */
     public EntityType<?> getEntityType() {
-        return BuiltInRegistries.ENTITY_TYPE.getOptional(entityTypeId).orElse(null);
+        return BuiltInRegistries.ENTITY_TYPE.getOptional(entityType).orElse(null);
     }
 
     /** The name of the mob as the game shows it. */

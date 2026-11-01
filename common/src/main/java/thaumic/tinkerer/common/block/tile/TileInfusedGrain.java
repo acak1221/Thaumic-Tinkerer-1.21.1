@@ -11,7 +11,9 @@
  */
 package thaumic.tinkerer.common.block.tile;
 
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -27,21 +29,37 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.aspects.IAspectContainer;
 import thaumic.tinkerer.common.content.SimpleBlocks;
+import thaumic.tinkerer.common.item.InfusedSeedComponents;
 
 /**
  * The block entity of an infused crop: its aspect, its primal tendencies (at most fifty points), the growth of the
  * crop (the crop does not grow by random ticks) and the exchange of tendencies with the crops next to it.
+ *
+ * <p>Bounds (fix, docs/deviations/SimpleBlocks.md 2.6): every amount of the tendencies is kept in {@code 0..50} and their
+ * sum at fifty at most. {@link #reduceSaturatedAspects} clamps and trims, the saved amounts are clamped when they are
+ * read (and trimmed on the next tick), and {@link #tendency} is the clamped amount the growth and the harvest read, so
+ * that a list somebody filled by hand cannot drive the harvest loops without end.</p>
  */
 public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer {
+
+    /** The most points the tendencies hold in all, and the most one aspect holds. */
+    public static final int MAX_TENDENCIES = InfusedSeedComponents.MAX_AMOUNT;
 
     private final String NBT_MAIN_ASPECT = "mainAspect";
     private final String NBT_ASPEPCT_TENDENCIES = "aspectTendencies";
     @Nullable
     public Aspect aspect;
     public AspectList primalTendencies = new AspectList();
+    /** Set when saved tendencies above the cap were read: the next server tick trims them (no level random while loading). */
+    private boolean trimOnTick;
 
     public TileInfusedGrain(BlockPos pos, BlockState state) {
         super(SimpleBlocks.TILE_INFUSED_GRAIN.get(), pos, state);
+    }
+
+    /** The amount of a tendency as the growth and the harvest read it: clamped to {@code 0..}{@link #MAX_TENDENCIES}. */
+    public int tendency(Aspect aspect) {
+        return InfusedSeedComponents.clamp(primalTendencies.getAmount(aspect));
     }
 
     /** The aspect of the crop; the air aspect while none was set (1.7.10 gave it to the tile on its first tick). */
@@ -55,6 +73,11 @@ public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer
      */
     public static void serverTick(Level level, BlockPos pos, BlockState state, TileInfusedGrain tile) {
         RandomSource rand = level.random;
+        if (tile.trimOnTick) {
+            tile.trimOnTick = false;
+            tile.reduceSaturatedAspects(rand);
+            tile.setChanged();
+        }
 
         // Growth. 1.7.10 getBlockLightValue subtracts the sky darkening of the time of day (skylightSubtracted), so a crop
         // under open sky does not grow at night: the sky light of the cell above, less the current darkening, or the
@@ -62,7 +85,7 @@ public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer
         if (level.getRawBrightness(pos.above(), level.getSkyDarken()) >= 9) {
             int l = state.getValue(CropBlock.AGE);
             if (l < 7) {
-                int water = tile.primalTendencies.getAmount(Aspect.WATER);
+                int water = tile.tendency(Aspect.WATER);
                 if (rand.nextInt(Math.max(1, (2510 - (int) Math.pow(water, 2)) * 6)) == 0) {
                     ++l;
                     level.setBlock(pos, state.setValue(CropBlock.AGE, l), 3);
@@ -74,7 +97,7 @@ public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer
             tile.aspect = Aspect.AIR;
         }
         // Aspect Exchange
-        if (rand.nextInt(Math.max(1, (2550 - (int) Math.pow(tile.primalTendencies.getAmount(Aspect.AIR), 2)) * 10)) == 0
+        if (rand.nextInt(Math.max(1, (2550 - (int) Math.pow(tile.tendency(Aspect.AIR), 2)) * 10)) == 0
                 && !tile.aspect.isPrimal()) {
 
             for (Direction dir : Direction.values()) {
@@ -86,7 +109,7 @@ public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer
                     if (otherAspect.isPrimal()) {
                         if (tile.primalTendencies.getAmount(otherAspect) < 5) {
                             tile.primalTendencies.add(otherAspect, 1);
-                            tile.reduceSaturatedAspects();
+                            tile.reduceSaturatedAspects(rand);
 
                             tile.sync(level, pos);
                             trail(level, pos, neighbour, otherAspect);
@@ -102,7 +125,7 @@ public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer
                         if (targetList.getAmount(moved) >= tile.primalTendencies.getAmount(moved)) {
                             tile.primalTendencies.add(moved, 1);
                             targetList.reduce(moved, 1);
-                            tile.reduceSaturatedAspects();
+                            tile.reduceSaturatedAspects(rand);
                             trail(level, pos, neighbour, moved);
 
                             tile.sync(level, pos);
@@ -126,20 +149,49 @@ public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer
         level.sendBlockUpdated(pos, state, state, 3);
     }
 
+    /** {@link #reduceSaturatedAspects(RandomSource)} with the random source of the tile's level (a new one without a level). */
     public void reduceSaturatedAspects() {
-        int sum = 0;
-        for (Integer i : primalTendencies.aspects.values()) {
-            sum += i;
-        }
-        if (sum > 50) {
-            int toRemove = sum - 50;
-            while (toRemove > 0) {
-                Random rand = new Random();
-                Aspect target = primalTendencies.getAspects()[rand.nextInt(primalTendencies.getAspects().length)];
-                primalTendencies.remove(target, 1);
-                toRemove--;
+        Level level = getLevel();
+        reduceSaturatedAspects(level != null ? level.random : RandomSource.create());
+    }
+
+    /**
+     * 1.7.10 {@code reduceSaturatedAspects}: while the tendencies hold more than fifty points, one point of a random
+     * aspect is removed (an aspect that reaches zero leaves the list, as before). Fixes: every amount is clamped to
+     * {@code 0..50} first (so the sum cannot overflow and the loop runs at most fifty times per aspect), the dice are the
+     * given random source (1.7.10 made a {@code new Random()} per point), and only an aspect that still holds a point is
+     * drawn (1.7.10 also drew aspects of zero, which removed nothing and left the sum above fifty).
+     */
+    public void reduceSaturatedAspects(RandomSource rand) {
+        clampTendencies(primalTendencies);
+        long sum = sum(primalTendencies);
+        while (sum > MAX_TENDENCIES) {
+            List<Aspect> held = new ArrayList<>();
+            for (Map.Entry<Aspect, Integer> entry : primalTendencies.aspects.entrySet()) {
+                if (entry.getKey() != null && entry.getValue() > 0) held.add(entry.getKey());
             }
+            if (held.isEmpty()) break;
+            primalTendencies.remove(held.get(rand.nextInt(held.size())), 1);
+            sum--;
         }
+    }
+
+    /** Clamps every amount of the list to {@code 0..50} in place (a missing amount becomes zero). */
+    static void clampTendencies(AspectList list) {
+        for (Map.Entry<Aspect, Integer> entry : list.aspects.entrySet()) {
+            Integer amount = entry.getValue();
+            int clamped = InfusedSeedComponents.clamp(amount);
+            if (amount == null || amount != clamped) entry.setValue(clamped);
+        }
+    }
+
+    /** The sum of the amounts of the aspects of the list (a long, the amounts may be anything). */
+    static long sum(AspectList list) {
+        long sum = 0;
+        for (Map.Entry<Aspect, Integer> entry : list.aspects.entrySet()) {
+            if (entry.getKey() != null && entry.getValue() != null) sum += entry.getValue();
+        }
+        return sum;
     }
 
     @Override
@@ -162,7 +214,9 @@ public class TileInfusedGrain extends TileThaumcraft implements IAspectContainer
         Aspect[] read = aspectList.getAspects();
         aspect = read.length > 0 ? read[0] : null;
         aspectList.readFromNBT(nbt.getCompound(NBT_ASPEPCT_TENDENCIES));
+        clampTendencies(aspectList);
         primalTendencies = aspectList;
+        trimOnTick = sum(aspectList) > MAX_TENDENCIES;
     }
 
     @Override

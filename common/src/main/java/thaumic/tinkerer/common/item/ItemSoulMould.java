@@ -14,9 +14,10 @@
 package thaumic.tinkerer.common.item;
 
 import java.util.List;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -27,8 +28,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -39,43 +40,51 @@ import thaumic.tinkerer.common.research.IRegisterableResearch;
 
 /**
  * The soul mould. 1.7.10 stored the pattern as the legacy entity name ({@code EntityList.getEntityString}) in the
- * item NBT key {@code pattern}; the stack carries the registry id of the entity type ({@code minecraft:zombie}) in the
- * same key of its custom data.
+ * item NBT key {@code pattern}; the stack carries the registry key of the entity type ({@code minecraft:zombie}) in the
+ * component {@link MachineComponents#SOUL_PATTERN}. It is a key, not a holder: a mould keeps the pattern of an entity
+ * type that is no longer registered (its tooltip then shows the id).
  */
 public class ItemSoulMould extends Item implements ITTinkererRegisterable {
-
-    private static final String TAG_PATTERN = "pattern";
 
     public ItemSoulMould(Properties properties) {
         super(properties.stacksTo(1));
     }
 
     private static void setPattern(ItemStack stack, LivingEntity entity) {
-        String id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString(TAG_PATTERN, id));
+        BuiltInRegistries.ENTITY_TYPE.getResourceKey(entity.getType())
+                .ifPresent(key -> stack.set(MachineComponents.SOUL_PATTERN.get(), key));
     }
 
-    /** The registry id of the entity type this mould is set to, or the empty string. */
+    /** The entity type this mould is set to, or null for a blank mould. */
+    @Nullable
+    public static ResourceKey<EntityType<?>> getPattern(ItemStack stack) {
+        return stack.get(MachineComponents.SOUL_PATTERN.get());
+    }
+
+    /** The registry id of the entity type this mould is set to, or the empty string (what a block tooltip sends). */
     public static String getPatternName(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data == null ? "" : data.copyTag().getString(TAG_PATTERN);
+        ResourceKey<EntityType<?>> pattern = getPattern(stack);
+        return pattern == null ? "" : pattern.location().toString();
     }
 
     private static void clearPattern(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        if (data == null) return;
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.remove(TAG_PATTERN));
-        CustomData left = stack.get(DataComponents.CUSTOM_DATA);
-        if (left != null && left.isEmpty()) stack.remove(DataComponents.CUSTOM_DATA);
+        stack.remove(MachineComponents.SOUL_PATTERN.get());
     }
 
-    /** The name of the entity type of a pattern, as the game shows it. */
+    /** The name of the entity type of a pattern, as the game shows it; the id for a type that is not registered. */
+    public static Component patternDisplayName(ResourceKey<EntityType<?>> pattern) {
+        return BuiltInRegistries.ENTITY_TYPE.getOptional(pattern).<Component>map(EntityType::getDescription)
+                .orElseGet(() -> Component.literal(pattern.location().toString()));
+    }
+
+    /**
+     * {@link #patternDisplayName(ResourceKey)} of a pattern written as its id (a block tooltip sends it so); text that names
+     * no registered entity type is shown as it is.
+     */
     public static Component patternDisplayName(String pattern) {
         ResourceLocation id = ResourceLocation.tryParse(pattern);
-        if (id != null && BuiltInRegistries.ENTITY_TYPE.containsKey(id)) {
-            return BuiltInRegistries.ENTITY_TYPE.get(id).getDescription();
-        }
-        return Component.literal(pattern);
+        if (id == null || !BuiltInRegistries.ENTITY_TYPE.containsKey(id)) return Component.literal(pattern);
+        return patternDisplayName(ResourceKey.create(Registries.ENTITY_TYPE, id));
     }
 
     @Override
@@ -113,9 +122,9 @@ public class ItemSoulMould extends Item implements ITTinkererRegisterable {
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip,
             net.minecraft.world.item.TooltipFlag flag) {
-        String name = getPatternName(stack);
+        ResourceKey<EntityType<?>> pattern = getPattern(stack);
 
-        if (name.isEmpty()) tooltip.add(Component.translatable("ttmisc.soulMould.nonAssigned"));
-        else tooltip.add(Component.translatable("ttmisc.soulMould.pattern", patternDisplayName(name)));
+        if (pattern == null) tooltip.add(Component.translatable("ttmisc.soulMould.nonAssigned"));
+        else tooltip.add(Component.translatable("ttmisc.soulMould.pattern", patternDisplayName(pattern)));
     }
 }

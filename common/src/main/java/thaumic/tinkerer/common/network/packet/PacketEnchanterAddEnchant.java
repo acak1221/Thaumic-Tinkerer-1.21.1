@@ -64,7 +64,8 @@ public record PacketEnchanterAddEnchant(BlockPos pos, ResourceLocation enchant, 
 
     /**
      * {@code onMessage} on the server. Returns whether the enchanter changed. The enchantment has to be one the
-     * Enchanter knows (the original would fail on any other), and a tool that is enchanted already takes none.
+     * Enchanter knows (the original would fail on any other), and a new one is added only when the screen would offer it
+     * ({@link EnchantmentManager#canOffer}: not on a tool that is enchanted already or has no enchantability).
      */
     public boolean apply(ServerPlayer sender) {
         TileEnchanter tile = PacketTile.resolve(sender, pos, TileEnchanter.class, ContainerEnchanter.class, menu -> menu.enchanter);
@@ -82,9 +83,8 @@ public record PacketEnchanterAddEnchant(BlockPos pos, ResourceLocation enchant, 
         } else {
             if (!tile.enchantments.contains(key)) {
                 ItemStack tool = tile.getItem(TileEnchanter.SLOT_TOOL);
-                if (!tool.isEnchanted()
-                        && EnchantmentManager.canApply(sender.level().registryAccess(), tool, key, tile.enchantments)
-                        && EnchantmentManager.canEnchantmentBeUsed(sender, key)) {
+                // The rule of the screen's buttons, so that nothing is added that the screen would not offer.
+                if (EnchantmentManager.canOffer(sender, tool, key, tile.enchantments)) {
                     tile.appendEnchant(key);
                     tile.appendLevel(1);
                 }

@@ -13,10 +13,13 @@ package thaumic.tinkerer.common.item.kami;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -35,10 +38,14 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.BlockHitResult;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.item.kami.tool.ToolHandler;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -72,9 +79,69 @@ public class ItemPlacementMirror extends KamiItemBase {
         return stack.getOrDefault(KamiComponents.MIRROR_SIZE.get(), 3) | 1;
     }
 
-    /** The state the mirror places, or null when it has none. */
+    /**
+     * The state the mirror places, or null when it has none. It is the remembered state as {@link #placedState} makes it, so a
+     * mirror saved with a whole state before that rule (a double slab, eight layers of snow) places the single block too.
+     */
     public static BlockState getBlockState(ItemStack stack) {
-        return stack.get(KamiComponents.MIRROR_STATE.get());
+        return placedState(stack.get(KamiComponents.MIRROR_STATE.get()));
+    }
+
+    /** The properties that only turn a block; they are kept from the block the mirror was clicked on. */
+    private static final Set<String> ORIENTATION = Set.of("axis", "facing", "half", "orientation", "rotation");
+
+    /**
+     * The properties that stand for something put into the block (honey, charges, a record, books, bottles, layers of a stack); a
+     * block whose value of one of them is not the block's default is not remembered at all.
+     */
+    private static final Set<String> CONTENTS = Set.of(BlockStateProperties.LEVEL_HONEY.getName(),
+            BlockStateProperties.RESPAWN_ANCHOR_CHARGES.getName(), BlockStateProperties.HAS_RECORD.getName(),
+            BlockStateProperties.HAS_BOOK.getName(), BlockStateProperties.HAS_BOTTLE_0.getName(),
+            BlockStateProperties.HAS_BOTTLE_1.getName(), BlockStateProperties.HAS_BOTTLE_2.getName(),
+            BlockStateProperties.CHISELED_BOOKSHELF_SLOT_0_OCCUPIED.getName(),
+            BlockStateProperties.CHISELED_BOOKSHELF_SLOT_1_OCCUPIED.getName(),
+            BlockStateProperties.CHISELED_BOOKSHELF_SLOT_2_OCCUPIED.getName(),
+            BlockStateProperties.CHISELED_BOOKSHELF_SLOT_3_OCCUPIED.getName(),
+            BlockStateProperties.CHISELED_BOOKSHELF_SLOT_4_OCCUPIED.getName(),
+            BlockStateProperties.CHISELED_BOOKSHELF_SLOT_5_OCCUPIED.getName(), "level", "eggs", "pickles", "candles", "bites",
+            "flower_amount");
+
+    /**
+     * New in the port: the state the mirror places for a remembered state, worth exactly the one item that each placed block costs,
+     * or null when the mirror refuses it. 1.7.10 stored the block and its metadata and placed that, so a double slab, a stack of
+     * snow layers or a hive full of honey came out of a single item. Here the placed state is the block's default state with
+     * the properties that only turn it ({@link #ORIENTATION}: axis, facing, half...) taken over; a double slab becomes a bottom slab
+     * (a top slab stays one), snow is one layer, leaves are persistent (as when a player places them by hand, so they do not
+     * decay), and everything else (waterlogged, lit, powered, the note of a note block...) is the default. A state whose
+     * {@link #CONTENTS} differ from the default (a beehive with honey, a charged respawn anchor, a jukebox with a record) is
+     * refused.
+     */
+    public static BlockState placedState(BlockState remembered) {
+        if (remembered == null) return null;
+        Block block = remembered.getBlock();
+        BlockState fresh = block.defaultBlockState();
+        BlockState placed = fresh;
+        for (Property<?> property : remembered.getProperties()) {
+            if (!placed.hasProperty(property)) continue;
+            String name = property.getName();
+            if (ORIENTATION.contains(name)) {
+                placed = copy(remembered, placed, property);
+            } else if (CONTENTS.contains(name) && !remembered.getValue(property).equals(fresh.getValue(property))) {
+                return null;
+            }
+        }
+        if (block instanceof SlabBlock && remembered.getValue(SlabBlock.TYPE) == SlabType.TOP) {
+            placed = placed.setValue(SlabBlock.TYPE, SlabType.TOP);
+        } else if (block instanceof SlabBlock) {
+            placed = placed.setValue(SlabBlock.TYPE, SlabType.BOTTOM);
+        }
+        if (block instanceof SnowLayerBlock) placed = placed.setValue(SnowLayerBlock.LAYERS, 1);
+        if (placed.hasProperty(BlockStateProperties.PERSISTENT)) placed = placed.setValue(BlockStateProperties.PERSISTENT, true);
+        return placed;
+    }
+
+    private static <T extends Comparable<T>> BlockState copy(BlockState from, BlockState to, Property<T> property) {
+        return to.setValue(property, from.getValue(property));
     }
 
     public static Block getBlock(ItemStack stack) {
@@ -169,13 +236,15 @@ public class ItemPlacementMirror extends KamiItemBase {
      * 1.7.10 remembered a block only when {@code block.getRenderType() == 0}, the plain block model: cubes, slabs, glass,
      * leaves, furnaces; stairs, fences, walls, doors, beds, torches, panes and ladders were refused. 1.21.1 has no render
      * type, and nearly every block is {@link RenderShape#MODEL}, so the rule here is the shape: a block with an item whose
-     * collision shape is the full cube, or a slab or a layer of snow (the flat blocks of render type 0).
+     * collision shape is the full cube, or a slab or a layer of snow (the flat blocks of render type 0). A state that
+     * {@link #placedState} refuses (a block with something put into it) is not remembered either.
      */
     public static boolean canRemember(BlockGetter level, BlockPos pos, BlockState state) {
         if (state.getRenderShape() != RenderShape.MODEL || state.getBlock().asItem() == Items.AIR) return false;
         Block block = state.getBlock();
-        return block instanceof SlabBlock || block instanceof SnowLayerBlock
+        boolean shape = block instanceof SlabBlock || block instanceof SnowLayerBlock
                 || Block.isShapeFullBlock(state.getShape(level, pos));
+        return shape && placedState(state) != null;
     }
 
     @Override
@@ -188,7 +257,7 @@ public class ItemPlacementMirror extends KamiItemBase {
 
         if (player.isShiftKeyDown()) {
             if (canRemember(level, context.getClickedPos(), state)) {
-                stack.set(KamiComponents.MIRROR_STATE.get(), state);
+                stack.set(KamiComponents.MIRROR_STATE.get(), placedState(state));
             }
         } else if (!level.isClientSide) {
             placeAllBlocks(stack, player);
@@ -210,18 +279,23 @@ public class ItemPlacementMirror extends KamiItemBase {
         return InteractionResultHolder.pass(stack);
     }
 
+    /**
+     * Places the square (server side). The original placed wherever the square reached; here every position is first asked
+     * {@link BlockProtection#mayPlace} (the game's rules: loaded, world border, spawn protection, adventure mode; and the loader's
+     * place event, which claim mods answer), before anything is paid or placed. The blocks needed are those of the positions that
+     * may be placed; a position that is refused costs nothing.
+     */
     public void placeAllBlocks(ItemStack stack, Player player) {
         BlockState required = getBlockState(stack);
         if (required == null) return;
-        List<BlockPos> blocksToPlace = getBlocksToPlace(stack, player);
-        if (!hasBlocks(player, required.getBlock(), blocksToPlace.size())) return;
-
-        Level level = player.level();
-        for (BlockPos pos : blocksToPlace) {
-            // The original placed wherever the square reached; the vanilla rules of who may build where are kept.
-            if (level.isOutsideBuildHeight(pos) || !level.mayInteract(player, pos) || !player.mayBuild()) continue;
-            placeBlockAndConsume(player, required, pos);
+        if (!(player instanceof ServerPlayer server) || !(player.level() instanceof ServerLevel level)) return;
+        List<BlockPos> allowed = new ArrayList<>();
+        for (BlockPos pos : getBlocksToPlace(stack, player)) {
+            if (!level.isOutsideBuildHeight(pos) && BlockProtection.mayPlace(server, level, pos, required)) allowed.add(pos);
         }
+        if (!hasBlocks(player, required.getBlock(), allowed.size())) return;
+
+        for (BlockPos pos : allowed) placeBlockAndConsume(player, required, pos);
         // Only the server gets here: the sound goes to the player as well.
         KamiHooks.broadcastThaumcraftSound(level, player, "wand", 1F, 1F);
     }

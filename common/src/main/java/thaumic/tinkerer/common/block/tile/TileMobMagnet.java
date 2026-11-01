@@ -17,11 +17,13 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
@@ -89,9 +91,9 @@ public class TileMobMagnet extends TileMagnet implements Container {
 
         ItemStack mould = inventorySlots.get(0);
         if (can && !mould.isEmpty()) {
-            String pattern = ItemSoulMould.getPatternName(mould);
-            String name = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
-            return name.equals(pattern);
+            // a blank mould (no pattern) selects nothing, as the empty name of 1.7.10 matched no entity
+            ResourceKey<EntityType<?>> pattern = ItemSoulMould.getPattern(mould);
+            return pattern != null && pattern.location().equals(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()));
         }
 
         return can;

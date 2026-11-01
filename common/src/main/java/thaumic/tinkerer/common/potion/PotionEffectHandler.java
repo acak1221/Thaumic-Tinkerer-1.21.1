@@ -18,7 +18,6 @@ import dev.architectury.event.events.common.TickEvent;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import net.minecraft.core.BlockPos;
@@ -27,6 +26,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -165,7 +165,8 @@ public final class PotionEffectHandler {
     private static void onTickServer(MinecraftServer server) {
         // Air potion
         tickHits(server, AIR_HITS, 20, (target, level) -> {
-            Random rand = new Random();
+            // the dice of the victim's level (1.7.10 made a new Random for every fling)
+            RandomSource rand = level.random;
             target.setDeltaMovement(rand.nextFloat() - .5, rand.nextFloat(), rand.nextFloat() - .5);
             target.hurtMarked = true;
             // the client twin's burst(target.posX, posY, posZ, .5F), every fifth tick of the second

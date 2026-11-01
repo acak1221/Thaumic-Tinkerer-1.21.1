@@ -13,15 +13,19 @@ package thaumic.tinkerer.common.block.tile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 import thaumcraft.api.ThaumcraftFX;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.blocks.BlocksTC;
@@ -34,8 +38,29 @@ import thaumic.tinkerer.common.item.ItemMobAspect;
  * (within five blocks, at its own height) that carry soul aspects; three of them whose aspects are the aspects of a
  * mob summon that mob. Plain soul aspects are used up; infused ones are kept but the tablet works only every 1200
  * ticks, and remembers them.
+ *
+ * <p>1.7.10 scanned the square of every radius from 1 to 5 anew and tried every ordered triple of the pedestals it found,
+ * looking each pedestal up in the world again for every triple. The port reads the square of radius 5 once per cycle
+ * ({@link #scan}: one look-up per position, the pedestal block resolved once), takes the pedestals of each radius from that
+ * list in the order 1.7.10 scanned them (x, then z), and tries each unordered triple {@code i < j < k} once
+ * ({@link #firstMatch}). The match does not depend on the order within a triple (the aspects are compared as a set), so the
+ * first unordered triple is the first ordered triple of the original, with its pedestals in the same order: the same mob and
+ * the same trails.</p>
  */
 public class TileSummon extends BlockEntity {
+
+    /** The largest square the tablet searches: radius 1 to 5 around it, as 1.7.10 ({@code radius < 6}). */
+    public static final int MAX_RADIUS = 5;
+
+    /** A pedestal that carries a soul aspect, as the scan of a cycle found it. */
+    public record SoulPedestal(BlockPos pos, Container container, Aspect aspect) {}
+
+    /** Three pedestals whose aspects are those of a row: the row and the pedestals in the order of the trails. */
+    public record Match(EnumMobAspect recipe, SoulPedestal first, SoulPedestal second, SoulPedestal third) {
+        public List<SoulPedestal> pedestals() {
+            return List.of(first, second, third);
+        }
+    }
 
     public TileSummon(BlockPos pos, BlockState state) {
         super(Machines.TILE_SUMMON.get(), pos, state);
@@ -45,10 +70,100 @@ public class TileSummon extends BlockEntity {
         tablet.update((ServerLevel) level);
     }
 
-    /** The pedestal at a position, or null: only the arcane pedestal counts (1.7.10: {@code TilePedestal}). */
-    private static Container pedestalAt(Level level, BlockPos pos) {
-        if (!level.getBlockState(pos).is(BlocksTC.get("arcane_pedestal"))) return null;
-        return level.getBlockEntity(pos) instanceof Container container ? container : null;
+    /**
+     * The look-up of the pedestals of a level: the container of the arcane pedestal at a position (1.7.10:
+     * {@code TilePedestal}), or null. The pedestal block is resolved once, when the look-up is made.
+     */
+    public static Function<BlockPos, Container> pedestalLookup(Level level) {
+        Block pedestal = BlocksTC.get("arcane_pedestal");
+        return pos -> {
+            if (pedestal == null || !level.getBlockState(pos).is(pedestal)) return null;
+            return level.getBlockEntity(pos) instanceof Container container ? container : null;
+        };
+    }
+
+    /**
+     * The pedestals with a soul aspect in the square of radius {@link #MAX_RADIUS} around {@code tablet}, at its height, in
+     * the order 1.7.10 scanned a square (x, then z). Each position is looked up once.
+     */
+    public static List<SoulPedestal> scan(BlockPos tablet, Function<BlockPos, Container> pedestalAt) {
+        List<SoulPedestal> found = new ArrayList<>();
+        for (int x = tablet.getX() - MAX_RADIUS; x <= tablet.getX() + MAX_RADIUS; x++) {
+            for (int z = tablet.getZ() - MAX_RADIUS; z <= tablet.getZ() + MAX_RADIUS; z++) {
+                BlockPos at = new BlockPos(x, tablet.getY(), z);
+                Container pedestal = pedestalAt.apply(at);
+                if (pedestal == null) continue;
+                Aspect aspect = ItemMobAspect.getAspect(pedestal.getItem(0));
+                if (aspect != null) found.add(new SoulPedestal(at, pedestal, aspect));
+            }
+        }
+        return found;
+    }
+
+    /**
+     * The pedestals of the square of one radius, in the order of the scan: the order 1.7.10 found them in when it scanned
+     * that square (a sub-square of an x-then-z scan keeps the order).
+     */
+    public static List<SoulPedestal> within(List<SoulPedestal> scanned, BlockPos tablet, int radius) {
+        List<SoulPedestal> inside = new ArrayList<>();
+        for (SoulPedestal pedestal : scanned) {
+            if (Math.abs(pedestal.pos().getX() - tablet.getX()) <= radius
+                    && Math.abs(pedestal.pos().getZ() - tablet.getZ()) <= radius) {
+                inside.add(pedestal);
+            }
+        }
+        return inside;
+    }
+
+    /**
+     * The first triple of the pedestals {@code i < j < k} whose aspects are, as a set, the aspects of a row, with the first
+     * row that matches; null when none does.
+     */
+    @Nullable
+    public static Match firstMatch(List<SoulPedestal> pedestals) {
+        int n = pedestals.size();
+        List<Aspect> aspects = new ArrayList<>(3);
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                for (int k = j + 1; k < n; k++) {
+                    aspects.clear();
+                    aspects.add(pedestals.get(i).aspect());
+                    aspects.add(pedestals.get(j).aspect());
+                    aspects.add(pedestals.get(k).aspect());
+                    for (EnumMobAspect recipe : EnumMobAspect.values()) {
+                        if (recipe.matchesAspectSet(aspects)) {
+                            return new Match(recipe, pedestals.get(i), pedestals.get(j), pedestals.get(k));
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The pedestals with soul aspects around this tablet, as one cycle sees them ({@link #scan}). */
+    public List<SoulPedestal> soulPedestals(Level level) {
+        return scan(worldPosition, pedestalLookup(level));
+    }
+
+    /** What the next cycle would summon from (the smallest square with a match, then {@link #firstMatch}), or null. */
+    @Nullable
+    public Match findMatch(Level level) {
+        return findMatch(soulPedestals(level));
+    }
+
+    @Nullable
+    private Match findMatch(List<SoulPedestal> scanned) {
+        int previous = 0;
+        for (int radius = 1; radius <= MAX_RADIUS; radius++) {
+            List<SoulPedestal> pedestals = within(scanned, worldPosition, radius);
+            // the same pedestals as the smaller square, which had no match
+            if (pedestals.size() == previous) continue;
+            previous = pedestals.size();
+            Match match = firstMatch(pedestals);
+            if (match != null) return match;
+        }
+        return null;
     }
 
     private void update(ServerLevel level) {
@@ -67,75 +182,29 @@ public class TileSummon extends BlockEntity {
      * @return true when a mob was summoned (or an infused set was recognised and remembered)
      */
     public boolean summon(ServerLevel level, long gameTime) {
-        for (int radius = 1; radius < 6; radius++) {
-            List<BlockPos> pedestals = new ArrayList<>();
-            for (int x = worldPosition.getX() - radius; x <= worldPosition.getX() + radius; x++) {
-                for (int z = worldPosition.getZ() - radius; z <= worldPosition.getZ() + radius; z++) {
-                    BlockPos at = new BlockPos(x, worldPosition.getY(), z);
-                    Container pedestal = pedestalAt(level, at);
-                    if (pedestal != null && pedestal.getItem(0).getItem() instanceof ItemMobAspect) {
-                        pedestals.add(at);
-                    }
-                }
-            }
+        Match match = findMatch(level);
+        if (match == null) return false;
 
-            for (int i = 0; i < pedestals.size(); i++) {
-                for (int j = 0; j < pedestals.size(); j++) {
-                    for (BlockPos pos3 : pedestals) {
-                        BlockPos pos1 = pedestals.get(i);
-                        BlockPos pos2 = pedestals.get(j);
+        List<SoulPedestal> pedestals = match.pedestals();
+        boolean isInfused = true;
+        for (SoulPedestal pedestal : pedestals) isInfused &= ItemMobAspect.isInfused(pedestal.container().getItem(0));
 
-                        if (pos1.equals(pos2) || pos2.equals(pos3) || pos1.equals(pos3)) continue;
-                        Container ped1 = pedestalAt(level, pos1);
-                        Container ped2 = pedestalAt(level, pos2);
-                        Container ped3 = pedestalAt(level, pos3);
-                        if (ped1 == null || ped2 == null || ped3 == null) continue;
+        if (isInfused && gameTime % 1200 != 0) return false;
 
-                        List<Aspect> aspects = new ArrayList<>();
-                        aspects.add(ItemMobAspect.getAspect(ped1.getItem(0)));
-                        aspects.add(ItemMobAspect.getAspect(ped2.getItem(0)));
-                        aspects.add(ItemMobAspect.getAspect(ped3.getItem(0)));
-
-                        for (EnumMobAspect recipe : EnumMobAspect.values()) {
-                            if (!recipe.matchesAspectSet(aspects)) {
-                                continue;
-                            }
-
-                            boolean isInfused = ItemMobAspect.isInfused(ped1.getItem(0))
-                                    && ItemMobAspect.isInfused(ped2.getItem(0))
-                                    && ItemMobAspect.isInfused(ped3.getItem(0));
-
-                            if (isInfused && gameTime % 1200 != 0) return false;
-
-                            if (!isInfused) {
-                                clear(level, pos1, ped1);
-                                clear(level, pos2, ped2);
-                                clear(level, pos3, ped3);
-                            }
-
-                            if (!isInfused || ItemMobAspect.lastUsedTabletMatches(ped1.getItem(0), worldPosition)
-                                    && ItemMobAspect.lastUsedTabletMatches(ped2.getItem(0), worldPosition)
-                                    && ItemMobAspect.lastUsedTabletMatches(ped3.getItem(0), worldPosition)) {
-
-                                spawn(level, recipe);
-
-                                ThaumcraftFX.essentiaTrail(level, worldPosition, pos1, aspects.get(0));
-                                ThaumcraftFX.essentiaTrail(level, worldPosition, pos2, aspects.get(1));
-                                ThaumcraftFX.essentiaTrail(level, worldPosition, pos3, aspects.get(2));
-                            }
-                            if (isInfused) {
-                                mark(level, pos1, ped1);
-                                mark(level, pos2, ped2);
-                                mark(level, pos3, ped3);
-                            }
-
-                            return true;
-                        }
-                    }
-                }
-            }
+        if (!isInfused) {
+            for (SoulPedestal pedestal : pedestals) clear(level, pedestal);
         }
-        return false;
+
+        GlobalPos here = GlobalPos.of(level.dimension(), worldPosition);
+        if (!isInfused || lastUsedHere(pedestals, here)) {
+            spawn(level, match.recipe());
+            for (SoulPedestal pedestal : pedestals) ThaumcraftFX.essentiaTrail(level, worldPosition, pedestal.pos(), pedestal.aspect());
+        }
+        if (isInfused) {
+            for (SoulPedestal pedestal : pedestals) mark(level, pedestal, here);
+        }
+
+        return true;
     }
 
     /** The mob appears on top of the tablet, as {@code spawn.setLocationAndAngles(x + .5, y + 1, z + .5, 0, 0)}. */
@@ -151,18 +220,25 @@ public class TileSummon extends BlockEntity {
         spawn.playAmbientSound();
     }
 
-    private static void clear(ServerLevel level, BlockPos pos, Container pedestal) {
-        pedestal.setItem(0, ItemStack.EMPTY);
-        syncPedestal(level, pos);
+    private static boolean lastUsedHere(List<SoulPedestal> pedestals, GlobalPos tablet) {
+        for (SoulPedestal pedestal : pedestals) {
+            if (!ItemMobAspect.lastUsedTabletMatches(pedestal.container().getItem(0), tablet)) return false;
+        }
+        return true;
     }
 
-    /** An infused soul aspect remembers this tablet as the last one that used it. */
-    private void mark(ServerLevel level, BlockPos pos, Container pedestal) {
-        ItemStack stack = pedestal.getItem(0);
+    private static void clear(ServerLevel level, SoulPedestal pedestal) {
+        pedestal.container().setItem(0, ItemStack.EMPTY);
+        syncPedestal(level, pedestal.pos());
+    }
+
+    /** An infused soul aspect remembers this tablet (with its dimension) as the last one that used it. */
+    private static void mark(ServerLevel level, SoulPedestal pedestal, GlobalPos tablet) {
+        ItemStack stack = pedestal.container().getItem(0);
         if (stack.isEmpty()) return;
-        ItemMobAspect.markLastUsedTablet(stack, worldPosition);
-        pedestal.setChanged();
-        syncPedestal(level, pos);
+        ItemMobAspect.markLastUsedTablet(stack, tablet);
+        pedestal.container().setChanged();
+        syncPedestal(level, pedestal.pos());
     }
 
     private static void syncPedestal(ServerLevel level, BlockPos pos) {

@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import thaumic.tinkerer.common.block.tile.TileCamo;
@@ -22,8 +23,14 @@ import thaumic.tinkerer.common.block.tile.TileCamo;
  * lighting, the tint and the face culling of the world around it, as the piston renderer draws a moving block.
  * It does not get ambient-occlusion shading from the vanilla chunk mesh nor animated models of the imitated block:
  * docs/deviations/SimpleBlocks.md.
+ *
+ * <p>The model's dice are the renderer's own random source: the block renderer reseeds the source it is given for every
+ * quad list (with the seed of the position), and the level's random source would be reseeded every frame for every
+ * camouflaged block, which makes the client's other random draws (particles, sounds) repeat.</p>
  */
 public class RenderTileCamo implements BlockEntityRenderer<TileCamo> {
+    /** Reseeded by the block renderer for every model it draws; used on the render thread only. */
+    private final RandomSource random = RandomSource.create();
 
     public RenderTileCamo(BlockEntityRendererProvider.Context context) {}
 
@@ -35,6 +42,6 @@ public class RenderTileCamo implements BlockEntityRenderer<TileCamo> {
         if (camo == null || level == null) return;
         VertexConsumer consumer = buffers.getBuffer(ItemBlockRenderTypes.getMovingBlockRenderType(camo));
         Minecraft.getInstance().getBlockRenderer().renderBatched(camo, tile.getBlockPos(), level, poseStack, consumer, true,
-                level.random);
+                random);
     }
 }

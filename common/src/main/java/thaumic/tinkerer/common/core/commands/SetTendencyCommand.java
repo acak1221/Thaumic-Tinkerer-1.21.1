@@ -37,6 +37,11 @@ import thaumic.tinkerer.common.core.handler.ConfigHandler;
  * <p>Both arguments are words, like the 1.7.10 string array: an aspect that is not primal does nothing, a count that is no
  * number answers "Invalid number". 1.7.10 found the crop with {@code BlockUtils.getTargetBlock}; this is
  * {@code player.pick} with the same reach of ten blocks.</p>
+ *
+ * <p>Fix: the count is bounded. A negative count is refused like a count that is no number ("Invalid number", nothing
+ * merged): 1.7.10 merged it, and a negative amount lowered the sum of the tendencies, so the trimming let the other
+ * tendencies grow past fifty (and an ordo or terra tendency of 75 or 55 makes the harvest roll without end). A count
+ * above {@link #MAX_COUNT} (fifty, the most one tendency holds) is merged as fifty.</p>
  */
 public final class SetTendencyCommand {
     public static final String NAME = "setCropTendency";
@@ -44,10 +49,11 @@ public final class SetTendencyCommand {
     /** The reach of the look ray, in blocks (the 1.7.10 helper traced ten). */
     public static final double REACH = 10.0D;
     /**
-     * The largest count that is merged. {@code reduceSaturatedAspects} removes one point at a time, so 1.7.10 spent two
-     * billion iterations on the server thread for a count of 2147483647; 10000 trims to the same fifty points.
+     * The largest count that is merged: the most points the crop holds ({@link TileInfusedGrain#MAX_TENDENCIES}).
+     * {@code reduceSaturatedAspects} removes one point at a time, so 1.7.10 spent two billion iterations on the server
+     * thread for a count of 2147483647; fifty trims to the same fifty points.
      */
-    public static final int MAX_COUNT = 10000;
+    public static final int MAX_COUNT = TileInfusedGrain.MAX_TENDENCIES;
 
     /** What {@link #apply} did. */
     public enum Result {
@@ -55,7 +61,7 @@ public final class SetTendencyCommand {
         DONE,
         /** The name is no primal aspect: nothing happened. */
         NO_SUCH_ASPECT,
-        /** The count is no number ("Invalid number"). */
+        /** The count is no number, or a negative one ("Invalid number"); nothing happened. */
         INVALID_NUMBER
     }
 
@@ -96,19 +102,23 @@ public final class SetTendencyCommand {
 
     /**
      * 1.7.10 {@code processCommand} once the crop is found: for each primal aspect whose name equals the argument (case
-     * does not matter), merge the number into the tendencies and trim them.
+     * does not matter), merge the number into the tendencies and trim them. The number is limited to
+     * {@code 0..}{@link #MAX_COUNT}: a negative one is refused ({@link Result#INVALID_NUMBER}), a larger one is fifty.
      */
     public static Result apply(TileInfusedGrain tile, String aspectName, String count) {
         for (Aspect aspect : Aspect.getPrimalAspects()) {
             if (aspectName.equalsIgnoreCase(aspect.getName())) {
+                int amount;
                 try {
-                    tile.primalTendencies.merge(aspect, Math.min(Integer.parseInt(count), MAX_COUNT));
-                    tile.reduceSaturatedAspects();
-                    tile.setChanged();
-                    return Result.DONE;
+                    amount = Integer.parseInt(count);
                 } catch (NumberFormatException e) {
                     return Result.INVALID_NUMBER;
                 }
+                if (amount < 0) return Result.INVALID_NUMBER;
+                tile.primalTendencies.merge(aspect, Math.min(amount, MAX_COUNT));
+                tile.reduceSaturatedAspects();
+                tile.setChanged();
+                return Result.DONE;
             }
         }
         return Result.NO_SUCH_ASPECT;

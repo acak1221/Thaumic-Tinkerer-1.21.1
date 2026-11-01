@@ -40,6 +40,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import thaumcraft.api.ThaumcraftApiHelper;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.item.kami.KamiComponents;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
 
@@ -117,6 +118,18 @@ public final class ToolHandler {
         return raytrace(player, player.blockInteractionRange());
     }
 
+    /**
+     * New in the port: may a left click at {@code pos} that the client reported be acted on? The loaders post
+     * {@code InteractionEvent.LEFT_CLICK_BLOCK} before the game checks the click, so the position can be anywhere. True only
+     * when the player reaches the block as the game asks it ({@code canInteractWithBlock(pos, 1.0)}, the margin of
+     * {@code ServerPlayerGameMode.handleBlockBreakAction}) and {@link BlockProtection#gameAllows} holds (the chunk is loaded, inside
+     * the world border, no spawn protection, a game mode that may break blocks). Reads no block and loads no chunk; the reach is
+     * asked first.
+     */
+    public static boolean mayClick(ServerPlayer player, ServerLevel level, BlockPos pos) {
+        return player.canInteractWithBlock(pos, 1.0) && BlockProtection.gameAllows(player, level, pos);
+    }
+
     // ---- the break event ------------------------------------------------------------------------------------
 
     /**
@@ -124,7 +137,8 @@ public final class ToolHandler {
      * block the player breaks is removed.
      */
     public static EventResult onBlockBreak(Level level, BlockPos pos, BlockState state, ServerPlayer player, IntValue xp) {
-        if (BREAKING.get() || !(level instanceof ServerLevel server)) return EventResult.pass();
+        // A break event posted by BlockProtection only asks whether the block may go; nothing is broken, so no mode starts.
+        if (BREAKING.get() || BlockProtection.isProbing() || !(level instanceof ServerLevel server)) return EventResult.pass();
         ItemStack held = player.getMainHandItem();
         if (!(held.getItem() instanceof IAdvancedTool tool)) return EventResult.pass();
         guarded(() -> tool.onBlockStartBreak(held, server, pos, state, player));
@@ -180,7 +194,7 @@ public final class ToolHandler {
         // it inside the loop and so gathered its drops too): once more at the end of the tick, when its drops are on the ground.
         UUID playerId = player.getUUID();
         ResourceKey<Level> dimension = level.dimension();
-        afterBreak(server -> {
+        afterTick(server -> {
             ServerLevel there = server.getLevel(dimension);
             ServerPlayer owner = server.getPlayerList().getPlayer(playerId);
             if (there != null && owner != null && owner.level() == there) gatherItems(there, owner, box);
@@ -196,18 +210,18 @@ public final class ToolHandler {
 
     // ---- work for the end of the tick -------------------------------------------------------------------------
 
-    private static final List<Consumer<MinecraftServer>> AFTER_BREAK = new ArrayList<>();
+    private static final List<Consumer<MinecraftServer>> AFTER_TICK = new ArrayList<>();
 
     /** Queues work for the end of the current server tick (server thread only; the queue is emptied by {@link #onServerTickEnd}). */
-    private static void afterBreak(Consumer<MinecraftServer> work) {
-        AFTER_BREAK.add(work);
+    static void afterTick(Consumer<MinecraftServer> work) {
+        AFTER_TICK.add(work);
     }
 
-    /** Architectury {@code TickEvent.SERVER_POST}: runs the work queued by {@link #afterBreak}. */
+    /** Architectury {@code TickEvent.SERVER_POST}: runs the work queued by {@link #afterTick}. */
     public static void onServerTickEnd(MinecraftServer server) {
-        if (AFTER_BREAK.isEmpty()) return;
-        List<Consumer<MinecraftServer>> work = new ArrayList<>(AFTER_BREAK);
-        AFTER_BREAK.clear();
+        if (AFTER_TICK.isEmpty()) return;
+        List<Consumer<MinecraftServer>> work = new ArrayList<>(AFTER_TICK);
+        AFTER_TICK.clear();
         for (Consumer<MinecraftServer> task : work) task.accept(server);
     }
 

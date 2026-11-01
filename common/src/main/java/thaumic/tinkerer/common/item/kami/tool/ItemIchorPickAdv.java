@@ -34,6 +34,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
 import thaumic.tinkerer.common.item.kami.KamiResearch;
@@ -119,11 +120,17 @@ public class ItemIchorPickAdv extends ItemIchorPick implements IAdvancedTool {
      * Bedrock to portal or air (the sneaking branch of 1.7.10's {@code onBlockStartBreak}): the portal in the Overworld's
      * lowest five layers and in the top two layers of the Bedrock dimension, air in the rest of the Bedrock dimension.
      *
+     * <p>New: the bedrock is changed only where the player may break it ({@link BlockProtection#mayBreak}: the game's rules and the
+     * loader's break event, which claim mods answer); 1.7.10 asked nothing.</p>
+     *
      * @return true when the bedrock was converted
      */
     public static boolean convertBedrock(ServerPlayer player, ServerLevel level, BlockPos pos) {
         if (!player.isShiftKeyDown() || !KamiHooks.bedrockDimensionAvailable()) return false;
-        if (!level.getBlockState(pos).is(Blocks.BEDROCK)) return false;
+        if (!level.isLoaded(pos)) return false;
+        BlockState state = level.getBlockState(pos);
+        if (!state.is(Blocks.BEDROCK)) return false;
+        if (!BlockProtection.mayBreak(player, level, pos, state)) return false;
         boolean bedrockDimension = level.dimension() == KamiHooks.BEDROCK_DIMENSION;
         boolean top = pos.getY() > level.getMaxBuildHeight() - 3;
         boolean overworldFloor = level.dimension() == Level.OVERWORLD && pos.getY() < level.getMinBuildHeight() + 5;
@@ -145,12 +152,19 @@ public class ItemIchorPickAdv extends ItemIchorPick implements IAdvancedTool {
      * cannot be broken. A sneaking click turns the bedrock into the portal or air; a click without sneaking in square or
      * line mode breaks the blocks around, and the bedrock itself where the rules allow it (the Bedrock dimension below its
      * top two layers). The click is then cancelled; the bedrock has nothing left to break.
+     *
+     * <p>Both loaders post this event before the game has looked at the click (NeoForge's {@code LeftClickBlock} and Fabric's
+     * {@code AttackBlockCallback} come first in {@code ServerPlayerGameMode.handleBlockBreakAction}), so the position is whatever
+     * the client sent. A click is therefore left to the game, untouched and without reading the block, unless the player can
+     * reach it ({@link ToolHandler#mayClick}: the reach the game itself asks, a loaded chunk, the world border, spawn protection
+     * and adventure mode); 1.7.10's {@code PlayerInteractEvent} came after the reach check.</p>
      */
     public static EventResult onLeftClickBlock(Player player, InteractionHand hand, BlockPos pos, Direction face) {
         if (hand != InteractionHand.MAIN_HAND || !(player instanceof ServerPlayer server)) return EventResult.pass();
         ItemStack held = server.getMainHandItem();
         if (!(held.getItem() instanceof ItemIchorPickAdv pick)) return EventResult.pass();
         ServerLevel level = server.serverLevel();
+        if (!ToolHandler.mayClick(server, level, pos)) return EventResult.pass();
         BlockState state = level.getBlockState(pos);
         if (!state.is(Blocks.BEDROCK)) return EventResult.pass();
 

@@ -18,7 +18,9 @@ import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import thaumic.tinkerer.client.gui.button.GuiButtonMMRadio;
@@ -85,9 +87,9 @@ public class GuiMobMagnet extends AbstractContainerScreen<ContainerMobMagnet> {
         Component filter;
 
         if (!stack.isEmpty()) {
-            String name = ItemSoulMould.getPatternName(stack);
-            if (name.isEmpty()) filter = Component.translatable("ttmisc.none");
-            else filter = ItemSoulMould.patternDisplayName(name);
+            ResourceKey<EntityType<?>> pattern = ItemSoulMould.getPattern(stack);
+            if (pattern == null) filter = Component.translatable("ttmisc.none");
+            else filter = ItemSoulMould.patternDisplayName(pattern);
         } else filter = Component.translatable("ttmisc.all");
 
         graphics.drawString(font, filter, leftPos + imageWidth / 2 - font.width(filter) / 2 - 26, topPos + 16, 0x999999,

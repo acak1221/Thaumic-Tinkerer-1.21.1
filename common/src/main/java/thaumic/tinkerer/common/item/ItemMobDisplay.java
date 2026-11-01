@@ -13,11 +13,10 @@
  */
 package thaumic.tinkerer.common.item;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
+import org.jetbrains.annotations.Nullable;
 import thaumic.tinkerer.common.core.helper.EnumMobAspect;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
 import thaumic.tinkerer.common.registry.TTRegistry;
@@ -26,12 +25,10 @@ import thaumic.tinkerer.common.research.IRegisterableResearch;
 
 /**
  * An item that stands for a mob: it is shown as the mob, named as the mob, and is meant for recipe viewers (the output
- * of a necromancy recipe). It is not in the creative tab. The mob is the name of an {@link EnumMobAspect} in the key
- * {@code type} of the custom data, as in 1.7.10.
+ * of a necromancy recipe). It is not in the creative tab. The mob is a row of {@link EnumMobAspect}, the component
+ * {@link MachineComponents#DISPLAYED_MOB} (1.7.10: the row name in the tag {@code type}).
  */
 public class ItemMobDisplay extends Item implements ITTinkererRegisterable {
-
-    public static final String TAG_TYPE = "type";
 
     public ItemMobDisplay(Properties properties) {
         super(properties);
@@ -47,13 +44,19 @@ public class ItemMobDisplay extends Item implements ITTinkererRegisterable {
         return null;
     }
 
+    /** The mob a stack shows, or null for a stack without one. */
+    @Nullable
+    public static EnumMobAspect getMob(ItemStack stack) {
+        return stack.get(MachineComponents.DISPLAYED_MOB.get());
+    }
+
+    @Nullable
     public EnumMobAspect getEntityType(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return EnumMobAspect.get(data == null ? "" : data.copyTag().getString(TAG_TYPE));
+        return getMob(stack);
     }
 
     public void setEntityType(ItemStack stack, EnumMobAspect type) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString(TAG_TYPE, type.name()));
+        stack.set(MachineComponents.DISPLAYED_MOB.get(), type);
     }
 
     /** A stack of this item that displays the given mob. */

@@ -14,6 +14,7 @@ package thaumic.tinkerer.common.item.kami;
 import dev.architectury.event.EventResult;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -43,6 +44,10 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * ({@code InteractionEvent.LEFT_CLICK_BLOCK}), on the server, which swaps the stacks and lets the client's mining restart
  * with the new tool. As in the original the click is cancelled whenever the kind of the held tool differs from the one the
  * block asks for, also when the inventory has no tool of that kind.</p>
+ *
+ * <p>New: the loaders post that event before the game checks the click, so a click the player cannot reach (too far, in a
+ * chunk that is not loaded, in spawn protection, past the world border, in adventure mode) is left to the game without
+ * reading the block ({@link ToolHandler#mayClick}); 1.7.10's event came after the reach check.</p>
  */
 public class ItemProtoclay extends KamiItemBase {
 
@@ -52,14 +57,16 @@ public class ItemProtoclay extends KamiItemBase {
 
     /** Architectury {@code InteractionEvent.LEFT_CLICK_BLOCK}. */
     public static EventResult onLeftClickBlock(Player player, InteractionHand hand, BlockPos pos, Direction face) {
-        if (player.level().isClientSide || hand != InteractionHand.MAIN_HAND || !hasProtoclay(player)) {
+        if (player.level().isClientSide || !(player instanceof ServerPlayer server) || hand != InteractionHand.MAIN_HAND
+                || !hasProtoclay(player)) {
             return EventResult.pass();
         }
         ItemStack currentStack = player.getMainHandItem();
         if (!(currentStack.getItem() instanceof IAdvancedTool tool) || tool.getType().equals("sword")) {
             return EventResult.pass();
         }
-        BlockState state = player.level().getBlockState(pos);
+        if (!ToolHandler.mayClick(server, server.serverLevel(), pos)) return EventResult.pass();
+        BlockState state = server.serverLevel().getBlockState(pos);
         String typeToFind = ToolHandler.requiredToolType(state);
         if (tool.getType().equals(typeToFind) || typeToFind.isEmpty()) return EventResult.pass();
 

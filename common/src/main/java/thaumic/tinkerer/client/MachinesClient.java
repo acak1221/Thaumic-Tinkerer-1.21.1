@@ -11,6 +11,7 @@ package thaumic.tinkerer.client;
 import dev.architectury.event.events.client.ClientPlayerEvent;
 import dev.architectury.registry.client.rendering.BlockEntityRendererRegistry;
 import dev.architectury.registry.client.rendering.RenderTypeRegistry;
+import dev.architectury.registry.item.ItemPropertiesRegistry;
 import dev.architectury.registry.menu.MenuRegistry;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.item.Item;
@@ -24,12 +25,14 @@ import thaumic.tinkerer.client.render.tile.RenderTileRepairer;
 import thaumic.tinkerer.common.block.tile.TileMagnet;
 import thaumic.tinkerer.common.block.tile.TileMobMagnet;
 import thaumic.tinkerer.common.content.Machines;
+import thaumic.tinkerer.common.item.ItemBloodSword;
 import thaumic.tinkerer.common.lib.LibItemNames;
+import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.registry.TTRegistry;
 
 /**
- * Client registration of the Machines group: screens, block entity renderers, render layers and the built-in item
- * renderer of the Mob Display.
+ * Client registration of the Machines group: screens, block entity renderers, render layers, the built-in item
+ * renderer of the Mob Display and the item property of the Cursed Spirit's Blade's "active" icon.
  *
  * <p>Architectury has no registry for a built-in item renderer (the Mob Display's model is {@code minecraft:builtin/entity},
  * so without one the item is invisible): the group registers {@link RenderMobDisplay#render} with the loader layer's
@@ -38,6 +41,12 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * ({@code docs/api-requests/Machines.md} section 2, {@code docs/NEOFORGE.md}).</p>
  */
 public final class MachinesClient {
+    /**
+     * Item model predicate {@code thaumictinkerer:activated}: 1 while the Cursed Spirit's Blade reaps soul aspects, 0
+     * otherwise (1.7.10 {@code getIcon}: {@code blood_sword_1} while the tag {@code Activated} was 1).
+     */
+    public static final String PREDICATE_ACTIVATED = "activated";
+
     private MachinesClient() {}
 
     public static void register() {
@@ -55,6 +64,9 @@ public final class MachinesClient {
         RenderTypeRegistry.register(RenderType.translucent(), Machines.REPAIRER.get());
         RenderTypeRegistry.register(RenderType.cutout(), Machines.MAGNET.get(), Machines.MOB_MAGNET.get(),
                 Machines.FUNNEL.get(), Machines.SUMMON.get());
+
+        ItemPropertiesRegistry.register(TTRegistry.item(LibItemNames.BLOOD_SWORD), LibMisc.id(PREDICATE_ACTIVATED),
+                (stack, level, entity, seed) -> ItemBloodSword.isActivated(stack) ? 1.0F : 0.0F);
 
         // The mobs of the mob display items belong to a level.
         ClientPlayerEvent.CLIENT_PLAYER_QUIT.register(player -> RenderMobDisplay.clearCache());

@@ -31,6 +31,7 @@ import thaumic.tinkerer.common.block.tile.TileSummon;
 import thaumic.tinkerer.common.block.tile.container.ContainerAspectAnalyzer;
 import thaumic.tinkerer.common.block.tile.container.ContainerMobMagnet;
 import thaumic.tinkerer.common.item.ItemBloodSword;
+import thaumic.tinkerer.common.item.MachineComponents;
 import thaumic.tinkerer.common.item.ItemMobAspect;
 import thaumic.tinkerer.common.item.ItemMobDisplay;
 import thaumic.tinkerer.common.item.ItemSoulMould;
@@ -40,7 +41,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
 
 /**
  * Feature group: devices: aspect analyzer, repairer, funnel, magnets, necromancy tablet (summon) with its mob items
- * (the soul mould, the soul aspects, the mob display) and the cursed spirit's blade that reaps the soul aspects.
+ * (the soul mould, the soul aspects, the mob display) and the cursed spirit's blade that reaps the soul aspects. The
+ * stack data of those items are the components of {@link MachineComponents}.
  */
 public final class Machines implements ContentGroup {
     public static final Machines INSTANCE = new Machines();
@@ -67,6 +69,9 @@ public final class Machines implements ContentGroup {
 
     @Override
     public void register() {
+        // The stack data of the mould, the mob display, the blade and the soul aspects (1.7.10: the stack tag).
+        MachineComponents.register();
+
         // 1.7.10: Material.wood, hardness 1.7, resistance 1, wood step sound.
         ASPECT_ANALYZER = TTRegistry.block(LibBlockNames.ASPECT_ANALYZER, () -> new BlockAspectAnalyzer(
                 BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(1.7F, 1.0F).sound(SoundType.WOOD)));

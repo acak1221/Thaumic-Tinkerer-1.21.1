@@ -47,8 +47,12 @@ public final class DimensionalShardDropHandler {
     /** 1.7.10: {@code Math.random() <= 1D / 16D}. */
     public static final double NETHER_SHARD_CHANCE = 1D / 16D;
 
-    /** The dice of the chance rolls ({@code Math.random()} in the original). Tests replace it to make a roll certain; nothing else does. */
-    public static volatile DoubleSupplier dice = Math::random;
+    /**
+     * The dice of the chance rolls, for the tests: they set it to make a roll certain and set it back afterwards; nothing else
+     * does. Null (the default) rolls with the victim's own random ({@code victim.getRandom().nextDouble()}, the source the game
+     * rolls the mob's other drops with; 1.7.10 used {@code Math.random()}, which the port keeps out of the game logic).
+     */
+    public static volatile DoubleSupplier dice = null;
 
     private static boolean warnedMissingShard;
 
@@ -63,13 +67,19 @@ public final class DimensionalShardDropHandler {
     public static EventResult onLivingDrops(LivingEntity victim, DamageSource source, List<ItemEntity> drops, int lootingLevel,
             boolean recentlyHit) {
         if (!(source.getEntity() instanceof Player)) return EventResult.pass();
-        if (victim instanceof EnderMan && inDimension(victim, Level.END) && dice.getAsDouble() <= ENDER_SHARD_CHANCE) {
+        if (victim instanceof EnderMan && inDimension(victim, Level.END) && roll(victim) <= ENDER_SHARD_CHANCE) {
             addShard(drops, victim, LibItemNames.KAMI_RESOURCE_NAMES[7]);
         }
-        if (victim instanceof ZombifiedPiglin && inDimension(victim, Level.NETHER) && dice.getAsDouble() <= NETHER_SHARD_CHANCE) {
+        if (victim instanceof ZombifiedPiglin && inDimension(victim, Level.NETHER) && roll(victim) <= NETHER_SHARD_CHANCE) {
             addShard(drops, victim, LibItemNames.KAMI_RESOURCE_NAMES[6]);
         }
         return EventResult.pass();
+    }
+
+    /** A number in [0, 1): the test's {@link #dice} when set, otherwise the victim's random. */
+    private static double roll(LivingEntity victim) {
+        DoubleSupplier override = dice;
+        return override != null ? override.getAsDouble() : victim.getRandom().nextDouble();
     }
 
     private static boolean inDimension(LivingEntity victim, ResourceKey<Level> dimension) {

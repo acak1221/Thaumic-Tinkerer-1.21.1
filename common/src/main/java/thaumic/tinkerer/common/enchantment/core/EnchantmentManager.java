@@ -302,18 +302,37 @@ public final class EnchantmentManager {
     }
 
     /**
+     * Whether the Enchanter takes enchantments for this stack at all: not an empty slot, not an item that is enchanted already,
+     * not one without enchantability ({@code asignEnchantButtons} of 1.7.10 offered nothing then).
+     */
+    public static boolean takesEnchantments(ItemStack stack) {
+        return !stack.isEmpty() && !stack.isEnchanted() && stack.getItem().getEnchantmentValue() > 0;
+    }
+
+    /**
+     * Whether the Enchanter offers the enchantment for the stack to this player next to the ones already chosen: the stack
+     * takes enchantments ({@link #takesEnchantments}), the enchantment is in the table, {@link #canApply} and the research
+     * ({@link #canEnchantmentBeUsed}). The one rule of both sides: the screen lists what this allows ({@link #offered}) and the
+     * server's {@code PacketEnchanterAddEnchant} adds only what this allows (it used to skip the enchantability, so a
+     * modified client could choose Unbreaking for shears).
+     */
+    public static boolean canOffer(Player player, ItemStack stack, ResourceKey<Enchantment> enchantment,
+            List<ResourceKey<Enchantment>> chosen) {
+        return takesEnchantments(stack) && isKnown(enchantment)
+                && canApply(player.level().registryAccess(), stack, enchantment, chosen) && canEnchantmentBeUsed(player, enchantment);
+    }
+
+    /**
      * The first {@code limit} enchantments (in the order of the table) the Enchanter would offer for the stack to this
-     * player next to the ones already chosen: the list of buttons of its screen. Nothing for an item that is already
-     * enchanted or has no enchantability ({@code asignEnchantButtons}).
+     * player next to the ones already chosen ({@link #canOffer}): the list of buttons of its screen.
      */
     public static List<ResourceKey<Enchantment>> offered(Player player, ItemStack stack,
             List<ResourceKey<Enchantment>> chosen, int limit) {
         List<ResourceKey<Enchantment>> offered = new ArrayList<>();
-        if (stack.isEmpty() || stack.isEnchanted() || stack.getItem().getEnchantmentValue() == 0) return offered;
+        if (!takesEnchantments(stack)) return offered;
 
-        RegistryAccess access = player.level().registryAccess();
         for (ResourceKey<Enchantment> enchantment : TABLE.keySet()) {
-            if (canApply(access, stack, enchantment, chosen) && canEnchantmentBeUsed(player, enchantment)) {
+            if (canOffer(player, stack, enchantment, chosen)) {
                 offered.add(enchantment);
                 if (offered.size() >= limit) break;
             }

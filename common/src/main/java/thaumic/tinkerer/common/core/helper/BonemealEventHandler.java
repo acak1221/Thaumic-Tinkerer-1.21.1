@@ -18,6 +18,7 @@ import dev.architectury.event.events.common.InteractionEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
@@ -29,6 +30,7 @@ import thaumcraft.api.ThaumcraftFX;
 import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.BlockInfusedGrain;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 
 /**
  * Bone meal and the Hoe of Growth on the infused crops.
@@ -39,6 +41,12 @@ import thaumic.tinkerer.common.core.handler.ConfigHandler;
  * ({@code onPlayerInteract}) is kept: a magic hoe grows an infused crop that is not ripe, costing 25 uses, with a
  * sparkle and the wand sound. While the configuration allows bone meal the hoe of Thaumcraft grows the crop itself and
  * this handler stays out of its way.</p>
+ *
+ * <p>New: the loaders post the left click before the game checks it (NeoForge's {@code LeftClickBlock}, Fabric's
+ * {@code AttackBlockCallback}), so the position is whatever the client sent. Both clicks are acted on only when the player
+ * reaches the block as the game asks it ({@code canInteractWithBlock(pos, 1.0)}) and {@link BlockProtection#gameAllows} holds
+ * (a loaded chunk, the world border, spawn protection, adventure mode), checked before the block is read; otherwise the click
+ * is left to the game. The right click comes after the game's own checks and passes them unchanged.</p>
  */
 public class BonemealEventHandler {
     private static boolean registered;
@@ -60,10 +68,15 @@ public class BonemealEventHandler {
         return hoe != null && stack.is(hoe);
     }
 
-    private static EventResult onInteract(Player player, InteractionHand hand, BlockPos pos, Direction face) {
+    /** The listener of both clicks (public for the GameTests). */
+    public static EventResult onInteract(Player player, InteractionHand hand, BlockPos pos, Direction face) {
         Level world = player.level();
         if (world.isClientSide || !(world instanceof ServerLevel server)) return EventResult.pass();
         if (ConfigHandler.cropsAllowBonemeal) return EventResult.pass();
+        if (!(player instanceof ServerPlayer serverPlayer) || !serverPlayer.canInteractWithBlock(pos, 1.0)
+                || !BlockProtection.gameAllows(serverPlayer, server, pos)) {
+            return EventResult.pass();
+        }
         BlockState state = world.getBlockState(pos);
         if (!(state.getBlock() instanceof BlockInfusedGrain infusedGrain)) return EventResult.pass();
 

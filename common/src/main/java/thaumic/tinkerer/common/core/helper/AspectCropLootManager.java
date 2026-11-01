@@ -18,13 +18,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.Item;
@@ -83,13 +83,15 @@ public class AspectCropLootManager {
         }
     }
 
-    private static final Random RAND = new Random();
-
     private static final Map<Aspect, List<Source>> lootMap = new HashMap<>();
 
-    /** One weighted stack for the aspect, a copy; null when the aspect yields nothing. */
+    /**
+     * One weighted stack for the aspect, a copy; null when the aspect yields nothing. The dice are the caller's (the
+     * crop passes the random source of its level; 1.7.10 kept a static {@code Random} of the class). The recipe viewers
+     * do not roll: they read {@link #getAllLoot()}, which needs no level.
+     */
     @Nullable
-    public static ItemStack getLootForAspect(@Nullable Aspect aspect) {
+    public static ItemStack getLootForAspect(@Nullable Aspect aspect, RandomSource random) {
         List<LootEntry> aspectLootList = entriesOf(aspect);
 
         if (aspectLootList.isEmpty()) {
@@ -102,7 +104,7 @@ public class AspectCropLootManager {
         }
 
         if (sum > 0) {
-            int randInt = RAND.nextInt(sum);
+            int randInt = random.nextInt(sum);
             for (LootEntry entry : aspectLootList) {
                 if (randInt < entry.weight) {
                     return entry.stack.copy();

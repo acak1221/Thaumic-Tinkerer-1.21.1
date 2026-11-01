@@ -67,6 +67,13 @@ public class ItemGemBoots extends ItemIchorclothArmorAdv {
 
     private static final ResourceLocation STEP_ID = LibMisc.id("kami_boots_step");
 
+    /**
+     * The least horizontal movement per tick, squared, that counts as walking for the step height of switched-off boots: a
+     * hundredth of a block (sneaking covers about six, walking about twenty), so the last tiny moves of a player who has
+     * stopped (friction) do not count.
+     */
+    public static final double MOVING_SQR = 1.0E-4;
+
     public ItemGemBoots(Item.Properties properties) {
         super(ArmorItem.Type.BOOTS, properties);
     }
@@ -94,14 +101,29 @@ public class ItemGemBoots extends ItemIchorclothArmorAdv {
         if (level.isClientSide && player.isLocalPlayer()) moveLocalPlayer(player, active);
     }
 
-    /** The server's part: the step height. (The jump is {@link #onLivingJump}; it used to be an attribute modifier as well.) */
+    /**
+     * The server's part: the step height. (The jump is {@link #onLivingJump}; it used to be an attribute modifier as well.)
+     * Switched-off boots give the step while the player walks (1.7.10 {@code moveForward != 0 || moveStrafing != 0}). The
+     * server never sees the walking keys of a player who is not riding ({@code xxa}/{@code zza} stay 0 there), so walking is the
+     * movement the client last reported ({@link #isMoving}).
+     */
     private static void updateAttributes(Player player, ItemStack boots, boolean worn) {
         boolean active = worn && isActive(player, boots);
-        boolean moving = player.xxa != 0F || player.zza != 0F;
+        boolean moving = isMoving(player);
         double step = 0;
         if (active) step = player.isShiftKeyDown() ? -0.1 : 0.4;
         else if (worn && moving && !player.isShiftKeyDown()) step = 0.4;
         setModifier(player.getAttribute(Attributes.STEP_HEIGHT), STEP_ID, step);
+    }
+
+    /**
+     * New in the port: does the player move sideways? On the server the movement the client reported with its last position
+     * ({@code ServerPlayer.getKnownMovement()}; a passenger that does not steer gets its vehicle's), elsewhere the entity's own
+     * motion; more than
+     * {@link #MOVING_SQR} (squared, horizontal) counts.
+     */
+    public static boolean isMoving(Player player) {
+        return player.getKnownMovement().horizontalDistanceSqr() > MOVING_SQR;
     }
 
     private static void setModifier(AttributeInstance attribute, ResourceLocation id, double amount) {

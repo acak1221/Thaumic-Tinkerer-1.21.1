@@ -339,6 +339,13 @@ class SimpleBlocksResourcesTest {
                 tag("data/" + NS + "/tags/item/dark_quartz_blocks.json"));
     }
 
+    /** The gases are no air blocks; a tree grows through them because they are in the tag its trunk and leaves ask. */
+    @Test
+    void theGasesMayBeReplacedByTrees() throws IOException {
+        List<String> trees = tag("data/minecraft/tags/block/replaceable_by_trees.json");
+        for (String gas : List.of("gaseous_light", "gaseous_shadow", "nitor_gas")) assertTrue(trees.contains(NS + ":" + gas), gas);
+    }
+
     @Test
     void everyRecipeNamesItsResultAndOnlyKnownIngredients() throws IOException {
         Set<String> ours = new HashSet<>(List.of("dark_quartz_item", "dark_quartz", "dark_quartz_slab", "dark_quartz_pillar",

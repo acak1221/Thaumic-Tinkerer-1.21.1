@@ -14,9 +14,9 @@ package thaumic.tinkerer.common.item;
 import dev.architectury.event.EventResult;
 import dev.architectury.event.events.common.EntityEvent;
 import java.util.List;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -36,8 +36,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.Tier;
 import net.minecraft.world.item.UseAnim;
-import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
@@ -72,7 +70,6 @@ import thaumic.tinkerer.common.research.TTResearchItem;
 public class ItemBloodSword extends SwordItem implements IRepairable, ITTinkererRegisterable {
 
     private static final int DAMAGE = 10;
-    private static final String TAG_ACTIVATED = "Activated";
 
     /** {@code EnumHelper.addToolMaterial("TT_BLOOD", 0, 950, 0, 0, thaumium enchantability)}. */
     private static final Tier TIER = new Tier() {
@@ -125,16 +122,18 @@ public class ItemBloodSword extends SwordItem implements IRepairable, ITTinkerer
                 .build();
     }
 
+    /**
+     * True while the blade reaps soul aspects: the component {@link MachineComponents#BLADE_ACTIVATED} (1.7.10: the tag
+     * {@code Activated} = 1). The client shows the "active" icon by the item property {@code thaumictinkerer:activated}
+     * ({@code MachinesClient}).
+     */
     public static boolean isActivated(ItemStack stack) {
-        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-        return data != null && data.copyTag().getInt(TAG_ACTIVATED) == 1;
+        return stack.getOrDefault(MachineComponents.BLADE_ACTIVATED.get(), false);
     }
 
     private static void setActivated(ItemStack stack, boolean activated) {
-        CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putInt(TAG_ACTIVATED, activated ? 1 : 0));
-        // the "active" icon of 1.7.10 (blood_sword_1) is a model override on the custom model data
-        if (activated) stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(1));
-        else stack.remove(DataComponents.CUSTOM_MODEL_DATA);
+        if (activated) stack.set(MachineComponents.BLADE_ACTIVATED.get(), true);
+        else stack.remove(MachineComponents.BLADE_ACTIVATED.get());
     }
 
     @Override
@@ -198,13 +197,18 @@ public class ItemBloodSword extends SwordItem implements IRepairable, ITTinkerer
      * {@code LivingAttackEvent} of 1.7.10. A wielder that blocks with the blade takes 3 magic damage instead of the
      * blow, and whoever strikes with the blade takes 2 magic damage. The 1.7.10 handler guarded against its own damage
      * by skipping the next three events of the whole world; the guard here covers exactly the nested damage.
+     *
+     * <p>Damage that bypasses invulnerability ({@code #minecraft:bypasses_invulnerability}: {@code /kill}, the void) is not
+     * blocked and costs no magic damage (a fix: 1.7.10 cancelled {@code DamageSource.outOfWorld} as well, so a blocking
+     * player survived {@code /kill} with 3 points of magic damage, and the void hurt them by 3 instead of 4).</p>
      */
     public static EventResult onDamageTaken(LivingEntity entity, DamageSource source, float amount) {
         if (entity.level().isClientSide || handling) return EventResult.pass();
 
         EventResult result = EventResult.pass();
         if (entity instanceof Player player && player.isUsingItem()
-                && player.getUseItem().getItem() instanceof ItemBloodSword) {
+                && player.getUseItem().getItem() instanceof ItemBloodSword
+                && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
             hurtByTheBlade(player, 3);
             result = EventResult.interruptFalse();
         }

@@ -50,7 +50,7 @@ import thaumic.tinkerer.common.research.TTResearchItem;
 
 /**
  * The Awakened Ichorium Sword: single mode, area mode (every mob of the same kind within 3 blocks of the one hit is hit
- * too) and soul mode (the hit target takes less damage, the wielder gains a Soul Heart).
+ * too) and soul mode (the hit target takes less damage, the wielder gains a Soul Heart when the hit is taken).
  */
 public class ItemIchorSwordAdv extends ItemIchorSword implements IAdvancedTool {
     private static final ResourceLocation AREA_STRIKE = LibMisc.id("kami_area_strike");
@@ -114,10 +114,25 @@ public class ItemIchorSwordAdv extends ItemIchorSword implements IAdvancedTool {
             }
             case 2 -> {
                 living.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 1, 1));
-                KamiHooks.soulHeartSink.accept(player);
+                // 1.7.10 gave the heart here, before the hit, for anything living that was clicked; an armour stand (which
+                // never takes a hurt animation) or an invulnerable target gave one per click. The heart now comes at the end of
+                // the tick, and only when the hit was really taken.
+                ToolHandler.afterTick(server -> {
+                    if (!player.hasDisconnected() && soulHitLanded(living, player)) KamiHooks.soulHeartSink.accept(player);
+                });
             }
             default -> {}
         }
+    }
+
+    /**
+     * New in the port: did {@code target}, clicked in Soul Mode while it showed no hurt animation ({@code hurtTime == 0}),
+     * take the hit of {@code attacker} since? {@code LivingEntity.hurt} starts the hurt animation and records the attacker only
+     * for a hit it takes, so an armour stand, an invulnerable mob, a creative player and a player the server's PvP rule protects
+     * answer false, as does a click whose attack never came.
+     */
+    public static boolean soulHitLanded(LivingEntity target, Player attacker) {
+        return target.hurtTime > 0 && target.getLastHurtByMob() == attacker;
     }
 
     @Override

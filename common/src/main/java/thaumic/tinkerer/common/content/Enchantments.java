@@ -27,6 +27,7 @@ import thaumic.tinkerer.client.lib.LibResources;
 import thaumic.tinkerer.common.block.BlockEnchanter;
 import thaumic.tinkerer.common.block.tile.TileEnchanter;
 import thaumic.tinkerer.common.block.tile.container.ContainerEnchanter;
+import thaumic.tinkerer.common.enchantment.EnchantmentComponents;
 import thaumic.tinkerer.common.enchantment.ModEnchantments;
 import thaumic.tinkerer.common.enchantment.core.EnchantmentManager;
 import thaumic.tinkerer.common.lib.LibBlockNames;
@@ -41,7 +42,8 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * Feature group: the fourteen enchantments and the Osmotic Enchanter that puts them on tools and armor.
  *
  * <p>The enchantments themselves are data ({@code data/thaumictinkerer/enchantment}); this group registers the Enchanter
- * (block, block entity, menu, the two packets of its screen), the event handler that gives the enchantments their effect,
+ * (block, block entity, menu, the two packets of its screen), the event handler that gives the enchantments their effect
+ * and the data components it keeps on the items (the strike counter, Tunnel's direction),
  * the table of costs and rules of the Enchanter, and the fourteen research entries of the enchantments (the entry of the
  * Enchanter itself comes with its block).</p>
  */
@@ -56,6 +58,8 @@ public final class Enchantments implements ContentGroup {
 
     @Override
     public void register() {
+        // The strike counter and Tunnel's direction on the items (the stack tag keys of 1.7.10).
+        EnchantmentComponents.register();
         // Material.rock: needs a pickaxe (any), stone step sound; hardness 5, resistance 2000 of 1.7.10, which is 1200 now
         // (the explosion resistance of 1.7.10 was a third of what the same number means today, divided by five).
         enchanter = TTRegistry.block(LibBlockNames.ENCHANTER, () -> new BlockEnchanter(BlockBehaviour.Properties.of()

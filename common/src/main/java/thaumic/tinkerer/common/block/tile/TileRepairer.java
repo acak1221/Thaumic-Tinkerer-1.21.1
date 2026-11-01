@@ -19,11 +19,14 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -36,6 +39,7 @@ import thaumcraft.api.aspects.IEssentiaTransport;
 import thaumcraft.api.client.ThaumcraftClientFX;
 import thaumic.tinkerer.common.block.BlockRepairer;
 import thaumic.tinkerer.common.content.Machines;
+import thaumic.tinkerer.common.lib.LibMisc;
 
 /**
  * The Thaumic Restorer. Every ten ticks it draws one essentia from the tube on its front (the aspect the tube sucks:
@@ -44,6 +48,12 @@ import thaumic.tinkerer.common.content.Machines;
 public class TileRepairer extends BlockEntity implements WorldlyContainer, IAspectContainer, IEssentiaTransport {
 
     private static final String TAG_TOOK_LAST_TICK = "tookLastTick";
+
+    /**
+     * {@code thaumictinkerer:repairer_blacklist}: the items the Restorer does not mend, the ones 1.7.10 made unrepairable with
+     * {@code setNoRepair()} (the Spellbinding Cloth). Data, so a pack can add its own.
+     */
+    public static final TagKey<Item> BLACKLIST = TagKey.create(Registries.ITEM, LibMisc.id("repairer_blacklist"));
     /** Durability points mended per essentia, in the order the aspects are tried (1.7.10: an unordered map). */
     private static final Map<Aspect, Integer> repairValues = new LinkedHashMap<>();
 
@@ -81,16 +91,25 @@ public class TileRepairer extends BlockEntity implements WorldlyContainer, IAspe
             boolean oldTookLastTick = tookLastTick;
             tookLastTick = false;
 
+            // Only a repairable tool draws essentia (the suction is 0 otherwise, so 1.7.10 drew nothing either).
             ItemStack stack = inventorySlots.get(0);
-            if (!stack.isEmpty() && stack.getDamageValue() > 0) {
+            if (containsRepairableStack()) {
                 int essentia = drawEssentia();
                 int dmg = stack.getDamageValue();
                 int newDmg = Math.max(0, dmg - essentia);
-                stack.setDamageValue(newDmg);
                 tookLastTick = newDmg != dmg;
-                markDirtyAndSync();
+                if (tookLastTick) {
+                    stack.setDamageValue(newDmg);
+                    // saves, sends the new damage (and the flag with it) once and tells the neighbours of the signal
+                    markDirtyAndSync();
+                    return;
+                }
             }
-            if (tookLastTick != oldTookLastTick) level.sendBlockUpdated(pos, state, state, 3);
+            // Nothing mended: only the flag of the sparkles and the circle may have changed (1.7.10 markBlockForUpdate).
+            if (tookLastTick != oldTookLastTick) {
+                setChanged();
+                level.sendBlockUpdated(pos, state, state, 3);
+            }
         }
     }
 
@@ -215,9 +234,13 @@ public class TileRepairer extends BlockEntity implements WorldlyContainer, IAspe
         return !isRepairable(stack);
     }
 
-    /** True for a damaged tool (the repairer takes nothing else and gives back only a mended one). */
+    /**
+     * True for a damaged tool (the repairer takes nothing else and gives back only a mended one) that is not in the item tag
+     * {@link #BLACKLIST}. 1.7.10 asked {@code Item.isRepairable()}, false for the items that called {@code setNoRepair()}
+     * (the Spellbinding Cloth); 1.21.1 has no such flag, so those items are the tag.
+     */
     public static boolean isRepairable(ItemStack stack) {
-        return !stack.isEmpty() && stack.isDamageableItem() && stack.getDamageValue() > 0;
+        return !stack.isEmpty() && stack.isDamageableItem() && stack.getDamageValue() > 0 && !stack.is(BLACKLIST);
     }
 
     private boolean containsRepairableStack() {
