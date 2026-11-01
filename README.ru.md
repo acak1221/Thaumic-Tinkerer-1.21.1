@@ -9,7 +9,7 @@ English version: [README.md](README.md).
 
 > **Лицензия: CC BY-NC-SA 3.0** (см. `LICENSE` и `NOTICE.md`). Некоммерческая, с условием распространения на тех же условиях. Ей подчинены
 > исходники аддона. Файлы сборки этого репозитория (`settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `neoforge/build.gradle`,
-> `neoforge/gradle.properties`, `tools/`, workflow CI, `scripts/porting/`) под MIT (`LICENSE-MIT`); Gradle wrapper — собственная работа Gradle (Apache-2.0); их перечень в `NOTICE.md`.
+> `neoforge/gradle.properties`, `tools/`, workflow CI и релизов, `scripts/porting/`) под MIT (`LICENSE-MIT`); Gradle wrapper — собственная работа Gradle (Apache-2.0); их перечень в `NOTICE.md`.
 
 Аддон разрабатывается в этом репозитории. До 2026-10-31 он писался внутри
 [репозитория Thaumcraft 4 Reload](https://github.com/acak1221/Thaumcraft-1.21.1) (`NOTICE.md`, раздел «History»); там остаются расширения
@@ -114,6 +114,10 @@ python3 tools/neoforge_gametests.py          # совпадают ли обёр�
   296 Python-тестов, `docs/DEVIATIONS.md` раздел 5), — запуски в репозитории Thaumcraft, а не в этом; раздел 5 говорит, какие строки это.
 * В `scripts/porting/` лежат Python-инструменты, которыми конвертировались ресурсы 1.7.10 и извлекался оракул паритета (MIT; см. их `README.md`).
   Им нужен checkout исходников оригинала 1.7.10 (а `tt_oracle.py` ещё и checkout Thaumcraft); `tools/porting.sh` запускает их.
+* **Релизы** (`.github/workflows/release.yml`): тег `v<mod_version>` на коммите `main` собирает Thaumcraft 4 Reload на `thaumcraft_ref`,
+  прогоняет JUnit и GameTest обоих загрузчиков и публикует релиз на GitHub с jar для Fabric и для NeoForge и их суммами SHA-256 (версия с
+  `-alpha`, `-beta` или `-rc` публикуется как пре-релиз). Запуск вручную (`workflow_dispatch`) без тега — пробный: та же сборка, jar как артефакт,
+  ничего не публикуется. Релиз работает только со сборкой Thaumcraft 4 Reload, в которой есть API коммита `thaumcraft_ref`.
 
 ## Структура
 

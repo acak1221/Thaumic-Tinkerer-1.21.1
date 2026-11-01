@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: MIT
+# Release of Thaumic Tinkerer (Fabric and NeoForge, Minecraft 1.21.1).
+#
+# A tag v<mod_version> (e.g. v0.1.0-alpha.8) on a commit of main builds Thaumcraft 4 Reload at thaumcraft_ref of gradle.properties,
+# runs the same checks as ci.yml (JUnit, GameTests on Fabric and NeoForge), builds both release jars and publishes a GitHub release with
+# them. The tag must equal v + mod_version of gradle.properties; a version with a pre-release part (alpha, beta, rc) is published as a
+# pre-release. workflow_dispatch builds and checks the same way without publishing (a dry run), unless "publish" is set and a tag is given.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to publish (v + mod_version). Empty - dry run of the current commit
+        type: string
+        required: false
+      publish:
+        description: Publish the release (only with a tag)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  THAUMCRAFT_REPOSITORY: acak1221/Thaumcraft-1.21.1
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out the add-on
+        uses: actions/checkout@v7
+        with:
+          path: thaumic-tinkerer
+
+      - name: Read the version, the tag and the Thaumcraft commit
+        id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          props=thaumic-tinkerer/gradle.properties
+          version="$(sed -n 's/^mod_version=//p' "$props" | head -n1 | tr -d '\r')"
+          tc_ref="$(sed -n 's/^thaumcraft_ref=//p' "$props" | head -n1 | tr -d '\r')"
+          tc_version="$(sed -n 's/^thaumcraft_version=//p' "$props" | head -n1 | tr -d '\r')"
+          test -n "$version" && test -n "$tc_ref" || { echo "mod_version or thaumcraft_ref missing in gradle.properties" >&2; exit 1; }
+          if [ "$EVENT" = push ]; then tag="$REF_NAME"; publish=true; else tag="$INPUT_TAG"; publish="${INPUT_PUBLISH:-false}"; fi
+          if [ -n "$tag" ] && [ "$tag" != "v$version" ]; then
+            echo "The tag $tag is not v$version (mod_version of gradle.properties)" >&2; exit 1
+          fi
+          [ -n "$tag" ] || publish=false
+          case "$version" in *-*) prerelease=true;; *) prerelease=false;; esac
+          {
+            echo "version=$version"; echo "tag=$tag"; echo "publish=$publish"; echo "prerelease=$prerelease"
+            echo "tc_ref=$tc_ref"; echo "tc_version=$tc_version"
+          } >> "$GITHUB_OUTPUT"
+          echo "version $version, tag '${tag}', publish $publish, pre-release $prerelease, Thaumcraft $tc_version at $tc_ref"
+
+      - name: The tagged commit is on main
+        if: ${{ steps.meta.outputs.publish == 'true' }}
+        working-directory: thaumic-tinkerer
+        run: |
+          git fetch --no-tags --depth=200 origin main
+          git merge-base --is-ancestor HEAD FETCH_HEAD || { echo "The release commit is not on main" >&2; exit 1; }
+
+      - name: Check out Thaumcraft 4 Reload
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.THAUMCRAFT_REPOSITORY }}
+          ref: ${{ steps.meta.outputs.tc_ref }}
+          token: ${{ secrets.THAUMCRAFT_CHECKOUT_TOKEN || github.token }}
+          persist-credentials: false
+          path: thaumcraft
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+
+      - name: Install Thaumcraft 4 Reload into the local Maven repository
+        working-directory: thaumcraft
+        run: ./gradlew --no-daemon --console=plain :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
+
+      - name: Fabric - JUnit, GameTests, release jar
+        working-directory: thaumic-tinkerer
+        run: ./gradlew --no-daemon --console=plain check runTinkererGameTest remapThaumicTinkererJar
+
+      - name: NeoForge - wrappers, GameTests, release jar
+        working-directory: thaumic-tinkerer
+        run: |
+          python3 -I -B tools/neoforge_gametests.py --check
+          ./gradlew --no-daemon --console=plain :neoforge:runGameTest :neoforge:assemble
+
+      - name: Collect the jars
+        id: jars
+        working-directory: thaumic-tinkerer
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          mkdir -p ../release
+          cp "build/libs/ThaumicTinkerer-fabric-$VERSION.jar" "neoforge/build/libs/ThaumicTinkerer-neoforge-$VERSION.jar" ../release/
+          (cd ../release && sha256sum *.jar > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Upload the jars (every run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ThaumicTinkerer-${{ steps.meta.outputs.version }}
+          path: release/
+          if-no-files-found: error
+
+      - name: Publish the GitHub release
+        if: ${{ steps.meta.outputs.publish == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
+          TC_REF: ${{ steps.meta.outputs.tc_ref }}
+          TC_VERSION: ${{ steps.meta.outputs.tc_version }}
+        run: |
+          cat > notes.md <<EOF
+          Thaumic Tinkerer for Thaumcraft 4 Reload, Minecraft 1.21.1, Fabric and NeoForge.
+
+          Requires Thaumcraft 4 Reload $TC_VERSION built from commit $TC_REF of $THAUMCRAFT_REPOSITORY or later (the add-on
+          uses API additions that older Thaumcraft builds do not have), Architectury API 13 and, on Fabric, Fabric API.
+
+          - ThaumicTinkerer-fabric-$VERSION.jar: Fabric
+          - ThaumicTinkerer-neoforge-$VERSION.jar: NeoForge
+          - SHA256SUMS.txt: checksums
+
+          Licence: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 (the add-on); build files and tools MIT. See NOTICE.md.
+          EOF
+          flags=()
+          [ "$PRERELEASE" = true ] && flags+=(--prerelease)
+          gh release create "$TAG" release/*.jar release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" \
+            --title "Thaumic Tinkerer $VERSION" --notes-file notes.md --verify-tag "${flags[@]}"

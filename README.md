@@ -9,7 +9,7 @@ a source file imports anything else of Thaumcraft.
 
 > **Licence: CC BY-NC-SA 3.0** (see `LICENSE` and `NOTICE.md`). Non-commercial, share-alike. The add-on sources are under it. The build
 > files of this repository (`settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `neoforge/build.gradle`,
-> `neoforge/gradle.properties`, `tools/`, the CI workflow, `scripts/porting/`) are MIT (`LICENSE-MIT`); the Gradle wrapper is Gradle's own (Apache-2.0); `NOTICE.md` lists them.
+> `neoforge/gradle.properties`, `tools/`, the CI and release workflows, `scripts/porting/`) are MIT (`LICENSE-MIT`); the Gradle wrapper is Gradle's own (Apache-2.0); `NOTICE.md` lists them.
 
 The add-on is developed in this repository. Until 2026-10-31 it was written inside the
 [Thaumcraft 4 Reload repository](https://github.com/acak1221/Thaumcraft-1.21.1) (`NOTICE.md`, "History"); that repository keeps the
@@ -112,6 +112,10 @@ python3 tools/neoforge_gametests.py          # are the NeoForge GameTest wrapper
   `docs/DEVIATIONS.md` section 5) were runs in the Thaumcraft repository, not in this one; section 5 says which rows those are.
 * `scripts/porting/` holds the Python tools that converted the 1.7.10 resources and extracted the parity oracle (MIT; see its `README.md`). They need a
   checkout of the original 1.7.10 source (and `tt_oracle.py` one of Thaumcraft); `tools/porting.sh` runs them.
+* **Releases** (`.github/workflows/release.yml`): a tag `v<mod_version>` on a commit of `main` builds Thaumcraft 4 Reload at `thaumcraft_ref`,
+  runs JUnit and the GameTests of both loaders, and publishes a GitHub release with the Fabric and the NeoForge jar and their SHA-256 sums (a version
+  with `-alpha`, `-beta` or `-rc` is a pre-release). Started by hand (`workflow_dispatch`) without a tag it is a dry run: the same build, the jars as an
+  artifact, nothing published. A release is only usable with a Thaumcraft 4 Reload build that has the API of `thaumcraft_ref`.
 
 ## Layout
 
