@@ -79,11 +79,10 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   add-on included. 1.7.10 gave the 23 item-owned Kami entries only the item-owned research that happened to be registered before them, in `HashMap`
   order, so the port is stricter than any set the original could produce and a Kami entry is never available earlier (`KamiGear.md` section 12;
   one of the 11 documented differences of `PARITY_REPORT.md` section 3).
-* **Slow Fall's landing rule** (**a decision the owner may want to change**). The original lowered the fall distance on every tick of the fall, down to a
-  floor of 2.9, so a long fall ended at 2.9 and did no damage. The loader event comes once, at the landing, so the port applies the end result at once: a
-  landing of 2.9 blocks or more, for a player with Slow Fall on the armour who does not sneak at the landing, becomes a landing of 2.9
-  (`EnchantmentFormulas.slowFallLanding`). Falls of 3 to 4 blocks that 1.7.10 may have left with some damage do no damage here, and the level of the
-  enchantment no longer matters for the distance. That is by a reading of the formulas; the original was not run (`Enchantments.md` sections 4 and 12).
+* **Slow Fall's landing rule** (settled 2026-11-01, section 6, point 6). The original lowered the fall distance at the start of every tick of the fall, down
+  to a floor of 2.9; the loader event comes once, at the landing, so the port **replays those ticks** along the fall and gives the distance the original's rule
+  had left (`EnchantmentFormulas.slowFallLanding`): a long fall ends at 2.9 (no damage) at every level, and Slow Fall I still costs half a heart on a drop of
+  about 3.4 to 7 blocks, as in 1.7.10 (`Enchantments.md` sections 4 and 12).
 * **The order of the listeners of the loader events** is a decision about where each group registers (`HOOKS.md` section 2): LIVING_DAMAGE runs the Enchantments'
   listener before KamiWorld's Soul Hearts, and LIVING_DROPS the Cursed Spirit's Blade (Machines) before the dimensional shards (KamiWorld), both as in 1.7.10 (the
   registration phases, `preInit` and `init`, were read in the pinned Thaumic Tinkerer source; that Forge ran listeners of equal priority in registration order is
@@ -257,7 +256,19 @@ None of these is a known defect. Each is something the port decided or assumed w
    `theFramesCompareTheBoostedAmountsNotTheRawOnes` pins the 1.21.1 side). One statement was wrong and is corrected: the event did **not** stand after a
    player's sword block, so the factors of the Enchantments met the same amount as here (`HOOKS.md` section 3, `Enchantments.md` sections 2 and 12; also the
    statements of `KamiWorld.md` section 5 about the sleeper and of `KamiGear.md` section 3 about the listener order now cite the sources).
-6. **Slow Fall's landing rule** (section 2) is a decision of the port that the owner may want to change.
+6. **Slow Fall's landing rule: resolved, the landing is what the original's tick rule left of the fall.** *Evidence*: the original lowered the distance at the
+   start of every tick of a player who did not sneak, fell faster than -0.0784 and had fallen 2.9 blocks or more (`ModEnchantmentHandler.onEntityUpdate` of
+   the pinned source, lines 127-140: `motionY /= 1 + slowfall * 0.33F; fallDistance = Math.max(2.9F, fallDistance - slowfall / 3F)`); the tick's drop was
+   added after it and the landing tick adds none (MCP `entity/Entity.java` `updateFallState`, lines 691-700); the server, which decided the damage, ran the
+   same handler from `onUpdateEntity` before `handleFalling` added the client's drop (`network/NetHandlerPlayServer.java` lines 252-321,
+   `entity/player/EntityPlayerMP.java` lines 471-475). Played tick by tick, a long fall ends at 2.9; at level I the slowed drop per tick stays above 1/3 for a
+   few ticks after the rule starts, so a drop of about 3.4 to 7 blocks lands at up to 3.42 and costs one point; at II and III no fall does. The port's first
+   rule (every landing of 2.9 or more becomes 2.9) spared those level-I falls and made the level irrelevant. *Decision*: the original's numbers, by a replay of
+   its ticks at the landing (`EnchantmentFormulas.slowFallLanding`); a fall that did not start from a standstill is placed between two ticks of the replay,
+   and sneaking counts at the landing (1.7.10 asked in every tick), the two corners the single landing event cannot know. *Tests*: JUnit
+   `EnchantmentFormulasTest.aLandingWithSlowFallIsWhatTheTickRuleOfTheOriginalLeftOfTheFall` (a literal copy of the original's handler and of the 1.7.10 move,
+   drops of 2 to 102 blocks at levels 1, 2, 3 and 5, equal within 1e-4) and `slowFallOneStillCostsHalfAHeartOnADropOfFourToSixBlocksAndTheHigherLevelsNothing`;
+   GameTests `slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall` and `shockwaveHurtsTheCreaturesAroundALanding`. `Enchantments.md` sections 4 and 12.
 7. **The Cursed Spirit's Blade cannot take the vanilla sword enchantments** (Sharpness, Smite, Looting, Fire Aspect, Unbreaking, Mending ...), which the 1.7.10 `ItemSword`
    took: it is in none of the vanilla sword tags. The fix touches files of other groups (`data/minecraft/tags/item/swords.json` and the Vampirism tag, which must keep refusing
    the blade) and is a request to the lead, **not done** (`Machines.md` section 8, `api-requests/Machines.md` section 5).

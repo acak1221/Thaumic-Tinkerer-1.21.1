@@ -502,8 +502,9 @@ last bullet of each group says what rests on the NeoForge posters there.
   * `LIVING_JUMP` replaced the client handler that guessed a jump from the tick of the local player (`EnchantmentClientHandler`) for Ascent Boost.
     Pinned by `ascentBoostMultipliesTheJumpOfAPlayer` and, against the Gem Boots, `gemBootsAndAscentBoostLeggingsComposeTheirJumps` (KamiGear).
   * `LIVING_FALL` replaced the tracking of the airborne ticks of every server player (`onPlayerPost`), Shockwave's guesses about water and teleports,
-    and Slow Fall's per-tick reduction of the distance (the landing rule `EnchantmentFormulas.slowFallLanding` stands in: a decision the owner may
-    want to change, `DEVIATIONS.md` section 2). Pinned by `slowFallMakesALandingAFallOfTwoPointNineBlocks` and `shockwaveHurtsTheCreaturesAroundALanding`.
+    and Slow Fall's per-tick reduction of the distance (the landing rule `EnchantmentFormulas.slowFallLanding` stands in: it replays the original's tick
+    rule along the fall and gives the distance that rule had left, `DEVIATIONS.md` section 6, point 6). Pinned by
+    `slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall`, `shockwaveHurtsTheCreaturesAroundALanding` and the JUnit tests of `EnchantmentFormulasTest`.
   * `USE_ITEM_TICK` replaced the arrow-speed workaround through `EntityEvent.ADD` for Quick Draw. Pinned by `quickDrawTakesTicksOffTheDrawClockOfABow`.
   * Kept on Architectury, not an event of this layer: `BlockEvent.BREAK` (Tunnel's remembered direction, the extra wear) and `TickEvent.PLAYER_PRE`
     (Slow Fall's motion and cloud on the local client). The only other users of Architectury's `EntityEvent.LIVING_HURT` in the add-on are the Cursed Spirit's

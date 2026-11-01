@@ -141,8 +141,8 @@ public final class EnchantmentsGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
-    public void slowFallMakesALandingAFallOfTwoPointNineBlocks(GameTestHelper test) {
-        EnchantmentsRuntimeChecks.slowFallMakesALandingAFallOfTwoPointNineBlocks(test);
+    public void slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall(GameTestHelper test) {
+        EnchantmentsRuntimeChecks.slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)

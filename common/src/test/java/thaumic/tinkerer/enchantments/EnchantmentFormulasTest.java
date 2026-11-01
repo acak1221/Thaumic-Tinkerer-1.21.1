@@ -137,15 +137,74 @@ class EnchantmentFormulasTest {
         assertEquals(-0.5D / 1.99D, EnchantmentFormulas.slowFallMotion(-0.5, 3), 1e-6);
     }
 
+    /**
+     * A fall from a standstill onto ground {@code height} blocks below, tick by tick as 1.7.10 ran it: at the start of the tick a literal
+     * copy of the Slow Fall block of {@code ModEnchantmentHandler.onEntityUpdate}, then the move of
+     * {@code EntityLivingBase.moveEntityWithHeading} ({@code motionY -= 0.08D; motionY *= 0.9800000190734863D}) and
+     * {@code Entity.updateFallState} (the landing tick adds nothing). Returns the distance the landing found, and the distance 1.21.1
+     * counts for the same drops ({@code fallDistance -= (float) y}).
+     */
+    private static float[] fall1710(double height, int slowfall) {
+        final double min = -0.0784000015258789;
+        double motionY = min;
+        double y = 0;
+        float fallDistance = 0F;
+        float counted = 0F;
+        while (true) {
+            if (slowfall > 0 && motionY < min && fallDistance >= 2.9) {
+                motionY /= 1 + slowfall * 0.33F;
+                fallDistance = Math.max(2.9F, fallDistance - slowfall / 3F);
+            }
+            if (y - motionY >= height) return new float[] { fallDistance, counted };
+            y -= motionY;
+            fallDistance = (float) ((double) fallDistance - motionY);
+            counted -= (float) motionY;
+            motionY -= 0.08D;
+            motionY *= 0.9800000190734863D;
+        }
+    }
+
     @Test
-    void aLandingWithSlowFallIsAFallOfTwoPointNineBlocksNoMatterHowLongItWas() {
-        // the per-tick rule of the original, max(2.9, d - level / 3), applied to a long fall ends at its floor
-        float distance = 40F;
-        for (int tick = 0; tick < 200; tick++) distance = Math.max(2.9F, distance - 2 / 3F);
-        assertEquals(2.9F, distance, EPSILON);
-        assertEquals(distance, EnchantmentFormulas.slowFallLanding(2, false, 40F), EPSILON, "what the event applies at once");
-        assertEquals(2.9F, EnchantmentFormulas.slowFallLanding(1, false, 3.0F), EPSILON);
-        assertEquals(2.9F, EnchantmentFormulas.slowFallLanding(1, false, 2.9F), EPSILON, "the floor itself");
+    void aLandingWithSlowFallIsWhatTheTickRuleOfTheOriginalLeftOfTheFall() {
+        for (int level : new int[] { 1, 2, 3, 5 }) {
+            for (int i = 0; i <= 4000; i++) {
+                double height = 2.0 + i * 0.025;
+                float[] fall = fall1710(height, level);
+                float expected = fall[1] >= 2.9F ? fall[0] : fall[1];
+                assertEquals(expected, EnchantmentFormulas.slowFallLanding(level, false, fall[1]), 1.0E-4F,
+                        "Slow Fall " + level + ", a drop of " + height + " blocks, counted " + fall[1]);
+            }
+        }
+    }
+
+    @Test
+    void slowFallOneStillCostsHalfAHeartOnADropOfFourToSixBlocksAndTheHigherLevelsNothing() {
+        // the quirk of the tick rule: at level 1 the slowed drop per tick is more than 1/3 for a few ticks after 2.9 blocks
+        for (double height : new double[] { 3.5, 4, 5, 6 }) {
+            float counted = fall1710(height, 1)[1];
+            assertEquals(1, (int) Math.ceil(EnchantmentFormulas.slowFallLanding(1, false, counted) - 3F), "Slow Fall I, a drop of " + height);
+            assertEquals(0, Math.max(0, (int) Math.ceil(EnchantmentFormulas.slowFallLanding(2, false, fall1710(height, 2)[1]) - 3F)),
+                    "Slow Fall II, a drop of " + height);
+        }
+        for (double height : new double[] { 8, 20, 100, 256 }) {
+            for (int level = 1; level <= 3; level++) {
+                assertEquals(2.9F, EnchantmentFormulas.slowFallLanding(level, false, fall1710(height, level)[1]), 1.0E-6F,
+                        "a long fall ends at the floor of 2.9: level " + level + ", a drop of " + height);
+            }
+        }
+        // between the counts of two ticks (a fall that did not start from a standstill) the result runs straight from one to the other:
+        // level I costs a point for every landing of about 3.32 to 6.88 counted blocks, and nothing on either side; II and III never
+        for (int i = 0; i <= 400; i++) {
+            float counted = 2.9F + i * 0.01F;
+            int damage = Math.max(0, (int) Math.ceil(EnchantmentFormulas.slowFallLanding(1, false, counted) - 3F));
+            if (counted >= 3.33F && counted <= 6.87F) assertEquals(1, damage, "Slow Fall I, a landing of " + counted);
+            if (counted <= 3.31F || counted >= 6.89F) assertEquals(0, damage, "Slow Fall I, a landing of " + counted);
+            for (int level = 2; level <= 3; level++) {
+                assertTrue(EnchantmentFormulas.slowFallLanding(level, false, counted) <= 3F, "Slow Fall " + level + ", a landing of " + counted);
+            }
+        }
+        assertEquals(2.9F, EnchantmentFormulas.slowFallLanding(1, false, 40F), 1.0E-6F, "a landing of 40 counted blocks");
+        assertEquals(2.9F, EnchantmentFormulas.slowFallLanding(3, false, 1000F), 1.0E-6F, "and of 1000");
         assertEquals(2.5F, EnchantmentFormulas.slowFallLanding(3, false, 2.5F), EPSILON, "a shorter fall is left alone");
         assertEquals(40F, EnchantmentFormulas.slowFallLanding(3, true, 40F), EPSILON, "sneaking turns it off");
         assertEquals(40F, EnchantmentFormulas.slowFallLanding(0, false, 40F), EPSILON, "no enchantment");

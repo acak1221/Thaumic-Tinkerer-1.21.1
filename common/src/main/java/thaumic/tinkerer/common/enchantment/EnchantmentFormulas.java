@@ -123,16 +123,62 @@ public final class EnchantmentFormulas {
         return motionY / (1 + level * 0.33F);
     }
 
+    /** {@code motionY -= 0.08D; motionY *= 0.98F} of a falling player's move, in 1.7.10 and in 1.21.1 alike. */
+    private static final double FALL_GRAVITY = 0.08D;
+    private static final double FALL_DRAG = 0.98F;
+    /** A bound of the replay of {@link #slowFallLanding}; a fall with Slow Fall settles within a few dozen ticks. */
+    private static final int SLOW_FALL_MAX_TICKS = 100_000;
+
     /**
-     * The fall distance of a landing (the {@code LIVING_FALL} event, both sides) of a player with Slow Fall on the armor.
-     * The original ran {@code fallDistance = Math.max(2.9F, fallDistance - slowfall / 3F)} <i>every tick</i> of a fall of 2.9
-     * blocks or more, while it also divided the motion; the fall distance a landing found was therefore that floor, 2.9
-     * (a fall of 2.9 does no damage), however long the fall had been. The event comes once, at the landing, so the result of the
-     * ticks is applied at once: a fall of 2.9 or more ends as a fall of {@link #SLOW_FALL_MIN_DISTANCE}. Sneaking turns it off, as
-     * it did in the tick; a shorter fall is left alone.
+     * The fall distance of a landing (the {@code LIVING_FALL} event, both sides) of a player with Slow Fall on the armor: what the
+     * original's tick rule had left of the same fall. 1.7.10 ran, at the start of every tick of a player who did not sneak, fell faster
+     * than the first tick of a fall ({@link #SLOW_FALL_MIN_MOTION}) and had fallen 2.9 blocks or more,
+     * <pre>
+     * motionY /= 1 + slowfall * 0.33F;
+     * fallDistance = Math.max(2.9F, fallDistance - slowfall / 3F);
+     * </pre>
+     * and then moved the player and added the tick's drop to the fall distance; the tick that lands adds nothing and lands with the
+     * distance it has. The event comes once, at the landing, with the distance the game counted: the drops of the fall, which the
+     * client's own copy of the motion rule ({@link #slowFallActs}, {@link #slowFallMotion}) slowed as the original's did. So the ticks
+     * are replayed: a fall from a standstill under the same rules (gravity 0.08 and drag 0.98 in both versions), counting the drops as
+     * the game does and the distance as the original's rule kept it. A landing at the start of tick {@code n} finds the kept distance
+     * after that tick's rule, and the game has counted the drops before it; the result is that kept distance for the tick whose count is
+     * the landing's distance, and between two ticks (a fall that did not start from a standstill counts other drops) the straight line
+     * between the two, so a fall the rule never touched is left alone.
+     *
+     * <p>The result: a fall of 2.9 blocks or more ends at the floor of 2.9, no damage, once the slowed drop per tick is no more than
+     * {@code level / 3}; Slow Fall I needs a few ticks to get there, so landings of about 3.32 to 6.88 counted blocks (drops of about 3.4
+     * to 7 blocks) still end above 3 and cost one point (half a heart), as in 1.7.10, and Slow Fall II and III spare every fall. Sneaking
+     * turns it off, as it did in the tick (here the sneaking at the landing counts); a shorter fall is left alone.</p>
      */
     public static float slowFallLanding(int level, boolean sneaking, float distance) {
-        return level > 0 && !sneaking && distance >= 2.9 ? SLOW_FALL_MIN_DISTANCE : distance;
+        if (level <= 0 || sneaking || !(distance >= SLOW_FALL_MIN_DISTANCE)) return distance;
+        float factor = 1 + level * 0.33F;
+        double motion = SLOW_FALL_MIN_MOTION; // the first tick of a fall from a standstill
+        float counted = 0F;                   // what the game counts: Entity.checkFallDamage, fallDistance -= (float) y
+        float kept = 0F;                      // what the original's rule kept: the tick rule and Entity.updateFallState
+        float previousCounted = 0F;
+        float previousKept = 0F;
+        for (int tick = 0; tick < SLOW_FALL_MAX_TICKS; tick++) {
+            if (slowFallActs(level, false, motion, kept)) {
+                motion /= factor;
+                kept = Math.max(SLOW_FALL_MIN_DISTANCE, kept - level / 3F);
+            }
+            // a landing at the start of this tick: the game has counted `counted`, the original lands with `kept`
+            if (counted >= distance) {
+                float t = (distance - previousCounted) / (counted - previousCounted);
+                return previousKept + t * (kept - previousKept);
+            }
+            // held at the floor with a drop no larger than what the rule takes off: every later landing ends at the floor too
+            if (kept == SLOW_FALL_MIN_DISTANCE && -motion <= level / 3F) return kept;
+            previousCounted = counted;
+            previousKept = kept;
+            double drop = -motion;
+            counted += (float) drop;
+            kept = (float) ((double) kept + drop);
+            motion = (motion - FALL_GRAVITY) * FALL_DRAG;
+        }
+        return kept;
     }
 
     /** The damage Shockwave deals to every creature in the box around a faller: {@code .1F * shockwave * distance}. */
