@@ -286,5 +286,17 @@ None of these is a known defect. Each is something the port decided or assumed w
    `KamiWorld.md` section 9).
 9. **The `ichor_nuggets` recipe and the Celestial Gateway's loot table are conditional on their items**: each file carries a load condition for both loaders
    (`fabric:load_conditions` / `neoforge:conditions`), so with Kami off they are skipped instead of logging a parse error at data load (`KamiGear.md` section 11).
-10. **Two designs of the camouflage base** exist, `BlockCamo` in SimpleBlocks (the Ethereal Platform) and `CamoDeviceBlock` in TileBlocks (the Remote Placer, the Dislocator): the
-    lead may merge them (`SimpleBlocks.md` section 2.4); until then the platform's block entity type `thaumictinkerer:camo` is valid for the platform only.
+10. **Two designs of the camouflage base: resolved, they stay two, and now follow the one rule of the original.** *Evidence*: the original had one
+    `BlockCamo` for the Ethereal Platform and the four devices (`BlockPlatform`, `BlockRPlacer`, `BlockGolemConnector`, `BlockTransvectorInterface`,
+    `BlockTransvectorDislocator` of the pinned source), one tile `TileCamo` and one click rule (`BlockCamo.onBlockActivated`: render types 0, 31 and 39,
+    no `BlockCamo`, `BlockDirectional` turned to the clicked side). The port has `BlockCamo` / `TileCamo` (SimpleBlocks: property `camouflaged`, block
+    entity type `thaumictinkerer:camo`, a Thaumcraft `TileThaumcraft`) and `CamoDeviceBlock` / `CamoDeviceBlockEntity` (TileBlocks: property `camo`, one
+    block entity type per device, a plain `BlockEntity`). *Decision*: **no merge**, because it cannot keep the registry ids, the block entity types, the
+    saved data and the behaviour identical: one base with one property would rename `camouflaged` or `camo` in the chunks of existing worlds and in
+    the blockstate files, a shared block entity class would change the superclass and the update tag of one family, and the blocks behave differently
+    on purpose (`SimpleBlocks.md` section 2.4). What the original shared, the rule, is now the same in both: the platform had accepted the devices as a
+    camouflage (the original's `instanceof BlockCamo` refused them) and turned every block with a horizontal facing (the original turned the pumpkin
+    alone); both are fixed in `BlockCamo`, and `CamoRules` names the platform by its real registry path. *Test*: GameTest
+    `thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal` (both rules over every block item of the game and every face; the devices refused; the
+    pumpkin turned, the furnace not; a real click of a Remote Placer on a platform), beside the existing checks of both groups. The owner can merge
+    later only with a data fixer for the property; the platform's block entity type `thaumictinkerer:camo` stays the platform's only.

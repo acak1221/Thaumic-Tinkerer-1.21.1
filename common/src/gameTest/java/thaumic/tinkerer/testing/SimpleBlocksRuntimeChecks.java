@@ -74,6 +74,8 @@ import thaumic.tinkerer.common.block.tile.TileInfusedFarmland;
 import thaumic.tinkerer.common.block.tile.TileInfusedGrain;
 import thaumic.tinkerer.common.block.tile.TileWardedSlab;
 import thaumic.tinkerer.common.content.SimpleBlocks;
+import thaumic.tinkerer.common.registry.TTRegistry;
+import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.core.commands.SetTendencyCommand;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.helper.AspectCropLootManager;
@@ -703,6 +705,51 @@ public final class SimpleBlocksRuntimeChecks {
         player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         test.useBlock(rel, player);
         test.assertTrue(tile.getCamo() == null && !stateAt(test, rel).getValue(BlockCamo.CAMOUFLAGED), "the empty hand takes the cover off");
+        finish(test, player);
+    }
+
+    /**
+     * The Ethereal Platform ({@code BlockCamo}, SimpleBlocks) and the camouflageable devices ({@code CamoDeviceBlock} with
+     * {@code CamoRules}, TileBlocks) keep two bases (docs/DEVIATIONS.md section 6, point 10), but they imitate by the one rule of the
+     * original's {@code BlockCamo.onBlockActivated}: for every block item of the game and every face clicked, the two give the same
+     * state or both refuse. Every camouflage block is refused by both (1.7.10: {@code block instanceof BlockCamo}, which the devices were
+     * too), a carved pumpkin is turned to the clicked face (the one {@code BlockDirectional} among the blocks a camouflage could be) and
+     * a furnace is not; and a real click on a platform with a Remote Placer leaves it plain.
+     */
+    public static void thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(GameTestHelper test) {
+        int compared = 0;
+        for (net.minecraft.world.item.Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
+            if (!(item instanceof net.minecraft.world.item.BlockItem)) continue;
+            ItemStack stack = new ItemStack(item);
+            for (Direction face : Direction.values()) {
+                BlockState platform = BlockCamo.camoStateOf(stack, face);
+                thaumic.tinkerer.common.block.camo.CamoRules.Change device = thaumic.tinkerer.common.block.camo.CamoRules.change(stack, face);
+                boolean deviceSets = device.kind() == thaumic.tinkerer.common.block.camo.CamoRules.Change.Kind.SET;
+                test.assertTrue(deviceSets == (platform != null) && (platform == null || platform == device.state()),
+                        "the platform and the devices agree on " + item + " clicked on " + face + ": " + platform + " / " + device);
+                compared++;
+            }
+        }
+        test.assertTrue(compared > 6 * 500, "every block item was compared: " + compared);
+        for (String device : List.of(LibBlockNames.REMOTE_PLACER, LibBlockNames.DISLOCATOR, LibBlockNames.INTERFACE, LibBlockNames.GOLEMCONNECTOR,
+                LibBlockNames.PLATFORM)) {
+            test.assertTrue(BlockCamo.camoStateOf(TTRegistry.stack(device), Direction.NORTH) == null, "a camouflage block is no camouflage: " + device);
+        }
+        BlockState pumpkin = BlockCamo.camoStateOf(new ItemStack(Items.CARVED_PUMPKIN), Direction.EAST);
+        test.assertTrue(pumpkin != null && pumpkin.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING)
+                == Direction.EAST, "a carved pumpkin looks to the clicked face: " + pumpkin);
+        BlockState furnace = BlockCamo.camoStateOf(new ItemStack(Items.FURNACE), Direction.EAST);
+        test.assertTrue(furnace == Blocks.FURNACE.defaultBlockState(), "a furnace is not turned (it was no BlockDirectional): " + furnace);
+        test.assertTrue(BlockCamo.camoStateOf(new ItemStack(Items.GLASS), Direction.UP) == Blocks.GLASS.defaultBlockState(), "glass is a cube");
+
+        floor(test);
+        BlockPos rel = new BlockPos(3, 1, 3);
+        test.setBlock(rel, SimpleBlocks.PLATFORM.get());
+        ServerPlayer player = mockPlayer(test, 6.5, 6.5);
+        TileCamo tile = tile(test, rel, TileCamo.class);
+        player.setItemInHand(InteractionHand.MAIN_HAND, TTRegistry.stack(LibBlockNames.REMOTE_PLACER));
+        test.useBlock(rel, player);
+        test.assertTrue(tile.getCamo() == null && !stateAt(test, rel).getValue(BlockCamo.CAMOUFLAGED), "a Remote Placer is no camouflage of the platform");
         finish(test, player);
     }
 
