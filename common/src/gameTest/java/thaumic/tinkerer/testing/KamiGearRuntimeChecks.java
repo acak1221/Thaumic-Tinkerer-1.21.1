@@ -1562,8 +1562,16 @@ public final class KamiGearRuntimeChecks {
         test.assertTrue(ItemFocusXPDrain.getPlayerXP(player) == 300, "300 points left, found " + ItemFocusXPDrain.getPlayerXP(player));
         test.assertTrue(player.experienceLevel == ItemFocusXPDrain.getLevelForExperience(300),
                 "the level follows the points: " + player.experienceLevel);
+        test.assertTrue(player.totalExperience == 300, "the total is what is left, as 1.7.10 set it: " + player.totalExperience);
+        int score = player.getScore();
         ItemFocusXPDrain.drainPlayerXP(player, 5000);
         test.assertTrue(ItemFocusXPDrain.getPlayerXP(player) == 0 && player.experienceLevel == 0, "it cannot go below zero");
+        test.assertTrue(player.getScore() == score, "the score of the death screen is not touched (the original did not)");
+        // A total beyond the int range (levels set by a command): the earlier level search counted up forever; it ends now.
+        player.setExperienceLevels(30000);
+        ItemFocusXPDrain.drainPlayerXP(player, 15);
+        test.assertTrue(player.experienceLevel == 21862 || player.experienceLevel == 21863, "the saturated total is a level that fits an int: "
+                + player.experienceLevel);
         test.succeed();
     }
 
