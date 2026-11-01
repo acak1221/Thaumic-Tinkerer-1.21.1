@@ -446,8 +446,8 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
 
 Fabric posts all five events (the mixins of `docs/HOOKS.md`); NeoForge posts them too (handlers of NeoForge's events in
 `NeoForgeEventPosters`, written 2026-10-31, `docs/HOOKS.md` section 9). On either loader the group needs the poster of each event it
-uses, as `docs/HOOKS.md` sections 3 to 7 describe them, or its enchantments do nothing there. The group's 34 GameTests passed on a
-NeoForge GameTest server (server side only; the client's copy of the events was not run on either loader, section 12). Where NeoForge's
+uses, as `docs/HOOKS.md` sections 3 to 7 describe them, or its enchantments do nothing there. The group's 34 GameTests (36 since the
+review fixes of 2026-11-01, section 12) passed on a NeoForge GameTest server (server side only; the client's copy of the events was not run on either loader, section 12). Where NeoForge's
 event reaches more than Fabric's: `LIVING_JUMP` is also posted for the hop of slimes and magma cubes and the ridden jump of horses and
 camels (`docs/HOOKS.md` section 5); Ascent Boost looks at leggings, which those entities do not wear, so nothing of it changes (read,
 not run with such an entity).
