@@ -13,13 +13,13 @@ package thaumic.tinkerer.common.item.kami;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
-import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
 
 /**
  * Replaces {@code ItemKamiBase}: the base of the plain Kami items. 1.7.10 gave them {@code shouldRegister()} and
  * {@code shouldDisplayInTab()} from {@code ConfigHandler.enableKami}; the registrar registers nothing when the option
- * is off, so only the tab flag is left.
+ * is off (and the option cannot change while the game runs), so an item that exists is always in the tab and neither
+ * flag is needed.
  *
  * <p>The 1.7.10 rarity {@code kamiRarity} ({@code EnumHelper.addEnum}, light purple, "Kami") cannot be created in
  * 1.21.1, where {@link Rarity} is a fixed enum; {@link Rarity#EPIC} is light purple as well, so the name of a Kami item
@@ -35,10 +35,5 @@ public abstract class KamiItemBase extends Item implements ITTinkererRegisterabl
 
     protected KamiItemBase(Item.Properties properties, Rarity rarity) {
         super(properties.rarity(rarity));
-    }
-
-    @Override
-    public boolean shouldDisplayInTab() {
-        return ConfigHandler.enableKami;
     }
 }

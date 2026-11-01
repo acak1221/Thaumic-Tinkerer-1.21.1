@@ -93,9 +93,4 @@ public abstract class ItemModKamiFocus extends ItemFocusBasic implements ITTinke
     public boolean onFocusBlockStartBreak(ItemStack focusstack, int x, int y, int z, Player player) {
         return false;
     }
-
-    @Override
-    public boolean shouldDisplayInTab() {
-        return ConfigHandler.enableKami;
-    }
 }

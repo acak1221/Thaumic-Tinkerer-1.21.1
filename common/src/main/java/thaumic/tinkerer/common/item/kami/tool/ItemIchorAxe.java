@@ -37,11 +37,6 @@ public class ItemIchorAxe extends AxeItem implements ITTinkererRegisterable {
     }
 
     @Override
-    public boolean shouldDisplayInTab() {
-        return ConfigHandler.enableKami;
-    }
-
-    @Override
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHOR_AXE, LibResearch.KEY_ICHOR_TOOLS,
                 new ItemStack(this), new AspectList().add(Aspect.WATER, 75), "II ", "IR ", " R ", 'R',

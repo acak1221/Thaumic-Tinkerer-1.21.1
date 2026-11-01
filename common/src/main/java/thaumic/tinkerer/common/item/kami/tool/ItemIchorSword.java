@@ -37,11 +37,6 @@ public class ItemIchorSword extends SwordItem implements ITTinkererRegisterable 
     }
 
     @Override
-    public boolean shouldDisplayInTab() {
-        return ConfigHandler.enableKami;
-    }
-
-    @Override
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHOR_SWORD, LibResearch.KEY_ICHOR_TOOLS,
                 new ItemStack(this), new AspectList().add(Aspect.AIR, 75), " I ", " I ", " R ", 'R',

@@ -84,11 +84,6 @@ public class ItemIchorclothArmor extends ArmorItem
     }
 
     @Override
-    public boolean shouldDisplayInTab() {
-        return ConfigHandler.enableKami;
-    }
-
-    @Override
     public ThaumicTinkererRecipe getRecipeItem() {
         ItemStack cloth = ItemKamiResource.stack(ItemKamiResource.ICHOR_CLOTH);
         return switch (getType()) {

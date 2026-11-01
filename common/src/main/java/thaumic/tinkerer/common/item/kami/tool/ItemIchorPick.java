@@ -43,11 +43,6 @@ public class ItemIchorPick extends PickaxeItem implements ITTinkererRegisterable
     }
 
     @Override
-    public boolean shouldDisplayInTab() {
-        return ConfigHandler.enableKami;
-    }
-
-    @Override
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHOR_PICK, LibResearch.KEY_ICHOR_TOOLS,
                 new ItemStack(this), new AspectList().add(Aspect.FIRE, 75), "III", " R ", " R ", 'R',
