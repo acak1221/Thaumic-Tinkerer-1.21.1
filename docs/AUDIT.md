@@ -81,3 +81,44 @@ the game's own seed changes nothing (the same cells), so it is not a defect and 
   feature in a world with mods that add features to every biome (the test runs had none: the biome's steps held only the clusters) and in
   a world made before the change (reasoned, not tried: its generated chunks keep their ores, chunks generated afterwards get the
   feature's positions); the Bedrock dimension in a client.
+
+## Modernization (package A): player state as data attachments; KamiGear, KamiWorld, Foci, BasicItems (2026-11-01, branch `modernize-a`)
+
+The read-only modernization audit of 2026-11-01 listed what was still 1.7.10 technique; package A took the player state and the four groups
+above. Gameplay stays the original's; the group documents (`deviations/KamiWorld.md` section 11, `KamiGear.md` section 15, `Foci.md` section 11,
+`BasicItems.md` section 11) say what changed and why, `HOOKS.md` section 17 describes the new layer, `DEVIATIONS.md` section 2 what a player can
+notice.
+
+| Finding | Was | Now | Test |
+|---|---|---|---|
+| S1, N1 Soul Hearts | world `SavedData` by UUID, S2C packet, static client field | saved, synced attachment, not copied on any respawn; the old file read once per player on join | `soulHeartsAreSavedPerPlayerAndNotShared`, `soulHeartsAreLostOnDeathAndOnTheWayBackFromTheEnd`, `soulHeartsMoveFromTheOldSaveFileOnce`, `soulHeartsKeepTheFramesOfTheOriginal` |
+| S2, N1 Kami armour switch | world `SavedData`, login packet, static client flag | saved, synced attachment, copied on death; the old file read once per player | `kamiArmourSwitchIsSavedKeptThroughDeathAndToldToItsOwner`, `kamiArmourSwitchMovesFromTheOldSaveFileOnce` |
+| S3 Robes' flight | static `Set<UUID>`, forgotten at logout | transient attachment; **the expected stale flight after a relog does not exist** (the login applies the game mode's abilities on both loaders) | `robeFlightAfterALoginIsTheRobesAndTheGameModesOnly`, `robeFlightGrantIsNotCopiedOnDeath` |
+| S4 focus progress, talisman memory, Soul Hearts' frames | static maps by UUID per side, six clean-up listeners | transient attachments of the player entity (copied on death where 1.7.10 kept them) | `healAndSmeltProgressBelongToThePlayerEntity`, `cleansingTalismanMemoryIsKeptThroughDeathAndEndsWithTheEntity` |
+| N2 Shadowbeam packet | hand-written buffer code that truncated and clamped | `StreamCodec.composite`, list capped on both ends | JUnit `theBeamPacketCarriesItsPointsAndCapsTheirNumber` |
+| G1 Distortion blacklist | static id set + empty owner table by class; the Robes named the bottle's class | the entity-type tag only, shared by the Robes | `deflectShiftsForeignProjectilesAndSparesTheOwnAndTheBlacklisted`, `theRobesLeaveWhatTheDeflectBlacklistTagLists` |
+| K1 (tag file) | the convention tag was missing | `#c:relocation_not_supported` (optional) in the Dislocation's blacklist | JUnit `theBlacklistTagOfTheDislocationFocusHoldsWhatNoPistonMoves` |
+| I5 effects | id strings | `ResourceKey<MobEffect>` | JUnit `BasicItemsLogicTest`, GameTest `cleansingTalismanMemoryIsKeptThroughDeathAndEndsWithTheEntity` |
+| C3 HUD | loose texture blit, blend left on | GUI sprites `hud/soul_heart_full`/`_half`, blend pair | JUnit `theHudSpritesAreTheTopLeftOfTheOriginalSheet`, client smoke |
+| C2 map, cloth colour | immediate `Tesselator`, AWT | GUI batch, `Mth.hsvToRgb` | JUnit `theGatewayMapsTintIsTheOriginalsUpToOneStepPerChannel`, `everyGroupItemKeepsItsDataThroughSaving` |
+| T1, D2 Experience Drain | raw field writes; a level search that never ended past the int range; a test-only twin helper | server player setters, overflow-safe curve; `ExperienceHelper` deleted | `experienceDrainRemovesExperiencePointsNotLevels`, JUnit curve tests |
+| I1 Thaumcraft names | 1.7.10 field + metadata (`KamiResearch.tc`, foci `tc`, `ItemApi.getItem`) | native ids `ItemsTC.stack(...)`; the warding paving stone stays (API request Foci F5) | `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs` |
+| I3, I4, D3, D8, D9, D10, P1 | metadata indexes, sound paths, unused tick counter, a property probe, always-true tab overrides, a gate serialised for its lock, an `isFoil` override | names, `ThaumcraftSoundIds`, deleted, the `level` property, deleted, "no destination", `ENCHANTMENT_GLINT_OVERRIDE` | `KamiGearLogicTest`, `infusedInkwellIsRefilledByEightInkSacs` |
+
+Not done (optional in the audit): K2 (the Bedrock ore table as a feature configuration), P2 (the awakened pickaxe's bedrock rule as a `Tool`
+component), T2 (the XP Talisman's orb count through an accessor mixin; it needs lines in both mixin configs, shared files).
+
+Found while doing it (not in the audit): the Experience Drain's own level search never ended for a total beyond the int range (read in the code, not run on the old code; fixed, see
+above); a reset of the Soul Hearts from Architectury's `PLAYER_RESPAWN` can run before Fabric API's attachment copy (the first full run caught it;
+the key property "not copied on any respawn" is enforced by the backends after their loader's copy, `HOOKS.md` section 17); NeoForge keeps the
+`flying` flag through a game-mode update and clears it at the player's next tick (`KamiGear.md` section 15); one legacy pair (the warding paving
+stone) names a stack with a block-state component that the native stack lacks (kept; API request Foci F5).
+
+### Verified (branch `modernize-a`, one run of each)
+
+| Check | Result |
+|---|---|
+| `check runTinkererGameTest :neoforge:runGameTest assemble :neoforge:assemble --continue` | BUILD SUCCESSFUL; JUnit 435 tests, 0 failures (the run's `tinkererTest` result files); Fabric: All 372 required tests passed; NeoForge: All 381 required tests passed; both jars assembled |
+| Focused runs before it | the four groups on Fabric: All 136 required tests passed (first wiring); KamiGear and Foci on both loaders: All 94 required tests passed (after the NeoForge `flying` finding) |
+| Repository checks | `tt_assets.py --check`: ok (329 files); `tt_oracle.py --check`: current (regenerated for `LibItemNames`); `neoforge_gametests.py --check`: 13 classes, 372 wrappers |
+
