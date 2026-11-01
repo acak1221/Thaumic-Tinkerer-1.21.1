@@ -13,6 +13,7 @@ package thaumic.tinkerer.fabric;
 
 import net.fabricmc.api.ClientModInitializer;
 import thaumic.tinkerer.common.ThaumicTinkerer;
+import thaumic.tinkerer.fabric.client.FabricConfigurationTaskClient;
 import thaumic.tinkerer.fabric.client.FabricItemRenderers;
 import thaumic.tinkerer.fabric.client.KamiGearFabricClient;
 
@@ -25,5 +26,7 @@ public final class ThaumicTinkererFabricClient implements ClientModInitializer {
         ThaumicTinkerer.initClient();
         // The client hooks of the Kami gear that Architectury has no event for (the wings layer, the mirror's ghost blocks).
         KamiGearFabricClient.register();
+        // The client's answer in the config handshake (ConfigSync).
+        ThaumicTinkerer.guard("FabricConfigurationTaskClient.install", FabricConfigurationTaskClient::install);
     }
 }

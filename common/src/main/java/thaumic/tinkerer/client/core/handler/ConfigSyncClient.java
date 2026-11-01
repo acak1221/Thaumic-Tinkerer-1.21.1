@@ -9,24 +9,16 @@
 package thaumic.tinkerer.client.core.handler;
 
 import dev.architectury.event.events.client.ClientPlayerEvent;
-import dev.architectury.networking.NetworkManager;
-import java.util.List;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.ConfigSync;
-import thaumic.tinkerer.common.network.packet.PacketConfigSync;
 
 /**
- * The client half of the config sync ({@link ConfigSync}): keeps the server's values of the options a client evaluates as its
- * copy ({@link ConfigHandler#setFromServer}) for as long as it is connected, and leaves a server whose registration options
- * ({@link ConfigHandler#registrationOptions()}) differ from its own, with a message that names them (they cannot be changed
- * while the game runs: the client has registered its items, blocks, research and recipes from its own file).
+ * The client half of the config handshake ({@link ConfigSync}) that is not part of the configuration phase: the server's values,
+ * which the client keeps as its copy when they arrive in the configuration phase ({@link ConfigSync#receive}, called by the loader
+ * glue), hold for as long as it is connected. Leaving the server, or being refused by it, clears them, so this side's own file counts
+ * again. (The refusal itself is the server's now: a client whose registration options differ is not let in.)
  */
 public final class ConfigSyncClient {
-    private static final Logger LOG = LoggerFactory.getLogger("ThaumicTinkerer");
     private static boolean registered;
 
     private ConfigSyncClient() {}
@@ -35,19 +27,8 @@ public final class ConfigSyncClient {
     public static synchronized void register() {
         if (registered) return;
         registered = true;
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, PacketConfigSync.TYPE, PacketConfigSync.CODEC,
-                (packet, context) -> context.queue(() -> receive(packet)));
-        // Leaving the server (or the world): this side's own file counts again.
+        // Leaving the server (or the world), and a refusal in the configuration phase: Architectury posts the event from
+        // Minecraft.disconnect on both loaders, with or without a player.
         ClientPlayerEvent.CLIENT_PLAYER_QUIT.register(player -> ConfigHandler.setFromServer(null));
-    }
-
-    private static void receive(PacketConfigSync packet) {
-        ConfigHandler.setFromServer(packet.shared());
-        List<String> differ = ConfigHandler.registrationMismatches(packet.registration());
-        if (differ.isEmpty()) return;
-        LOG.error("Thaumic Tinkerer: this server's config differs in options that cannot change while the game runs: {} "
-                + "(server {}, here {}); leaving the server", differ, packet.registration(), ConfigHandler.registrationOptions());
-        ClientPacketListener listener = Minecraft.getInstance().getConnection();
-        if (listener != null) listener.getConnection().disconnect(ConfigSync.mismatchMessage(differ, packet.registration()));
     }
 }
