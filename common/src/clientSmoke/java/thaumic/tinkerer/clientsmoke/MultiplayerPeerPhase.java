@@ -11,22 +11,17 @@ import thaumic.tinkerer.common.block.tile.tablet.TileAnimationTablet;
 /**
  * The second player of the multiplayer check ({@code TTBravo}): it gets the config sync too, then stands next to an Animation
  * Tablet, tells the server that its own client has the tablet (empty, left-click mode, as a new tablet is), and waits until its
- * client's block entity shows what the lead changed through the menu (an iron pickaxe in it, right-click mode). That only happens when the server's
- * block-entity update reaches a client that did not do the change. Test-only code, new in the 1.21.1 port (no 1.7.10
+ * client's block entity shows what the lead changed through the menu (an iron pickaxe in it, right-click mode). That only happens
+ * when the server's block-entity update reaches a client that did not do the change. Then it is the stranger at the lead's claim
+ * of Open Parties and Claims (it is in no party with the lead): it uses the add-on's tools and devices on blocks inside the claim,
+ * across its edge and outside it (docs/MULTIPLAYER_VERIFICATION.md, section h). Test-only code, new in the 1.21.1 port (no 1.7.10
  * counterpart); CC BY-NC-SA 3.0 like the add-on (see NOTICE.md), not distributed.
  */
-final class MultiplayerPeerPhase extends ScriptedPhase {
+final class MultiplayerPeerPhase extends MultiplayerActor {
     private static final String PHASE = "peer";
 
-    private final ServerLink link;
-
     MultiplayerPeerPhase(ServerLink link) {
-        this.link = link;
-    }
-
-    @Override
-    public String name() {
-        return PHASE;
+        super(link, PHASE);
     }
 
     @Override
@@ -35,6 +30,26 @@ final class MultiplayerPeerPhase extends ScriptedPhase {
         scripts.add(MultiplayerClient.join(PHASE));
         scripts.add(MultiplayerClient.configSync(PHASE));
         scripts.add(tablet(run));
+        // h. The claim: the first stage waits until the lead has claimed.
+        scripts.add(act("b_dislocation_out", "focus_dislocation", Act.RIGHT_CLICK, 40));
+        scripts.add(act("b_dislocation_in", "focus_dislocation", Act.RIGHT_CLICK, 40));
+        scripts.add(act("b_dislocation_place_out", "focus_dislocation", Act.RIGHT_CLICK, 40));
+        scripts.add(act("b_mirror_in", "placement_mirror", Act.RIGHT_CLICK, 40));
+        scripts.add(act("b_mirror_edge", "placement_mirror", Act.RIGHT_CLICK, 40, run, "peer-claim-mirror-edge",
+                "The second player's Placement Mirror on a wall just outside the lead's claim (the claim begins two columns to the right):"
+                        + " the three columns of stone outside it are placed, the two inside are not"));
+        scripts.add(act("b_mirror_out", "placement_mirror", Act.RIGHT_CLICK, 40));
+        scripts.add(act("b_pickaxe_in", "ichor_pick_gem", Act.LEFT_CLICK, 40));
+        scripts.add(act("b_pickaxe_out", "ichor_pick_gem", Act.LEFT_CLICK, 40));
+        scripts.add(act("b_axe_in", "ichor_axe_gem", Act.HOLD_ATTACK, 20));
+        scripts.add(act("b_axe_edge", "ichor_axe_gem", Act.HOLD_ATTACK, 20, run, "peer-claim-tree-edge",
+                "The second player after felling a tree in tree mode whose top reaches into the lead's claim: the clicked log outside is gone,"
+                        + " the trunk above it and the branch inside the claim still stand"));
+        scripts.add(act("b_axe_out", "ichor_axe_gem", Act.HOLD_ATTACK, 20));
+        scripts.add(press("b_placer_into_claim", "remote_placer", 40));
+        scripts.add(press("b_placer_out", "remote_placer", 30));
+        scripts.add(press("b_dislocator_into_claim", "dislocator", 40));
+        scripts.add(press("b_dislocator_out", "dislocator", 30));
         scripts.add(MultiplayerClient.disconnect(PHASE, link));
         return scripts;
     }

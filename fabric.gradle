@@ -67,9 +67,20 @@ sourceSets {
 // (-Dthaumictinkerer.withoutTeamRebornEnergy), which then check that the add-on runs without it.
 def withoutTeamRebornEnergy = providers.gradleProperty('withoutTeamRebornEnergy').isPresent()
 loom.createRemapConfigurations(sourceSets.thaumicTinkererGameTest)
+// Open Parties and Claims (OPAC), a real claims mod, for the claim scenes of the multiplayer check (docs/MULTIPLAYER_VERIFICATION.md,
+// section h), and Forge Config API Port, which OPAC requires on Fabric (its fabric.mod.json: "forgeconfigapiport" >=21.0.5). Only on the
+// runtime class path of the multiplayer check's dedicated server run (the remapped configuration of its source set); never a dependency of
+// the add-on, of its jars or of any other run. Modrinth's Maven (repository above). OPAC is LGPL-3.0, Forge Config API Port MPL-2.0;
+// neither is distributed with the add-on (NOTICE.md).
+loom.createRemapConfigurations(sourceSets.thaumicTinkererMultiplayerServer)
 
 dependencies {
  if (!withoutTeamRebornEnergy) modThaumicTinkererGameTestRuntimeOnly("teamreborn:energy:$team_reborn_energy_version") { transitive = false }
+ modThaumicTinkererMultiplayerServerRuntimeOnly "maven.modrinth:open-parties-and-claims:$rootProject.opac_fabric_version"
+ modThaumicTinkererMultiplayerServerRuntimeOnly "maven.modrinth:forge-config-api-port:$rootProject.forge_config_api_port_version"
+ // Forge Config API Port carries night-config in its jar (jar-in-jar), which Fabric Loader does not unpack from a development class path.
+ thaumicTinkererMultiplayerServerRuntimeOnly "com.electronwill.night-config:core:$rootProject.night_config_version"
+ thaumicTinkererMultiplayerServerRuntimeOnly "com.electronwill.night-config:toml:$rootProject.night_config_version"
  thaumicTinkererTestImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
  thaumicTinkererTestImplementation 'org.junit.platform:junit-platform-launcher'
  thaumicTinkererTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'

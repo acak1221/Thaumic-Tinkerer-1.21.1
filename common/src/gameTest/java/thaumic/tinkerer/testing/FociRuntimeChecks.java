@@ -766,7 +766,7 @@ public final class FociRuntimeChecks {
 
     public static void deflectEnlargeWidensTheBox(GameTestHelper test) {
         floor(test);
-        ServerPlayer player = player(test, 3.5, 1, 3.5, 0.0F, 0.0F);
+        ServerPlayer player = player(test, 5.5, 1, 3.5, 0.0F, 0.0F);
         ItemStack plain = wand(test, LibItemNames.FOCUS_DEFLECT, true);
         ItemStack enlarged = wand(test, LibItemNames.FOCUS_DEFLECT, true);
         ItemStack focusStack = WandHelper.getFocusItem(enlarged);
@@ -774,8 +774,11 @@ public final class FociRuntimeChecks {
         test.assertTrue(WandHelper.setFocus(enlarged, focusStack), "the enlarged focus mounts");
         ItemFocusDeflect deflect = (ItemFocusDeflect) TTRegistry.item(LibItemNames.FOCUS_DEFLECT);
 
-        // Four and a half blocks to the west of the player: outside the plain box (4), inside the enlarged one (5).
-        AbstractArrow arrow = arrowLike(test, EntityType.ARROW, new Vec3(-1.0, 1.5, 3.5), new Vec3(1.0, 0.0, 0.0));
+        // Four and a half blocks to the west of the player: outside the plain box (4), inside the enlarged one (5). The arrow
+        // stays inside the test structure: the GameTest server force-loads only the structure's chunks, at a random origin, and
+        // an arrow one block west of it (x -1.0, as here before) lay in an unloaded chunk whenever the origin's x was a multiple
+        // of 16, where getEntitiesOfClass does not see it (NeoForge run of 2026-11-01, origin x 11675408 = 16 x 729713).
+        AbstractArrow arrow = arrowLike(test, EntityType.ARROW, new Vec3(1.0, 1.5, 3.5), new Vec3(1.0, 0.0, 0.0));
         Vec3 start = arrow.position();
         player.setItemInHand(InteractionHand.MAIN_HAND, plain);
         deflect.onUsingFocusTick(plain, player, Integer.MAX_VALUE);

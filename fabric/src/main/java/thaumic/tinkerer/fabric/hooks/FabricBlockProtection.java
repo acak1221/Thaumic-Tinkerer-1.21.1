@@ -26,8 +26,13 @@ import thaumic.tinkerer.common.hooks.BlockProtection;
  *   {@link BlockEvent#BREAK} (on Fabric posted by Architectury's own mixin in the same method, not by Fabric's event, so it
  *   has to be asked separately). The first that refuses decides. {@code PlayerBlockBreakEvents.CANCELED} is not invoked:
  *   it exists to resend the block to the client of a cancelled real break, and nothing was broken here.</li>
- *   <li><b>Place</b>: Architectury's {@link BlockEvent#PLACE} with the state to be placed and the player as the placer. Fabric API
- *   has no block place event of its own.</li>
+ *   <li><b>Place</b>: Architectury's {@link BlockEvent#PLACE} with the state to be placed and the player as the placer, then Fabric
+ *   API's {@link PlayerBlockBreakEvents#BEFORE} for the position with what is there now (air, water, grass: what the placement
+ *   replaces). Fabric API has no block place event of its own, so the claim mods written for Fabric guard a position through its
+ *   break event and the click ({@code UseBlockCallback}, which cannot be asked as a question: its listeners act). Open Parties and
+ *   Claims 0.33.0 is one: it listens to {@code PlayerBlockBreakEvents.BEFORE} and {@code UseBlockCallback} but to no place event on
+ *   Fabric, so without this a placement it should refuse was allowed (docs/MULTIPLAYER_VERIFICATION.md, section h). A mod that
+ *   refuses the change of a position refuses the placement there too; one that allows breaking allows it.</li>
  * </ul>
  */
 public final class FabricBlockProtection implements BlockProtection.Backend {
@@ -50,6 +55,8 @@ public final class FabricBlockProtection implements BlockProtection.Backend {
 
     @Override
     public boolean mayPlace(ServerPlayer player, ServerLevel level, BlockPos pos, BlockState state) {
-        return !BlockEvent.PLACE.invoker().placeBlock(level, pos, state, player).isFalse();
+        if (BlockEvent.PLACE.invoker().placeBlock(level, pos, state, player).isFalse()) return false;
+        BlockState there = level.getBlockState(pos);
+        return PlayerBlockBreakEvents.BEFORE.invoker().beforeBlockBreak(level, player, pos, there, level.getBlockEntity(pos));
     }
 }

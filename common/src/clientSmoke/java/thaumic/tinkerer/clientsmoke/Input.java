@@ -2,6 +2,10 @@ package thaumic.tinkerer.clientsmoke;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.function.Predicate;
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWNativeX11;
+import org.lwjgl.system.linux.X11;
+import org.lwjgl.system.linux.XEvent;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -49,6 +53,52 @@ final class Input {
 
     static void select(Minecraft client, int slot) {
         KeyMapping.click(key(client.options.keyHotbarSlots[slot]));
+    }
+
+    /**
+     * A press of the add-on's key mapping {@code name} (its translation key). A mapping that is bound to nothing (the add-on's
+     * toggle key is unbound by default, as in 1.7.10) is first bound to {@code fallback}, as a player does in the controls screen
+     * ({@code setKey}, then {@code KeyMapping.resetMapping}); then the key is clicked as the keyboard handler does.
+     */
+    static String pressMapping(Minecraft client, String name, String fallback) {
+        for (KeyMapping mapping : client.options.keyMappings) {
+            if (!mapping.getName().equals(name)) continue;
+            if (mapping.isUnbound()) {
+                mapping.setKey(InputConstants.getKey(fallback));
+                KeyMapping.resetMapping();
+            }
+            KeyMapping.click(key(mapping));
+            return mapping.saveString();
+        }
+        throw new IllegalStateException("no key mapping " + name);
+    }
+
+    /**
+     * A real press or release of the left shift key, sent to this client's own window by the X server (Xvfb): an X {@code KeyPress}
+     * or {@code KeyRelease} event with the window's own shift key code, which GLFW reads like a key of the keyboard. Unlike
+     * {@link KeyMapping#setDown}, this also changes what GLFW answers for the key, which is what {@code Screen.hasShiftDown()} asks
+     * (the Celestial Gateway's destinations screen teleports on a shift click only). The window is addressed by its X id, so a second
+     * client on the same display gets nothing. Linux/X11 only (the machine of the check).
+     */
+    static void realShift(Minecraft client, boolean down) {
+        long display = GLFWNativeX11.glfwGetX11Display();
+        long window = GLFWNativeX11.glfwGetX11Window(client.getWindow().getWindow());
+        int keycode = GLFW.glfwGetKeyScancode(GLFW.GLFW_KEY_LEFT_SHIFT);
+        if (display == 0L || window == 0L || keycode <= 0) {
+            throw new IllegalStateException("no X11 window or shift key code: display " + display + ", window " + window + ", key code " + keycode);
+        }
+        try (XEvent event = XEvent.calloc()) {
+            event.xkey().type(down ? X11.KeyPress : X11.KeyRelease).send_event(true).display(display).window(window)
+                    .root(X11.XRootWindow(display, X11.XDefaultScreen(display))).subwindow(0L).time(0L).x(1).y(1).x_root(1).y_root(1)
+                    // the modifier state before the event: nothing for the press, shift for the release
+                    .state(down ? 0 : 1).keycode(keycode).same_screen(true);
+            X11.XSendEvent(display, window, false, down ? X11.KeyPressMask : X11.KeyReleaseMask, event);
+        }
+    }
+
+    /** What GLFW answers for the left shift key now ({@code Screen.hasShiftDown()} asks this). */
+    static boolean glfwShiftDown(Minecraft client) {
+        return InputConstants.isKeyDown(client.getWindow().getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT);
     }
 
     /** The block in the cross-hair, or null. */

@@ -33,6 +33,9 @@ Which files are under which licence:
 - **Team Reborn Energy** (`teamreborn:energy`, by Team Reborn and modmuss50, **MIT**, <https://github.com/TechReborn/Energy>), the Fabric energy API: an
   optional dependency of the Fabric add-on. The build compiles against it (and the Fabric GameTest run loads it) from `maven.fabricmc.net`; this repository and
   the add-on jars contain none of it.
+- Development-only downloads: the multiplayer check (`docs/MULTIPLAYER_VERIFICATION.md`) puts Open Parties and Claims (Xaero96 and contributors,
+  LGPL-3.0) and, on Fabric, Forge Config API Port (Fuzs, MPL-2.0) with the night-config library it bundles (LGPL-3.0) on the class path of its test server; Gradle
+  downloads them from Modrinth's Maven and Maven Central. None of them is in this repository or in a jar of the add-on.
 - The add-on jars (Fabric and NeoForge) are separate downloads; the Thaumcraft jars contain none of them, and this repository contains no Thaumcraft 4 jar, no
   Thaumcraft assets and no Thaumcraft 4 source.
 - Publishing the port does not establish rights in Thaumcraft 4 (Azanor), which Thaumic Tinkerer is a derivative work

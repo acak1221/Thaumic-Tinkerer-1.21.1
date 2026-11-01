@@ -229,6 +229,12 @@ sourceSets {
  }
 }
 tasks.named('check') { dependsOn tasks.named('multiplayerServerClasses') }
+// Open Parties and Claims for the claim scenes (section h): only on the runtime class path of the mpServer run (the remapped configuration
+// of this source set), never a dependency of the add-on or of its jar. LGPL-3.0, not distributed (NOTICE.md).
+loom.createRemapConfigurations(sourceSets.multiplayerServer)
+dependencies {
+ modMultiplayerServerRuntimeOnly "maven.modrinth:open-parties-and-claims:$rootProject.opac_neoforge_version"
+}
 
 def tinkererMpOut = layout.buildDirectory.dir('tinkerer-multiplayer').get().asFile
 def tinkererMpPort = providers.gradleProperty('tinkererMultiplayerPort').getOrElse('25592')
