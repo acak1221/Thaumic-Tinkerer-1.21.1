@@ -21,7 +21,6 @@ import thaumic.tinkerer.common.content.ContentGroup;
 import thaumic.tinkerer.common.content.ContentGroups;
 import thaumic.tinkerer.common.core.commands.MaxResearchCommand;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
-import thaumic.tinkerer.common.core.handler.ConfigSync;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
 import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
@@ -47,8 +46,6 @@ public final class ThaumicTinkerer {
         if (initialised) return;
         initialised = true;
         ConfigHandler.loadConfig();
-        // The server's config values for its clients, sent on join (before any group's own join handler).
-        guard("ConfigSync.register", ConfigSync::register);
         MaxResearchCommand.register();
         for (ContentGroup group : ContentGroups.ALL) {
             guard(group.getClass().getSimpleName() + ".register", group::register);

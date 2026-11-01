@@ -93,13 +93,13 @@ final class MultiplayerClient {
     }
 
     /**
-     * Scenario a, first half: the server's options arrived ({@code PacketConfigSync}) and the side-aware accessors answer with
-     * them for the client's level, although the client's own file (written by the Gradle task: flight on, empty blacklist) says
-     * otherwise; the client stays connected (its registration options equal the server's).
+     * Scenario a, first half: the server's options arrived ({@code PacketConfigSync}, in the configuration phase, before the client had
+     * a world) and the side-aware accessors answer with them for the client's level, although the client's own file (written by the
+     * Gradle task: flight on, empty blacklist) says otherwise; the client stays connected (its registration options equal the server's).
      */
     static Script configSync(String phase) {
         return new Script("config_sync")
-                .until("the server's config (PacketConfigSync)", () -> ConfigHandler.fromServer() != null, 60)
+                .until("the server's config (PacketConfigSync, configuration phase)", () -> ConfigHandler.fromServer() != null, 60)
                 .ticks(40)
                 .run("check", run -> {
                     Minecraft client = run.client();

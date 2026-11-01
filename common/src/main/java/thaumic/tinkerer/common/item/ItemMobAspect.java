@@ -13,6 +13,7 @@ package thaumic.tinkerer.common.item;
 
 import java.util.List;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -58,9 +59,20 @@ public class ItemMobAspect extends Item implements ITTinkererRegisterable {
     public final Form form;
 
     public ItemMobAspect(Aspect aspect, Form form) {
-        super(new Item.Properties().stacksTo(16));
+        super(properties(form));
         this.aspect = aspect;
         this.form = form;
+    }
+
+    /**
+     * Stacks of 16; the infused form glints (1.7.10 {@code hasEffect} for the infused metadata). The glint is the item's
+     * default {@link DataComponents#ENCHANTMENT_GLINT_OVERRIDE}, as for vanilla's enchanted golden apple, instead of an
+     * {@code isFoil} override: the form is an item of its own, so the glint is a constant of the item.
+     */
+    private static Item.Properties properties(Form form) {
+        Item.Properties properties = new Item.Properties().stacksTo(16);
+        if (form == Form.INFUSED) properties.component(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        return properties;
     }
 
     /** The registry path of the item of an aspect and form. */
@@ -129,11 +141,6 @@ public class ItemMobAspect extends Item implements ITTinkererRegisterable {
             case CONDENSED -> "item.mobAspect.condensed.name";
             case INFUSED -> "item.mobAspect.infused.name";
         };
-    }
-
-    @Override
-    public boolean isFoil(ItemStack stack) {
-        return form == Form.INFUSED;
     }
 
     @Override

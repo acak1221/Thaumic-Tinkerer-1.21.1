@@ -179,7 +179,7 @@ and receives each of them.
 - **Models.** The static `ModelMagnet` (blue texture while pulling, red while pushing; the Corporeal Attractor has its own
   two textures) is a JSON model per polarity (`magnet_blue/red`, `mob_magnet_blue/red`), `noOcclusion`, in the cutout
   layer. The three rings of lightning above it (`iconLightningRing` of Thaumcraft's hover harness, blue or red, size by the
-  redstone level, drifting with `cos(time / 500)`, nothing without a signal) are drawn by `RenderTileMagnet<T>`; the
+  redstone level, drifting with `cos(time / 500)` on the game's clock since section 13, nothing without a signal) are drawn by `RenderTileMagnet<T>`; the
   alpha and the blending are approximated with the translucent entity render type. The 1.7.10 inventory renderer drew
   the tile renderer at full signal; the 1.21.1 block item is the static model without rings.
 - **Drops.** Breaking a Corporeal Attractor scatters the mould like `breakBlock` did (`MachineDrops.scatter`); the two
@@ -401,3 +401,37 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
 |---|---|---|---|
 | `TinkererEvents.LIVING_DROPS` (`docs/HOOKS.md` section 8) | `ItemBloodSword.onLivingDrops` (the Cursed Spirit's Blade) | posted by `LivingEntityDropsMixin` and the capture mixins; run by the GameTests of the blade | `NeoForgeEventPosters.onLivingDrops` (a `LivingDropsEvent` handler calling `TinkererEvents.postLivingDrops`; no capture mixins); run by the same GameTests on a NeoForge GameTest server |
 | `ItemRenderers` (`docs/HOOKS.md` section 9) | `MachinesClient.register()` (the Mob Display) | `FabricItemRenderers`; run in the client harness (the mobs are drawn in a slot) | `NeoForgeItemRenderers` (an `IClientItemExtensions` per item in `RegisterClientExtensionsEvent`); compiled, installed in a NeoForge dev client that started without an error from the add-on; not seen drawn (no world entered) |
+
+## 13. 1.21.1 technique instead of 1.7.10 leftovers (2026-11-01)
+
+The modernization of the group (`docs/AUDIT.md`, "Modernization (packages C and D)"). Gameplay is the original's; only the third point is
+visible, and only as an animation.
+
+- **Thaumcraft's ingredients by their native ids.** The recipes named Thaumcraft's items by their 1.7.10 field and metadata through the API's
+  legacy table (`ItemApi.getItem("itemResource", 2)`); they name the 1.21.1 items now (`ItemsTC.stack("thaumium_ingot")`), the same stacks
+  (`docs/api/LEGACY_IDS.md` of Thaumcraft 4 Reload): Kinetic and Corporeal Attractors `earth_shard`, `air_shard`, `greatwood_log`; Essentia
+  Funnel `thaumium_ingot`; Thaumic Restorer `thaumium_block`, `enchanted_fabric`, `thaumium_ingot`; Tablet of Necromancy `obsidian_tile`;
+  Aspectalyzer `greatwood_planks`, `thaumometer`, `thaumium_ingot`; Cursed Spirit's Blade `thaumium_sword`. The parity check against the
+  1.7.10 recipes (`tt_oracle`) passes unchanged.
+- **The wand's sound on the Corporeal Attractor** is Thaumcraft's registered `thaumcraft:key` event (`ThaumcraftSoundIds.event`). The port
+  made a new, unregistered `SoundEvent` of the id on every click, which the sound packet then carried as a whole event instead of its id; the
+  sound, volume 1 and pitch 0.5 are the same (GameTest `aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound`, which reads the
+  packet the server sends).
+- **The rings above an attractor follow the game's clock (choice, visible).** 1.7.10 and the port until now bobbed the rings by
+  `cos(System.currentTimeMillis() / 500F)`. The division is in `float`, which rounds today's epoch milliseconds (between 2^40 and 2^41) to steps of
+  131,072 ms: the rings stood still and jumped to another spacing about every two minutes, in 1.7.10 too. The renderer now takes the level's game
+  time and the partial tick in `double`, `cos(ticks / 10)` (10 ticks are the 500 ms of the formula at 20 ticks a second), so the rings bob as the
+  formula says, stop while the game is paused and follow `/tick`. Size, colour and spacing range are unchanged.
+- **The Funnel knows the jars by the API's items** (`BlocksTC.jar()`, `BlocksTC.voidJar()`) instead of the id strings `thaumcraft:jar` and
+  `thaumcraft:jar_void`; still only items that hold essentia (`IEssentiaContainerItem`), so the crystal and the node in a jar are no jars for it
+  (GameTest `theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia`).
+- **The infused soul aspects glint by their item's default component** `minecraft:enchantment_glint_override` (as vanilla's enchanted golden
+  apple), not by an `isFoil` override: the form is an item of its own, so the glint is a constant of the item. A saved stack does not carry the
+  default; a stack may switch it off (GameTest `theInfusedSoulAspectsGlintByTheirItemsDefaultComponent`).
+- **Unused 1.7.10 constants deleted:** `LibResources.PREFIX_LANG`, `EMTPY_TEXTURE`, `NEI_RECIPE_ARROW`, the model texture paths of the
+  magnets, the repairer, the Ichor cap and rod and the armour layers (1.21.1 armour textures come from `ArmorMaterial.Layer`), and the icons of
+  Potency, Frugal and Treasure (no such enchantments in the table); `LibBlockNames.*_SLAB_FULL` (1.21.1 slabs have `type=double`),
+  `LibItemNames.KAMI_RESOURCE` (the metadata item) and `SWORD` (`mob_sword`). The textures stay in the assets. `tt_oracle/provenance.json`, which
+  records the hashes of the two `Lib*Names` files, was regenerated with `scripts/porting/tt_oracle.py`; the research and recipe tables of the oracle
+  did not change. (`LibResources.MODEL_RELAY_TEXTURE` stays while `RenderTileRelay` exists; `LibBlockNames.CAMO` is named by no code either, its
+  value is the id of the camouflage block entity, which `SimpleBlocks` spells out; both left for their owners.)

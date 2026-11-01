@@ -17,10 +17,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Player;
@@ -88,11 +86,10 @@ public class TileFunnel extends BlockEntity implements WorldlyContainer, IAspect
 
     // ---- jars -----------------------------------------------------------------------------------------------
 
-    /** The jar items of Thaumcraft: the ordinary and the void jar, filled or not. */
+    /** The jar items of Thaumcraft: the ordinary and the void jar, filled or not (the items of {@link BlocksTC#jar()} and {@link BlocksTC#voidJar()}). */
     public static boolean isJarItem(ItemStack stack) {
         if (stack.isEmpty() || !(stack.getItem() instanceof IEssentiaContainerItem)) return false;
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return "thaumcraft".equals(id.getNamespace()) && (id.getPath().equals("jar") || id.getPath().equals("jar_void"));
+        return stack.is(BlocksTC.jar().asItem()) || stack.is(BlocksTC.voidJar().asItem());
     }
 
     /**

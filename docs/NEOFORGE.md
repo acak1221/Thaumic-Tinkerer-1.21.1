@@ -268,7 +268,7 @@ differed from Fabric:
   message is a `ClientSystemMessageEvent`. The add-on itself listens to neither; the harness's `/ttmp` answers are heard through both.
 * **`NetworkManager.canPlayerReceive` needs both sides on NeoForge.** On the second server (Kami off) the three Kami payloads are not registered on the
   server, and NeoForge then answers false for a client that has them; Fabric answers from the client's announcement alone. The census expects only
-  `config_sync` there.
+  `config_sync` there (since 2026-11-01 nothing: `config_sync` is a configuration payload of the add-on's handshake task, `NeoForgeConfigurationTask`).
 * **The registry sync's message** for a client without Kami on a server with Kami: NeoForge's "The server send registries with unknown keys: ..." with the
   50 keys (`neoforge.network.registries.sync.server-with-unknown-keys`), where Fabric says "Received 50 registry entries that are unknown to this client".
 

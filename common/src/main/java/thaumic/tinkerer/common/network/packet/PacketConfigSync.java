@@ -13,7 +13,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -22,15 +21,17 @@ import thaumic.tinkerer.common.core.handler.ConfigSync;
 import thaumic.tinkerer.common.lib.LibMisc;
 
 /**
- * Server to client, once on join ({@link ConfigSync}): the server's values of the options a client evaluates as well
- * ({@link ConfigHandler.Shared}) and of the options that decide what is registered ({@link ConfigHandler#registrationOptions()},
- * by {@code section/key}). The client keeps the first as its copy of the server's and compares the second with its own; the
- * client handler is registered by the client registration ({@code ConfigSyncClient}).
+ * Server to client, in the configuration phase of the connection ({@link ConfigSync}): the server's values of the options a client
+ * evaluates as well ({@link ConfigHandler.Shared}) and of the options that decide what is registered
+ * ({@link ConfigHandler#registrationOptions()}, by {@code section/key}). The client keeps the first as its copy of the server's and
+ * answers with its own registration options ({@link PacketConfigSyncReply}), which the server compares with these. The payload is
+ * registered for the configuration phase by the loader glue ({@code FabricConfigurationTask}, {@code NeoForgeConfigurationTask}), so
+ * its codec needs no registry access.
  */
 public record PacketConfigSync(boolean enableFlight, List<String> dislocationBlacklist, List<String> forbiddenDimensions,
         boolean cropsAllowBonemeal, Map<String, Boolean> registration) implements CustomPacketPayload {
     public static final Type<PacketConfigSync> TYPE = new Type<>(LibMisc.id("config_sync"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, PacketConfigSync> CODEC = StreamCodec.composite(
+    public static final StreamCodec<ByteBuf, PacketConfigSync> CODEC = StreamCodec.composite(
             ByteBufCodecs.BOOL, PacketConfigSync::enableFlight,
             ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), PacketConfigSync::dislocationBlacklist,
             ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), PacketConfigSync::forbiddenDimensions,

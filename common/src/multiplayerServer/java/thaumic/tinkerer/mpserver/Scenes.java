@@ -187,12 +187,20 @@ final class Scenes {
         EXPECTED = List.copyOf(expected);
     }
 
-    /** Every server-to-client payload type of the add-on. */
-    static final List<CustomPacketPayload.Type<?>> S2C = List.of(PacketConfigSync.TYPE, PacketSoulHearts.TYPE, PacketArmorStatus.TYPE,
+    /**
+     * Every server-to-client payload type of the add-on in the play phase. The config payload ({@code PacketConfigSync}) belongs to the
+     * configuration phase; whether a client got it is told by {@link #answered}.
+     */
+    static final List<CustomPacketPayload.Type<?>> S2C = List.of(PacketSoulHearts.TYPE, PacketArmorStatus.TYPE,
             PacketShadowBeam.TYPE);
 
     private static final Map<String, Map<String, Object>> BASELINES = new HashMap<>();
     private static final Map<String, Long> JOINED_AT = new HashMap<>();
+    /** The answers of the config handshake ({@code ConfigSync.ANSWERED}) by player name: the client's options and those that differed. */
+    private static final Map<String, Map<String, Boolean>> ANSWERED_OPTIONS = new HashMap<>();
+    private static final Map<String, List<String>> ANSWERED_MISMATCHES = new HashMap<>();
+    /** Every player that got into the game ({@code PLAYER_JOIN}). */
+    private static final java.util.Set<String> EVER_JOINED = new java.util.HashSet<>();
     private static boolean peerReady;
 
     private Scenes() {}
@@ -290,10 +298,56 @@ final class Scenes {
 
     // ---- players ---------------------------------------------------------------------------------------------------
 
+    /**
+     * {@code ConfigSync.ANSWERED}: a client answered the config handshake, in the configuration phase of its connection, before it is
+     * let in or refused (and so before {@link #joined}).
+     */
+    static void answered(String name, Map<String, Boolean> clientOptions, List<String> mismatches, ServerReport report) {
+        ANSWERED_OPTIONS.put(name, new LinkedHashMap<>(clientOptions));
+        ANSWERED_MISMATCHES.put(name, List.copyOf(mismatches));
+        report.event("config_handshake", name, "the client's registration options " + clientOptions + "; differing from this server's: " + mismatches);
+        String stage = switch (name) {
+            case MISMATCH -> "join_mismatch";
+            case KAMI_ON -> "join_kami_on";
+            default -> "";
+        };
+        if (!stage.isEmpty()) {
+            report.check(stage, "answered_the_config_handshake", true, name + " got this server's config in the configuration phase and answered"
+                    + " with its own registration options " + clientOptions + "; differing: " + mismatches);
+        }
+        if (name.equals(MISMATCH_KAMI)) {
+            report.info("mismatch_kami", "answered_the_config_handshake", MISMATCH_KAMI + " reached the add-on's task (the loader's registry sync"
+                    + " let it through): differing " + mismatches);
+        }
+    }
+
+    /**
+     * At the end: a client whose registration options differ is refused in the configuration phase. Its answer named exactly the one
+     * option its file changes, and it never got into the game.
+     */
+    static void refusals(ServerReport report) {
+        record Refused(String scenario, String player, String option, boolean serverValue) {}
+        List<Refused> refused = variant.equals("kami-off") ? List.of(new Refused("kami_on", KAMI_ON, "kami/kami.forceenabled", false))
+                : List.of(new Refused("mismatch", MISMATCH, "general/imbuedFire.enabled", true));
+        for (Refused r : refused) {
+            List<String> mismatches = ANSWERED_MISMATCHES.get(r.player());
+            Map<String, Boolean> options = ANSWERED_OPTIONS.get(r.player());
+            boolean named = mismatches != null && mismatches.equals(List.of(r.option())) && options != null
+                    && Boolean.valueOf(!r.serverValue()).equals(options.get(r.option()));
+            boolean outside = !EVER_JOINED.contains(r.player());
+            report.check(r.scenario(), "refused_in_the_configuration_phase", named && outside, r.player() + " answered "
+                    + (options == null ? "nothing (it never reached the add-on's task)" : options + ", differing " + mismatches)
+                    + "; this server has " + r.option() + "=" + r.serverValue() + "; it got into the game: " + !outside
+                    + " (the server refuses it before the game; its own report has the message it showed)");
+        }
+    }
+
     static void joined(ServerPlayer player, ServerReport report) {
         MinecraftServer server = player.server;
         String name = player.getGameProfile().getName();
-        boolean receives = NetworkManager.canPlayerReceive(player, PacketConfigSync.TYPE);
+        EVER_JOINED.add(name);
+        // The config payload belongs to the configuration phase now: the client got it and answered with equal options before it joined.
+        boolean receives = ANSWERED_MISMATCHES.containsKey(name) && ANSWERED_MISMATCHES.get(name).isEmpty();
         boolean socket = player.connection.getRemoteAddress() instanceof InetSocketAddress;
         boolean op = server.getPlayerList().isOp(player.getGameProfile());
         report.event("join", name, "address=" + player.connection.getRemoteAddress() + " operator=" + op + " permission="
@@ -312,12 +366,13 @@ final class Scenes {
             return;
         }
         report.check("join_" + role, "real_connection_and_config_sync", socket && receives && !op,
-                name + " joined over " + player.connection.getRemoteAddress() + "; the client registered the config payload ("
-                        + PacketConfigSync.TYPE.id() + "): " + receives + "; operator: " + op);
+                name + " joined over " + player.connection.getRemoteAddress() + "; in the configuration phase its client got the config ("
+                        + PacketConfigSync.TYPE.id() + ") and answered with equal registration options: " + receives + " ("
+                        + ANSWERED_OPTIONS.get(name) + "); operator: " + op);
         // The add-on's server-to-client payloads: this player's client (a JVM of its own) registered a receiver for each. The Kami ones
         // exist only while kami.forceenabled is on (KamiGear and KamiWorld register nothing otherwise), and NeoForge counts a channel
-        // only when both sides have it; so on the second server (Kami off) only the config payload is expected.
-        List<CustomPacketPayload.Type<?>> expected = ConfigHandler.enableKami ? S2C : List.of(PacketConfigSync.TYPE);
+        // only when both sides have it; so on the second server (Kami off) none is expected.
+        List<CustomPacketPayload.Type<?>> expected = ConfigHandler.enableKami ? S2C : List.of();
         List<String> missing = new ArrayList<>();
         for (CustomPacketPayload.Type<?> type : expected) if (!NetworkManager.canPlayerReceive(player, type)) missing.add(type.id().toString());
         report.check("join_" + role, "client_receives_every_addon_payload", missing.isEmpty(), expected.size()
@@ -366,17 +421,10 @@ final class Scenes {
         Long joined = JOINED_AT.remove(name);
         long millis = joined == null ? -1 : (System.nanoTime() - joined) / 1_000_000L;
         report.event("leave", name, "after " + millis + " ms");
-        if (name.equals(MISMATCH_KAMI)) {
-            report.info("mismatch_kami", "joined_and_left", MISMATCH_KAMI + " got into the game and left " + millis + " ms later");
-        }
-        if (name.equals(KAMI_ON)) {
-            report.check("kami_on", "the_client_with_kami_on_left", joined != null && millis < 120_000L, KAMI_ON + " (kami.forceenabled=true"
-                    + " in its own file; this server has false) left " + millis + " ms after joining; its own report has the message it showed");
-        }
-        if (name.equals(MISMATCH)) {
-            report.check("mismatch", "the_client_with_other_registration_options_left", joined != null && millis < 120_000L,
-                    MISMATCH + " left " + millis + " ms after joining (the client leaves by itself when the registration options differ;"
-                            + " its own report has the message it showed)");
+        if (name.equals(MISMATCH_KAMI) || name.equals(KAMI_ON) || name.equals(MISMATCH)) {
+            // refused in the configuration phase (refusals at the end), so it never gets this far
+            report.check(name.equals(MISMATCH) ? "mismatch" : name.equals(KAMI_ON) ? "kami_on" : "mismatch_kami", "never_in_the_game", false,
+                    name + " got into the game and left " + millis + " ms later; it should have been refused before the game");
         }
     }
 
@@ -673,6 +721,7 @@ final class Scenes {
 
     /** At SERVER_STOPPING: every scenario has a result. */
     static void finish(ServerReport report) {
+        refusals(report);
         List<String> expected = variant.equals("kami-off") ? EXPECTED_KAMI_OFF : EXPECTED;
         List<String> missing = expected.stream().filter(s -> !report.has(s)).toList();
         report.check("end", "every_scenario_has_a_server_result", missing.isEmpty(), missing.isEmpty() ? expected.size()

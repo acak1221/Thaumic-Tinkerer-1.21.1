@@ -2,7 +2,7 @@
 
 Everything else that checks the add-on runs in one JVM: the GameTests on a dedicated GameTest server with mock players (no network),
 the client smoke with an integrated server (packets in memory, one payload registry for both sides). What only a real network shows was
-not verified: that a physical client receives the server's config and uses it, that the spawn protection of a real dedicated server holds
+not verified: that a physical client receives the server's config (since 2026-11-01 in the configuration phase of the connection) and uses it, that the spawn protection of a real dedicated server holds
 for the add-on's tools (vanilla answers `isUnderSpawnProtection` with false on any other server), that the add-on's packets and its
 block-entity updates cross a real connection, and that a second player sees what the first one changed. The **multiplayer check** does
 exactly that: real dedicated servers and five real clients, each in its own JVM, talking over the loopback socket, on **both loaders**.
@@ -105,14 +105,14 @@ waits until the second player has left.
 
 | | Scenario | Who | What must happen |
 |---|---|---|---|
-| a | `config_sync` | lead, peer | `PacketConfigSync` arrives; `ConfigHandler.flightEnabled(client level)` is false although the client's own file says true (`flightEnabled(null)` true); `dislocationBlacklist(client level)` contains `minecraft:gold_block`, the client's own list is empty; the client stays connected (equal registration options) |
+| a | `config_sync` | lead, peer | `PacketConfigSync` arrived in the configuration phase, before the client had a world (the add-on's configuration task, since 2026-11-01; before, the same payload came on join); `ConfigHandler.flightEnabled(client level)` is false although the client's own file says true (`flightEnabled(null)` true); `dislocationBlacklist(client level)` contains `minecraft:gold_block`, the client's own list is empty; the client stays connected (equal registration options). On the server, `real_connection_and_config_sync` of each join: the client answered the handshake (`PacketConfigSyncReply`, recorded through `ConfigSync.ANSWERED`) with registration options equal to the server's before it joined |
 | a | `flight` | lead | the Focus of Uprising cast into the open sky: the client neither pays vis nor lifts its own player (fastest motion < 0.3 block/tick; a cast gives 0.667), the server pays nothing |
 | a | `dislocation_blacklisted` | lead | the Focus of Dislocation on a gold block **outside** the spawn radius: the client does not even predict the payment (it knows the server's blacklist), the server takes nothing |
 | a | `disconnect` | lead, peer | after leaving, `ConfigHandler.fromServer()` is null and the side-aware accessors answer with the client's own file again |
-| a | payload census | all | the server receives every client-to-server payload of the add-on (7, checked on the lead and the peer with `NetworkManager.canServerReceive`), every client receives every server-to-client payload (4, checked on the server with `canPlayerReceive` for each client that joins): each side is a separate JVM with its own payload registry. The three Kami payloads (`soul_hearts`, `armor_status`, `shadow_beam`) exist only with `kami.forceenabled` on, so on the second server only `config_sync` is expected (NeoForge counts a channel only when both sides have it; Fabric only asks the client) |
-| b | `mismatch` | `TTMismatch` | its own file has `imbuedFire.enabled=false` (the server true): it joins, leaves by itself, and its disconnect screen shows the translated `thaumictinkerer.config.mismatch` naming `general/imbuedFire.enabled (server: true, yours: false)` (picture `mismatch-disconnected.png`); the server sees it leave within 120 s |
-| b | `mismatch-kami` | `TTMismatchKami` | its own file has `kami.forceenabled=false` (the server true): without Kami it registers none of the Kami items and blocks, so the loader's registry sync, which runs in the configuration phase before the add-on's payload can arrive, must refuse it; it must not get into the game; the message is recorded as it is (picture `mismatch-kami-disconnected.png`) |
-| b | `kami-on` | `TTKamiOn` on the second server | its own file has `kami.forceenabled=true`, the server false: the client has more registry entries than the server; it must get into the game, then leave by itself with the add-on's message naming `kami/kami.forceenabled (server: false, yours: true)` (picture `kami-on-disconnected.png`); the second server sees it leave within 120 s |
+| a | payload census | all | the server receives every client-to-server payload of the add-on (7, checked on the lead and the peer with `NetworkManager.canServerReceive`), every client receives every server-to-client payload of the play phase (3, checked on the server with `canPlayerReceive` for each client that joins): each side is a separate JVM with its own payload registry. The three Kami payloads (`soul_hearts`, `armor_status`, `shadow_beam`) exist only with `kami.forceenabled` on, so on the second server none is expected (NeoForge counts a channel only when both sides have it; Fabric only asks the client). The config payload and its answer are configuration payloads since 2026-11-01; that a client had them is the handshake's own check (scenario `config_sync`) |
+| b | `mismatch` | `TTMismatch` | its own file has `imbuedFire.enabled=false` (the server true): in the configuration phase it gets the server's config and answers with its own options; the server must refuse it before it gets into the game, and its disconnect screen shows the translated `thaumictinkerer.config.mismatch` naming `general/imbuedFire.enabled (server: true, yours: false)` (picture `mismatch-disconnected.png`). The server's report has its answer (`join_mismatch`) and the refusal (`mismatch`: the answer named exactly that option, the client's value false, and the player never joined) |
+| b | `mismatch-kami` | `TTMismatchKami` | its own file has `kami.forceenabled=false` (the server true): without Kami it registers none of the Kami items and blocks, so the loader's registry sync, which runs in the configuration phase before the add-on's task (on both loaders), must refuse it; it must not get into the game; the message is recorded as it is (picture `mismatch-kami-disconnected.png`) |
+| b | `kami-on` | `TTKamiOn` on the second server | its own file has `kami.forceenabled=true`, the server false: the client has more registry entries than the server, which the loader's registry sync lets through; the add-on's task must then refuse it before it gets into the game with the add-on's message naming `kami/kami.forceenabled (server: false, yours: true)` (picture `kami-on-disconnected.png`); the second server's report has its answer (`join_kami_on`) and the refusal (`kami_on`) |
 | c | `spawn_protection` | server | `isUnderSpawnProtection` is true for the lead at (6, −59, 6) and x = 16, false at (30, −59, 6) and x = 17 |
 | c | `dislocation_inside` / `_outside` | lead | inside: the stone stays, no vis is paid on the server, and the client's copy of the wand shows the server's vis (the client cannot know the spawn protection: `ClientLevel.mayInteract` is always true, so it goes through the cast; the harness also records every vis its wand showed in the 40 ticks after the click, to see a predicted payment); outside: the stone is taken, Perditio, Ordo and Terra are paid, the focus carries the stone on both sides |
 | c | `dislocation_place_inside` / `_outside` | lead | the stone the focus took is put down against the stone inside the radius: refused, the focus keeps it; then on the cobblestone outside, where it came from: placed, the focus is empty; the client shows the same block and the same focus |
@@ -321,6 +321,49 @@ What the lines say, the same on both loaders unless noted (numbers from the Fabr
   slot 0 changed nothing and sent nothing and the server took every cast of its Focus of Dislocation for a click with an empty hand (found with a
   record of the right clicks that reach the server; the harness now sends `ClientboundSetCarriedItemPacket`); the refusal message was compared with
   a translation made before the client had loaded its languages; the Kami-off server must not build the Kami scenes.
+
+
+### Third part: the config handshake in the configuration phase (2026-11-01, branch `modernize-c`)
+
+The config sync moved from the play phase (sent on `PLAYER_JOIN`, the client left by itself) into a configuration task of the connection
+(`ConfigSync`; `DEVIATIONS.md` section 1): the server sends `PacketConfigSync` before the client has a world, the client answers with its
+registration options (`PacketConfigSyncReply`), the server refuses a mismatch with the add-on's message. The scenarios were adapted to the phase,
+nothing else: `config_sync` on the clients is unchanged (the copy must be there once the client is in the world); on the server
+`real_connection_and_config_sync` asks whether the joining client answered the handshake with equal options (the server's harness listens to
+`ConfigSync.ANSWERED`) instead of whether it registered a play channel; the census of server-to-client play payloads has 3 types (the config payload
+is no play payload any more; on the second server none); `mismatch` and `kami-on` must be refused **before** the game (`refused_before_the_game`
+on the client instead of `joined_before_it_left`; on the server `answered_the_config_handshake` and `refused_in_the_configuration_phase` instead of
+the two join checks and the leave check of each, so the server reports have one PASS fewer each). `mismatch-kami` is unchanged.
+
+The runs (2026-11-01, `GRADLE_CMD='<wrapper> {LOG}' tools/multiplayer-smoke.sh [--neoforge] -p 25593 / -p 25594`): both ended
+`BUILD SUCCESSFUL`, exit 0, and `summary.txt` "no problems":
+
+| Report | Fabric | NeoForge |
+|---|---|---|
+| `server-report.json` | COMPLETED, 61 PASS | COMPLETED, 61 PASS |
+| `server-kami-off-report.json` | COMPLETED, 5 PASS | COMPLETED, 5 PASS |
+| `lead/report.json` | COMPLETED, 42 PASS | COMPLETED, 42 PASS |
+| `peer/report.json` | COMPLETED, 23 PASS, 1 INFO | COMPLETED, 23 PASS, 1 INFO |
+| `mismatch` / `mismatch-kami` / `kami-on` | COMPLETED, 3 / 2 / 3 PASS | COMPLETED, 3 / 2 / 3 PASS |
+| all seven reports | **139 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN** | **139 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN** |
+| the Gradle task | 5 min 38 s | 5 min 40 s |
+| pictures | 16 | 16 |
+
+What the lines say, the same on both loaders:
+
+* **a.** The lead and the second player answered the handshake with `{general/imbuedFire.enabled=true, general/shareTome.survival.enabled=true,
+  kami/kami.forceenabled=true}`, equal to the server's, before they joined; in the world their copy of the server's config was there
+  (`config_sync_arrived`, flight off and the gold block blacklisted although their files say otherwise) and was cleared when they left. Every other
+  scenario of the first and second part passed as before (the add-on's play payloads are untouched).
+* **b.** `TTMismatch` answered with `imbuedFire.enabled=false` and was refused in the configuration phase: it never entered the game
+  (`CLIENT_PLAYER_JOIN` was not posted), its screen "Connection Lost" showed `thaumictinkerer.config.mismatch`, rendered "This server's Thaumic
+  Tinkerer config differs from yours ...: general/imbuedFire.enabled (server: true, yours: false). ...", the same text as before, now built by the
+  server and translated by the client. `TTKamiOn` on the second server: the loader's registry sync let it through (it has more entries than the
+  server), the add-on's task refused it with `kami/kami.forceenabled (server: false, yours: true)`. `TTMismatchKami` was refused by the loader's
+  registry sync before the add-on's task, as before (Fabric "Received 50 registry entries that are unknown to this client ...", NeoForge
+  `neoforge.network.registries.sync.server-with-unknown-keys`); it never reached the add-on's task (no answer in the server's report).
+* **Not run:** a client without the add-on (it gets no task: both glues add it only when the client has the channel, read in the code and covered by
+  `ConfigHandlerTest.bothLoadersInstallTheHandshake` only as wiring), a client of an earlier version of the add-on, and a client that never answers.
 
 ## Wiring
 

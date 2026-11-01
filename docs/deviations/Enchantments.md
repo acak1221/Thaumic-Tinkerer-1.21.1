@@ -470,3 +470,25 @@ not run with such an entity).
 
 The group also keeps three Architectury listeners that exist on both loaders: `BlockEvent.BREAK` (Tunnel's remembered direction,
 the wear of Disintegrate and Flaming Touch) and `TickEvent.PLAYER_PRE` (the motion and cloud of Slow Fall on the local client).
+
+## 14. 1.21.1 technique instead of 1.7.10 leftovers (2026-11-01)
+
+The modernization of the group (`docs/AUDIT.md`, "Modernization (packages C and D)"). Gameplay is the original's except for the second point,
+which only reaches modded shears.
+
+- **The Enchanter's packet carries a registry key.** `PacketEnchanterAddEnchant` held a bare `ResourceLocation` that the server turned into a key;
+  it holds the `ResourceKey<Enchantment>` now (`ResourceKey.streamCodec(Registries.ENCHANTMENT)`). On the wire that is still the id, so the bytes
+  are the same and a key the server does not know arrives as one and is refused by the server's check (`EnchantmentManager.isKnown`), not by the
+  decoder (JUnit `onTheWireTheEnchantmentIsItsIdAsBefore`).
+- **Shears are also the items of the convention tag `#c:tools/shear` (choice).** Section 5 keeps Efficiency, Fortune and Silk Touch off hoes and
+  shears because 1.7.10's "digger" type was `ItemTool`. A hoe was and is `#minecraft:hoes` or a `HoeItem`; shears were only a `ShearsItem`, so a
+  modded tool that shears without extending `ShearsItem` took them. Both loaders fill `#c:tools/shear` (Fabric `ConventionalItemTags.SHEAR_TOOLS`,
+  NeoForge `Tags.Items.TOOLS_SHEAR`; the vanilla shears are in it), and an item listed there is shears for the rule now, the class test stays for
+  modded `ShearsItem`s that the tag does not list. In 1.7.10 such a tool was no `ItemTool` either, so this is the original's rule for one more kind of
+  item (GameTest `anItemOfTheConventionShearsTagIsShearsForTheDiggingEnchantments`, which lists a diamond pickaxe in the tag for one moment).
+- **The placed Nitor by its native id.** The pillars are found with `BlocksTC.get("nitor")` (1.7.10 `blockAiry:1`). The Obsidian Totem is still
+  `BlocksTC.state("blockCosmeticSolid", 0)`: it is `cosmetic_solid_tough[variant=0]`, a state the API has no name for yet
+  (`api-requests/Enchantments.md` section 7). The Osmotic Enchanter's recipe names `obsidian_tile` and `thaumium_ingot`.
+- **One copy of the fourteen keys.** `LibEnchantIDs` held the keys a second time under the 1.7.10 names of the numeric ids (`idAscentBoost`, ...),
+  and `ModEnchantments` copied them; `ModEnchantments` makes them itself now (`LibEnchantIDs.key(LibEnchantNames...)`), `LibEnchantIDs` keeps only
+  `key` (JUnit `theFourteenKeysAreThoseOfTheRegistryPathsOfTheEnchantments`).

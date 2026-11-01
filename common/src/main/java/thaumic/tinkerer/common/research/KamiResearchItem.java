@@ -30,11 +30,11 @@ import thaumic.tinkerer.common.lib.LibResearch;
  * entries after all others, so the requirement list is the same on every start.</p>
  */
 public class KamiResearchItem extends TTResearchItem {
-    public static List<String> Blacklist = new ArrayList<>();
-
-    static {
-        Blacklist.add("MINILITH");
-    }
+    /**
+     * Keys that start with one of these are never a requirement (1.7.10 {@code Blacklist}, a public list filled in a static
+     * block that nothing else added to).
+     */
+    private static final List<String> BLACKLIST = List.of("MINILITH");
 
     public KamiResearchItem(String key, AspectList tags, int column, int row, int complexity, ItemStack icon) {
         super(key, tags, column, row, complexity, icon);
@@ -57,7 +57,7 @@ public class KamiResearchItem extends TTResearchItem {
                             || research.category.equals("ARTIFICE") || research.category.equals("ALCHEMY")
                             || research.category.equals("THAUMATURGY")) {
                         boolean found = false;
-                        for (String black : Blacklist) {
+                        for (String black : BLACKLIST) {
                             if (tag.startsWith(black)) found = true;
                         }
                         if (tag.endsWith("KAMI")) found = true;

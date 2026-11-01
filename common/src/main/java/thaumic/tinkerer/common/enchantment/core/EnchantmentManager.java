@@ -26,11 +26,14 @@ import java.util.Set;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.HoeItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShearsItem;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -59,6 +62,12 @@ import thaumic.tinkerer.common.lib.LibResearch;
  * numbers per aspect.</p>
  */
 public final class EnchantmentManager {
+
+    /**
+     * {@code #c:tools/shear}: the shears of the convention tags (Fabric {@code ConventionalItemTags.SHEAR_TOOLS}, NeoForge
+     * {@code Tags.Items.TOOLS_SHEAR}; common code names it by its id).
+     */
+    public static final TagKey<Item> SHEARS = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "tools/shear"));
 
     /** One row of the table: everything that does not depend on the level. */
     public record Entry(String texture, boolean vanilla, AspectList level1Aspects, String research) {}
@@ -271,12 +280,15 @@ public final class EnchantmentManager {
      * Stream, Vampirism on the Cursed Spirit's Blade, Shockwave and Slow Fall on the gem boots of the Kami armor. (The
      * tags of the data leave these items out already; this keeps the rule when another data pack adds them.) Also
      * Efficiency, Fortune and Silk Touch on hoes and shears: the 1.7.10 type "digger" was {@code ItemTool}, which neither
-     * a hoe nor the shears were, while the 1.21.1 tags of these three enchantments list both.
+     * a hoe nor the shears were, while the 1.21.1 tags of these three enchantments list both. A hoe is an item of
+     * {@code #minecraft:hoes} or a {@link HoeItem}; shears are an item of the convention tag {@link #SHEARS}
+     * ({@code #c:tools/shear}, which both loaders fill) or a {@link ShearsItem} (modded shears that the tag does not list).
      */
     public static boolean allowsItem(ResourceKey<Enchantment> enchantment, ItemStack stack) {
         if (enchantment.equals(Enchantments.EFFICIENCY) || enchantment.equals(Enchantments.FORTUNE)
                 || enchantment.equals(Enchantments.SILK_TOUCH)) {
-            return !(stack.getItem() instanceof HoeItem || stack.is(ItemTags.HOES) || stack.getItem() instanceof ShearsItem);
+            return !(stack.is(ItemTags.HOES) || stack.getItem() instanceof HoeItem || stack.is(SHEARS)
+                    || stack.getItem() instanceof ShearsItem);
         }
         ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (enchantment.equals(ModEnchantments.autoSmelt)) {

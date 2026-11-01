@@ -81,3 +81,34 @@ the game's own seed changes nothing (the same cells), so it is not a defect and 
   feature in a world with mods that add features to every biome (the test runs had none: the biome's steps held only the clusters) and in
   a world made before the change (reasoned, not tried: its generated chunks keep their ores, chunks generated afterwards get the
   feature's positions); the Bedrock dimension in a client.
+
+## Modernization (packages C and D, 2026-11-01, branch `modernize-c`)
+
+1.7.10 technique replaced by the 1.21.1 one, gameplay kept (the read-only audit of that day, its package C: machines, enchantments, core
+constants; package D: the config handshake). Details in `deviations/Machines.md` section 13 and `deviations/Enchantments.md` section 14.
+
+| Finding | Was | Now | Test |
+|---|---|---|---|
+| Thaumcraft content by 1.7.10 field + metadata (machines and enchantments) | `ItemApi.getItem("itemResource", 2)`, `BlocksTC.state("blockAiry", 1)` | native ids: `ItemsTC.stack("thaumium_ingot")`, `BlocksTC.get("nitor")`, … (the Obsidian Totem stays `BlocksTC.state("blockCosmeticSolid", 0)`: `cosmetic_solid_tough[variant=0]` has no name in the API, `api-requests/Enchantments.md` section 7) | the recipe parity GameTests; the Enchanter's pillar GameTests |
+| The Corporeal Attractor's wand sound | a new, unregistered `SoundEvent` of `thaumcraft:key` per click | `ThaumcraftSoundIds.event(KEY)`, the registered event | `aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound` (reads the sound packet) |
+| The Funnel's jar identity | registry id strings `thaumcraft:jar` / `jar_void` | `stack.is(BlocksTC.jar().asItem())` / `voidJar()` | `theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia` |
+| The Enchanter's packet | a bare `ResourceLocation` | `ResourceKey<Enchantment>` (`ResourceKey.streamCodec`; the same bytes) | `onTheWireTheEnchantmentIsItsIdAsBefore` |
+| Shears in the Enchanter's digger rule | `instanceof ShearsItem` only | also `#c:tools/shear` (both loaders fill it) | `anItemOfTheConventionShearsTagIsShearsForTheDiggingEnchantments` |
+| The infused soul aspect's glint | `isFoil` override | the item's default `enchantment_glint_override` | `theInfusedSoulAspectsGlintByTheirItemsDefaultComponent` |
+| The attractor rings' clock | `System.currentTimeMillis() / 500F` (float: the rings jumped every 131 s instead of bobbing, in 1.7.10 too) | game time + partial tick in double | visual only, client smoke |
+| Unused constants | `LibResources` (lang prefix, empty texture, NEI arrow, model paths, armour layers, three enchantment icons), `LibBlockNames.*_SLAB_FULL`, `LibItemNames.KAMI_RESOURCE`, `SWORD` | deleted; `tt_oracle/provenance.json` regenerated (the oracle's tables unchanged) | compile, the parity tests |
+| Duplicated enchantment keys | `LibEnchantIDs.idAscentBoost` … and copies in `ModEnchantments` | one set in `ModEnchantments` | `theFourteenKeysAreThoseOfTheRegistryPathsOfTheEnchantments` |
+| `KamiResearchItem.Blacklist` | a public mutable list filled in a static block | `private static final List.of("MINILITH")` | the Kami parity check |
+| Config sync in the play phase (package D) | `PacketConfigSync` on `PLAYER_JOIN`; until it arrived the client used its own file, and a client whose registration options differed disconnected itself after the world had loaded | a configuration task (`ConfigSync`; Fabric `ServerConfigurationConnectionEvents.CONFIGURE` + configuration networking, `FabricConfigurationTask`/`FabricConfigurationTaskClient`; NeoForge `RegisterConfigurationTasksEvent` + configuration payloads, `NeoForgeConfigurationTask`): the server sends its values before the client has a world, the client answers with its registration options (`PacketConfigSyncReply`), the server refuses a mismatch with the add-on's message. The same options are synced, the same mismatches refused, the same translated message; a client without the add-on gets no task; the loaders' registry sync still comes first (`DEVIATIONS.md` section 1) | `ConfigHandlerTest` (the answer, the refusal and its arguments, the reply codec and its bound, the wiring); the multiplayer check on both loaders (below) |
+
+Verified (2026-11-01, worktree of `modernize-c` at the commit with package D, one run of each): `check runTinkererGameTest :neoforge:runGameTest
+assemble :neoforge:assemble --continue` `BUILD SUCCESSFUL`: JUnit 436 tests, 0 failures; Fabric "All 366 required tests passed"; NeoForge "All 375
+required tests passed". Client smoke: Fabric 714 PASS, NeoForge 719 PASS, 0 FAIL, 0 HARNESS_ERROR, 1 NOT_RUN, 80 pictures each (sixteen checks fewer
+than before: those of the deleted `LibResources` constants, `CLIENT_VERIFICATION.md`). Multiplayer check: 139 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN on
+each loader, the refusals now in the configuration phase (`MULTIPLAYER_VERIFICATION.md`, third part). Earlier focused runs: the Machines, Enchantments
+and Core GameTests, "All 97 required tests passed" on both loaders.
+
+Not verified: that each new GameTest fails against the code it replaces (reasoned for the sound packet, the glint component and the shears tag, not run);
+the attractor rings' animation by eye; a client without the add-on, a client of an earlier version and a client that never answers the handshake (no
+such client in the multiplayer check); the optional finding T3 (wooden blocks by `SoundType` in `ModEnchantmentHandler`) was left as it is (it would
+change which modded blocks count).

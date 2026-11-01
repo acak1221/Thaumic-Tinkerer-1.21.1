@@ -35,9 +35,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.TileFunnel;
 import thaumic.tinkerer.common.content.Machines;
@@ -173,6 +173,6 @@ public class BlockFunnel extends BaseEntityBlock implements ITTinkererRegisterab
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_FUNNEL, LibResearch.KEY_FUNNEL, new ItemStack(this),
                 new AspectList().add(Aspect.ORDER, 1).add(Aspect.ENTROPY, 1), "STS", 'S',
-                new ItemStack(net.minecraft.world.item.Items.STONE), 'T', ItemApi.getItem("itemResource", 2));
+                new ItemStack(net.minecraft.world.item.Items.STONE), 'T', ItemsTC.stack("thaumium_ingot"));
     }
 }

@@ -12,10 +12,11 @@ Priorities are the group's own opinion (P1 changes what the player sees, P3 only
 offer; (b) recognise the jar block the hopper points at; (c) know whether the item jar is "filled" in the sense of 1.7.10
 `ItemJarFilled` (holds essentia, or is empty but labelled, i.e. does not stack).
 
-**What the add-on does today.** (a) `TileFunnel.isJarItem`: the item implements `IEssentiaContainerItem` and its registry
-id is `thaumcraft:jar` or `thaumcraft:jar_void`; (b) `state.is(BlocksTC.jar()) || state.is(BlocksTC.voidJar())` and the
+**What the add-on does today.** (a) `TileFunnel.isJarItem`: the item implements `IEssentiaContainerItem` and is the item of
+`BlocksTC.jar()` or `BlocksTC.voidJar()` (since 2026-11-01; before, its registry id was compared with `thaumcraft:jar` and
+`thaumcraft:jar_void`); (b) `state.is(BlocksTC.jar()) || state.is(BlocksTC.voidJar())` and the
 block entity as `IAspectContainer`; (c) contents through `IEssentiaContainerItem.getAspects`, label through
-`getMaxStackSize() == 1`. This works but depends on two id strings and on a stack size that happens to encode the label.
+`getMaxStackSize() == 1`. This works but depends on a stack size that happens to encode the label.
 
 **Proposed.** `BlocksTC.isJarItem(ItemStack)`, `BlocksTC.isVoidJar(ItemStack | BlockState)`,
 `@Nullable Aspect BlocksTC.getJarLabel(ItemStack)` (backed by `ItemJar.isJar/isVoid/getFilter`).

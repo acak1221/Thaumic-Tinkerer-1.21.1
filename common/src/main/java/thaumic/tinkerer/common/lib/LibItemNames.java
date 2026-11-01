@@ -37,7 +37,6 @@ public final class LibItemNames {
     public static final String FOCUS_DEFLECT = "focus_deflect";
     public static final String SHARE_BOOK = "share_book";
 
-    public static final String KAMI_RESOURCE = "kami_resource";
     public static final String ICHOR_HELM = "ichorcloth_helm";
     public static final String ICHOR_CHEST = "ichorcloth_chest";
     public static final String ICHOR_LEGS = "ichorcloth_legs";
@@ -63,7 +62,6 @@ public final class LibItemNames {
     public static final String PROTOCLAY = "protoclay";
     public static final String SKY_PEARL = "sky_pearl";
     public static final String FOCUS_RECALL = "focus_recall";
-    public static final String SWORD = "mob_sword";
     public static final String MOB_ASPECT = "mob_aspect";
     public static final String MOB_DISPLAY = "mob_display";
     /** The eight 1.7.10 metadata values of the Kami resource item are eight items now, in the original order. */

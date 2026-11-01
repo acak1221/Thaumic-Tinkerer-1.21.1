@@ -65,6 +65,9 @@ public final class MultiplayerServer {
             if ("RUNNING".equals(armed.status())) armed.status("COMPLETED", "the server was stopped");
         });
         PlayerEvent.PLAYER_JOIN.register(player -> guarded("join", () -> Scenes.joined(player, armed)));
+        // The config handshake, in the configuration phase of every connection (before PLAYER_JOIN, or instead of it for a refused client).
+        thaumic.tinkerer.common.core.handler.ConfigSync.ANSWERED.register((profile, options, mismatches) -> guarded("config_handshake",
+                () -> Scenes.answered(profile.getName(), options, mismatches, armed)));
         // What reached the server of a player's right clicks (after the protection mods' own listeners, which run first or cancel):
         // a record for the report, never an answer (always pass).
         dev.architectury.event.events.common.InteractionEvent.RIGHT_CLICK_BLOCK.register((player, hand, pos, face) -> {

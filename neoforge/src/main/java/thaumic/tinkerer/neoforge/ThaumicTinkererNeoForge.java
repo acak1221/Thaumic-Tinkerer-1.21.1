@@ -12,6 +12,7 @@ import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.neoforge.client.ThaumicTinkererNeoForgeClient;
 import thaumic.tinkerer.neoforge.hooks.NeoForgeBlockProtection;
+import thaumic.tinkerer.neoforge.hooks.NeoForgeConfigurationTask;
 import thaumic.tinkerer.neoforge.hooks.NeoForgeEventPosters;
 
 /**
@@ -26,6 +27,8 @@ public final class ThaumicTinkererNeoForge {
         // The loader side of BlockProtection: NeoForge's BreakEvent and EntityPlaceEvent (docs/HOOKS.md).
         ThaumicTinkerer.guard("NeoForgeBlockProtection.install", NeoForgeBlockProtection::install);
         NeoForgeCapabilities.register(bus);
+        // The config handshake with the clients, a configuration task (ConfigSync).
+        NeoForgeConfigurationTask.register(bus);
         if (FMLEnvironment.dist == Dist.CLIENT) ThaumicTinkererNeoForgeClient.register(bus);
     }
 }

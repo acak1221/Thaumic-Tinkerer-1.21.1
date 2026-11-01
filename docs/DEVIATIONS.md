@@ -48,18 +48,23 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   the three values were read and written back, never used. A file that is not valid JSON, or not a JSON
   object, is **not** overwritten with the defaults: the defaults hold for that run, an error in the log names the file, and the file is left to be fixed.
 * **Config on a server** (new; the original had no sync, every side read its own `.cfg`, so a client with `modFlight.enabled` on could fly with the
-  Focus of Flight on a server that had it off). On join the server sends its values (`ConfigSync`, `PacketConfigSync`): the options a client evaluates as
+  Focus of Flight on a server that had it off). A **configuration task** of the connection, before the client has a world (`ConfigSync`; since
+  2026-11-01, before that the same exchange ran in the play phase, on join): the server sends its values (`PacketConfigSync`); the options a client evaluates as
   well (`modFlight.enabled`, `focusOfDislocationBlacklist`, `forbiddenDimensions`, `cropsAllowBonemeal.enabled`) are then the server's for the client's own
-  levels wherever the code reads them through the side-aware accessors (`ConfigHandler.flightEnabled(level)` and the others; the Focus of Flight and the Robe
-  of the Stratosphere do); the options that decide what each side registers at start-up
-  (`imbuedFire.enabled`, `shareTome.survival.enabled`, `kami.forceenabled`) cannot change while the game runs, so a client whose own differ leaves the
-  server with a translated message that names them (`thaumictinkerer.config.mismatch`). Client display options (`soulHeart.height`,
-  `placementMirror.blocks.show`) stay the client's. The payload and the comparison are JUnit-tested, and the client side was run with real clients on a
-  real dedicated server on both loaders (`MULTIPLAYER_VERIFICATION.md`): the synced values hold on the client and are cleared when it leaves, and a client with
-  `imbuedFire.enabled=false` leaves with the translated message. For `kami.forceenabled` **the direction matters**: a client that has Kami **off** while the
-  server has it on lacks 50 registry entries of the server, and the loader's registry sync refuses it in the configuration phase, before the game starts and so
-  before the add-on's payload can arrive, with the loader's own message (Fabric: "Received 50 registry entries that are unknown to this client ... thaumictinkerer";
-  NeoForge: "The server send registries with unknown keys: ..." with the 50 keys); the add-on's message appears when the client has Kami **on** and the server off.
+  levels from its first tick on, wherever the code reads them through the side-aware accessors (`ConfigHandler.flightEnabled(level)` and the others; the Focus
+  of Flight and the Robe of the Stratosphere do); the options that decide what each side registers at start-up (`imbuedFire.enabled`,
+  `shareTome.survival.enabled`, `kami.forceenabled`) cannot change while the game runs, so the client answers with its own (`PacketConfigSyncReply`) and the
+  server refuses a client whose own differ, before it gets into the game, with a translated message that names them (`thaumictinkerer.config.mismatch`).
+  Client display options (`soulHeart.height`, `placementMirror.blocks.show`) stay the client's. The task is loader glue (Architectury 13 has no configuration
+  phase): Fabric's `ServerConfigurationConnectionEvents.CONFIGURE` and configuration networking, NeoForge's `RegisterConfigurationTasksEvent` and
+  configuration payloads. A client **without the add-on** gets no task and nothing is sent (it lacks the channel), as before; whether it may play is the loader's
+  matter; so is a client of an earlier version of the add-on, whose sync was a play payload (neither side finds the other's channel, nothing is sent and
+  the client reads its own file). A client that has the channel and never answers waits in the configuration phase, as for any other task, until it gives
+  up. For `kami.forceenabled` **the direction matters**: a client that has Kami **off** while the server has it on lacks 50 registry entries of the server,
+  and the loader's registry sync, which runs before the add-on's task on both loaders, refuses it with the loader's own message (Fabric: "Received 50 registry
+  entries that are unknown to this client ... thaumictinkerer"; NeoForge: "The server send registries with unknown keys: ..." with the 50 keys); the
+  add-on's message appears when the client has Kami **on** and the server off. The payloads, the comparison and the refusal are JUnit-tested, and the
+  handshake was run with real clients on a real dedicated server on both loaders (`MULTIPLAYER_VERIFICATION.md`).
 
 ## 2. Deliberate decisions of the port
 
@@ -99,6 +104,12 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
 * **Licence split.** The port is CC BY-NC-SA 3.0 (`LICENSE`; `NOTICE.md` says which files are under which licence). It has its own repository
   (this one); the Thaumcraft mod stays MIT. The add-on's public-API additions in the mod (for example `IBauble.equipsOnUse`, `IFocusPouch`, `BaublesApi.getWorn`,
   `ThaumcraftApiHelper` scan and discovery helpers, `WarpEffects`) contain no Thaumic Tinkerer code.
+
+* **Modernization of 2026-11-01 (packages C and D; `AUDIT.md`).** Two small visible results of replacing 1.7.10 technique: the lightning rings above
+  the Kinetic and Corporeal Attractors bob on the game's clock (the original's `cos(System.currentTimeMillis() / 500F)` rounded in `float`, so its rings
+  stood still and jumped about every two minutes; `Machines.md` section 13), and the Osmotic Enchanter treats the items of the convention tag
+  `#c:tools/shear` as shears for Efficiency, Fortune and Silk Touch, as it treats a `ShearsItem` (`Enchantments.md` section 14). The config sync became a
+  configuration task (section 1).
 
 ## 3. Behaviour that depends on loader events
 

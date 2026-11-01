@@ -5,13 +5,13 @@
     "commit": "28f4def938e80d7a0b6f433c2b84300dfb7c35ce",
     "license": "CC BY-NC-SA 3.0"
   },
-  "provenance_digest": "78508fec5159721f1912a87f9ce5a4e451e4ea32dd3c002ee0fabbc84097c208",
+  "provenance_digest": "d52b6ca90241720b6deea604bd85068ab46fda4c1cc25de713e5d2af93929bbd",
   "pin": "the source checkout must be at the commit above (git rev-parse HEAD) unless --allow-unpinned",
   "inputs": {
     "Thaumcraft-1.21.1/common/src/main/java/thaumcraft/api/aspects/Aspect.java": "5aada38c48286bbe8cdfae31d8361c12744de0d1f529b3d422d70f15d4c33fa3",
     "Thaumcraft-1.21.1/common/src/main/resources/data/thaumcraft/tc4/legacy_ids.json": "d992b87d88686b55580ccf3b9840d77a421a427bea52d32eef682de1ede61a7c",
-    "common/src/main/java/thaumic/tinkerer/common/lib/LibBlockNames.java": "821dfd0b5f644f56ac0f826a0ffae418ce5676a50dd619e479d24412385f77fb",
-    "common/src/main/java/thaumic/tinkerer/common/lib/LibItemNames.java": "1179c334858ad7914916e7b3fa783dfcba2f353df11ce4bd03ffa87fa411af59"
+    "common/src/main/java/thaumic/tinkerer/common/lib/LibBlockNames.java": "fc38a7adfd02738105f1fc1d51e3cadab0a416ce113e343f05e5f3ead1f6f7a6",
+    "common/src/main/java/thaumic/tinkerer/common/lib/LibItemNames.java": "ed58ef898349366e773d6978aec0ac6404243a064bbf5f4c0019c27a195c0ede"
   },
   "sources": {
     "src/main/java/thaumic/tinkerer/api/INoRemoveEnchant.java": "8f954b1fa1fb4100c0c40e85ff6d0191c8d9078997a4c45ed00d61b2b53a524f",

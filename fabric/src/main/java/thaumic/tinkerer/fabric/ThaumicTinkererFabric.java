@@ -15,6 +15,7 @@ import net.fabricmc.api.ModInitializer;
 import thaumcraft.api.IThaumcraftAddon;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.fabric.hooks.FabricBlockProtection;
+import thaumic.tinkerer.fabric.hooks.FabricConfigurationTask;
 
 /** Fabric {@code main} entrypoint and the {@code "thaumcraft"} entrypoint of the add-on. */
 public final class ThaumicTinkererFabric implements ModInitializer, IThaumcraftAddon {
@@ -23,6 +24,8 @@ public final class ThaumicTinkererFabric implements ModInitializer, IThaumcraftA
         ThaumicTinkerer.init();
         // The loader side of BlockProtection: Fabric's and Architectury's break and place listeners (docs/HOOKS.md).
         ThaumicTinkerer.guard("FabricBlockProtection.install", FabricBlockProtection::install);
+        // The config handshake with the clients, a configuration task (ConfigSync).
+        ThaumicTinkerer.guard("FabricConfigurationTask.install", FabricConfigurationTask::install);
     }
 
     @Override

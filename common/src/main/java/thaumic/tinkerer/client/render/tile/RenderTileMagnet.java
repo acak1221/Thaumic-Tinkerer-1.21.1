@@ -25,6 +25,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.level.Level;
 import thaumic.tinkerer.common.block.tile.TileMagnet;
 
 /**
@@ -48,7 +49,12 @@ public class RenderTileMagnet<T extends TileMagnet> implements BlockEntityRender
 
         float size = redstone / 15F * 0.7F + 0.4F;
         float half = size / 2;
-        float delta = (float) ((Math.cos(System.currentTimeMillis() / 500F) + 1) * 0.09 + 0.1);
+        // 1.7.10: cos(System.currentTimeMillis() / 500F). The clock is the game's now (10 ticks are the 500 ms at 20 ticks a
+        // second), so the rings stop with the game and follow /tick; in double, because the float of the original rounded
+        // today's epoch milliseconds to steps of 131 seconds (docs/deviations/Machines.md section 13).
+        Level level = magnet.getLevel();
+        double ticks = (level == null ? 0L : level.getGameTime()) + (double) partialTick;
+        float delta = (float) ((Math.cos(ticks / 10D) + 1) * 0.09 + 0.1);
         TextureAtlasSprite sprite = Minecraft.getInstance().getModelManager().getAtlas(InventoryMenu.BLOCK_ATLAS)
                 .getSprite(RING);
         VertexConsumer consumer = buffers.getBuffer(RenderType.entityTranslucent(InventoryMenu.BLOCK_ATLAS));

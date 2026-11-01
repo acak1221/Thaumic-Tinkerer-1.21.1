@@ -4,16 +4,26 @@
  */
 package thaumic.tinkerer.testing;
 
+import io.netty.channel.embedded.EmbeddedChannel;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
+import net.minecraft.network.PacketSendListener;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -37,10 +47,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import dev.architectury.event.EventResult;
+import org.jetbrains.annotations.Nullable;
+import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.aspects.IEssentiaContainerItem;
 import thaumcraft.api.blocks.BlocksTC;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchCategories;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.block.BlockMagnet;
@@ -421,6 +434,26 @@ public final class MachinesRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The Funnel knows the jars by the items of the API's two jar blocks ({@code BlocksTC.jar()}, {@code BlocksTC.voidJar()}),
+     * no longer by their id strings: both go in when they hold essentia; Thaumcraft's other holders of essentia (the crystal,
+     * the node in a jar) are no jars for it.
+     */
+    public static void theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia(GameTestHelper test) {
+        ItemStack voidJar = new ItemStack(BlocksTC.voidJar().asItem());
+        ((IEssentiaContainerItem) voidJar.getItem()).setAspects(voidJar, new AspectList().add(Aspect.AIR, 3));
+        test.assertTrue(TileFunnel.isJarItem(new ItemStack(BlocksTC.jar().asItem())), "the jar");
+        test.assertTrue(TileFunnel.isJarItem(voidJar) && TileFunnel.isFilledJar(voidJar), "the void jar, filled: the funnel takes it");
+        test.assertTrue(TileFunnel.isFilledJar(filledJar(Aspect.FIRE, 2)), "a filled jar");
+        for (String other : List.of("crystal_essence", "jar_node")) {
+            ItemStack stack = ItemsTC.stack(other);
+            test.assertTrue(stack.getItem() instanceof IEssentiaContainerItem, other + " holds essentia (without this the check proves nothing)");
+            test.assertTrue(!TileFunnel.isJarItem(stack) && !TileFunnel.isFilledJar(stack), other + " is no jar for the funnel");
+        }
+        test.assertTrue(!TileFunnel.isJarItem(ItemStack.EMPTY), "an empty slot");
+        test.succeed();
+    }
+
     // ---- magnets ---------------------------------------------------------------------------------------------------
 
     private static void powerMagnet(GameTestHelper test, BlockPos magnet) {
@@ -560,6 +593,51 @@ public final class MachinesRuntimeChecks {
         test.assertTrue(!menu.getSlot(0).mayPlace(new ItemStack(Items.STICK)), "not a stick");
         test.assertTrue(menu.getSlot(0).getMaxStackSize() == 1, "one mould");
         test.assertTrue(menu.stillValid(player), "near");
+        finish(test, player);
+    }
+
+    /**
+     * A mock player whose connection keeps the packets the server sends it instead of writing them anywhere (the connection of
+     * {@code makeMockServerPlayerInLevel} has no client behind it either).
+     */
+    private static ServerPlayer recordingPlayer(GameTestHelper test, List<Packet<?>> sent) {
+        ServerPlayer player = mockPlayer(test);
+        Connection connection = new Connection(PacketFlow.SERVERBOUND);
+        new EmbeddedChannel(connection);
+        new ServerGamePacketListenerImpl(test.getLevel().getServer(), connection, player,
+                CommonListenerCookie.createInitial(player.getGameProfile(), false)) {
+            @Override
+            public void send(Packet<?> packet, @Nullable PacketSendListener listener) {
+                sent.add(packet);
+            }
+        };
+        return player;
+    }
+
+    /**
+     * A wand opens the Corporeal Attractor's menu with Thaumcraft's {@code key} sound (volume 1, pitch 0.5, as 1.7.10). The sound
+     * is the event Thaumcraft registered, so the packet names it by its id; the port used to make a new, unregistered event of
+     * the id on every click, which the packet then carried as a whole event ({@code Holder.direct}).
+     */
+    public static void aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound(GameTestHelper test) {
+        floor(test);
+        BlockPos pos = new BlockPos(3, 1, 4);
+        test.setBlock(pos, Machines.MOB_MAGNET.get().defaultBlockState());
+        List<Packet<?>> sent = new java.util.ArrayList<>();
+        ServerPlayer player = recordingPlayer(test, sent);
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemsTC.stack("wand"));
+        test.useBlock(pos, player);
+        test.assertTrue(player.containerMenu instanceof ContainerMobMagnet, "the wand opens the menu: " + player.containerMenu);
+        List<ClientboundSoundPacket> sounds = sent.stream().filter(ClientboundSoundPacket.class::isInstance)
+                .map(ClientboundSoundPacket.class::cast).toList();
+        test.assertTrue(sounds.size() == 1, "one sound: " + sounds.size());
+        ClientboundSoundPacket sound = sounds.get(0);
+        test.assertTrue(sound.getSound().kind() == Holder.Kind.REFERENCE && sound.getSound().is(ThaumcraftSoundIds.KEY),
+                "Thaumcraft's registered key sound, sent by its id: " + sound.getSound());
+        test.assertTrue(sound.getSound().value() == ThaumcraftSoundIds.event(ThaumcraftSoundIds.KEY), "the registered event itself");
+        test.assertTrue(sound.getSource() == SoundSource.BLOCKS && sound.getVolume() == 1F && sound.getPitch() == 0.5F,
+                "volume 1, pitch 0.5, blocks: " + sound.getSource() + " " + sound.getVolume() + " " + sound.getPitch());
+        player.closeContainer();
         finish(test, player);
     }
 
@@ -1659,6 +1737,34 @@ public final class MachinesRuntimeChecks {
         test.assertTrue(beast.equals(ItemSoulMould.getPattern(throughSaving(test, foreign))), "an unknown pattern survives loading");
         test.assertTrue("othermod:beast".equals(ItemSoulMould.patternDisplayName(beast).getString()), "and is shown as its id");
         finish(test, player);
+    }
+
+    /**
+     * The infused soul aspects glint, the basic and condensed ones do not (1.7.10 {@code hasEffect}). The glint is the item's
+     * default {@code minecraft:enchantment_glint_override} (as for vanilla's enchanted golden apple), so a saved stack does not
+     * carry it, it survives saving, and a stack may switch it off.
+     */
+    public static void theInfusedSoulAspectsGlintByTheirItemsDefaultComponent(GameTestHelper test) {
+        for (Aspect aspect : ItemMobAspect.ASPECTS) {
+            ItemStack basic = ItemMobAspect.getStackFromAspect(aspect);
+            ItemStack condensed = ItemMobAspect.getCondensedStackFromAspect(aspect);
+            ItemStack infused = ItemMobAspect.getInfusedStackFromAspect(aspect);
+            test.assertTrue(!basic.hasFoil() && !condensed.hasFoil(), aspect.getTag() + ": the basic and the condensed form do not glint");
+            test.assertTrue(infused.hasFoil(), aspect.getTag() + ": the infused form glints");
+            test.assertTrue(Boolean.TRUE.equals(infused.getItem().components().get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                    aspect.getTag() + ": by the item's default component");
+            test.assertTrue(basic.getItem().components().get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE) == null
+                    && condensed.getItem().components().get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE) == null,
+                    aspect.getTag() + ": which the other forms do not have");
+        }
+        ItemStack infused = ItemMobAspect.getInfusedStackFromAspect(Aspect.BEAST);
+        var registries = test.getLevel().registryAccess();
+        net.minecraft.nbt.Tag saved = infused.save(registries);
+        test.assertTrue(!saved.toString().contains("enchantment_glint_override"), "a saved stack does not carry the default: " + saved);
+        test.assertTrue(ItemStack.parseOptional(registries, (CompoundTag) saved).hasFoil(), "and glints when it is loaded");
+        infused.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, false);
+        test.assertTrue(!infused.hasFoil(), "a stack can switch the glint off");
+        test.succeed();
     }
 
     public static void everyMobOfTheTableHasAnEntityType(GameTestHelper test) {

@@ -124,9 +124,10 @@ its two limits (the bow did not look drawn faster; a draw under the game's minim
 
 **Need.** The Enchanter looks for columns of two to twelve Obsidian Totems under a Nitor.
 
-**Workaround.** `BlocksTC.state("blockCosmeticSolid", 0)` (the totem) and `BlocksTC.state("blockAiry", 1)` (the Nitor), both
-resolved by the legacy field and metadata table, cached on first use. The totem is compared as a block state, the Nitor as a
-block. This breaks if the table loses those two rows, with no compile-time warning.
+**Workaround.** `BlocksTC.state("blockCosmeticSolid", 0)` (the totem), resolved by the legacy field and metadata table, cached on first
+use, and compared as a block state. This breaks if the table loses that row, with no compile-time warning. (The Nitor is a native block,
+`BlocksTC.get("nitor")`, since 2026-11-01: `deviations/Enchantments.md` section 14; the totem has no such name, it is
+`cosmetic_solid_tough[variant=0]`.)
 
 **Proposed.** `BlocksTC.obsidianTotem()` returning the block state and `BlocksTC.nitor()` returning the block, or the block tags
 `thaumcraft:obsidian_totem` and `thaumcraft:nitor` (tags would also let a resource pack add pillar blocks).

@@ -3,8 +3,10 @@ package thaumic.tinkerer;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mojang.authlib.GameProfile;
 import io.netty.buffer.Unpooled;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,8 +15,8 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import java.util.UUID;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.io.TempDir;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.ConfigSync;
 import thaumic.tinkerer.common.network.packet.PacketConfigSync;
+import thaumic.tinkerer.common.network.packet.PacketConfigSyncReply;
 
 /** Test-only code of the port (no 1.7.10 counterpart), CC BY-NC-SA 3.0 like the add-on. */
 class ConfigHandlerTest {
@@ -142,10 +145,113 @@ class ConfigHandlerTest {
         assertEquals(List.of("general/imbuedFire.enabled", "kami/kami.forceenabled"), ConfigHandler.registrationMismatches(server),
                 "the differing keys in this side's order; a key only the server knows is not compared");
 
-        Component message = ConfigSync.mismatchMessage(ConfigHandler.registrationMismatches(server), server);
+        Component message = ConfigSync.mismatchMessage(ConfigHandler.registrationMismatches(server), server, own);
         assertTrue(message.getContents() instanceof TranslatableContents t && t.getKey().equals(ConfigSync.MISMATCH), message.toString());
         String text = message.toString();
         assertTrue(text.contains(ConfigSync.MISMATCH_OPTION) && text.contains("kami/kami.forceenabled"), text);
+    }
+
+    // ---- the handshake (ConfigSync), a configuration task of the connection ------------------------------------------
+
+    /** The arguments of the one {@code MISMATCH_OPTION} entry of a refusal: option, the server's value, the client's. */
+    private static List<Object> optionArguments(Component refusal) {
+        assertTrue(refusal.getContents() instanceof TranslatableContents t && t.getKey().equals(ConfigSync.MISMATCH), refusal.toString());
+        Component list = (Component) ((TranslatableContents) refusal.getContents()).getArgs()[0];
+        assertEquals(1, list.getSiblings().size(), "one option: " + list);
+        Component option = list.getSiblings().get(0);
+        assertTrue(option.getContents() instanceof TranslatableContents t && t.getKey().equals(ConfigSync.MISMATCH_OPTION), option.toString());
+        return List.of(((TranslatableContents) option.getContents()).getArgs());
+    }
+
+    @Test
+    void aClientKeepsTheServersValuesAndAnswersWithItsOwnRegistrationOptions() {
+        ConfigHandler.enableFlight = true;
+        ConfigHandler.blockBlacklist = new String[0];
+        Map<String, Boolean> own = ConfigHandler.registrationOptions();
+        PacketConfigSync server = new PacketConfigSync(false, List.of("minecraft:gold_block"), List.of(), true, own);
+        PacketConfigSyncReply reply = ConfigSync.receive(server);
+        assertEquals(server.shared(), ConfigHandler.fromServer(), "the server's values are this client's copy");
+        assertFalse(ConfigHandler.shared(true).enableFlight(), "and hold for the client's levels");
+        assertEquals(own, reply.registration(), "the answer: this side's registration options");
+        assertEquals(List.copyOf(own.keySet()), List.copyOf(reply.registration().keySet()), "in their order");
+    }
+
+    @Test
+    void aClientThatTheServerWillRefuseKeepsNothingOfItsValues() {
+        ConfigHandler.setFromServer(new ConfigHandler.Shared(false, List.of(), List.of(), false));
+        Map<String, Boolean> server = new LinkedHashMap<>(ConfigHandler.registrationOptions());
+        server.put("general/imbuedFire.enabled", false);
+        PacketConfigSyncReply reply = ConfigSync.receive(new PacketConfigSync(false, List.of("minecraft:gold_block"), List.of(), true, server));
+        assertEquals(null, ConfigHandler.fromServer(), "no copy of a server that refuses this client (nor of an earlier one)");
+        assertEquals(ConfigHandler.registrationOptions(), reply.registration(), "it still answers, so the server can name the options");
+    }
+
+    @Test
+    void theServerLetsInAClientWithEqualOptionsAndRefusesOneThatDiffers() {
+        GameProfile profile = new GameProfile(UUID.fromString("0f0e0d0c-0b0a-4908-8706-050403020100"), "TTMismatch");
+        List<String> seen = new java.util.ArrayList<>();
+        ConfigSync.Answered listener = (who, options, mismatches) -> seen.add(who.getName() + " " + options + " " + mismatches);
+        ConfigSync.ANSWERED.register(listener);
+        try {
+            assertEquals(null, ConfigSync.answer(profile, PacketConfigSyncReply.ofThisSide()), "equal options: the client goes on");
+            assertEquals(1, seen.size(), "the answer is posted: " + seen);
+            assertTrue(seen.get(0).endsWith(" []"), seen.get(0));
+
+            Map<String, Boolean> client = new LinkedHashMap<>(ConfigHandler.registrationOptions());
+            client.put("general/imbuedFire.enabled", false);
+            client.put("general/aNewerOption.enabled", true);
+            Component refusal = ConfigSync.answer(profile, new PacketConfigSyncReply(client));
+            assertTrue(refusal != null, "a client whose imbuedFire.enabled differs is refused");
+            assertEquals(List.of("general/imbuedFire.enabled", "true", "false"), optionArguments(refusal),
+                    "the option, the server's value, the client's; a key only the client knows is not compared");
+            assertEquals(2, seen.size());
+            assertTrue(seen.get(1).startsWith("TTMismatch ") && seen.get(1).endsWith(" [general/imbuedFire.enabled]"), seen.get(1));
+        } finally {
+            ConfigSync.ANSWERED.unregister(listener);
+        }
+    }
+
+    @Test
+    void theReplyRoundTripsAndABoundlessOneIsNotRead() {
+        PacketConfigSyncReply sent = PacketConfigSyncReply.ofThisSide();
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        PacketConfigSyncReply.CODEC.encode(buf, sent);
+        assertEquals(sent, PacketConfigSyncReply.CODEC.decode(buf));
+        assertEquals(0, buf.readableBytes(), "the payload is read completely");
+        assertEquals("thaumictinkerer:config_sync_reply", PacketConfigSyncReply.TYPE.id().toString());
+        assertEquals("thaumictinkerer:config_sync", PacketConfigSync.TYPE.id().toString());
+        assertEquals("thaumictinkerer:config_sync", ConfigSync.TASK);
+
+        Map<String, Boolean> many = new LinkedHashMap<>();
+        for (int i = 0; i <= PacketConfigSyncReply.MAX_OPTIONS; i++) many.put("general/option" + i, true);
+        FriendlyByteBuf large = new FriendlyByteBuf(Unpooled.buffer());
+        large.writeVarInt(many.size());
+        many.forEach((key, value) -> {
+            large.writeUtf(key);
+            large.writeBoolean(value);
+        });
+        assertThrows(RuntimeException.class, () -> PacketConfigSyncReply.CODEC.decode(large),
+                "more than " + PacketConfigSyncReply.MAX_OPTIONS + " options from a client are refused by the decoder");
+    }
+
+    /** The handshake is loader glue: each loader's entry point installs it (a merge that drops the line breaks the sync silently). */
+    @Test
+    void bothLoadersInstallTheHandshake() throws IOException {
+        Path fabric = Path.of("fabric", "src", "main", "java", "thaumic", "tinkerer", "fabric");
+        Path neoforge = Path.of("neoforge", "src", "main", "java", "thaumic", "tinkerer", "neoforge");
+        assertTrue(code(fabric.resolve("ThaumicTinkererFabric.java")).contains("FabricConfigurationTask::install"), "Fabric, both sides");
+        assertTrue(code(fabric.resolve("ThaumicTinkererFabricClient.java")).contains("FabricConfigurationTaskClient::install"), "Fabric, the client");
+        assertTrue(code(neoforge.resolve("ThaumicTinkererNeoForge.java")).contains("NeoForgeConfigurationTask.register(bus)"), "NeoForge");
+        for (Path glue : List.of(fabric.resolve("hooks/FabricConfigurationTask.java"), neoforge.resolve("hooks/NeoForgeConfigurationTask.java"))) {
+            String text = code(glue);
+            assertTrue(text.contains("ConfigSync.answer(") && text.contains("ConfigSync.offer()") && text.contains("ConfigSync.TASK"), glue.toString());
+        }
+        assertFalse(code(Path.of("common", "src", "main", "java", "thaumic", "tinkerer", "common", "core", "handler", "ConfigSync.java"))
+                .contains("PLAYER_JOIN"), "nothing is sent in the play phase any more");
+    }
+
+    private static String code(Path file) throws IOException {
+        return Files.readString(file).replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("(?m)//.*$", "");
     }
 
     @Test
@@ -155,7 +261,8 @@ class ConfigHandlerTest {
         ConfigHandler.forbiddenDimensions = new String[] {"minecraft:the_nether"};
         ConfigHandler.enableKami = false;
         PacketConfigSync sent = PacketConfigSync.ofThisSide();
-        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+        // a configuration payload: no registry access
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
         PacketConfigSync.CODEC.encode(buf, sent);
         PacketConfigSync read = PacketConfigSync.CODEC.decode(buf);
         assertEquals(0, buf.readableBytes(), "the payload is read completely");

@@ -48,15 +48,16 @@ import org.slf4j.LoggerFactory;
  * not a JSON object is left as it is (the defaults hold for that run, and an error names the file).</p>
  *
  * <p><b>Which side's values count.</b> The file of the side that runs the code is read; on a client connected to a dedicated
- * server that is not the server's file. Two kinds of option therefore get help from the server ({@link ConfigSync}, on join):</p>
+ * server that is not the server's file. Two kinds of option therefore get help from the server ({@link ConfigSync}, in the configuration
+ * phase of the connection, before the client has a world):</p>
  * <ul>
  *   <li>The options a client evaluates as well ({@link Shared}: the Focus of Flight moves the client's own player, the client
  *   predicts what the Focus of Dislocation may take, ...): the server sends its values, and the side-aware accessors
  *   ({@link #flightEnabled}, {@link #dislocationBlacklist}, {@link #forbiddenDimensions(BlockGetter)}, {@link #cropsAllowBonemeal(BlockGetter)})
  *   answer with them whenever the level asked about is the client's. The plain fields stay the values of this side's file.</li>
  *   <li>The options that decide what is registered ({@link #registrationOptions()}: items, blocks, research and recipes are
- *   registered on each side from its own file at start-up and cannot change while the game runs): the server sends its values
- *   and a client whose own differ disconnects with a message that names them.</li>
+ *   registered on each side from its own file at start-up and cannot change while the game runs): the client answers with its
+ *   own, and the server refuses a client whose own differ, with a message that names them.</li>
  * </ul>
  * <p>Everything else is read by one side only (the server, or the client's own display: the Soul Heart bar's height, the
  * Looking Glass's ghost blocks).</p>
@@ -227,8 +228,8 @@ public final class ConfigHandler {
     // ---- the server's values on a client (ConfigSync) ------------------------------------------------------------
 
     /**
-     * The options that a client evaluates as well as the server, as one side has them: the server sends its own on join
-     * ({@link ConfigSync}), and a client connected to it reads them instead of its own file's.
+     * The options that a client evaluates as well as the server, as one side has them: the server sends its own in the configuration
+     * phase ({@link ConfigSync}), and a client connected to it reads them instead of its own file's.
      *
      * @param enableFlight {@code modFlight.enabled}: the Focus of Flight (the client moves its own player) and the Robe of the
      *        Stratosphere's flight
@@ -316,13 +317,14 @@ public final class ConfigHandler {
     }
 
     /**
-     * The keys of {@link #registrationOptions()} whose value in {@code server} differs from this side's, in this side's order.
-     * A key only one side knows (another version of the add-on) is not compared.
+     * The keys of {@link #registrationOptions()} whose value in {@code other} (the other side's: the server's on a client, the
+     * client's on the server) differs from this side's, in this side's order. A key only one side knows (another version of the
+     * add-on) is not compared.
      */
-    public static List<String> registrationMismatches(Map<String, Boolean> server) {
+    public static List<String> registrationMismatches(Map<String, Boolean> other) {
         List<String> differ = new ArrayList<>();
         for (Map.Entry<String, Boolean> own : registrationOptions().entrySet()) {
-            Boolean theirs = server.get(own.getKey());
+            Boolean theirs = other.get(own.getKey());
             if (theirs != null && !theirs.equals(own.getValue())) differ.add(own.getKey());
         }
         return differ;

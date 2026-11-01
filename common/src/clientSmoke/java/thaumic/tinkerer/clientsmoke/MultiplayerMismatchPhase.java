@@ -21,16 +21,16 @@ import thaumic.tinkerer.common.core.handler.ConfigSync;
  *
  * <ul>
  *   <li>Role {@code mismatch}: {@code imbuedFire.enabled=false} in its file (the server has {@code true}); that option changes
- *   research and recipes, not the registries. The client joins, gets the server's {@code PacketConfigSync}, must leave by itself
- *   and show the translated message {@code thaumictinkerer.config.mismatch} naming the option.</li>
+ *   research and recipes, not the registries. In the configuration phase the client gets the server's {@code PacketConfigSync} and
+ *   answers with its own options; the server must refuse it before it gets into the game, with the translated message
+ *   {@code thaumictinkerer.config.mismatch} naming the option.</li>
  *   <li>Role {@code kami-on}: {@code kami.forceenabled=true} (the default) in its file, on the run's second server, whose config has
- *   {@code false}: this client has the Kami registry entries the server lacks. It must leave with the add-on's message, as
- *   {@code mismatch} does.</li>
+ *   {@code false}: this client has the Kami registry entries the server lacks, which the loader's registry sync lets through. It
+ *   must be refused with the add-on's message, as {@code mismatch} is.</li>
  *   <li>Role {@code mismatch-kami}: {@code kami.forceenabled=false} in its file (the server has {@code true}); without it the
  *   client registers none of the Kami items and blocks, so the server has registry entries this client lacks. The loader's
- *   registry sync runs in the configuration phase, before the game starts and before the add-on's payload can arrive. The
- *   harness records which of the two disconnects the client: it must not get into the game, and the message it shows is
- *   recorded as it is.</li>
+ *   registry sync runs in the configuration phase too, before the add-on's task (on both loaders). The harness records which of
+ *   the two disconnects the client: it must not get into the game, and the message it shows is recorded as it is.</li>
  * </ul>
  * A picture of the disconnect screen is taken either way.
  */
@@ -44,8 +44,8 @@ final class MultiplayerMismatchPhase extends ScriptedPhase {
     private final boolean addonMessageExpected;
 
     /**
-     * Set when the client entered the game (Architectury's {@code CLIENT_PLAYER_JOIN}, posted on the login packet). The server's
-     * payload comes right after that packet, so the client may leave before a client tick of the harness ever sees its level.
+     * Set when the client entered the game (Architectury's {@code CLIENT_PLAYER_JOIN}, posted on the login packet). A refused client
+     * never does: the add-on's handshake and the loader's registry sync both run in the configuration phase, before that packet.
      */
     private volatile boolean joined;
 
@@ -109,8 +109,9 @@ final class MultiplayerMismatchPhase extends ScriptedPhase {
                     if (addonMessageExpected) {
                         MultiplayerClient.record(r, phase, "mismatch_disconnect_message", option, addonMessage, own + "; the screen \""
                                 + screen.getTitle().getString() + "\" shows the component " + key + ", rendered: " + text);
-                        MultiplayerClient.record(r, phase, "joined_before_it_left", "", joined,
-                                "this client entered the server's game (CLIENT_PLAYER_JOIN) before it left: " + joined);
+                        // The server refuses it in the configuration phase (ConfigSync), so it never enters the game.
+                        MultiplayerClient.record(r, phase, "refused_before_the_game", option, !joined,
+                                "this client entered the server's game (CLIENT_PLAYER_JOIN) before it was refused: " + joined);
                     } else {
                         // The loader refuses the join first; the add-on's message cannot be shown, and the client must not get in.
                         MultiplayerClient.record(r, phase, "refused_before_the_game", option, !joined, own + "; entered the game: " + joined
