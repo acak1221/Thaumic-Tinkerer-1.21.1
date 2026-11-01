@@ -100,7 +100,7 @@ final class ClaimScenes {
 
     static final List<String> LEAD_NAMES = List.of("a_claim", "a_dislocation_own", "a_mirror_own", "a_pickaxe_own", "a_axe_own",
             "a_placer_own", "a_dislocator_own");
-    static final List<String> PEER_NAMES = List.of("b_dislocation_in", "b_dislocation_out", "b_mirror_in", "b_mirror_edge", "b_mirror_out",
+    static final List<String> PEER_NAMES = List.of("b_dislocation_out", "b_dislocation_in", "b_dislocation_place_out", "b_mirror_in", "b_mirror_edge", "b_mirror_out",
             "b_pickaxe_in", "b_pickaxe_out", "b_axe_in", "b_axe_edge", "b_axe_out", "b_placer_into_claim", "b_placer_out",
             "b_dislocator_into_claim", "b_dislocator_out");
     static final List<String> NAMES;
@@ -168,6 +168,9 @@ final class ClaimScenes {
         stages.put("b_dislocation_in", new Stage("b_dislocation_in", new Vec3(B_STONE_IN.getX() - 3.5, G, B_STONE_IN.getZ() + 0.5),
                 Scenes.faceCenter(B_STONE_IN, Direction.WEST), B_STONE_IN, Direction.WEST, Scenes.SLOT_DISLOCATION, false));
         stages.put("b_dislocation_out", south("b_dislocation_out", B_STONE_OUT, Scenes.SLOT_DISLOCATION, 3.5));
+        // After the refused cast into the claim (the focus still carries the stone): the stone goes back onto its cobblestone.
+        stages.put("b_dislocation_place_out", new Stage("b_dislocation_place_out", new Vec3(B_STONE_OUT.getX() + 0.5, G, B_STONE_OUT.getZ() + 4.0),
+                Scenes.faceCenter(B_STONE_OUT.below(), Direction.UP), B_STONE_OUT.below(), Direction.UP, Scenes.SLOT_DISLOCATION, false));
         stages.put("b_mirror_in", south("b_mirror_in", B_WALL_IN, Scenes.SLOT_MIRROR, 3.5));
         stages.put("b_mirror_edge", south("b_mirror_edge", B_WALL_EDGE, Scenes.SLOT_MIRROR, 3.5));
         stages.put("b_mirror_out", south("b_mirror_out", B_WALL_OUT, Scenes.SLOT_MIRROR, 3.5));
@@ -305,9 +308,8 @@ final class ClaimScenes {
                 return Outcome.of(claimed, Scenes.LEAD + " (" + player.getUUID() + ") ran /" + CLAIM_COMMAND + ": OPAC's owners of the chunks ("
                         + (CLAIM_X0 >> 4) + ", " + (CLAIM_Z0 >> 4) + ") and (" + (CLAIM_X1 >> 4) + ", " + (CLAIM_Z0 >> 4) + "): " + owners, values);
             }
-            case "a_dislocation_own", "b_dislocation_out", "b_dislocation_in" -> {
-                BlockPos stone = name.equals("a_dislocation_own") ? A_STONE : name.equals("b_dislocation_in") ? B_STONE_IN : B_STONE_OUT;
-                boolean expectTaken = !name.equals("b_dislocation_in");
+            case "a_dislocation_own", "b_dislocation_out" -> {
+                BlockPos stone = name.equals("a_dislocation_own") ? A_STONE : B_STONE_OUT;
                 ItemStack wand = player.getInventory().getItem(Scenes.SLOT_DISLOCATION);
                 DislocationData carried = ItemFocusDislocation.getData(wand);
                 BlockState state = level.getBlockState(stone);
@@ -317,12 +319,34 @@ final class ClaimScenes {
                 values.put("vis", Scenes.vis(wand));
                 values.put("blocks", Scenes.blocks(level, List.of(stone)));
                 values.put("carried", carried == null ? "nothing" : Scenes.id(carried.state()));
-                boolean ok = expectTaken ? state.isAir() && carried != null && carried.state().is(Blocks.STONE) && paid
-                        : state.is(Blocks.STONE) && carried == null && Scenes.vis(wand).equals(before.get("vis"));
+                values.put("server_using", player.isUsingItem());
+                boolean ok = state.isAir() && carried != null && carried.state().is(Blocks.STONE) && paid;
                 return Outcome.of(ok, who + " cast the Focus of Dislocation on the stone at " + Scenes.pos(stone) + (inClaim(stone) ? " in the claim"
-                        : " outside the claim") + ": block " + before.get("state") + " -> " + Scenes.id(state) + ", vis " + before.get("vis") + " -> "
-                        + Scenes.vis(wand) + ", the focus carries " + (carried == null ? "nothing" : carried.state()) + " (expected "
-                        + (expectTaken ? "taken and paid" : "nothing changes") + ")", values);
+                        : " outside the claim (two chunks away)") + ": block " + before.get("state") + " -> " + Scenes.id(state) + ", vis "
+                        + before.get("vis") + " -> " + Scenes.vis(wand) + ", the focus carries " + (carried == null ? "nothing" : carried.state())
+                        + " (expected taken and paid)", values);
+            }
+            case "b_dislocation_in", "b_dislocation_place_out" -> {
+                // in: the focus carries the stone taken outside and is cast on the claimed stone's west face, which would put the load at
+                // x 97, in the claim; place_out: the load goes back onto its cobblestone outside, after the refusal.
+                boolean inside = name.equals("b_dislocation_in");
+                BlockPos at = inside ? B_STONE_IN.west() : B_STONE_OUT;
+                ItemStack wand = player.getInventory().getItem(Scenes.SLOT_DISLOCATION);
+                DislocationData carried = ItemFocusDislocation.getData(wand);
+                BlockState there = level.getBlockState(at);
+                List<BlockPos> shown = inside ? List.of(at, B_STONE_IN) : List.of(at);
+                values.put("vis", Scenes.vis(wand));
+                values.put("blocks", Scenes.blocks(level, shown));
+                values.put("carried", carried == null ? "nothing" : Scenes.id(carried.state()));
+                values.put("server_using", player.isUsingItem());
+                boolean ok = inside ? there.isAir() && level.getBlockState(B_STONE_IN).is(Blocks.STONE) && carried != null && carried.state().is(Blocks.STONE)
+                        : there.is(Blocks.STONE) && carried == null;
+                ok &= Scenes.vis(wand).equals(before.get("vis"));
+                return Outcome.of(ok, who + (inside ? " cast the loaded Focus of Dislocation on the claimed stone at " + Scenes.pos(B_STONE_IN)
+                        + " (the load would go to " + Scenes.pos(at) + ", in the claim)" : " put the load back at " + Scenes.pos(at)
+                        + ", outside the claim, right after that refusal") + ": the block there is " + Scenes.id(there) + ", the focus carries "
+                        + (carried == null ? "nothing" : carried.state()) + ", vis " + before.get("vis") + " -> " + Scenes.vis(wand) + " (expected "
+                        + (inside ? "nothing placed, the load kept" : "placed, the focus empty") + ")", values);
             }
             case "a_mirror_own", "b_mirror_in", "b_mirror_edge", "b_mirror_out" -> {
                 BlockPos wall = switch (name) {

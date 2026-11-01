@@ -214,7 +214,9 @@ abstract class MultiplayerActor extends ScriptedPhase {
         View[] before = { null };
         int[] mark = { 0 };
         int[] held = { 0 };
-        Script script = staged(name, stage, before, mark);
+        String[] state = { "" };
+        Script script = staged(name, stage, before, mark)
+                .run("note the client's state", r -> state[0] = clientState(r.client()));
         switch (act) {
             case RIGHT_CLICK -> script.run("right click", r -> Input.rightClick(r.client()));
             case LEFT_CLICK -> script.run("left click", r -> Input.leftClick(r.client()));
@@ -240,7 +242,7 @@ abstract class MultiplayerActor extends ScriptedPhase {
                 .ticks(10);
         if (run != null) script.frames(6).then("picture", run.shots().shot(picture, MultiplayerClient.GROUP, shows));
         return script.run("record", r -> recordBoth(r, name, target, stage[0], check[0], mark[0], true,
-                act == Act.HOLD_ATTACK ? "held the attack key " + held[0] + " ticks" : ""));
+                (act == Act.HOLD_ATTACK ? "held the attack key " + held[0] + " ticks; " : "") + "before the click " + state[0]));
     }
 
     /**
@@ -255,6 +257,13 @@ abstract class MultiplayerActor extends ScriptedPhase {
             return;
         }
         if (client.gameMode.continueDestroyBlock(pos, face)) client.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+    }
+
+    /** What decides whether a click of this client is acted on at all: an item in use, a block being broken, an item cooldown, the mouse grab. */
+    static String clientState(Minecraft client) {
+        ItemStack held = client.player.getMainHandItem();
+        return "usingItem=" + client.player.isUsingItem() + " destroying=" + client.gameMode.isDestroying() + " cooldown="
+                + (!held.isEmpty() && client.player.getCooldowns().isOnCooldown(held.getItem())) + " mouseGrabbed=" + client.mouseHandler.isMouseGrabbed();
     }
 
     /** The click on a stone button that pulses a device (Remote Placer, Transvector Dislocator, Animation Tablet). */

@@ -31,8 +31,9 @@ final class MultiplayerPeerPhase extends MultiplayerActor {
         scripts.add(MultiplayerClient.configSync(PHASE));
         scripts.add(tablet(run));
         // h. The claim: the first stage waits until the lead has claimed.
-        scripts.add(act("b_dislocation_in", "focus_dislocation", Act.RIGHT_CLICK, 40));
         scripts.add(act("b_dislocation_out", "focus_dislocation", Act.RIGHT_CLICK, 40));
+        scripts.add(act("b_dislocation_in", "focus_dislocation", Act.RIGHT_CLICK, 40));
+        scripts.add(act("b_dislocation_place_out", "focus_dislocation", Act.RIGHT_CLICK, 40));
         scripts.add(act("b_mirror_in", "placement_mirror", Act.RIGHT_CLICK, 40));
         scripts.add(act("b_mirror_edge", "placement_mirror", Act.RIGHT_CLICK, 40, run, "peer-claim-mirror-edge",
                 "The second player's Placement Mirror on a wall just outside the lead's claim (the claim begins two columns to the right):"
