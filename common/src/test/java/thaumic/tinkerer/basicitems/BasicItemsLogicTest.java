@@ -33,7 +33,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
-import thaumic.tinkerer.common.core.helper.ExperienceHelper;
 import thaumic.tinkerer.common.core.helper.MiscHelper;
 import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.BasicItemComponents.ShareData;
@@ -78,56 +77,6 @@ class BasicItemsLogicTest {
     void theFiveWarpEffectsThatWearTheTalismanTenTimesAsMuch() {
         assertEquals(Set.of(effect("thaumcraft:blurred_vision"), effect("thaumcraft:death_gaze"), effect("thaumcraft:infectious_vis_exhaust"),
                 effect("thaumcraft:sun_scorned"), effect("thaumcraft:unnatural_hunger")), ItemCleansingTalisman.WARP_EFFECTS);
-    }
-
-    // ---- experience ------------------------------------------------------------------------------------------------
-
-    @Test
-    void theExperienceOfALevelFollowsTheCurveOfTheGame() {
-        // The points that lead from level 0: 2L+7 per level up to 15, 5L-38 up to 30, 9L-158 beyond.
-        int[][] known = { { 0, 0 }, { 1, 7 }, { 2, 16 }, { 5, 55 }, { 10, 160 }, { 15, 315 }, { 16, 352 }, { 17, 394 },
-                { 20, 550 }, { 30, 1395 }, { 31, 1507 }, { 32, 1628 }, { 50, 5345 } };
-        for (int[] pair : known) {
-            assertEquals(pair[1], ExperienceHelper.getExperienceForLevel(pair[0]), "level " + pair[0]);
-        }
-        assertEquals(0, ExperienceHelper.getExperienceForLevel(-3), "a negative level has no points");
-    }
-
-    @Test
-    void theStepsBetweenTheLevelsAreTheSizeOfTheExperienceBar() {
-        for (int level = 0; level < 100; level++) {
-            // Player.getXpNeededForNextLevel of the game
-            int bar = level >= 30 ? 112 + (level - 30) * 9 : level >= 15 ? 37 + (level - 15) * 5 : 7 + level * 2;
-            assertEquals(bar, ExperienceHelper.getExperienceForLevel(level + 1) - ExperienceHelper.getExperienceForLevel(level),
-                    "bar of level " + level);
-        }
-    }
-
-    @Test
-    void theLevelOfAnAmountOfExperienceInvertsTheCurve() {
-        for (int level = 0; level < 80; level++) {
-            int points = ExperienceHelper.getExperienceForLevel(level);
-            assertEquals(level, ExperienceHelper.getLevelForExperience(points), "exactly level " + level);
-            assertEquals(level, ExperienceHelper.getLevelForExperience(points + 1), "just above level " + level);
-            if (level > 0) {
-                assertEquals(level - 1, ExperienceHelper.getLevelForExperience(points - 1), "just below level " + level);
-            }
-        }
-        assertEquals(0, ExperienceHelper.getLevelForExperience(0));
-        assertEquals(0, ExperienceHelper.getLevelForExperience(6));
-        assertEquals(1, ExperienceHelper.getLevelForExperience(7));
-    }
-
-    @Test
-    void theExtremesOfTheExperienceRangeTerminateAndSaturateInsteadOfWrapping() {
-        // The 1.7.10 style loop never returned for the largest amounts (the points of a level beyond 21,863 saturate the int).
-        assertEquals(21863, ExperienceHelper.getLevelForExperience(Integer.MAX_VALUE));
-        assertEquals(21863, ExperienceHelper.getLevelForExperience(Integer.MAX_VALUE - 1));
-        assertEquals(2_147_407_943, ExperienceHelper.getExperienceForLevel(21863), "the last level that fits");
-        assertEquals(Integer.MAX_VALUE, ExperienceHelper.getExperienceForLevel(21864), "the first that does not");
-        assertEquals(Integer.MAX_VALUE, ExperienceHelper.getExperienceForLevel(Integer.MAX_VALUE), "no overflow of the squares");
-        assertEquals(0, ExperienceHelper.getLevelForExperience(-1), "a negative amount is level 0");
-        assertEquals(21862, ExperienceHelper.getLevelForExperience(2_147_407_942), "one point short of the last level");
     }
 
     // ---- the Talisman of Withhold ---------------------------------------------------------------------------------
@@ -332,12 +281,6 @@ class BasicItemsLogicTest {
 
     // ---- the odds and ends of MiscHelper ---------------------------------------------------------------------------
 
-    @Test
-    void theDistanceIsEuclidean() {
-        assertEquals(13.0, MiscHelper.pointDistanceSpace(0, 0, 0, 3, 4, 12), 1e-9);
-        assertEquals(0.0, MiscHelper.pointDistanceSpace(1, 2, 3, 1, 2, 3), 1e-9);
-        assertEquals(5.0, MiscHelper.pointDistanceSpace(-1, 0, 0, 3, 3, 0), 1e-9);
-    }
 
     @Test
     void multiplyingAnAspectListTruncatesEachAmountAndLeavesTheOriginalAlone() {

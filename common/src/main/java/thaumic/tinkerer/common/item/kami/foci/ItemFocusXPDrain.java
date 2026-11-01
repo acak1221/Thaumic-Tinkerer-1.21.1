@@ -14,6 +14,7 @@ package thaumic.tinkerer.common.item.kami.foci;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -30,9 +31,9 @@ import thaumic.tinkerer.common.item.kami.KamiHooks;
 import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -86,8 +87,8 @@ public class ItemFocusXPDrain extends ItemModKamiFocus {
 
         int xpUse = 15 - WandHelper.getFocusFrugal(wandstack);
         int scaledXp = Math.max(1, Math.round(xpUse * (actualAdd / (float) intendedAdd)));
-        if (getPlayerXP(player) >= scaledXp) {
-            drainPlayerXP(player, scaledXp);
+        if (getPlayerXP(player) >= scaledXp && player instanceof ServerPlayer server) {
+            drainPlayerXP(server, scaledXp);
             WandHelper.addRealVis(wandstack, lowestAspect, actualAdd, true);
         }
     }
@@ -129,31 +130,61 @@ public class ItemFocusXPDrain extends ItemModKamiFocus {
 
     // ---- experience (1.7.10 ExperienceHelper, with the 1.21.1 experience curve) -------------------------------
 
-    /** The experience points of a level: the total needed to reach it from level 0. */
+    /**
+     * The upper bound of the level search: far above level 21,863, the last level whose points (2,147,407,943) fit in an {@code int};
+     * level 21,864 needs more.
+     */
+    private static final int LEVEL_SEARCH_LIMIT = 1 << 16;
+
+    /**
+     * The points of a level: the total needed to reach it from level 0 (1.21.1 curve: 2L+7, then 5L-38, then 9L-158 per level); a
+     * level whose points do not fit in an {@code int} gives {@link Integer#MAX_VALUE}.
+     */
     public static int getExperienceForLevel(int level) {
-        if (level <= 0) return 0;
-        if (level <= 16) return level * level + 6 * level;
-        if (level <= 31) return (int) (2.5 * level * level - 40.5 * level + 360);
-        return (int) (4.5 * level * level - 162.5 * level + 2220);
+        return (int) Math.min(Integer.MAX_VALUE, pointsForLevel(level));
     }
 
+    /** The highest level whose points do not exceed the amount (a binary search: it ends for every int, the 1.7.10 loop did not). */
     public static int getLevelForExperience(int experience) {
-        int level = 0;
-        while (getExperienceForLevel(level + 1) <= experience) level++;
-        return level;
+        int low = 0;
+        int high = LEVEL_SEARCH_LIMIT;
+        while (low < high) {
+            int middle = (low + high + 1) >>> 1;
+            if (pointsForLevel(middle) <= experience) low = middle;
+            else high = middle - 1;
+        }
+        return low;
     }
 
+    /** The exact points from level 0 to the level, in a {@code long} so that no level overflows. */
+    private static long pointsForLevel(long level) {
+        if (level <= 0) return 0;
+        level = Math.min(level, LEVEL_SEARCH_LIMIT); // far past the int range already; keeps the squares below a long
+        if (level <= 16) return level * level + 6 * level;
+        // 2.5 L^2 - 40.5 L + 360 and 4.5 L^2 - 162.5 L + 2220, written in whole numbers (the products are even)
+        if (level <= 31) return (5 * level * level - 81 * level) / 2 + 360;
+        return (9 * level * level - 325 * level) / 2 + 2220;
+    }
+
+    /** The points of the player: those of the whole levels plus the filled part of the bar (saturated at the int range). */
     public static int getPlayerXP(Player player) {
-        return getExperienceForLevel(player.experienceLevel)
-                + Math.round(player.experienceProgress * player.getXpNeededForNextLevel());
+        long points = pointsForLevel(player.experienceLevel) + Math.round(player.experienceProgress * player.getXpNeededForNextLevel());
+        return (int) Math.min(Integer.MAX_VALUE, points);
     }
 
-    public static void drainPlayerXP(Player player, int amount) {
-        int experience = Math.max(0, getPlayerXP(player) - amount);
+    /**
+     * 1.7.10 {@code ExperienceHelper.drainPlayerXP}: the player is left with its points less {@code amount} (never below 0), as a level and
+     * a filled part of the bar, set through the server player's own setters ({@code setExperienceLevels}, {@code setExperiencePoints}:
+     * what {@code /xp set} uses; they send the bar to the client). The total, which those leave alone, becomes what is left, as 1.7.10
+     * set {@code experienceTotal}. ({@code giveExperiencePoints(-amount)} would also lower the score of the death screen, which the
+     * original did not.)
+     */
+    public static void drainPlayerXP(ServerPlayer player, int amount) {
+        int experience = (int) Math.max(0L, (long) getPlayerXP(player) - amount);
+        int level = getLevelForExperience(experience);
+        player.setExperienceLevels(level);
+        player.setExperiencePoints(experience - getExperienceForLevel(level));
         player.totalExperience = experience;
-        player.experienceLevel = getLevelForExperience(experience);
-        int expForLevel = getExperienceForLevel(player.experienceLevel);
-        player.experienceProgress = (float) (experience - expForLevel) / (float) player.getXpNeededForNextLevel();
     }
 
     @Override

@@ -13,71 +13,14 @@
  */
 package thaumic.tinkerer.common.core.helper;
 
-import dev.architectury.utils.GameInstance;
-import net.minecraft.core.BlockPos;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
-import thaumic.tinkerer.common.hooks.BlockProtection;
 
-/** Odds and ends of 1.7.10 that several groups use: distances, motion towards a point, block breaking with a check. */
+/** Odds and ends of 1.7.10 that several groups use: the motion towards a point, an aspect list multiplied. */
 public final class MiscHelper {
-    private static final Logger LOG = LoggerFactory.getLogger("ThaumicTinkerer");
-
     private MiscHelper() {}
-
-    public static double pointDistanceSpace(double x1, double y1, double z1, double x2, double y2, double z2) {
-        return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2) + Math.pow(z1 - z2, 2));
-    }
-
-    /**
-     * Replaces the block at the position with the given state, unless the player may not break it there.
-     * 1.7.10 posted {@code BlockEvent.BreakEvent} on the Forge bus; the port asks {@link BlockProtection#mayBreak} (the game's
-     * rules and the loader's own break event, so protection mods of either loader are asked). Only a {@link ServerPlayer} on a
-     * {@link ServerLevel} can be asked: for any other player, or none, the replacement is not vetoed.
-     *
-     * @param flag the {@code Block.UPDATE_*} flags of {@code Level.setBlock}
-     * @return true when the block was set
-     */
-    public static boolean breakBlockWithCheck(Level level, BlockPos pos, BlockState replacement, int flag, Player player) {
-        if (player instanceof ServerPlayer serverPlayer && level instanceof ServerLevel serverLevel
-                && !BlockProtection.mayBreak(serverPlayer, serverLevel, pos, level.getBlockState(pos))) {
-            return false;
-        }
-        level.setBlock(pos, replacement, flag);
-        return true;
-    }
-
-    /** 1.7.10 {@code breakBlockWithCheck(w, x, y, z, block, meta, flag, player)}: the block's default state stands for the metadata. */
-    public static boolean breakBlockWithCheck(Level level, BlockPos pos, Block block, int flag, Player player) {
-        return breakBlockWithCheck(level, pos, block.defaultBlockState(), flag, player);
-    }
-
-    /** Turns the block into air with flag 3 (1.7.10 {@code breakBlockToAirWithCheck}). */
-    public static boolean breakBlockToAirWithCheck(Level level, BlockPos pos, Player player) {
-        return breakBlockWithCheck(level, pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL, player);
-    }
-
-    /** Same as {@link #breakBlockWithCheck(Level, BlockPos, Block, int, Player)} with flag 0, as the 1.7.10 overload had. */
-    public static boolean breakBlockWithCheck(Level level, BlockPos pos, Block block, Player player) {
-        return breakBlockWithCheck(level, pos, block, 0, player);
-    }
-
-    /** The running server, or null when none runs (1.7.10 {@code MinecraftServer.getServer()}). */
-    public static MinecraftServer server() {
-        return GameInstance.getServer();
-    }
 
     /**
      * Sets the motion of the entity to the vector from its centre to the point, normalised when longer than a block,
@@ -102,11 +45,5 @@ public final class MiscHelper {
         }
 
         return newList;
-    }
-
-    public static void printCurrentStackTrace(String message) {
-        if (message != null) LOG.info(message);
-
-        for (StackTraceElement element : Thread.currentThread().getStackTrace()) LOG.info("{}", element);
     }
 }

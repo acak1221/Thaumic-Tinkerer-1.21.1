@@ -462,4 +462,54 @@ class KamiGearLogicTest {
         assertFalse(granted.initial());
         assertFalse(granted.persistent() || granted.copyOnDeath() || granted.synced(), "the entity's own: " + granted);
     }
+
+    // ---- the Experience Drain's experience curve (the overflow-safe helper of the BasicItems group, moved here, its only user) ----
+
+    @Test
+    void theExperienceOfALevelFollowsTheCurveOfTheGame() {
+        // The points that lead from level 0: 2L+7 per level up to 15, 5L-38 up to 30, 9L-158 beyond.
+        int[][] known = { { 0, 0 }, { 1, 7 }, { 2, 16 }, { 5, 55 }, { 10, 160 }, { 15, 315 }, { 16, 352 }, { 17, 394 },
+                { 20, 550 }, { 30, 1395 }, { 31, 1507 }, { 32, 1628 }, { 50, 5345 } };
+        for (int[] pair : known) {
+            assertEquals(pair[1], ItemFocusXPDrain.getExperienceForLevel(pair[0]), "level " + pair[0]);
+        }
+        assertEquals(0, ItemFocusXPDrain.getExperienceForLevel(-3), "a negative level has no points");
+    }
+
+    @Test
+    void theStepsBetweenTheLevelsAreTheSizeOfTheExperienceBar() {
+        for (int level = 0; level < 100; level++) {
+            // Player.getXpNeededForNextLevel of the game
+            int bar = level >= 30 ? 112 + (level - 30) * 9 : level >= 15 ? 37 + (level - 15) * 5 : 7 + level * 2;
+            assertEquals(bar, ItemFocusXPDrain.getExperienceForLevel(level + 1) - ItemFocusXPDrain.getExperienceForLevel(level),
+                    "bar of level " + level);
+        }
+    }
+
+    @Test
+    void theLevelOfAnAmountOfExperienceInvertsTheCurveJustAboveAndBelowEachLevel() {
+        for (int level = 0; level < 80; level++) {
+            int points = ItemFocusXPDrain.getExperienceForLevel(level);
+            assertEquals(level, ItemFocusXPDrain.getLevelForExperience(points), "exactly level " + level);
+            assertEquals(level, ItemFocusXPDrain.getLevelForExperience(points + 1), "just above level " + level);
+            if (level > 0) {
+                assertEquals(level - 1, ItemFocusXPDrain.getLevelForExperience(points - 1), "just below level " + level);
+            }
+        }
+        assertEquals(0, ItemFocusXPDrain.getLevelForExperience(0));
+        assertEquals(0, ItemFocusXPDrain.getLevelForExperience(6));
+        assertEquals(1, ItemFocusXPDrain.getLevelForExperience(7));
+    }
+
+    @Test
+    void theExtremesOfTheExperienceRangeTerminateAndSaturateInsteadOfWrapping() {
+        // The 1.7.10 style loop never returned for the largest amounts (the points of a level beyond 21,863 saturate the int).
+        assertEquals(21863, ItemFocusXPDrain.getLevelForExperience(Integer.MAX_VALUE));
+        assertEquals(21863, ItemFocusXPDrain.getLevelForExperience(Integer.MAX_VALUE - 1));
+        assertEquals(2_147_407_943, ItemFocusXPDrain.getExperienceForLevel(21863), "the last level that fits");
+        assertEquals(Integer.MAX_VALUE, ItemFocusXPDrain.getExperienceForLevel(21864), "the first that does not");
+        assertEquals(Integer.MAX_VALUE, ItemFocusXPDrain.getExperienceForLevel(Integer.MAX_VALUE), "no overflow of the squares");
+        assertEquals(0, ItemFocusXPDrain.getLevelForExperience(-1), "a negative amount is level 0");
+        assertEquals(21862, ItemFocusXPDrain.getLevelForExperience(2_147_407_942), "one point short of the last level");
+    }
 }
