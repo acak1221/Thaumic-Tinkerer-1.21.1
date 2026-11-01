@@ -10,20 +10,18 @@ import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import thaumcraft.api.ThaumcraftFX;
+import thaumcraft.api.ThaumcraftSoundIds;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibMisc;
@@ -37,9 +35,9 @@ import thaumic.tinkerer.common.lib.LibMisc;
  *       dimension is {@code thaumictinkerer:bedrock} and the portal block {@code thaumictinkerer:bedrock_portal}.</li>
  *   <li>{@link #soulHeartSink} is the hook of the Soul Hearts ({@code SoulHeartHandler.addHearts}); the KamiWorld
  *       group assigns it from its {@code register()}. Until then the Soul Mode of the awakened sword is silent.</li>
- *   <li>{@link #warpGateTeleporter} is {@code TileWarpGate.teleportPlayer}; the default asks the block entity at the
- *       destination for its saved {@code locked} flag, so the Focus of Celestial Recall works without a reference to
- *       the gate class. The KamiWorld group may replace it.</li>
+ *   <li>{@link #warpGateTeleporter} is {@code TileWarpGate.teleportPlayer}, which the KamiWorld group assigns from its
+ *       {@code register()} whenever the Kami items exist; until then there is no destination (the original's "no
+ *       destination" message).</li>
  * </ul>
  */
 public final class KamiHooks {
@@ -62,7 +60,10 @@ public final class KamiHooks {
     };
 
     /** Teleports a player to the Celestial Gateway at a position of the player's own dimension (1.7.10 {@code TileWarpGate.teleportPlayer}). */
-    public static volatile WarpGateTeleporter warpGateTeleporter = KamiHooks::teleportToWarpGate;
+    public static volatile WarpGateTeleporter warpGateTeleporter = (player, gate) -> {
+        player.sendSystemMessage(Component.translatable("ttmisc.noDest"));
+        return false;
+    };
 
     private static volatile Consumer<Component> tooltipSink = text -> {};
     private static volatile Supplier<Player> localPlayer = () -> null;
@@ -99,32 +100,13 @@ public final class KamiHooks {
                 SoundSource.PLAYERS, 0.3F, 0.1F);
     }
 
-    /** The sound of Thaumcraft with that path ({@code wand}, {@code brain}...), or null when Thaumcraft has no such sound. */
-    public static SoundEvent thaumcraftSound(String path) {
-        return BuiltInRegistries.SOUND_EVENT.getOptional(ResourceLocation.fromNamespaceAndPath("thaumcraft", path))
-                .orElse(null);
-    }
-
     /**
-     * Plays a Thaumcraft sound at the player (1.7.10 {@code playSoundAtEntity(player, "thaumcraft:<path>", volume, pitch)}) from
-     * code that runs on <b>both</b> sides: on a server level this overload leaves {@code player} out of the broadcast because
-     * the client of that player has played the sound itself. A sound that only the server decides on goes through
-     * {@link #broadcastThaumcraftSound}.
+     * Plays a Thaumcraft sound ({@link ThaumcraftSoundIds}, the API's registered events) at the player, <b>including</b> the player,
+     * for code that runs on the server only (1.7.10's {@code playSoundAtEntity(player, "thaumcraft:<path>", ...)} reached the actor as
+     * well): the Shadowbeam's hum, the Mirror's placing sound, the sounds of the Celestial Recall.
      */
-    public static void playThaumcraftSound(Level level, Player player, String path, float volume, float pitch) {
-        SoundEvent sound = thaumcraftSound(path);
-        if (sound != null) level.playSound(player, player.getX(), player.getY(), player.getZ(), sound,
-                SoundSource.PLAYERS, volume, pitch);
-    }
-
-    /**
-     * Plays a Thaumcraft sound at the player, <b>including</b> the player, for code that runs on the server only (1.7.10's
-     * {@code playSoundAtEntity} reached the actor as well): the Shadowbeam's hum, the Mirror's placing sound, the sounds of the
-     * Celestial Recall.
-     */
-    public static void broadcastThaumcraftSound(Level level, Player at, String path, float volume, float pitch) {
-        SoundEvent sound = thaumcraftSound(path);
-        if (sound != null) level.playSound(null, at.getX(), at.getY(), at.getZ(), sound, SoundSource.PLAYERS, volume, pitch);
+    public static void broadcastThaumcraftSound(Level level, Player at, ResourceLocation sound, float volume, float pitch) {
+        level.playSound(null, at.getX(), at.getY(), at.getZ(), ThaumcraftSoundIds.event(sound), SoundSource.PLAYERS, volume, pitch);
     }
 
     /**
@@ -147,33 +129,5 @@ public final class KamiHooks {
     /** True when the portal block of the KamiWorld group exists (1.7.10: {@code ConfigHandler.bedrockDimensionID != 0}). */
     public static boolean bedrockDimensionAvailable() {
         return optionalBlock(LibBlockNames.PORTAL) != null;
-    }
-
-    /**
-     * Default of {@link #warpGateTeleporter}: the destination must be a Celestial Gateway that accepts incoming
-     * teleports. 1.7.10 asked {@code TileWarpGate.locked}; here the block entity's saved data is read ({@code locked}).
-     * Messages and sounds are those of the original.
-     */
-    static boolean teleportToWarpGate(ServerPlayer player, BlockPos pos) {
-        ServerLevel level = player.serverLevel();
-        Block gate = optionalBlock(LibBlockNames.WARP_GATE);
-        BlockEntity tile = level.getBlockEntity(pos);
-        if (gate == null || tile == null || !level.getBlockState(pos).is(gate)) {
-            player.sendSystemMessage(Component.translatable("ttmisc.noDest"));
-            return false;
-        }
-        CompoundTag saved = tile.saveWithoutMetadata(level.registryAccess());
-        if (saved.getBoolean("locked")) {
-            player.sendSystemMessage(Component.translatable("ttmisc.noTeleport"));
-            return false;
-        }
-        broadcastThaumcraftSound(level, player, "wand", 1F, 1F);
-        sparklesAround(level, player, 20);
-        player.stopRiding();
-        player.connection.teleport(pos.getX() + 0.5, pos.getY() + 1.6, pos.getZ() + 0.5, player.getYRot(),
-                player.getXRot());
-        sparklesAround(level, player, 20);
-        broadcastThaumcraftSound(level, player, "wand", 1F, 0.1F);
-        return true;
     }
 }

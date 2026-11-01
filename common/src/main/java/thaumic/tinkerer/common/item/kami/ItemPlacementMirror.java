@@ -42,6 +42,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.BlockHitResult;
+import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
@@ -49,9 +50,9 @@ import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.item.kami.tool.ToolHandler;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -297,7 +298,7 @@ public class ItemPlacementMirror extends KamiItemBase {
 
         for (BlockPos pos : allowed) placeBlockAndConsume(player, required, pos);
         // Only the server gets here: the sound goes to the player as well.
-        KamiHooks.broadcastThaumcraftSound(level, player, "wand", 1F, 1F);
+        KamiHooks.broadcastThaumcraftSound(level, player, ThaumcraftSoundIds.WAND, 1F, 1F);
     }
 
     private void placeBlockAndConsume(Player player, BlockState state, BlockPos pos) {

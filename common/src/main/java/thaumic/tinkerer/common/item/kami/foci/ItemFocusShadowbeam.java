@@ -19,6 +19,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
+import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
@@ -31,9 +32,9 @@ import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.network.packet.kami.PacketShadowBeam;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -63,7 +64,7 @@ public class ItemFocusShadowbeam extends ItemModKamiFocus {
             return;
         }
         if (player.getRandom().nextInt(10) == 0) {
-            KamiHooks.broadcastThaumcraftSound(player.level(), player, "brain", 0.5F, 1F);
+            KamiHooks.broadcastThaumcraftSound(player.level(), player, ThaumcraftSoundIds.BRAIN, 0.5F, 1F);
         }
         List<Vec3> path = ShadowBeam.fire(server, potency, ConfigHandler.baseDamageShadowbeam);
         PacketShadowBeam packet = new PacketShadowBeam(path);
