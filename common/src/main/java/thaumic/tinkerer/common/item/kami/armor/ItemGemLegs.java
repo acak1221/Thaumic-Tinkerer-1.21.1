@@ -26,9 +26,7 @@ import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.minecraft.world.level.block.state.properties.Property;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
@@ -39,9 +37,9 @@ import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -89,10 +87,9 @@ public class ItemGemLegs extends ItemIchorclothArmorAdv {
 
     /**
      * 1.7.10 {@code ItemBrightNitor.setBlock}: gaseous nitor into air or into nitor. The "bright" variant is metadata 1 of
-     * the nitor gas block, which the SimpleBlocks group keeps in the integer state property {@code level} (1 is the
-     * strong light of these leggings); the property is found by name so that the groups need not share a class
-     * ({@code level}, {@code meta} or {@code variant} as an integer, {@code bright} as a boolean); without such a property
-     * the plain gas is placed.
+     * the nitor gas block, which the SimpleBlocks group keeps in its integer state property {@code level} (1 is the strong light
+     * of these leggings). The block is reached by its registry path and the property by its name (the groups share no class);
+     * without it the plain gas is placed.
      */
     private static void setNitor(Level level, BlockPos pos, boolean bright) {
         if (level.isClientSide || !(level instanceof ServerLevel)) return;
@@ -101,20 +98,15 @@ public class ItemGemLegs extends ItemIchorclothArmorAdv {
         BlockState current = level.getBlockState(pos);
         if (!level.isEmptyBlock(pos) && !current.is(gas)) return;
         BlockState state = gas.defaultBlockState();
-        if (bright) {
-            for (Property<?> property : gas.getStateDefinition().getProperties()) {
-                if (property instanceof BooleanProperty flag && flag.getName().equals("bright")) {
-                    state = state.setValue(flag, true);
-                } else if (property instanceof IntegerProperty number
-                        && (number.getName().equals("level") || number.getName().equals("meta")
-                                || number.getName().equals("variant"))
-                        && number.getPossibleValues().contains(1)) {
-                    state = state.setValue(number, 1);
-                }
-            }
+        if (bright && gas.getStateDefinition().getProperty(GAS_LEVEL) instanceof IntegerProperty number
+                && number.getPossibleValues().contains(1)) {
+            state = state.setValue(number, 1);
         }
         level.setBlock(pos, state, Block.UPDATE_CLIENTS);
     }
+
+    /** The name of the nitor gas's integer state property: 1 is the bright variant of these leggings (1.7.10 metadata 1). */
+    private static final String GAS_LEVEL = "level";
 
     @Override
     public ThaumicTinkererRecipe getRecipeItem() {
