@@ -25,6 +25,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.feature.Feature;
 import thaumcraft.api.ThaumcraftApi;
 import thaumic.tinkerer.client.KamiWorldClient;
 import thaumic.tinkerer.common.block.kami.BlockBedrockPortal;
@@ -35,6 +36,7 @@ import thaumic.tinkerer.common.core.commands.KamiUnlockedCommand;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.kami.DimensionalShardDropHandler;
 import thaumic.tinkerer.common.core.handler.kami.SoulHeartHandler;
+import thaumic.tinkerer.common.dim.BedrockOreClustersFeature;
 import thaumic.tinkerer.common.dim.ChunkGeneratorBedrock;
 import thaumic.tinkerer.common.dim.WorldProviderBedrock;
 import thaumic.tinkerer.common.item.kami.ItemBlockWarpGate;
@@ -50,10 +52,12 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * Feature group: the Kami world: the Bedrock dimension and its portal, the Celestial Gateway, the Soul Hearts, the
  * dimensional shard drops and {@code /iskamiunlocked}.
  *
- * <p>Gated by {@code ConfigHandler.enableKami}: with the option off nothing of the group is registered, with one exception,
- * the chunk generator type {@code thaumictinkerer:bedrock}. The Bedrock dimension is a file of the data pack
- * ({@code data/thaumictinkerer/dimension/bedrock.json}) that names that type; a data pack that cannot decode its
- * dimensions stops the world from loading, so the type must exist even when no portal leads there.</p>
+ * <p>Gated by {@code ConfigHandler.enableKami}: with the option off nothing of the group is registered, with two exceptions,
+ * the chunk generator type {@code thaumictinkerer:bedrock} and the feature type {@code thaumictinkerer:bedrock_ore_clusters}.
+ * The Bedrock dimension is a file of the data pack ({@code data/thaumictinkerer/dimension/bedrock.json}) that names the
+ * generator type, and its biome ({@code worldgen/biome/bedrock.json}) names the placed feature of the ore clusters, whose
+ * configured feature names the feature type; a data pack that cannot decode its dimensions, biomes or features stops the world
+ * from loading, so both types must exist even when no portal leads there.</p>
  *
  * <p>The Kami gear group reaches this one through registry paths ({@code thaumictinkerer:bedrock}, the block
  * {@code bedrock_portal}, the block {@code warp_gate}) and the two hooks of {@link KamiHooks} that this registrar
@@ -64,6 +68,7 @@ public final class KamiWorld implements ContentGroup {
 
     private static final DeferredRegister<MapCodec<? extends ChunkGenerator>> CHUNK_GENERATORS = DeferredRegister
             .create(LibMisc.MOD_ID, Registries.CHUNK_GENERATOR);
+    private static final DeferredRegister<Feature<?>> FEATURES = DeferredRegister.create(LibMisc.MOD_ID, Registries.FEATURE);
 
     private static RegistrySupplier<BlockWarpGate> warpGate;
     private static RegistrySupplier<BlockEntityType<TileWarpGate>> warpGateType;
@@ -74,9 +79,11 @@ public final class KamiWorld implements ContentGroup {
 
     @Override
     public void register() {
-        // The generator type of the dimension file: always (see the class comment).
+        // The generator type of the dimension file and the feature type of its biome's ore clusters: always (see the class comment).
         CHUNK_GENERATORS.register("bedrock", () -> ChunkGeneratorBedrock.CODEC);
         CHUNK_GENERATORS.register();
+        FEATURES.register(BedrockOreClustersFeature.NAME, BedrockOreClustersFeature::new);
+        FEATURES.register();
 
         if (!ConfigHandler.enableKami) return;
 

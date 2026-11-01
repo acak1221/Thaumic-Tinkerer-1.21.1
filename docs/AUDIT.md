@@ -44,6 +44,18 @@ were removed; NeoForge no longer keeps a damage container per cancelled hit; "ca
 - The level's `RandomSource` instead of `new Random()`/`Math.random()` everywhere in gameplay.
 - Vanilla helpers for saved positions and UUIDs; the Enchanter's icons are drawn without reading PNG headers.
 
+## Follow-up: the two items left open (2026-11-01, branch `kami-followups`)
+
+| Area | Was | Now | Test |
+|---|---|---|---|
+| Kami world | The Bedrock dimension's ore clusters were a hand-written decoration: `ChunkGeneratorBedrock` overrode `applyBiomeDecoration` and seeded a `java.util.Random` from the world seed as 1.7.10 did | A registered world-generation feature `thaumictinkerer:bedrock_ore_clusters` (`BedrockOreClustersFeature`), its configured and placed feature as data, listed by the Bedrock biome in the underground-ores step and seeded by the game; the same ore rules (`EnumOreFrequency`, the ore tags, `bedrockOreDensity`, `bedrockOreBlacklist`), so the same kind and amount of ore at other positions. The feature type is registered with Kami off too (the biome names it). The generator stays, without a decoration of its own: `minecraft:flat` would change the sea level from 1 to -63 (`KamiWorld.md` §2) | `bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable` (GameTest: registration, the biome's steps, sixteen new chunks with a blacklist by name, tag and block id: only allowed ores, none blacklisted, 47,230 ore blocks against about 47,387 expected); `theOreClustersAreAFeatureOfTheBiomeInTheUndergroundOresStep` (JUnit, the data) |
+| Kami gear | Tree mode of the Ichorium Axe asked the game's rules (inside the API's `breakFurthestBlock`) but no protection mod | Every log is found with the API's lookup `findFurthestBlock`, asked about with `BlockProtection.mayBreak`, then broken by the API as before (same blocks, order, drops and cost); a refused log ends the felling (`KamiGear.md` §4) | `awakenedAxeTreeModeAsksTheProtectionAboutEveryLog` (a refusing backend: nothing felled; one refused log: the felling stops there; the installed backend: the whole trunk) |
+
+Both new GameTests fail with the code they replace (mutation runs of that day: the old felling loop fails the tree check at its first
+step; a second, differently seeded pass of the clusters, as the old decoration would have been beside the feature, doubles the ore,
+94,400 blocks, and fails the ore check, which the older `bedrockDimensionIsSolidBedrockWithOreVeins` does not notice). A second pass with
+the game's own seed changes nothing (the same cells), so it is not a defect and no check looks for it.
+
 ## Verified (2026-11-01, after all fixes, one run of each)
 
 | Check | Result |
@@ -53,13 +65,16 @@ were removed; NeoForge no longer keeps a damage container per cancelled hit; "ca
 | NeoForge GameTests (`:neoforge:runGameTest`) | All 362 required tests passed (314 before) |
 | Client smoke, Fabric / NeoForge | 728 / 731 PASS, 0 FAIL, 1 NOT_RUN |
 | Client smoke, Fabric with EMI + Jade / with JEI | 737 / 732 PASS, 0 FAIL, 1 NOT_RUN |
+| Follow-up (worktree of `kami-followups`, `check runTinkererGameTest :neoforge:runGameTest`, one run) | JUnit 424 tests, 0 failures; Fabric: All 356 required tests passed; NeoForge: All 364 required tests passed. The client smoke runs were not repeated |
 
 ## Not verified
 
 - The new tests were not run against the code before the fixes; that each would have caught its bug is reasoned, not seen.
 - A real protection mod (claims), third-party pipes, a GPU. Spawn protection on a real dedicated server, a real client receiving the
   config payload and multiplayer with real clients were not verified by this audit; they were afterwards, by the multiplayer check
-  (`MULTIPLAYER_VERIFICATION.md`, final runs: 67 PASS, 0 FAIL on Fabric and on NeoForge). Still not seen with real clients: the Remote Placer, the Dislocator and the Tablet under spawn
-  protection, latency and packet loss (loopback only).
-- Not fixed on purpose: the Bedrock dimension's ore generation stays a hand-written decoration (documented, low value); tree mode of the
-  Ichorium Axe asks the game's rules but no protection mod (documented in `KamiGear.md` §4).
+  (`MULTIPLAYER_VERIFICATION.md`, final runs: 67 PASS, 0 FAIL on Fabric and on NeoForge). Still not seen with real clients: the Remote
+  Placer, the Dislocator and the Tablet under spawn protection, latency and packet loss (loopback only).
+- The follow-up: tree mode against a real claims mod (only the add-on's test backend and the loaders' own backends were run); the ore
+  feature in a world with mods that add features to every biome (the test runs had none: the biome's steps held only the clusters) and in
+  a world made before the change (reasoned, not tried: its generated chunks keep their ores, chunks generated afterwards get the
+  feature's positions); the Bedrock dimension in a client.

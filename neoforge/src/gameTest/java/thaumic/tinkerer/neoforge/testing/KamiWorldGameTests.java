@@ -40,6 +40,11 @@ public final class KamiWorldGameTests {
         KamiWorldRuntimeChecks.bedrockOreConfigDecidesDensityAndBlacklist(test);
     }
 
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 1200)
+    public void bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable(GameTestHelper test) {
+        KamiWorldRuntimeChecks.bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable(test);
+    }
+
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 400)
     public void portalDestinationsFollowTheRules(GameTestHelper test) {
         KamiWorldRuntimeChecks.portalDestinationsFollowTheRules(test);

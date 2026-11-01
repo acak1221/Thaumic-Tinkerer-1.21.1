@@ -13,6 +13,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -22,18 +23,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.imageio.ImageIO;
+import net.minecraft.SharedConstants;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
+import net.minecraft.world.level.levelgen.placement.PlacementModifier;
+import net.minecraft.world.level.levelgen.placement.PlacementModifierType;
 import org.junit.jupiter.api.Test;
+import thaumic.tinkerer.common.dim.BedrockOreClustersFeature;
 import thaumic.tinkerer.common.dim.TeleporterBedrock;
 import thaumic.tinkerer.common.dim.WorldProviderBedrock;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibItemNames;
+import thaumic.tinkerer.common.lib.LibMisc;
 
 /**
  * Test-only code of the port (no 1.7.10 counterpart), CC BY-NC-SA 3.0 like the add-on.
  *
  * <p>The data of the KamiWorld group: the models, blockstates, loot table and tags of the two blocks, the files that make
- * the Bedrock dimension (dimension type, dimension, biome) and agree with the constants of the code, the text of the
+ * the Bedrock dimension (dimension type, dimension, biome, the configured and placed feature of the ore clusters) and agree with the
+ * constants of the code, the text of the
  * Dimensional Shards page with the new texture paths in every language, and the language keys of the screens.</p>
  */
 class KamiWorldResourcesTest {
@@ -214,9 +224,8 @@ class KamiWorldResourcesTest {
     }
 
     @Test
-    void theBiomeHasTheMonstersOfTheBeachAndNoFeaturesOrCarvers() {
+    void theBiomeHasTheMonstersOfTheBeachAndNoCarvers() {
         JsonObject biome = json("/data/" + NS + "/worldgen/biome/bedrock.json");
-        assertEquals(0, biome.getAsJsonArray("features").size());
         assertEquals(0, biome.getAsJsonObject("carvers").size());
         JsonObject spawners = biome.getAsJsonObject("spawners");
         assertEquals(0, spawners.getAsJsonArray("creature").size(), "the beach spawns no animals");
@@ -226,6 +235,49 @@ class KamiWorldResourcesTest {
                 "minecraft:enderman", "minecraft:witch"), monsters);
         // The End's fog colour dimmed to 15 percent: 0xA080A0 * 0.15.
         assertEquals(0x181318, biome.getAsJsonObject("effects").get("fog_color").getAsInt());
+    }
+
+    /**
+     * The ore clusters are a world-generation feature of the data pack: the biome lists the placed feature
+     * {@code thaumictinkerer:bedrock_ore_clusters} in the underground-ores step and nothing else; the placed feature names the configured
+     * feature of the same id and keeps only the biome filter (the feature itself places the configured number of clusters in its
+     * chunk); the configured feature is the feature type the registrar registers ({@code KamiWorld}: {@code FEATURES.register(
+     * BedrockOreClustersFeature.NAME, ...)}) with an empty configuration, which the feature's own codec decodes.
+     */
+    @Test
+    void theOreClustersAreAFeatureOfTheBiomeInTheUndergroundOresStep() {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        String id = LibMisc.id(BedrockOreClustersFeature.NAME).toString();
+        assertEquals(NS + ":bedrock_ore_clusters", id);
+        assertEquals(id, BedrockOreClustersFeature.PLACED.location().toString(), "the key of the placed feature");
+
+        JsonArray steps = json("/data/" + NS + "/worldgen/biome/bedrock.json").getAsJsonArray("features");
+        int ores = GenerationStep.Decoration.UNDERGROUND_ORES.ordinal();
+        assertEquals(ores + 1, steps.size(), "the lists run up to the underground-ores step");
+        for (int step = 0; step < steps.size(); step++) {
+            JsonArray features = steps.get(step).getAsJsonArray();
+            if (step == ores) {
+                assertEquals(1, features.size(), "one feature in the underground-ores step");
+                assertEquals(id, features.get(0).getAsString());
+            } else {
+                assertEquals(0, features.size(), GenerationStep.Decoration.values()[step] + " is empty");
+            }
+        }
+
+        JsonObject placed = json("/data/" + NS + "/worldgen/placed_feature/" + BedrockOreClustersFeature.NAME + ".json");
+        assertEquals(id, placed.get("feature").getAsString(), "the placed feature names the configured feature");
+        List<PlacementModifier> placement = PlacementModifier.CODEC.listOf().parse(JsonOps.INSTANCE, placed.get("placement"))
+                .getOrThrow(message -> new AssertionError("the placement does not decode: " + message));
+        assertEquals(1, placement.size(), "no count, no spread: the feature does its chunk itself");
+        assertEquals(PlacementModifierType.BIOME_FILTER, placement.get(0).type(), "the biome filter of every vanilla biome feature");
+
+        JsonObject configured = json("/data/" + NS + "/worldgen/configured_feature/" + BedrockOreClustersFeature.NAME + ".json");
+        assertEquals(id, configured.get("type").getAsString(), "the configured feature is of the registered type");
+        BedrockOreClustersFeature feature = new BedrockOreClustersFeature();
+        var decoded = feature.configuredCodec().codec().parse(JsonOps.INSTANCE, configured)
+                .getOrThrow(message -> new AssertionError("the configuration does not decode: " + message));
+        assertTrue(decoded.feature() == feature && decoded.config() == NoneFeatureConfiguration.INSTANCE, "no configuration: " + decoded);
     }
 
     // ---- text and textures ---------------------------------------------------------------------------------------

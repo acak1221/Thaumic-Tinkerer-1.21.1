@@ -9,7 +9,17 @@
     "water_fog_color": 329011
   },
   "carvers": {},
-  "features": [],
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "thaumictinkerer:bedrock_ore_clusters"
+    ]
+  ],
   "spawn_costs": {},
   "spawners": {
     "ambient": [

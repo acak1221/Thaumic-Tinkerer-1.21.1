@@ -18,7 +18,6 @@ import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
-import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.block.Blocks;
@@ -33,9 +32,15 @@ import net.minecraft.world.level.levelgen.blending.Blender;
 
 /**
  * The terrain of the Bedrock dimension (1.7.10 {@code ChunkProviderBedrock}, which was a copy of the superflat provider
- * with one layer of 256 blocks of bedrock): every block of every chunk is bedrock, and the ore clusters of
- * {@link OreClusterGenerator} are the only variation. There are no caves, no surface, no structures and no features of
- * the biome. The dimension file names this generator by its registered type {@code thaumictinkerer:bedrock}.
+ * with one layer of 256 blocks of bedrock): every block of every chunk is bedrock. There are no caves, no surface and no
+ * structures. The ore clusters, the only variation, are not this class's work: they are the feature
+ * {@link BedrockOreClustersFeature} of the Bedrock biome, which the inherited {@code applyBiomeDecoration} places with the
+ * game's own feature seed (1.7.10's {@code populate} was an override of the provider with a random of its own). The dimension
+ * file names this generator by its registered type {@code thaumictinkerer:bedrock}.
+ *
+ * <p>It stays a generator of its own rather than {@code minecraft:flat} with 256 layers of bedrock, which gives the same blocks:
+ * the flat generator answers a sea level of -63 (1.7.10 and this class: 1, {@code getAverageGroundLevel}), and a saved world names
+ * this type in its {@code level.dat}.</p>
  */
 public final class ChunkGeneratorBedrock extends ChunkGenerator {
     public static final MapCodec<ChunkGeneratorBedrock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
@@ -84,12 +89,6 @@ public final class ChunkGeneratorBedrock extends ChunkGenerator {
                 worldSurface.update(x, top, z, bedrock);
             }
         }
-    }
-
-    /** 1.7.10 {@code populate}: the ore clusters. */
-    @Override
-    public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structureManager) {
-        OreClusterGenerator.populate(level, chunk.getPos().x, chunk.getPos().z);
     }
 
     @Override

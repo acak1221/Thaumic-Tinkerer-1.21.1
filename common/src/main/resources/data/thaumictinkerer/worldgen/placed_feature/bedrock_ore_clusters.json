@@ -1,0 +1,8 @@
+{
+  "feature": "thaumictinkerer:bedrock_ore_clusters",
+  "placement": [
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

@@ -249,4 +249,9 @@ public final class KamiGearGameTests {
     public void switchedOffGemBootsGiveTheStepWhileThePlayerWalks(GameTestHelper test) {
         KamiGearRuntimeChecks.switchedOffGemBootsGiveTheStepWhileThePlayerWalks(test);
     }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void awakenedAxeTreeModeAsksTheProtectionAboutEveryLog(GameTestHelper test) {
+        KamiGearRuntimeChecks.awakenedAxeTreeModeAsksTheProtectionAboutEveryLog(test);
+    }
 }
