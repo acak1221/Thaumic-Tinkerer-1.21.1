@@ -8,6 +8,7 @@
  */
 package thaumic.tinkerer.common.item;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import thaumcraft.api.IScribeTools;
@@ -35,7 +36,8 @@ public class ItemInfusedInkwell extends Item implements IScribeTools, ITTinkerer
     public static final String REFILL_RECIPE = "infused_inkwell0";
 
     public ItemInfusedInkwell(Item.Properties properties) {
-        super(properties.durability(INK).stacksTo(1));
+        // 1.7.10 hasEffect: always the enchantment glint; the item's default component says so (a stack may be told otherwise).
+        super(properties.durability(INK).stacksTo(1).component(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true));
     }
 
     @Override
@@ -62,11 +64,5 @@ public class ItemInfusedInkwell extends Item implements IScribeTools, ITTinkerer
                         ItemApi.getItem("itemShard", 0),
                         ItemApi.getBlock("blockJar", 0),
                         ItemApi.getItem("itemResource", 3)));
-    }
-
-    /** 1.7.10 {@code hasEffect}: always. */
-    @Override
-    public boolean isFoil(ItemStack stack) {
-        return true;
     }
 }

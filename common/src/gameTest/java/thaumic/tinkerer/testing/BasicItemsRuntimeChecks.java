@@ -1025,6 +1025,8 @@ public final class BasicItemsRuntimeChecks {
     public static void infusedInkwellIsRefilledByEightInkSacs(GameTestHelper test) {
         ServerLevel level = test.getLevel();
         ItemStack inkwell = TTRegistry.stack(LibItemNames.INFUSED_INKWELL);
+        test.assertTrue(inkwell.hasFoil() && Boolean.TRUE.equals(inkwell.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                "the inkwell always has the glint (1.7.10 hasEffect), as its default component");
         inkwell.setDamageValue(700);
         ItemStack sac = new ItemStack(Items.INK_SAC);
         List<ItemStack> grid = grid(sac, sac.copy(), sac.copy(), sac.copy(), inkwell, sac.copy(), sac.copy(), sac.copy(),
