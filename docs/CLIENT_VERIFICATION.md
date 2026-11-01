@@ -160,6 +160,12 @@ Runs of 2026-10-31, all after the harness was split into the shared tree and the
 After the multiplayer mode was added (2026-11-01; `ClientSmoke` picks the mode, `SmokeRun` takes its phases as a list): Fabric 727 PASS, NeoForge 730 PASS,
 0 FAIL, 0 HARNESS_ERROR, 1 NOT_RUN, 80 pictures each (the fire blocks' `up=true` states account for the one PASS fewer, see below).
 
+After the modernization of packages C and D (2026-11-01, branch `modernize-c`; the config handshake now also runs over the integrated server's
+memory connection before the world loads): Fabric 714 PASS, 52 INFO; NeoForge 719 PASS, 47 INFO; 0 FAIL, 0 HARNESS_ERROR, 1 NOT_RUN, 80 pictures
+each. Compared check by check with the runs before (Fabric 726, NeoForge 730 PASS): twelve `resource_path` PASS and four `unused_resource_constant`
+INFO fewer, the checks of the `LibResources` constants that were deleted as unused (the four Ichor armour paths named textures that do not exist),
+and one fire block's `up=true` state; nothing else changed.
+
 The `NOT_RUN` is the Kami tool-mode tooltip (`HudPhase`) on every run. The last Fabric run before the split had 726 PASS, 0 FAIL, 1 NOT_RUN, 56 INFO, 80 pictures;
 the split changed no check: its run without the optional mods (made twice, the second after the whole test suite at the end of the work, both with the
 numbers above) differs from that one only in `fire_order up=true` and `fire_chaos up=true`, both drawn this time. The Fabric runs with the optional mods

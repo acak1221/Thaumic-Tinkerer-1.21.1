@@ -105,6 +105,12 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   (this one); the Thaumcraft mod stays MIT. The add-on's public-API additions in the mod (for example `IBauble.equipsOnUse`, `IFocusPouch`, `BaublesApi.getWorn`,
   `ThaumcraftApiHelper` scan and discovery helpers, `WarpEffects`) contain no Thaumic Tinkerer code.
 
+* **Modernization of 2026-11-01 (packages C and D; `AUDIT.md`).** Two small visible results of replacing 1.7.10 technique: the lightning rings above
+  the Kinetic and Corporeal Attractors bob on the game's clock (the original's `cos(System.currentTimeMillis() / 500F)` rounded in `float`, so its rings
+  stood still and jumped about every two minutes; `Machines.md` section 13), and the Osmotic Enchanter treats the items of the convention tag
+  `#c:tools/shear` as shears for Efficiency, Fortune and Silk Touch, as it treats a `ShearsItem` (`Enchantments.md` section 14). The config sync became a
+  configuration task (section 1).
+
 ## 3. Behaviour that depends on loader events
 
 Architectury has no events for several things the original used Forge events for. The groups first worked around each gap and wrote the loss down;

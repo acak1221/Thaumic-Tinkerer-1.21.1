@@ -100,3 +100,15 @@ constants; package D: the config handshake). Details in `deviations/Machines.md`
 | Duplicated enchantment keys | `LibEnchantIDs.idAscentBoost` … and copies in `ModEnchantments` | one set in `ModEnchantments` | `theFourteenKeysAreThoseOfTheRegistryPathsOfTheEnchantments` |
 | `KamiResearchItem.Blacklist` | a public mutable list filled in a static block | `private static final List.of("MINILITH")` | the Kami parity check |
 | Config sync in the play phase (package D) | `PacketConfigSync` on `PLAYER_JOIN`; until it arrived the client used its own file, and a client whose registration options differed disconnected itself after the world had loaded | a configuration task (`ConfigSync`; Fabric `ServerConfigurationConnectionEvents.CONFIGURE` + configuration networking, `FabricConfigurationTask`/`FabricConfigurationTaskClient`; NeoForge `RegisterConfigurationTasksEvent` + configuration payloads, `NeoForgeConfigurationTask`): the server sends its values before the client has a world, the client answers with its registration options (`PacketConfigSyncReply`), the server refuses a mismatch with the add-on's message. The same options are synced, the same mismatches refused, the same translated message; a client without the add-on gets no task; the loaders' registry sync still comes first (`DEVIATIONS.md` section 1) | `ConfigHandlerTest` (the answer, the refusal and its arguments, the reply codec and its bound, the wiring); the multiplayer check on both loaders (below) |
+
+Verified (2026-11-01, worktree of `modernize-c` at the commit with package D, one run of each): `check runTinkererGameTest :neoforge:runGameTest
+assemble :neoforge:assemble --continue` `BUILD SUCCESSFUL`: JUnit 436 tests, 0 failures; Fabric "All 366 required tests passed"; NeoForge "All 375
+required tests passed". Client smoke: Fabric 714 PASS, NeoForge 719 PASS, 0 FAIL, 0 HARNESS_ERROR, 1 NOT_RUN, 80 pictures each (sixteen checks fewer
+than before: those of the deleted `LibResources` constants, `CLIENT_VERIFICATION.md`). Multiplayer check: 139 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN on
+each loader, the refusals now in the configuration phase (`MULTIPLAYER_VERIFICATION.md`, third part). Earlier focused runs: the Machines, Enchantments
+and Core GameTests, "All 97 required tests passed" on both loaders.
+
+Not verified: that each new GameTest fails against the code it replaces (reasoned for the sound packet, the glint component and the shears tag, not run);
+the attractor rings' animation by eye; a client without the add-on, a client of an earlier version and a client that never answers the handshake (no
+such client in the multiplayer check); the optional finding T3 (wooden blocks by `SoundType` in `ModEnchantmentHandler`) was left as it is (it would
+change which modded blocks count).
