@@ -194,10 +194,15 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
     adjective and item; a turtle and a Fume Dissipator in a crafting grid give a turtle with it) and `luaTurtleDissipatesGas` (a real
     turtle with the tool runs `turtle.dig()`: the gases in reach are gone, those one block further stay; `turtle.attack()` fails).
   - `computerCraftIsLoadedAndTheGlueRegistered`: CC: Tweaked is on the server and no registration of the add-on failed.
-- Runs (2026-11-01, this worktree, through the shared Gradle wrapper): the full suite `check runTinkererGameTest :neoforge:runGameTest
-  assemble :neoforge:assemble --continue`: `BUILD SUCCESSFUL`; JUnit 447 tests, 0 failures, 0 errors (`build/test-results/tinkererTest`);
-  Fabric "All 370 required tests passed" (370 `testcase` elements, none failed, the 14 of this group among them, the Lua ones 1.4 to 1.8 s
-  each); NeoForge "All 378 required tests passed" (378, none failed, the same 14). The release jars contain the 21 classes of
+- Runs (2026-11-01, this worktree, through the shared Gradle wrapper), the last ones against Thaumcraft 4 Reload `c1d8024` (the publish of
+  15:17 UTC): the full suite `check runTinkererGameTest :neoforge:runGameTest assemble :neoforge:assemble --continue`: `BUILD SUCCESSFUL`;
+  JUnit 447 tests, 0 failures, 0 errors (`build/test-results/tinkererTest`); Fabric "All 370 required tests passed" (370 `testcase`
+  elements, none failed, the 14 of this group among them, the Lua ones 1.4 to 1.8 s each in the run before); NeoForge "All 378 required
+  tests passed" (378, none failed, the same 14). The same suite had passed with the same figures against the publish of `316897d`. The
+  client smoke without CC: Tweaked (`tools/client-smoke.sh`, `--neoforge`): harness COMPLETED on both loaders, Fabric 728 PASS, NeoForge
+  730 PASS, 0 FAIL, 1 NOT_RUN (`tool_mode_hud`, as before), 80 screenshots each; its translation check covers the 107 text pages of the
+  add-on's research tab, the nine of `PERIPHERALS` among them, in en_us and ru_ru (none missing); CC: Tweaked was not loaded (no mod of
+  that id in either client log). The smoke checks the texts of the pages; it does not open the Thaumonomicon at them. The release jars contain the 21 classes of
   `compat/.../computer` and the upgrade's data file and no class of CC: Tweaked or Cobalt. Earlier focused runs found and fixed: the
   NeoForge server crashed without Cobalt (`NoClassDefFoundError: org/squiddev/cobalt/LuaValue`; CC: Tweaked's NeoForge jar nests it with
   JarJar, which this development run does not unpack: now `forgeRuntimeLibrary`); in one Fabric run three of the Lua tests timed out on a
