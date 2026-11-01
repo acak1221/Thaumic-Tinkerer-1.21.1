@@ -6,6 +6,10 @@ not verified: that a physical client receives the server's config and uses it, t
 for the add-on's tools (vanilla answers `isUnderSpawnProtection` with false on any other server), that the add-on's packets and its
 block-entity updates cross a real connection, and that a second player sees what the first one changed. The **multiplayer check** does
 exactly that: real dedicated servers and five real clients, each in its own JVM, talking over the loopback socket, on **both loaders**.
+Its second part (2026-11-01, sections f to h below) adds the devices whose fake player asks the protection (the Remote Placer, the
+Transvector Dislocator, the Animation Tablet) under spawn protection, the packets of the screens and keys that the first part only
+registered (the Remote Placer's buttons, the Enchanter's start, the Kami armour key, the Celestial Gateway's button and teleport, the
+server's Soul Hearts and Shadowbeam on the client), and a real claims mod, **Open Parties and Claims**, on the server.
 
 It is a development tool, like the client smoke (`CLIENT_VERIFICATION.md`), and never part of a release jar (see "Wiring").
 
@@ -47,6 +51,10 @@ program arguments, the run directory, the run's environment variables), writes i
    (`online-mode=false`, `spawn-protection=16`, flat world, peaceful, `max-tick-time=-1`, bound to 127.0.0.1), `ops.json`,
    `config/thaumictinkerer.json` (`modFlight.enabled=false`, `focusOfDislocationBlacklist=["minecraft:gold_block"]`), a fresh world;
    each client's `options.txt` and its own `config/thaumictinkerer.json` (flight on, empty blacklist; the mismatch clients see below).
+   The server's class path also holds **Open Parties and Claims** (OPAC) 0.33.0 for Minecraft 1.21.1 and, on Fabric, the Forge Config API
+   Port 21.1.6 it requires (`gradle.properties`: `opac_fabric_version`, `opac_neoforge_version`, `forge_config_api_port_version`;
+   Modrinth's Maven), with OPAC's default configuration; the clients do not have it (OPAC needs no client: its network channel is
+   optional). Neither is a dependency of the add-on or of any other run (see "Wiring").
 2. **Operators.** Vanilla's `DedicatedServer.isUnderSpawnProtection` returns false while the operator list is **empty**, so a server with
    nobody opped has no spawn protection at all. `ops.json` therefore names `TTServerOp`, who never joins; none of the players is an operator.
 3. The server starts; its test mod writes `server-ready` when the world is built. Then the second player `TTBravo` and, five seconds
@@ -65,13 +73,23 @@ program arguments, the run directory, the run's environment variables), writes i
 real connection: a cast or a block click is a press of the use or the attack key (`KeyMapping.click`, which the game's own
 `handleKeybinds` turns into `startUseItem` / `startAttack` on what is in the cross-hair), sneaking holds the sneak key down, items go
 into menus by container clicks (`MultiPlayerGameMode.handleInventoryMouseClick`), and screen buttons get a mouse click through the
-screen (`Screen.mouseClicked` at the button). Before a click the client checks that its **own** cross-hair shows the block the server
-named; nothing is aimed by the server.
+screen (`Screen.mouseClicked` at the button). Before a click the client checks that its **own** cross-hair shows the block (or, for the
+Soul Hearts, the entity) the server named; nothing is aimed by the server. A key held over several ticks (sneak, use for the Shadowbeam,
+attack for an axe that breaks a log) is held down with `KeyMapping.setDown` every tick. The add-on's own key mapping ("Toggle Awakened
+Armor", unbound by default as in 1.7.10) is bound to U the way the controls screen does it (`setKey`, `KeyMapping.resetMapping`) and
+pressed with `KeyMapping.click`. One thing a key mapping cannot do: the Celestial Gateway's destinations screen teleports only on a
+click with `Screen.hasShiftDown()`, which asks GLFW for the physical key. For that one click the lead sends its own window a real
+X11 `KeyPress` / `KeyRelease` of the left shift key (`XSendEvent` through LWJGL, the key code from `glfwGetKeyScancode`; `Input.realShift`):
+the X server delivers it, GLFW reads it like a key of a keyboard, and the second client on the same display gets nothing.
 
 **How they talk to the server's harness.** Only for coordination: a chat command `/ttmp <action> <name> <id> [arg]` (permission 0,
 registered by the server test mod only), answered by a system message `[ttmp] <id> <STATUS> key=value ... | text`. `stage` puts the player
-at a scenario (a teleport with the rotation that looks at its block) and remembers the state before; `check` reports what the server finds
-afterwards and records it in the server's report; `ready` and `saw` are the second player's. The client then records one line with both
+at a scenario (a teleport with the rotation that looks at its block) and remembers the state before; for some scenarios it first gives
+the player the scenario's item in a hotbar slot or puts the Gem Boots on (setup, not what is tested), and the client waits until its
+own inventory shows it. `check` reports what the server finds afterwards and records it in the server's report; while an effect that
+takes time (a tablet breaking a stone, the Enchanter at work, a teleport) is not there yet, it answers `WAIT` for a few seconds and the
+client asks again. `ready` and `saw` are the second player's; the lead's last `stage` (`wait_peer`) waits until the second player, who
+works at the lead's claim, has left. The client then records one line with both
 sides: the server's verdict and what its own world and inventory show, which must agree with the server's numbers.
 
 ## What it checks

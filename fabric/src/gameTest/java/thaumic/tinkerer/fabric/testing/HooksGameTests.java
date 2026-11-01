@@ -129,8 +129,12 @@ public final class HooksGameTests implements FabricGameTest {
     /**
      * Fabric-native: {@code BlockProtection.mayBreak} asks Fabric API's {@code PlayerBlockBreakEvents.BEFORE} (what claim mods
      * written for Fabric listen to): a listener that refuses a position makes it false there, while probing, and nothing is
-     * broken; another position stays allowed. Fabric API has no place event, so the place half is the shared check's
-     * (Architectury's {@code BlockEvent.PLACE}). The NeoForge counterpart asks NeoForge's {@code BreakEvent} and {@code EntityPlaceEvent}.
+     * broken; another position stays allowed. Fabric API has no place event; since 2026-11-01 {@code mayPlace} asks the same
+     * {@code BEFORE} about what is at the position now (air for a free one), because a claim mod written for Fabric protects a
+     * position through it and through the click (Open Parties and Claims hears no place question otherwise, MULTIPLAYER_VERIFICATION.md
+     * section h): a listener that refuses the position makes the placement false too, asked once while probing with the block that is
+     * there, and nothing is placed. Architectury's {@code BlockEvent.PLACE} is the shared check's. The NeoForge counterpart asks
+     * NeoForge's {@code BreakEvent} and {@code EntityPlaceEvent}.
      */
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents(GameTestHelper test) {
@@ -156,6 +160,24 @@ public final class HooksGameTests implements FabricGameTest {
             REFUSED_BREAKS.remove(refused);
         }
         test.assertTrue(BlockProtection.mayBreak(player, level, refused, dirt), "without the refusal the break is allowed");
+
+        // The place half: the free cell above the dirt, refused by the same BEFORE listener.
+        BlockPos free = test.absolutePos(refusedRel.above());
+        BlockPos otherFree = test.absolutePos(otherRel.above());
+        BlockState stone = Blocks.STONE.defaultBlockState();
+        List<String> placeSeen = new ArrayList<>();
+        REFUSED_BREAKS.put(free, placeSeen);
+        try {
+            test.assertFalse(BlockProtection.mayPlace(player, level, free, stone),
+                    "PlayerBlockBreakEvents.BEFORE refuses the position: may not place there either");
+            test.assertTrue(placeSeen.size() == 1 && placeSeen.get(0).startsWith("probing=true") && placeSeen.get(0).contains("minecraft:air"),
+                    "the listener was asked once, while probing, about the air that is there: " + placeSeen);
+            test.assertTrue(level.getBlockState(free).isAir(), "and nothing was placed");
+            test.assertTrue(BlockProtection.mayPlace(player, level, otherFree, stone), "a position it does not refuse is allowed");
+        } finally {
+            REFUSED_BREAKS.remove(free);
+        }
+        test.assertTrue(BlockProtection.mayPlace(player, level, free, stone), "without the refusal the placement is allowed");
         player.discard();
         test.succeed();
     }

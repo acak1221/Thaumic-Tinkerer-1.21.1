@@ -73,6 +73,22 @@ final class ServerLink {
         }
     }
 
+    /** A mark in the messages received: {@link #since} answers what came after it. */
+    int mark() {
+        return received.size();
+    }
+
+    /** The system messages that are not answers of the harness, received after {@code mark}. */
+    List<String> since(int mark) {
+        synchronized (received) {
+            List<String> out = new ArrayList<>();
+            for (int i = Math.min(mark, received.size()); i < received.size(); i++) {
+                if (!received.get(i).startsWith("[ttmp] ")) out.add(received.get(i));
+            }
+            return out;
+        }
+    }
+
     static Reply parse(String text) {
         String body = text.substring("[ttmp] ".length());
         String free = "";

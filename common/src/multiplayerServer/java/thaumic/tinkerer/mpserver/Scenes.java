@@ -107,8 +107,18 @@ final class Scenes {
     static final BlockPos TABLET = new BlockPos(30, G, 30);
     static final int MIRROR_SIZE = 5;
 
-    /** Where a player is put for a scenario: feet, the point he looks at, the block and face the client must see in its cross-hair. */
-    record Stage(String name, Vec3 feet, Vec3 aim, @Nullable BlockPos target, @Nullable Direction face, int slot, boolean crouch) {}
+    /**
+     * Where a player is put for a scenario: feet, the point he looks at, the block and face the client must see in its cross-hair.
+     * {@code prepare} is setup of the harness that runs before the baseline is taken (an item put into a hotbar slot, a piece of
+     * armour put on): nothing a scenario tests. {@code holding} is the id of the item the client must see in {@code slot} before it
+     * acts; {@code entity} means the cross-hair must show an entity instead of a block.
+     */
+    record Stage(String name, Vec3 feet, Vec3 aim, @Nullable BlockPos target, @Nullable Direction face, int slot, boolean crouch,
+            @Nullable java.util.function.Consumer<ServerPlayer> prepare, @Nullable String holding, boolean entity) {
+        Stage(String name, Vec3 feet, Vec3 aim, @Nullable BlockPos target, @Nullable Direction face, int slot, boolean crouch) {
+            this(name, feet, aim, target, face, slot, crouch, null, null, false);
+        }
+    }
 
     static final Map<String, Stage> STAGES = new LinkedHashMap<>();
 
@@ -146,6 +156,13 @@ final class Scenes {
         // The second player watches the tablet from the south-east.
         stage("peer", new Vec3(TABLET.getX() + 3.5, G, TABLET.getZ() + 3.5),
                 new Vec3(TABLET.getX() + 0.5, G + 0.125, TABLET.getZ() + 0.5), TABLET, null, SLOT_EMPTY, false);
+        // The second check (2026-11-01): the devices under spawn protection, the packets of the screens and keys, the claims of
+        // Open Parties and Claims.
+        DeviceScenes.define(STAGES);
+        ClaimScenes.define(STAGES);
+        // The lead waits here at the end until the second player has left (it still acts in the lead's claim until then).
+        stage("wait_peer", new Vec3(SPAWN.getX() + 0.5, G, SPAWN.getZ() + 0.5), new Vec3(SPAWN.getX() + 0.5, G + 1.62, SPAWN.getZ() - 4.5),
+                null, null, SLOT_EMPTY, false);
     }
 
     /** The scenarios that must have a server-side result by the end of the second server's run (variant {@code kami-off}). */
@@ -158,9 +175,17 @@ final class Scenes {
     }
 
     /** The scenarios that must have a server-side result by the end of the run. */
-    static final List<String> EXPECTED = List.of("setup", "join_lead", "join_peer", "join_mismatch", "spawn_protection", "flight",
-            "dislocation_blacklisted", "dislocation_inside", "dislocation_outside", "dislocation_place_inside", "dislocation_place_outside", "mirror_inside", "mirror_boundary", "mirror_outside",
-            "pickaxe_inside", "pickaxe_outside", "enchanter", "tablet", "peer_saw_tablet", "mismatch");
+    static final List<String> EXPECTED;
+
+    static {
+        List<String> expected = new ArrayList<>(List.of("setup", "join_lead", "join_peer", "join_mismatch", "spawn_protection", "flight",
+                "dislocation_blacklisted", "dislocation_inside", "dislocation_outside", "dislocation_place_inside", "dislocation_place_outside",
+                "mirror_inside", "mirror_boundary", "mirror_outside", "pickaxe_inside", "pickaxe_outside", "enchanter", "tablet",
+                "peer_saw_tablet", "mismatch"));
+        expected.addAll(DeviceScenes.NAMES);
+        expected.addAll(ClaimScenes.NAMES);
+        EXPECTED = List.copyOf(expected);
+    }
 
     /** Every server-to-client payload type of the add-on. */
     static final List<CustomPacketPayload.Type<?>> S2C = List.of(PacketConfigSync.TYPE, PacketSoulHearts.TYPE, PacketArmorStatus.TYPE,
@@ -175,6 +200,9 @@ final class Scenes {
     private static void stage(String name, Vec3 feet, Vec3 aim, @Nullable BlockPos target, @Nullable Direction face, int slot, boolean crouch) {
         STAGES.put(name, new Stage(name, feet, aim, target, face, slot, crouch));
     }
+
+    /** Whether the second player has left the server (the lead waits for it at the end). */
+    private static boolean peerGone;
 
     static Vec3 faceCenter(BlockPos pos, Direction face) {
         return Vec3.atCenterOf(pos).add(face.getStepX() * 0.5, face.getStepY() * 0.5, face.getStepZ() * 0.5);
@@ -196,8 +224,8 @@ final class Scenes {
         level.setDayTime(6000L);
         level.setWeatherParameters(24000, 0, false, false);
         level.setDefaultSpawnPos(SPAWN, 0F);
-        // The stages lie in the chunks -3..2 on both axes; they stay loaded for the whole run.
-        for (int cx = -3; cx <= 3; cx++) for (int cz = -3; cz <= 3; cz++) level.setChunkForced(cx, cz, true);
+        // The stages lie in the chunks -3..7 (x) and -3..3 (z); they stay loaded for the whole run (the devices tick there too).
+        for (int cx = -3; cx <= 8; cx++) for (int cz = -3; cz <= 3; cz++) level.setChunkForced(cx, cz, true);
 
         put(level, GOLD.below(), Blocks.STONE.defaultBlockState());
         put(level, GOLD, Blocks.GOLD_BLOCK.defaultBlockState());
@@ -217,6 +245,11 @@ final class Scenes {
         }
         put(level, ENCHANTER, TTRegistry.block(LibBlockNames.ENCHANTER).defaultBlockState());
         put(level, TABLET, TTRegistry.block(LibBlockNames.ANIMATION_TABLET).defaultBlockState());
+        // The second server (Kami off) has none of the Kami blocks and only one client, which leaves at once.
+        if (!variant.equals("kami-off")) {
+            DeviceScenes.build(level, report);
+            ClaimScenes.build(server, level, report);
+        }
 
         report.fact("dedicated_server", server.isDedicatedServer());
         report.fact("spawn", SPAWN.toShortString());
@@ -237,7 +270,7 @@ final class Scenes {
                 + ", focusOfDislocationBlacklist=" + Arrays.toString(ConfigHandler.blockBlacklist) + ", kami.forceenabled=" + ConfigHandler.enableKami);
     }
 
-    private static void put(ServerLevel level, BlockPos pos, BlockState state) {
+    static void put(ServerLevel level, BlockPos pos, BlockState state) {
         level.setBlock(pos, state, Block.UPDATE_ALL);
     }
 
@@ -316,12 +349,17 @@ final class Scenes {
             report.check("spawn_protection", "protects_the_lead_inside_the_radius_only", in && !out && edgeIn && !edgeOut && !op,
                     "isUnderSpawnProtection for " + name + " (operator " + op + "): " + STONE_IN.toShortString() + " " + in + ", "
                             + STONE_OUT.toShortString() + " " + out + ", x=" + RADIUS + " " + edgeIn + ", x=" + (RADIUS + 1) + " " + edgeOut);
+        } else {
+            // The second player of the claims (ClaimScenes): the same tools as the lead, and the Awakened Ichorium Axe in tree mode.
+            ClaimScenes.equipPeer(inventory);
+            inventory.selected = SLOT_EMPTY;
         }
         player.inventoryMenu.broadcastChanges();
     }
 
     static void left(ServerPlayer player, ServerReport report) {
         String name = player.getGameProfile().getName();
+        if (name.equals(PEER)) peerGone = true;
         Long joined = JOINED_AT.remove(name);
         long millis = joined == null ? -1 : (System.nanoTime() - joined) / 1_000_000L;
         report.event("leave", name, "after " + millis + " ms");
@@ -376,14 +414,20 @@ final class Scenes {
     /** Sends the player to the stage of {@code name}, remembers what the check compares with, and says where he stands. */
     static String stage(ServerPlayer player, String name, ServerReport report) {
         if (name.equals("tablet") && !peerReady) return "WAIT the second player has not seen the tablet yet";
+        if (name.equals("wait_peer") && !peerGone) return "WAIT the second player is still on the server";
+        String wait = ClaimScenes.waitBefore(player, name);
+        if (wait != null) return "WAIT " + wait;
         Stage stage = STAGES.get(name);
         if (stage == null) return "ERROR no stage " + name;
         ServerLevel level = player.serverLevel();
+        if (stage.prepare() != null) stage.prepare().accept(player);
         Map<String, Object> before = new HashMap<>();
         before.put("vis", vis(player.getInventory().getItem(stage.slot())));
         before.put("stone", count(player, Items.STONE));
         before.put("damage", player.getInventory().getItem(SLOT_PICK).getDamageValue());
         if (stage.target() != null) before.put("state", id(level.getBlockState(stage.target())));
+        before.put("staged_at", System.nanoTime());
+        DeviceScenes.baseline(player, name, before);
         BASELINES.put(name, before);
 
         double eye = stage.crouch() ? player.getEyeHeight(Pose.CROUCHING) : player.getEyeHeight(Pose.STANDING);
@@ -400,15 +444,20 @@ final class Scenes {
         if (stage.target() != null) reply.append(" target=").append(pos(stage.target()));
         if (stage.face() != null) reply.append(" face=").append(stage.face().getName());
         reply.append(" spawn=").append(pos(SPAWN)).append(" radius=").append(RADIUS);
-        if (name.startsWith("mirror_")) {
+        if (name.startsWith("mirror_") || ClaimScenes.isMirror(name)) {
             List<BlockPos> square = square(stage.target());
             reply.append(" square=").append(pos(square.get(0))).append(':').append(pos(square.get(square.size() - 1)));
         }
+        // The item the harness put into the slot: the client waits until its own inventory shows it.
+        if (stage.holding() != null) {
+            reply.append(" holding=").append(BuiltInRegistries.ITEM.getKey(player.getInventory().getItem(stage.slot()).getItem()));
+        }
+        if (stage.entity()) reply.append(" entity=true");
         reply.append(" vis=").append(before.get("vis")).append(" stone=").append(before.get("stone"));
         return reply.toString();
     }
 
-    private static String pos(BlockPos pos) {
+    static String pos(BlockPos pos) {
         return pos.getX() + "," + pos.getY() + "," + pos.getZ();
     }
 
@@ -556,7 +605,13 @@ final class Scenes {
                 }
             }
             default -> {
-                return "ERROR no check " + name;
+                Outcome outcome = DeviceScenes.check(player, name, arg, before);
+                if (outcome == null) outcome = ClaimScenes.check(player, name, arg, before);
+                if (outcome == null) return "ERROR no check " + name;
+                if (outcome.waitFor() != null) return "WAIT " + outcome.waitFor();
+                ok = outcome.ok();
+                detail = outcome.detail();
+                values.putAll(outcome.values());
             }
         }
         report.check(name, name, ok, detail);
@@ -566,7 +621,25 @@ final class Scenes {
         return reply.toString();
     }
 
-    private static AspectList parse(String vis) {
+    /** What a check of {@link DeviceScenes} or {@link ClaimScenes} found; {@code waitFor} non-null: ask again (the effect is not there yet). */
+    record Outcome(boolean ok, String detail, Map<String, Object> values, @Nullable String waitFor) {
+        static Outcome of(boolean ok, String detail, Map<String, Object> values) {
+            return new Outcome(ok, detail, values, null);
+        }
+
+        static Outcome waiting(String why) {
+            return new Outcome(false, "", Map.of(), why);
+        }
+    }
+
+    /** The blocks at {@code positions} as the reply's {@code blocks=x,y,z:id;...}, which the client compares with its own world. */
+    static String blocks(ServerLevel level, List<BlockPos> positions) {
+        StringJoiner text = new StringJoiner(";");
+        for (BlockPos at : positions) text.add(pos(at) + ":" + id(level.getBlockState(at)));
+        return text.toString();
+    }
+
+    static AspectList parse(String vis) {
         AspectList list = new AspectList();
         for (String part : vis.split(",")) {
             String[] kv = part.split(":");
