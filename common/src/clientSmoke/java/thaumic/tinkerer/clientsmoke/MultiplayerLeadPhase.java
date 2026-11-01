@@ -526,6 +526,8 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
                 })
                 .until("this client's Soul Hearts change (PacketSoulHearts)", () -> SoulHeartClientHandler.clientPlayerHP != hpBefore[0], 10)
                 .ticks(10)
+                // the chat (the harness's /ttmp answers) covers the space above the health bar where the Soul Hearts are drawn
+                .run("clear the chat for the picture", r -> r.client().gui.getChat().clearMessages(false))
                 .frames(6)
                 .then("picture", run.shots().shot("lead-soul-hearts", MultiplayerClient.GROUP,
                         "The lead's HUD after one hit with the Awakened Ichorium Sword in Soul mode on an iron golem: half a Soul Heart above the health bar, drawn from the number the server sent (PacketSoulHearts)"))
