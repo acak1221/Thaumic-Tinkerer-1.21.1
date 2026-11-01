@@ -58,7 +58,9 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   Client display options (`soulHeart.height`, `placementMirror.blocks.show`) stay the client's. The task is loader glue (Architectury 13 has no configuration
   phase): Fabric's `ServerConfigurationConnectionEvents.CONFIGURE` and configuration networking, NeoForge's `RegisterConfigurationTasksEvent` and
   configuration payloads. A client **without the add-on** gets no task and nothing is sent (it lacks the channel), as before; whether it may play is the loader's
-  matter. For `kami.forceenabled` **the direction matters**: a client that has Kami **off** while the server has it on lacks 50 registry entries of the server,
+  matter; so is a client of an earlier version of the add-on, whose sync was a play payload (neither side finds the other's channel, nothing is sent and
+  the client reads its own file). A client that has the channel and never answers waits in the configuration phase, as for any other task, until it gives
+  up. For `kami.forceenabled` **the direction matters**: a client that has Kami **off** while the server has it on lacks 50 registry entries of the server,
   and the loader's registry sync, which runs before the add-on's task on both loaders, refuses it with the loader's own message (Fabric: "Received 50 registry
   entries that are unknown to this client ... thaumictinkerer"; NeoForge: "The server send registries with unknown keys: ..." with the 50 keys); the
   add-on's message appears when the client has Kami **on** and the server off. The payloads, the comparison and the refusal are JUnit-tested, and the
