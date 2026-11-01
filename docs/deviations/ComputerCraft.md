@@ -45,7 +45,7 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
   `PeripheralArgs` and `PeripheralError` (the arguments and the Lua error), `Computers.ccTweakedLoaded()`. The behaviour stays on the
   block entities (`TileAnimationTablet.trigger()`, `TileMagnet.setPulling`, `TileAspectAnalyzer.getAspectsMethod` ...) and in the
   Thaumcraft API; the Golem Connector's golem is read and changed through `thaumcraft.api.golems` (`common/.../core/golems/ApiGolemAccess`).
-  Both APIs are in Thaumcraft 4 Reload since `316897d` (`thaumcraft_ref`).
+  Both APIs are in Thaumcraft 4 Reload since `316897d`; the add-on is pinned to `c1d8024`, which contains it (`thaumcraft_ref`).
 - `compat/src/main/java/thaumic/tinkerer/compat/computer/cc/` is the only package that imports CC: Tweaked's API, with the loader glue:
   `TablePeripheral` (an `IDynamicPeripheral`: a type, the method names and `callMethod` by index, the shape of the 1.7.10
   `IPeripheral`), `TinkererPeripheralProvider`, `FumeTool` (the turtle upgrade), `ComputerCraftCompat` (the upgrade type).
@@ -61,7 +61,10 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
   `cc.tweaked:cc-tweaked-1.21.1-fabric-api` and `-forge-api` (with `-core-api`) are compile-only; the mods `cc-tweaked-1.21.1-fabric` and
   `-forge` are on the GameTest runtimes of both loaders only (configurations `modThaumicTinkererGameTestRuntimeOnly` and
   `modGameTestRuntimeOnly`), so the development client, the client smoke and the multiplayer check run without CC: Tweaked; `-PwithComputerCraft`
-  adds it to the development clients. `fabric.mod.json` suggests `computercraft`, `neoforge.mods.toml` lists it as optional.
+  adds it to the development clients. CC: Tweaked's NeoForge jar nests its Lua VM (Cobalt 0.9.6) and jzlib with JarJar, which the
+  development runs of this build do not unpack, so `neoforge/build.gradle` adds the two libraries as `forgeRuntimeLibrary` (every NeoForge
+  run of the project has them; without CC: Tweaked they are unused); on Fabric Loom resolves them from the mod's Maven metadata.
+  `fabric.mod.json` suggests `computercraft`, `neoforge.mods.toml` lists it as optional.
 - **The version (forced).** 1.116.1 (2025-07-12) is the newest CC: Tweaked whose Fabric jars this build's Architectury Loom 1.11 accepts:
   1.116.2 and later were built with Fabric Loom 1.12 to 1.17, and Loom 1.11 refuses such a mod jar ("Mod was built with a newer version of
   Loom (1.17.11), you are using Loom (1.11.458)"). The API classes the add-on uses are the same in 1.120.2, source for source, so a newer
@@ -191,7 +194,16 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
     adjective and item; a turtle and a Fume Dissipator in a crafting grid give a turtle with it) and `luaTurtleDissipatesGas` (a real
     turtle with the tool runs `turtle.dig()`: the gases in reach are gone, those one block further stay; `turtle.attack()` fails).
   - `computerCraftIsLoadedAndTheGlueRegistered`: CC: Tweaked is on the server and no registration of the add-on failed.
-- Runs: RUNS_DETAIL
+- Runs (2026-11-01, this worktree, through the shared Gradle wrapper): the full suite `check runTinkererGameTest :neoforge:runGameTest
+  assemble :neoforge:assemble --continue`: `BUILD SUCCESSFUL`; JUnit 447 tests, 0 failures, 0 errors (`build/test-results/tinkererTest`);
+  Fabric "All 370 required tests passed" (370 `testcase` elements, none failed, the 14 of this group among them, the Lua ones 1.4 to 1.8 s
+  each); NeoForge "All 378 required tests passed" (378, none failed, the same 14). The release jars contain the 21 classes of
+  `compat/.../computer` and the upgrade's data file and no class of CC: Tweaked or Cobalt. Earlier focused runs found and fixed: the
+  NeoForge server crashed without Cobalt (`NoClassDefFoundError: org/squiddev/cobalt/LuaValue`; CC: Tweaked's NeoForge jar nests it with
+  JarJar, which this development run does not unpack: now `forgeRuntimeLibrary`); in one Fabric run three of the Lua tests timed out on a
+  busy machine with a wait counted in ticks (now in seconds, `LuaComputer.whenAnswered`); the golem test expected `setMarkers` to answer
+  nothing (it answers the new markers, as 1.7.10); the TileBlocks binder test still asserted the golem stub of A11 (it checks the golem
+  read through the API now).
 
 ## 7. What was not verified
 

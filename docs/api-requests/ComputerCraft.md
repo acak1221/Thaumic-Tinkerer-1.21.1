@@ -6,7 +6,7 @@ section 2. Nothing here was done by reaching into `thaumcraft.common.*`.
 ## 1. The machines and the golems (A11, A12): answered
 
 `thaumcraft.api.machines` (`IDeconstructor`, `IBrainJar`, `IArcaneEar`, `IArcaneBore`) and `thaumcraft.api.golems` (`GolemApi`,
-`GolemView`) are in Thaumcraft 4 Reload since `316897d` (2026-11-01, `thaumcraft_ref` of `gradle.properties`); the peripherals
+`GolemView`) are in Thaumcraft 4 Reload since `316897d` (2026-11-01; `thaumcraft_ref` of `gradle.properties` is `c1d8024`, which contains it); the peripherals
 `tt_deconstructor`, `tt_braininajar`, `tt_arcaneear`, `tt_arcanebore` and the golem data of `tt_golemconnector` use them
 (`docs/deviations/ComputerCraft.md` section 1).
 
