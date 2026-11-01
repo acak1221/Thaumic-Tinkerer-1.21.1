@@ -23,8 +23,22 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.aspects.IAspectContainer;
 import thaumcraft.api.aspects.IEssentiaTransport;
+import thaumcraft.api.golems.GolemView;
+import thaumcraft.api.machines.IArcaneBore;
+import thaumcraft.api.machines.IArcaneEar;
+import thaumcraft.api.machines.IBrainJar;
+import thaumcraft.api.machines.IDeconstructor;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import thaumic.tinkerer.common.core.golems.ApiGolemAccess;
+import thaumic.tinkerer.common.core.golems.GolemAccess;
 import thaumic.tinkerer.common.core.golems.GolemConnectorMethods;
 import thaumic.tinkerer.compat.computer.AnimationTabletTable;
+import thaumic.tinkerer.compat.computer.ArcaneBoreTable;
+import thaumic.tinkerer.compat.computer.ArcaneEarTable;
+import thaumic.tinkerer.compat.computer.BrainInAJarTable;
+import thaumic.tinkerer.compat.computer.DeconstructorTable;
 import thaumic.tinkerer.compat.computer.AspectAnalyzerTable;
 import thaumic.tinkerer.compat.computer.AspectContainerTable;
 import thaumic.tinkerer.compat.computer.EssentiaTransportTable;
@@ -67,6 +81,15 @@ class PeripheralTablesTest {
                 MagnetTable.CORPOREAL_METHOD_NAMES);
         assertEquals("tt_aspectanalyzer", AspectAnalyzerTable.TYPE);
         assertArrayEquals(new String[] { "hasItem", "itemHasAspects", "getAspects", "getAspectCount" }, AspectAnalyzerTable.METHOD_NAMES);
+        assertEquals("tt_deconstructor", DeconstructorTable.TYPE);
+        assertArrayEquals(new String[] { "hasAspect", "hasItem", "getAspect" }, DeconstructorTable.METHOD_NAMES);
+        assertEquals("tt_braininajar", BrainInAJarTable.TYPE);
+        assertArrayEquals(new String[] { "getXP" }, BrainInAJarTable.METHOD_NAMES);
+        assertEquals("tt_arcaneear", ArcaneEarTable.TYPE);
+        assertArrayEquals(new String[] { "getNote", "setNote" }, ArcaneEarTable.METHOD_NAMES);
+        assertEquals("tt_arcanebore", ArcaneBoreTable.TYPE);
+        assertArrayEquals(new String[] { "hasPickaxe", "hasFocus", "isPickaxeBroken", "isWorking", "getRadius", "getSpeed",
+                "hasNativeClusters", "getFortune", "hasSilkTouch" }, ArcaneBoreTable.METHOD_NAMES);
         assertEquals("tt_golemconnector", GolemConnectorMethods.TYPE);
         assertArrayEquals(new String[] { "getDecorations", "getPosition", "getType", "getHealth", "getCore", "getHome", "setHome",
                 "getMarkers", "setMarkers", "newMarker", "addMarker", "saveMarker", "deleteMarker", "getMarker", "getMarkerCount" },
@@ -181,6 +204,99 @@ class PeripheralTablesTest {
         assertEquals(pipe, TinkererPeripherals.find(pipe).target());
     }
 
+    // ---- Thaumcraft's machines -----------------------------------------------------------------------------------------------
+
+    @Test
+    void theDeconstructorAnswersItsAspectAndItem() {
+        FakeTable table = new FakeTable();
+        DeconstructorTable peripheral = new DeconstructorTable(table);
+        assertArrayEquals(new Object[] { false }, peripheral.call(0, PeripheralArgs.of()));
+        assertArrayEquals(new Object[] { false }, peripheral.call(1, PeripheralArgs.of()));
+        assertNull(peripheral.call(2, PeripheralArgs.of()), "getAspect answers nothing while no aspect waits (1.7.10 returned null)");
+        table.reward = Aspect.FIRE;
+        table.item = true;
+        assertArrayEquals(new Object[] { true }, peripheral.call(0, PeripheralArgs.of()));
+        assertArrayEquals(new Object[] { true }, peripheral.call(1, PeripheralArgs.of()));
+        assertArrayEquals(new Object[] { "ignis" }, peripheral.call(2, PeripheralArgs.of()));
+    }
+
+    @Test
+    void theBrainInAJarAnswersItsExperienceForAnyMethod() {
+        IBrainJar jar = new IBrainJar() {
+            @Override public int getXp() { return 123; }
+            @Override public int getXpMax() { return 2000; }
+        };
+        assertArrayEquals(new Object[] { 123 }, new BrainInAJarTable(jar).call(0, PeripheralArgs.of()));
+    }
+
+    @Test
+    void theArcaneEarTakesTheNotesItCanHear() {
+        int[] note = { 4 };
+        IArcaneEar ear = new IArcaneEar() {
+            @Override public int getNote() { return note[0]; }
+            @Override public void setNote(int value) {
+                if (value < MIN_NOTE || value > MAX_NOTE) throw new IllegalArgumentException("outside 0..24");
+                note[0] = value;
+            }
+        };
+        ArcaneEarTable peripheral = new ArcaneEarTable(ear);
+        assertArrayEquals(new Object[] { 4 }, peripheral.call(0, PeripheralArgs.of()));
+        assertNull(peripheral.call(1, PeripheralArgs.of(24.9)), "setNote answers nothing");
+        assertEquals(24, note[0], "a fraction is cut off");
+        assertEquals("bad argument #1 (note 0 to 24 expected, got 25)",
+                assertThrows(PeripheralError.class, () -> peripheral.call(1, PeripheralArgs.of(25.0))).getMessage());
+        assertEquals("bad argument #1 (note 0 to 24 expected, got -1)",
+                assertThrows(PeripheralError.class, () -> peripheral.call(1, PeripheralArgs.of(-1.0))).getMessage());
+        assertEquals("bad argument #1 (number expected, got nil)",
+                assertThrows(PeripheralError.class, () -> peripheral.call(1, PeripheralArgs.of())).getMessage());
+        assertEquals(24, note[0], "a refused note changes nothing");
+    }
+
+    @Test
+    void theArcaneBoreAnswersTheWidthOfItsHole() {
+        IArcaneBore bore = new IArcaneBore() {
+            @Override public boolean hasFocus() { return true; }
+            @Override public boolean hasPickaxe() { return true; }
+            @Override public ItemStack getPickaxe() { return ItemStack.EMPTY; }
+            @Override public boolean isPickaxeBroken() { return false; }
+            @Override public boolean isPowered() { return true; }
+            @Override public boolean isWorking() { return true; }
+            @Override public int getRadius() { return 4; }
+            @Override public int getSpeed() { return 3; }
+            @Override public boolean hasNativeClusters() { return false; }
+            @Override public int getPickaxeFortune() { return 2; }
+            @Override public boolean hasSilkTouch() { return true; }
+        };
+        ArcaneBoreTable peripheral = new ArcaneBoreTable(bore);
+        Object[] answers = new Object[9];
+        for (int i = 0; i < 9; i++) answers[i] = peripheral.call(i, PeripheralArgs.of())[0];
+        // 1.7.10 getRadius: 1 + (area + maxRadius) * 2, the API's radius is area + maxRadius
+        assertArrayEquals(new Object[] { true, true, false, true, 9, 3, false, 2, true }, answers);
+    }
+
+    @Test
+    void theMachinesComeAfterTheAspectContainersAndBeforeTheTransports() {
+        assertInstanceOf(DeconstructorTable.class, TinkererPeripherals.find(new FakeTable()));
+        assertInstanceOf(AspectContainerTable.class, TinkererPeripherals.find(new FakeTableAndContainer()));
+    }
+
+    // ---- golem markers through the API ---------------------------------------------------------------------------------------
+
+    @Test
+    void aMarkerTableBecomesAnApiMarkerOrABadFieldError() {
+        GolemView.Marker marker = ApiGolemAccess.toApi(new GolemAccess.Marker(1, 2, 3, "minecraft:the_nether", (byte) 4, (byte) 14));
+        assertEquals(new BlockPos(1, 2, 3), marker.pos());
+        assertEquals(Level.NETHER, marker.dimension());
+        assertEquals(Direction.WEST, marker.side());
+        assertEquals(14, marker.color());
+        assertEquals("bad field 'side' (side 0 to 5 expected, got 6)", assertThrows(GolemConnectorMethods.MethodException.class,
+                () -> ApiGolemAccess.toApi(new GolemAccess.Marker(1, 2, 3, "minecraft:overworld", (byte) 6, (byte) -1))).getMessage());
+        assertEquals("bad field 'color' (-1 to 15 expected, got 16)", assertThrows(GolemConnectorMethods.MethodException.class,
+                () -> ApiGolemAccess.toApi(new GolemAccess.Marker(1, 2, 3, "minecraft:overworld", (byte) 1, (byte) 16))).getMessage());
+        assertEquals("bad field 'dim' (dimension id expected, got Not A Dimension)", assertThrows(GolemConnectorMethods.MethodException.class,
+                () -> ApiGolemAccess.toApi(new GolemAccess.Marker(1, 2, 3, "Not A Dimension", (byte) 1, (byte) -1))).getMessage());
+    }
+
     // ---- the arguments ---------------------------------------------------------------------------------------------------------
 
     @Test
@@ -236,6 +352,26 @@ class PeripheralTablesTest {
         @Override public int getEssentiaAmount(Direction face) { return 3; }
         @Override public int getMinimumSuction() { return 16; }
         @Override public boolean renderExtendedTube() { return false; }
+    }
+
+    private static class FakeTable implements IDeconstructor {
+        Aspect reward;
+        boolean item;
+
+        @Override public Aspect getReward() { return reward; }
+        @Override public boolean hasItem() { return item; }
+    }
+
+    private static final class FakeTableAndContainer extends FakeTable implements IAspectContainer {
+        @Override public AspectList getAspects() { return new AspectList(); }
+        @Override public void setAspects(AspectList aspects) {}
+        @Override public boolean doesContainerAccept(Aspect aspect) { return false; }
+        @Override public int addToContainer(Aspect aspect, int amount) { return amount; }
+        @Override public boolean takeFromContainer(Aspect aspect, int amount) { return false; }
+        @Override @Deprecated public boolean takeFromContainer(AspectList aspects) { return false; }
+        @Override public boolean doesContainerContainAmount(Aspect aspect, int amount) { return false; }
+        @Override @Deprecated public boolean doesContainerContain(AspectList aspects) { return false; }
+        @Override public int containerContains(Aspect aspect) { return 0; }
     }
 
     private static final class FakeContainerAndTransport extends FakeTransport implements IAspectContainer {

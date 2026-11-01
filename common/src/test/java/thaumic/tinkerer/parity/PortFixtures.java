@@ -89,7 +89,7 @@ final class PortFixtures {
 
     /**
      * The port in the state the deviation texts describe: the registrations that exist without ComputerCraft (Aspectalyzer,
-     * Golem Connector, Peripherals root, with the eight pages of its method documentation) and the Remote Placer (dead in the
+     * Golem Connector, Peripherals root, with the nine pages of its method documentation) and the Remote Placer (dead in the
      * original) at its moved cell, the two
      * quartz recipes that the port merged, and the pool of the Kami requirements that follows from it. Compared with the real
      * allow-list it has to pass, with every entry used.
@@ -116,9 +116,9 @@ final class PortFixtures {
                         p.siblings(), p.flags(), p.warp(), p.pages(), p.icon(), p.iconAspect());
             }
             if (r.key().equals("PERIPHERALS")) {
-                // docs/deviations/ComputerCraft.md section 5: the introduction, then seven text pages with the methods
+                // docs/deviations/ComputerCraft.md section 5: the introduction, then eight text pages with the methods
                 List<PortPage> pages = new ArrayList<>(p.pages());
-                for (int page = 1; page < 8; page++) pages.add(new PortPage("text", String.valueOf(page), List.of()));
+                for (int page = 1; page < 9; page++) pages.add(new PortPage("text", String.valueOf(page), List.of()));
                 p = new PortResearch(p.key(), p.category(), p.aspects(), p.column(), p.row(), p.complexity(), p.parents(), p.parentsHidden(),
                         p.siblings(), p.flags(), p.warp(), pages, p.icon(), p.iconAspect());
             }

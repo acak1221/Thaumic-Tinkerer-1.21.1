@@ -7,7 +7,13 @@ stub with the loss written down. Sections 2 to 5 (the entity key, the sparkle, t
 answered by the API and kept for the record. Priorities are the group's own opinion (P1 changes what the player sees, P3 only
 hardens something that works today).
 
-## 1. Golem view for the Golem Connector (A11, P3)
+## 1. Golem view for the Golem Connector (A11, P3): answered
+
+**Answered** by `thaumcraft.api.golems` of Thaumcraft 4 Reload since `316897d` (2026-11-01): `GolemApi.view` (a `GolemView` record with
+the material, core, decoration, health, position, home and its side, and `GolemView.Marker`s), `GolemApi.setHome`, `GolemApi.setMarkers`.
+The add-on implements `GolemAccess` over it (`ApiGolemAccess`, installed by `GolemAccessProvider`); `docs/deviations/TileBlocks.md` 2.4 and
+`docs/deviations/ComputerCraft.md` section 3 say how the API's refusals and the dimension ids show. The request as it was written:
+
 
 **Need.** The Golem Connector exposes a bound golem to computers (ComputerCraft `tt_golemconnector`): type, core,
 accessories, health, position, home with facing, and the markers, readable and, for the home and the markers, writable.

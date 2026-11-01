@@ -33,7 +33,15 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.Container;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -45,10 +53,18 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.IAspectContainer;
 import thaumcraft.api.aspects.IEssentiaTransport;
 import thaumcraft.api.blocks.BlocksTC;
+import thaumcraft.api.golems.GolemApi;
+import thaumcraft.api.golems.GolemView;
+import thaumcraft.api.machines.IArcaneBore;
+import thaumcraft.api.machines.IArcaneEar;
+import thaumcraft.api.machines.IBrainJar;
+import thaumcraft.api.machines.IDeconstructor;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.block.BlockAnimationTablet;
 import thaumic.tinkerer.common.block.BlockMagnet;
 import thaumic.tinkerer.common.block.tile.TileAspectAnalyzer;
+import thaumic.tinkerer.common.block.tile.TileGolemConnector;
+import thaumic.tinkerer.common.core.golems.EnumGolemCores;
 import thaumic.tinkerer.common.block.tile.TileMagnet;
 import thaumic.tinkerer.common.block.tile.TileMobMagnet;
 import thaumic.tinkerer.common.block.tile.tablet.TileAnimationTablet;
@@ -97,6 +113,11 @@ public final class ComputerCraftRuntimeChecks {
             "getHome", "setHome", "getMarkers", "setMarkers", "newMarker", "addMarker", "saveMarker", "deleteMarker", "getMarker",
             "getMarkerCount");
     static final List<String> ASPECT_CONTAINER = List.of("getAspects", "getAspectCount");
+    static final List<String> DECONSTRUCTOR = List.of("hasAspect", "hasItem", "getAspect");
+    static final List<String> BRAIN_IN_A_JAR = List.of("getXP");
+    static final List<String> ARCANE_EAR = List.of("getNote", "setNote");
+    static final List<String> ARCANE_BORE = List.of("hasPickaxe", "hasFocus", "isPickaxeBroken", "isWorking", "getRadius", "getSpeed",
+            "hasNativeClusters", "getFortune", "hasSilkTouch");
     static final List<String> ESSENTIA_TRANSPORT = List.of("isConnectable", "canInputFrom", "canOutputTo", "getSuctionType",
             "getSuctionAmount", "getEssentiaType", "getEssentiaAmount", "getMinimumSuction");
 
@@ -164,6 +185,29 @@ public final class ComputerCraftRuntimeChecks {
             test.assertTrue(found == null || !found.getType().startsWith("tt_"),
                     test.getLevel().getBlockState(test.absolutePos(none)) + " is no peripheral of the add-on: " + found);
         }
+        test.succeed();
+    }
+
+    /**
+     * Thaumcraft's machines, found by their interfaces of {@code thaumcraft.api.machines}: the Deconstruction Table, the Brain in a
+     * Jar, the Arcane Ear (on a stone block) and the Arcane Bore (on its base, which is an essentia transport).
+     */
+    public static void thaumcraftMachinesAreFoundAtTheirBlocks(GameTestHelper test, PeripheralFinder finder) {
+        BlockPos table = new BlockPos(1, 1, 1);
+        BlockPos jar = new BlockPos(3, 1, 1);
+        BlockPos ear = new BlockPos(5, 2, 1);
+        BlockPos bore = new BlockPos(1, 2, 4);
+        test.setBlock(table, BlocksTC.require("deconstruction_table"));
+        test.setBlock(jar, BlocksTC.require("jar_brain"));
+        test.setBlock(ear.below(), Blocks.STONE);
+        test.setBlock(ear, BlocksTC.require("arcane_ear"));
+        test.setBlock(bore.below(), BlocksTC.require("arcane_bore_base"));
+        test.setBlock(bore, BlocksTC.require("arcane_bore"));
+        expectPeripheral(test, finder, table, "tt_deconstructor", DECONSTRUCTOR);
+        expectPeripheral(test, finder, jar, "tt_braininajar", BRAIN_IN_A_JAR);
+        expectPeripheral(test, finder, ear, "tt_arcaneear", ARCANE_EAR);
+        expectPeripheral(test, finder, bore, "tt_arcanebore", ARCANE_BORE);
+        expectPeripheral(test, finder, bore.below(), "tt_aspectTransport", ESSENTIA_TRANSPORT);
         test.succeed();
     }
 
@@ -533,6 +577,211 @@ public final class ComputerCraftRuntimeChecks {
                 expectError(test, r, "sideText", "bad argument #1 (number expected, got string)");
             }
             test.assertTrue(sawSuctionType, "the bore base has a suction type (Perditio), so a tag was read too");
+        });
+    }
+
+    // ---- real Lua: Thaumcraft's machines ---------------------------------------------------------------------------------------
+
+    /**
+     * Five computers: under a Deconstruction Table with an item and a waiting Ignis, under an empty one, under a Brain in a Jar
+     * holding 123 points, under an Arcane Ear (on a stone block) that is tuned from Lua, and above an Arcane Bore on its base with
+     * a worn Fortune III pickaxe. The answers are compared with those of {@code thaumcraft.api.machines}, and the ear's new note
+     * with the block entity.
+     */
+    public static void luaReadsThaumcraftMachines(GameTestHelper test) {
+        ServerLevel level = test.getLevel();
+        BlockPos fullTable = new BlockPos(1, 2, 1);
+        BlockPos emptyTable = new BlockPos(3, 2, 1);
+        BlockPos jarPos = new BlockPos(5, 2, 1);
+        BlockPos earPos = new BlockPos(1, 2, 5);
+        BlockPos borePos = new BlockPos(5, 2, 5);
+        test.setBlock(fullTable, BlocksTC.require("deconstruction_table"));
+        test.setBlock(emptyTable, BlocksTC.require("deconstruction_table"));
+        test.setBlock(jarPos, BlocksTC.require("jar_brain"));
+        test.setBlock(earPos, BlocksTC.require("arcane_ear"));
+        test.setBlock(borePos.below(), BlocksTC.require("arcane_bore_base"));
+        test.setBlock(borePos, BlocksTC.require("arcane_bore"));
+        BlockEntity table = level.getBlockEntity(test.absolutePos(fullTable));
+        CompoundTag tableTag = table.saveWithoutMetadata(level.registryAccess());
+        tableTag.putString("Aspect", Aspect.FIRE.getTag());
+        table.loadCustomOnly(tableTag, level.registryAccess());
+        ((Container) table).setItem(0, new ItemStack(Items.OAK_LOG));
+        BlockEntity jarTile = level.getBlockEntity(test.absolutePos(jarPos));
+        CompoundTag jarTag = jarTile.saveWithoutMetadata(level.registryAccess());
+        jarTag.putInt("XP", 123);
+        jarTile.loadCustomOnly(jarTag, level.registryAccess());
+        IDeconstructor full = (IDeconstructor) table;
+        IDeconstructor empty = (IDeconstructor) level.getBlockEntity(test.absolutePos(emptyTable));
+        IBrainJar jar = (IBrainJar) jarTile;
+        IArcaneEar ear = (IArcaneEar) level.getBlockEntity(test.absolutePos(earPos));
+        IArcaneBore bore = (IArcaneBore) level.getBlockEntity(test.absolutePos(borePos));
+        test.assertTrue(full.getReward() == Aspect.FIRE && full.hasItem() && jar.getXp() == 123 && ear.getNote() == 0,
+                "the fixtures: a waiting Ignis and an item, 123 points, the ear at note 0");
+        ItemStack pick = new ItemStack(Items.IRON_PICKAXE);
+        pick.enchant(level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.FORTUNE), 3);
+        pick.setDamageValue(pick.getMaxDamage() - 1);
+        ((Container) bore).setItem(1, pick);
+        test.assertTrue(bore.hasPickaxe() && bore.isPickaxeBroken() && bore.getPickaxeFortune() == 3, "the bore holds the worn Fortune III pickaxe");
+        String reader = """
+                local p = peripheral.wrap("top")
+                local r = {}
+                r.type = { peripheral.getType("top") }
+                r.methods = peripheral.getMethods("top")
+                for _, name in ipairs(peripheral.getMethods("top")) do
+                  if name ~= "setNote" then r[name] = { p[name]() } end
+                end
+                if p.setNote then
+                  r.setNote = { p.setNote(7) }
+                  r.getNoteAfter = { p.getNote() }
+                  r.setNoteTooHigh = { pcall(p.setNote, 25) }
+                  r.setNoteNegative = { pcall(p.setNote, -1) }
+                  r.setNoteText = { pcall(p.setNote, "C") }
+                end
+                return r
+                """;
+        LuaComputer underFull = LuaComputer.computer(test, fullTable.below(), reader);
+        LuaComputer underEmpty = LuaComputer.computer(test, emptyTable.below(), reader);
+        LuaComputer underJar = LuaComputer.computer(test, jarPos.below(), reader);
+        LuaComputer underEar = LuaComputer.computer(test, earPos.below(), reader);
+        LuaComputer overBore = LuaComputer.computer(test, borePos.above(), reader.replace("\"top\"", "\"bottom\""));
+        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(underFull, underEmpty, underJar, underEar, overBore), answers -> {
+            JsonObject f = answers.get(0);
+            JsonObject e = answers.get(1);
+            JsonObject j = answers.get(2);
+            JsonObject a = answers.get(3);
+            JsonObject b = answers.get(4);
+            expectTypeAndMethods(test, f, "tt_deconstructor", DECONSTRUCTOR);
+            expectValues(test, f, "hasAspect", true);
+            expectValues(test, f, "hasItem", true);
+            expectValues(test, f, "getAspect", "ignis");
+            expectTypeAndMethods(test, e, "tt_deconstructor", DECONSTRUCTOR);
+            expectValues(test, e, "hasAspect", false);
+            expectValues(test, e, "hasItem", false);
+            expectValues(test, e, "getAspect");
+            expectTypeAndMethods(test, j, "tt_braininajar", BRAIN_IN_A_JAR);
+            expectValues(test, j, "getXP", 123);
+            expectTypeAndMethods(test, a, "tt_arcaneear", ARCANE_EAR);
+            expectValues(test, a, "getNote", 0);
+            expectValues(test, a, "setNote");
+            expectValues(test, a, "getNoteAfter", 7);
+            expectError(test, a, "setNoteTooHigh", "bad argument #1 (note 0 to 24 expected, got 25)");
+            expectError(test, a, "setNoteNegative", "bad argument #1 (note 0 to 24 expected, got -1)");
+            expectError(test, a, "setNoteText", "bad argument #1 (number expected, got string)");
+            test.assertTrue(ear.getNote() == 7, "setNote(7) tuned the ear: " + ear.getNote());
+            expectTypeAndMethods(test, b, "tt_arcanebore", ARCANE_BORE);
+            expectValues(test, b, "hasPickaxe", bore.hasPickaxe());
+            expectValues(test, b, "hasFocus", bore.hasFocus());
+            expectValues(test, b, "isPickaxeBroken", bore.isPickaxeBroken());
+            expectValues(test, b, "isWorking", bore.isWorking());
+            expectValues(test, b, "getRadius", 1 + 2 * bore.getRadius());
+            expectValues(test, b, "getSpeed", bore.getSpeed());
+            expectValues(test, b, "hasNativeClusters", bore.hasNativeClusters());
+            expectValues(test, b, "getFortune", bore.getPickaxeFortune());
+            expectValues(test, b, "hasSilkTouch", bore.hasSilkTouch());
+            expectValues(test, b, "isPickaxeBroken", true);
+            expectValues(test, b, "getFortune", 3);
+            expectValues(test, b, "getRadius", 5);
+            ((Container) bore).setItem(1, ItemStack.EMPTY);
+        });
+    }
+
+    // ---- real Lua: the Golem Connector with a golem ------------------------------------------------------------------------------
+
+    /**
+     * A Thaumcraft golem (without AI, so that it stays where it is) bound to a Golem Connector with a computer under it: every
+     * reading method against {@code GolemApi.view}, then a new home and markers set from Lua and read back through the API, and
+     * the errors of a marker the API cannot hold and of a marker that does not exist.
+     */
+    public static void luaReadsAndSteersAGolem(GameTestHelper test) {
+        ServerLevel level = test.getLevel();
+        BlockPos connectorPos = new BlockPos(2, 2, 2);
+        BlockPos golemPos = new BlockPos(5, 1, 5);
+        test.setBlock(golemPos.below(), Blocks.STONE);
+        test.setBlock(connectorPos, TTRegistry.block(LibBlockNames.GOLEMCONNECTOR));
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.get(ResourceLocation.fromNamespaceAndPath("thaumcraft", "golem"));
+        Entity golem = type.create(level);
+        test.assertTrue(golem != null && GolemApi.isGolem(golem), "Thaumcraft makes a golem: " + golem);
+        golem.moveTo(Vec3.atBottomCenterOf(test.absolutePos(golemPos)));
+        if (golem instanceof Mob mob) mob.setNoAi(true);
+        test.assertTrue(level.addFreshEntity(golem), "the golem is in the world");
+        TileGolemConnector connector = test.getBlockEntity(connectorPos);
+        connector.ConnectGolem(golem.getUUID());
+        test.assertTrue(connector.golem == golem, "the connector found its golem within thirty blocks");
+        GolemView before = GolemApi.view(golem).orElseThrow();
+        BlockPos newHome = test.absolutePos(golemPos.north());
+        LuaComputer computer = LuaComputer.computer(test, connectorPos.below(), """
+                local p = peripheral.wrap("top")
+                local r = {}
+                r.type = { peripheral.getType("top") }
+                r.methods = peripheral.getMethods("top")
+                r.getType = { p.getType() }
+                r.getCore = { p.getCore() }
+                r.getHealth = { p.getHealth() }
+                r.getDecorations = { p.getDecorations() }
+                r.getPosition = { p.getPosition() }
+                r.getHome = { p.getHome() }
+                r.setHome = { pcall(p.setHome, %d, %d, %d, 2) }
+                r.getMarkers = { p.getMarkers() }
+                r.getMarkerCount = { p.getMarkerCount() }
+                local marker = p.newMarker()
+                r.addMarker = { pcall(p.addMarker, marker) }
+                r.getMarkerCountAfterAdd = { p.getMarkerCount() }
+                marker.posX = marker.posX + 1
+                marker.side = 3
+                r.saveMarker = { pcall(p.saveMarker, 0, marker) }
+                r.getMarker = { p.getMarker(0) }
+                r.getMarkerMissing = { pcall(p.getMarker, 5) }
+                r.addMarkerBadSide = { pcall(p.addMarker, { posX = 1, posY = 2, posZ = 3, dim = "minecraft:overworld", side = 9, color = -1 }) }
+                r.addMarkerNoField = { pcall(p.addMarker, { posX = 1 }) }
+                r.deleteMarker = { p.deleteMarker(0) }
+                r.getMarkerCountAfterDelete = { p.getMarkerCount() }
+                r.setMarkers = { pcall(p.setMarkers, { marker, marker }) }
+                r.getMarkerCountAfterSet = { p.getMarkerCount() }
+                return r
+                """.formatted(newHome.getX(), newHome.getY(), newHome.getZ()));
+        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(computer), answers -> {
+            JsonObject r = answers.get(0);
+            BlockPos at = test.absolutePos(connectorPos);
+            String dimension = level.dimension().location().toString();
+            expectTypeAndMethods(test, r, "tt_golemconnector", GOLEM_CONNECTOR);
+            test.assertTrue(before.material() != null, "the golem has a TC4 material: " + before.materialId());
+            expectValues(test, r, "getType", before.material().displayName());
+            String core = before.hasCore() ? Component.translatable(EnumGolemCores.getFromByte((byte) before.core()).getName()).getString()
+                    : Component.translatable("item.ItemGolemCore.100.name").getString();
+            expectValues(test, r, "getCore", core);
+            JsonArray health = values(r, "getHealth");
+            test.assertTrue(health.size() == 1 && Math.abs(health.get(0).getAsDouble() - before.health()) < 1e-3,
+                    "getHealth() is the golem's health " + before.health() + ": " + health);
+            test.assertTrue(before.decoration().isEmpty(), "a new golem wears nothing");
+            expectValues(test, r, "getDecorations");
+            expectValues(test, r, "getPosition", (int) before.position().x, (int) before.position().y, (int) before.position().z);
+            expectValues(test, r, "getHome", before.home().getX(), before.home().getY(), before.home().getZ(), before.homeFacing().get3DDataValue());
+            expectValues(test, r, "setHome", true, newHome.getX(), newHome.getY(), newHome.getZ(), 2);
+            expectEmptyTable(test, r, "getMarkers");
+            expectValues(test, r, "getMarkerCount", 0);
+            JsonArray added = values(r, "addMarker");
+            test.assertTrue(added.size() == 2 && added.get(0).getAsBoolean() && added.get(1).getAsJsonObject().get("posX").getAsInt() == at.getX(),
+                    "addMarker answers the marker it added: " + added);
+            expectValues(test, r, "getMarkerCountAfterAdd", 1);
+            JsonArray saved = values(r, "saveMarker");
+            test.assertTrue(saved.size() == 2 && saved.get(0).getAsBoolean(), "saveMarker(0, marker) worked: " + saved);
+            JsonObject marker = values(r, "getMarker").get(0).getAsJsonObject();
+            test.assertTrue(marker.get("posX").getAsInt() == at.getX() + 1 && marker.get("posY").getAsInt() == at.getY()
+                    && marker.get("posZ").getAsInt() == at.getZ() && marker.get("side").getAsInt() == 3 && marker.get("color").getAsInt() == -1
+                    && marker.get("dim").getAsString().equals(dimension), "getMarker(0) reads the saved marker back: " + marker);
+            expectError(test, r, "getMarkerMissing", "marker 5 does not exist");
+            expectError(test, r, "addMarkerBadSide", "bad field 'side' (side 0 to 5 expected, got 9)");
+            expectError(test, r, "addMarkerNoField", "bad field 'posY' (number expected, got nil)");
+            expectValues(test, r, "deleteMarker");
+            expectValues(test, r, "getMarkerCountAfterDelete", 0);
+            expectValues(test, r, "setMarkers", true);
+            expectValues(test, r, "getMarkerCountAfterSet", 2);
+            GolemView after = GolemApi.view(golem).orElseThrow();
+            test.assertTrue(after.home().equals(newHome) && after.homeFacing() == Direction.NORTH,
+                    "setHome moved the golem's home to " + newHome + " facing north: " + after.home() + " " + after.homeFacing());
+            GolemView.Marker expected = new GolemView.Marker(at.east(), level.dimension(), Direction.SOUTH);
+            test.assertTrue(after.markers().equals(List.of(expected, expected)), "the golem has the two markers set from Lua: " + after.markers());
+            golem.discard();
         });
     }
 

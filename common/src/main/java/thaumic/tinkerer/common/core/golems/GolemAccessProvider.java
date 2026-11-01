@@ -10,14 +10,17 @@ package thaumic.tinkerer.common.core.golems;
 
 import java.util.function.Function;
 import net.minecraft.world.entity.Entity;
+import thaumcraft.api.golems.GolemApi;
 
 /**
- * The single place that turns a golem entity into a {@link GolemAccess}. The default is the honest stub
- * ({@link UnavailableGolemAccess}) because {@code thaumcraft.api} has no golem view; when the API gets one (request A11)
- * this is the one line to change.
+ * The single place that turns a golem entity into a {@link GolemAccess}: {@link ApiGolemAccess}, over the golem view of
+ * {@code thaumcraft.api.golems} (request A11), for a Thaumcraft golem; the honest stub {@link UnavailableGolemAccess} (the
+ * answers of a connector without a golem) for anything else, and for a golem that is gone.
  */
 public final class GolemAccessProvider {
-    private static volatile Function<Entity, GolemAccess> provider = entity -> UnavailableGolemAccess.INSTANCE;
+    private static final Function<Entity, GolemAccess> API = entity -> GolemApi.isGolem(entity) ? new ApiGolemAccess(entity)
+            : UnavailableGolemAccess.INSTANCE;
+    private static volatile Function<Entity, GolemAccess> provider = API;
 
     private GolemAccessProvider() {}
 
@@ -25,8 +28,8 @@ public final class GolemAccessProvider {
         return golem == null || golem.isRemoved() ? UnavailableGolemAccess.INSTANCE : provider.apply(golem);
     }
 
-    /** Installs the real access once the API has one (and for tests). */
+    /** Installs another access (for tests); null restores the one over the API. */
     public static void setProvider(Function<Entity, GolemAccess> newProvider) {
-        provider = newProvider == null ? entity -> UnavailableGolemAccess.INSTANCE : newProvider;
+        provider = newProvider == null ? API : newProvider;
     }
 }

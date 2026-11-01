@@ -9,7 +9,7 @@ against CC: Tweaked's API only, does not bundle it, and loads and works without 
 dropped (`docs/API_GAPS.md` section 1.12, row 1). Specification: the 1.7.10 sources (commit in `NOTICE.md`).
 
 Reading key: **forced** means 1.21.1, CC: Tweaked or `thaumcraft.api` cannot do it the old way; **fix** means the original was
-wrong; **choice** means a free decision of the port; **waits** means it needs Thaumcraft API that is being written.
+wrong; **choice** means a free decision of the port.
 
 ## 1. The peripherals
 
@@ -26,11 +26,11 @@ an aspect container first, then the Thaumcraft machines, then an essentia transp
 | Kinetic Attractor | `tt_magnet` | `isPulling`, `setPulling`, `getSignal` | done (`MagnetTable`) |
 | Corporeal Attractor | `tt_magnet` | `isPulling`, `setPulling`, `getSignal`, `getAdultSearch`, `setAdultSearch` | done (`MagnetTable`) |
 | Aspectalyzer | `tt_aspectanalyzer` | `hasItem`, `itemHasAspects`, `getAspects`, `getAspectCount` | done (`AspectAnalyzerTable`) |
-| Golem Connector | `tt_golemconnector` | `getDecorations`, `getPosition`, `getType`, `getHealth`, `getCore`, `getHome`, `setHome`, `getMarkers`, `setMarkers`, `newMarker`, `addMarker`, `saveMarker`, `deleteMarker`, `getMarker`, `getMarkerCount` | registered (`GolemConnectorTable` over `GolemConnectorMethods`); the golem data **waits** for `thaumcraft.api.golems` (A11): until then every connector answers as one without a golem |
-| Deconstruction Table | `tt_deconstructor` | `hasAspect`, `hasItem`, `getAspect` | **waits** for `thaumcraft.api.machines` (A12) |
-| Brain in a Jar | `tt_braininajar` | `getXP` | **waits** (A12) |
-| Arcane Ear | `tt_arcaneear` | `getNote`, `setNote` | **waits** (A12) |
-| Arcane Bore | `tt_arcanebore` | `hasPickaxe`, `hasFocus`, `isPickaxeBroken`, `isWorking`, `getRadius`, `getSpeed`, `hasNativeClusters`, `getFortune`, `hasSilkTouch` | **waits** (A12) |
+| Golem Connector | `tt_golemconnector` | `getDecorations`, `getPosition`, `getType`, `getHealth`, `getCore`, `getHome`, `setHome`, `getMarkers`, `setMarkers`, `newMarker`, `addMarker`, `saveMarker`, `deleteMarker`, `getMarker`, `getMarkerCount` | done (`GolemConnectorTable` over `GolemConnectorMethods`; the golem through `thaumcraft.api.golems`, A11: `ApiGolemAccess`) |
+| Deconstruction Table | `tt_deconstructor` | `hasAspect`, `hasItem`, `getAspect` | done (`DeconstructorTable`, `thaumcraft.api.machines.IDeconstructor`, A12) |
+| Brain in a Jar | `tt_braininajar` | `getXP` | done (`BrainInAJarTable`, `IBrainJar`) |
+| Arcane Ear | `tt_arcaneear` | `getNote`, `setNote` | done (`ArcaneEarTable`, `IArcaneEar`) |
+| Arcane Bore | `tt_arcanebore` | `hasPickaxe`, `hasFocus`, `isPickaxeBroken`, `isWorking`, `getRadius`, `getSpeed`, `hasNativeClusters`, `getFortune`, `hasSilkTouch` | done (`ArcaneBoreTable`, `IArcaneBore`) |
 
 The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (section 4).
 
@@ -38,10 +38,14 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
 
 - `compat/src/main/java/thaumic/tinkerer/compat/computer/` names no class of CC: Tweaked: `PeripheralTable` (type, names, `call(index,
   arguments)`, target), the tables of section 1 (ports of `PeripheralAspectContainer` with `IAspectContainerImplementation`,
-  `PeripheralEssentiaTransport`, and of the `IPeripheral` parts of `TileAnimationTablet`, `TileMagnet`, `TileMobMagnet`,
-  `TileAspectAnalyzer`, `TileGolemConnector`), `TinkererPeripherals.find` (the port of `PeripheralHandler.getPeripheral`),
+  `PeripheralEssentiaTransport`, `PeripheralDeconstructor`, `PeripheralBrainInAJar`, `PeripheralArcaneEar`, `PeripheralArcaneBore`, and
+  of the `IPeripheral` parts of `TileAnimationTablet`, `TileMagnet`, `TileMobMagnet`, `TileAspectAnalyzer`, `TileGolemConnector`),
+  `TinkererPeripherals.find` (the port of `PeripheralHandler.getPeripheral`; the Thaumcraft machines are found by their interfaces of
+  `thaumcraft.api.machines`, where 1.7.10 named the internal tile entity classes),
   `PeripheralArgs` and `PeripheralError` (the arguments and the Lua error), `Computers.ccTweakedLoaded()`. The behaviour stays on the
-  block entities (`TileAnimationTablet.trigger()`, `TileMagnet.setPulling`, `TileAspectAnalyzer.getAspectsMethod` ...).
+  block entities (`TileAnimationTablet.trigger()`, `TileMagnet.setPulling`, `TileAspectAnalyzer.getAspectsMethod` ...) and in the
+  Thaumcraft API; the Golem Connector's golem is read and changed through `thaumcraft.api.golems` (`common/.../core/golems/ApiGolemAccess`).
+  Both APIs are in Thaumcraft 4 Reload since `316897d` (`thaumcraft_ref`).
 - `compat/src/main/java/thaumic/tinkerer/compat/computer/cc/` is the only package that imports CC: Tweaked's API, with the loader glue:
   `TablePeripheral` (an `IDynamicPeripheral`: a type, the method names and `callMethod` by index, the shape of the 1.7.10
   `IPeripheral`), `TinkererPeripheralProvider`, `FumeTool` (the turtle upgrade), `ComputerCraftCompat` (the upgrade type).
@@ -100,7 +104,20 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
    for 1.7.10, so `tt_aspectContainer`s; in Thaumcraft 4 Reload they are not (`TileCrucible`, `TileInfusionMatrix` implement no aspect
    interface of the API), and the add-on may not reach into them. Every block entity that Thaumcraft 4 Reload makes an
    `IAspectContainer` or `IEssentiaTransport` is one.
-10. Kept from the groups: `setRotation` of the tablet also refuses a negative number (`docs/deviations/TileBlocks.md` section 2.1); the
+10. **The Arcane Ear takes the notes it can hear (forced, API).** `setNote` stored any number as a byte (`(byte) argument`); the ear
+    never heard a note outside 0 to 24, and `IArcaneEar.setNote` refuses one. Such a number is the error
+    `bad argument #1 (note 0 to 24 expected, got 25)`; 0 to 24 (a fraction cut off) tune the ear as before, saved and synced, without
+    playing the note.
+11. **The golem refuses what Thaumcraft refuses (forced, API).** 1.7.10 wrote the golem's fields unchecked. `GolemApi.setHome` and
+    `GolemApi.setMarkers` answer false for what the golem cannot take, and the connector then raises a Lua error instead of answering
+    the unchanged home or markers: a facing or marker side outside 0 to 5 (`bad argument #4 (side 0 to 5 expected, got 9)`,
+    `bad field 'side' (...)`), a colour outside -1 to 15, a `dim` that is no dimension id, more than 64 markers, and the golem's own
+    refusals (`The golem refused the markers: a coloured marker needs the Order upgrade, and a golem that retires or moves cargo takes
+    none`, `The golem refused the new home`). The home restriction radius is the golem's own 32 (1.7.10 set 35, which lasted until the
+    golem was loaded again).
+12. **A marker's `dim` is the dimension's id (forced).** 1.7.10 had numeric dimension ids (`0`); a marker table carries the id of the
+    dimension (`"minecraft:overworld"`) in `dim` now, and `newMarker()` fills in the connector's.
+13. Kept from the groups: `setRotation` of the tablet also refuses a negative number (`docs/deviations/TileBlocks.md` section 2.1); the
    attractors' `setPulling` changes the block only when the polarity changes (`Machines.md`); `getSignal` is the strongest signal of the
    six neighbours, which is what the original's loop over `getIndirectPowerLevelTo` computed; the Aspectalyzer's aspects are those of a
    scan (`ThaumcraftApiHelper.getObjectAspects`, `Machines.md` section 3).
@@ -126,16 +143,18 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
 
 - **The methods are in the book (choice).** 1.7.10 had one page, which sent the reader to a web page by pressing Enter
   (`GuiResearchPeripheral`, swapped in by `ClientTickHandler`; `docs/API_GAPS.md` section 1.12, row 17). The port has no such hook into
-  the Thaumonomicon and writes the documentation into the entry: the entry `PERIPHERALS` has eight text pages now,
-  `ttresearch.page.PERIPHERALS.0` to `.7`: the introduction (the first sentence of 1.7.10, then how a computer finds the blocks, that a call
+  the Thaumonomicon and writes the documentation into the entry: the entry `PERIPHERALS` has nine text pages now,
+  `ttresearch.page.PERIPHERALS.0` to `.8`: the introduction (the first sentence of 1.7.10, then how a computer finds the blocks, that a call
   waits for the next tick and that the blocks are ordinary blocks without CC: Tweaked), the Dynamism Tablet, the two Attractors, the
-  Aspectalyzer, the Golem Connector, the aspect containers, the essentia transports and the Dissipating Turtle. The pages follow the code
+  Aspectalyzer, the Golem Connector, the aspect containers, the essentia transports, Thaumcraft's four machines and the Dissipating
+  Turtle. The pages follow the code
   where the 1.7.10 wiki page differed from it (the wiki gave `getAspects` of an aspect container as a list of name and amount tables and
   listed the Interface's commented-out methods).
 - Position, icon, flags and the parents of the Aspectalyzer and the Golem Connector are unchanged; the entry is registered always,
   as before (`docs/deviations/Machines.md` section 3, `TileBlocks.md` section 2.4). The parity check compares the pages with the
-  original and allows exactly this difference (`known_differences.json`, `PERIPHERALS` `pages.count` 1 to 8).
-- Languages: `lang-extra/computercraft.<lang>.json`. English and Russian have all eight pages; German, French, Korean and Chinese have
+  original and allows exactly this difference (`known_differences.json`, `PERIPHERALS` `pages.count` 1 to 9). The Golem Connector's
+  own pages are the 1.7.10 text again, page 3 now points to this entry (`TileBlocks.md` section 2.4).
+- Languages: `lang-extra/computercraft.<lang>.json`. English and Russian have all nine pages; German, French, Korean and Chinese have
   the introduction in their language (it says that the following pages are English) and show the English method pages. The
   introduction replaced the text of the earlier port that said the computer link was not part of this version
   (`lang-extra/basic_items.<lang>.json` no longer carries the key).

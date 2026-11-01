@@ -2,7 +2,7 @@
 # CI of Thaumic Tinkerer (Fabric and NeoForge, Minecraft 1.21.1).
 #
 # The add-on needs Thaumcraft 4 Reload from https://github.com/acak1221/Thaumcraft-1.21.1 (it needs extensions of thaumcraft.api that are on
-# main there since 4c38e3f), so the job checks that repository out next to the add-on at the commit thaumcraft_ref
+# main there since 4c38e3f, and the golem and machine API since 316897d), so the job checks that repository out next to the add-on at the commit thaumcraft_ref
 # of gradle.properties (a commit, not the branch: the build does not change when the branch moves; move it together with thaumcraft_version),
 # installs Thaumcraft for Fabric and for NeoForge into the local Maven repository of the runner (the add-on build reads both from there) and
 # then builds the add-on: compilation of the main, GameTest and client-smoke source sets and the JUnit tests (`check`), GameTests on a Fabric

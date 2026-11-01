@@ -238,28 +238,33 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 * **Registered without ComputerCraft (decision).** The fork registered the block only when ComputerCraft was loaded
   (`shouldRegister() == LoadedMods.computerCraftLoaded`), because its only use is as a computer peripheral. The port
-  registers it always, with its research, recipe and the Binder's golem binding, so that the group is complete and a loader
-  module can bridge it later. Without that bridge the block does nothing a player can see except remember its golem and
-  stay camouflageable.
+  registers it always, with its research, recipe and the Binder's golem binding, so that the group is complete. With CC: Tweaked
+  installed it is the peripheral `tt_golemconnector` (below); without it the block does nothing a player can see except remember its
+  golem and stay camouflageable.
 * **Parent research (decision).** The parent `PERIPHERALS` ("Peripherals", documentation) was also registered only with
   ComputerCraft. The Golem Connector registers it the same way the Machines group does for the Aspectalyzer (only when the
-  key is not there yet; a second registration of a key is ignored by Thaumcraft). It belongs in the shared
-  `ResearchHelper`: see the shared-file requests of the report.
-* **Golem data is not readable (forced, API request A11).** Thaumcraft's golems have no public API in 1.21.1. The golem is
-  recognised by its entity type, `ThaumcraftEntities.GOLEM` of the API (the entity class is not reachable), found within thirty blocks every
-  100 ticks (`time % 100 == 1`, as before) by its UUID, and the 15 methods of the peripheral
-  (`GolemConnectorMethods`: `getDecorations`, `getPosition`, `getType`, `getHealth`, `getCore`, `getHome`, `setHome`,
-  `getMarkers`, `setMarkers`, `newMarker`, `addMarker`, `saveMarker`, `deleteMarker`, `getMarker`, `getMarkerCount`, with
-  the original's results for "no golem" and its error messages) run on a `GolemAccess`. The only implementation today is
-  `UnavailableGolemAccess` ("no golem"), installed by `GolemAccessProvider`; when the API has a golem view, the provider is
-  the one place to change. The methods are plain Java and are covered by a JUnit test against a fake golem.
-* **Computer peripheral (forced).** As for the Tablet: `tt_golemconnector` is not registered with ComputerCraft or
-  OpenComputers.
-* **The block says that it is inert (decision).** Its item has a grey tooltip, `tooltip.thaumictinkerer.golem_connector`
-  ("The computer link and the golem data are not part of this version yet."), and the research pages `GOLEM_CONNECTOR.0`
-  and `.3` are rewritten (`lang-extra/tile_blocks.*.json`, all six languages) so that they do not promise a computer
-  that reads golems or send the reader to the 1.7.10 documentation web page (`GuiResearchPeripheral`, ENTER, is not
-  ported: the page lived in a GUI that the add-on does not have). Page 1 (binding, thirty blocks) is unchanged and true.
+  key is not there yet; a second registration of a key is ignored by Thaumcraft), through the shared
+  `ResearchHelper.registerPeripheralsRoot()`, which also writes its nine pages of method documentation
+  (`docs/deviations/ComputerCraft.md` section 5).
+* **Golem data through `thaumcraft.api.golems` (API request A11, answered).** The golem is recognised by its entity type,
+  `ThaumcraftEntities.GOLEM` of the API, found within thirty blocks every 100 ticks (`time % 100 == 1`, as before) by its UUID, and the
+  15 methods of the peripheral (`GolemConnectorMethods`: `getDecorations`, `getPosition`, `getType`, `getHealth`, `getCore`, `getHome`,
+  `setHome`, `getMarkers`, `setMarkers`, `newMarker`, `addMarker`, `saveMarker`, `deleteMarker`, `getMarker`, `getMarkerCount`, with
+  the original's results for "no golem" and its error messages) run on a `GolemAccess`: `ApiGolemAccess` over `GolemApi.view`,
+  `GolemApi.setHome` and `GolemApi.setMarkers` (Thaumcraft 4 Reload since `316897d`), installed by `GolemAccessProvider`, and
+  `UnavailableGolemAccess` ("no golem") when the connector has no golem. Where the API refuses what 1.7.10 did unchecked (a side
+  outside 0 to 5, a colour outside -1 to 15, a dimension that is no id, more than 64 markers, a coloured marker on a golem without the
+  Order upgrade, a golem that retires or moves cargo) the call is a Lua error instead of a silent no-op; a marker's `dim` is the
+  dimension's id (`minecraft:overworld`), 1.21.1 has no numeric dimension ids (`docs/deviations/ComputerCraft.md` section 3). The
+  methods are plain Java and are covered by a JUnit test against a fake golem, and by a GameTest with a real golem and real Lua.
+* **Computer peripheral (ported for CC: Tweaked).** `tt_golemconnector` is registered on both loaders when CC: Tweaked is installed
+  (`docs/deviations/ComputerCraft.md`); the OpenComputers driver is not ported.
+* **Texts (decision).** Page 0 of `GOLEM_CONNECTOR` is the 1.7.10 text again (a computer next to the block reads and steers the golem),
+  in every language. Page 3 sent the reader to the 1.7.10 documentation web page with ENTER (`GuiResearchPeripheral`, not ported: a hook
+  into the Thaumonomicon screen); `lang-extra/tile_blocks.*.json` replaces it in all six languages with a pointer to the entry
+  `PERIPHERALS`, which lists the methods. The item's grey tooltip `tooltip.thaumictinkerer.golem_connector` ("Needs CC: Tweaked:
+  without a computer the connector only remembers its golem.") is shown only when CC: Tweaked is not installed; with it the item has
+  no tooltip, as in 1.7.10. Page 1 (binding, thirty blocks) is unchanged and true.
 * **A stale id is cleared (fix).** The original `readCustomNBT` kept the previous UUID when the tag had none; the port sets
   it to none, so an unbound connector stays unbound after a sync. The id is saved in the vanilla UUID format (section 1); a connector
   saved by an earlier revision of the port (two longs) loads unbound.
@@ -470,9 +475,8 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 * Energy forwarding of the Interface (2.5), on both loaders: needs the loader modules. (Fluids are forwarded on both, and on NeoForge
   items through a capability as well; the GameTests of both loaders run them, 2.5.)
-* ComputerCraft/OpenComputers peripherals of the Tablet, the Interface and the Golem Connector (2.1, 2.4, 2.5): the method
-  tables exist as plain Java, nothing registers them.
-* Golem data of the Golem Connector (2.4): API request A11.
+* OpenComputers drivers of the Tablet and the Golem Connector (2.1, 2.4); the CC: Tweaked peripherals are ported
+  (`docs/deviations/ComputerCraft.md`).
 * The multiblock diagram page of the Locomotive research (N1).
 * The Tablet's "xN" text of the GregTech accelerator is absent (2.1).
 * AE2 handling of the Locomotive's passenger (2.3).

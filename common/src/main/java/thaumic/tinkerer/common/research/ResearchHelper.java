@@ -87,11 +87,11 @@ public final class ResearchHelper {
     }
 
     /**
-     * The text pages of {@code PERIPHERALS}: the introduction, then one page per computer peripheral and the turtle upgrade
-     * ({@code ttresearch.page.PERIPHERALS.0} to {@code .7}, {@code lang-extra/computercraft.<lang>.json}). 1.7.10 had the
+     * The text pages of {@code PERIPHERALS}: the introduction, then the methods of the computer peripherals and the turtle upgrade
+     * ({@code ttresearch.page.PERIPHERALS.0} to {@code .8}, {@code lang-extra/computercraft.<lang>.json}). 1.7.10 had the
      * introduction alone and sent the reader to a web page (docs/deviations/ComputerCraft.md).
      */
-    public static final int PERIPHERALS_PAGES = 8;
+    public static final int PERIPHERALS_PAGES = 9;
 
     /**
      * The documentation root of the machines that 1.7.10 offered to computers (research {@code PERIPHERALS}, at -1,0, known from

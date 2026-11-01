@@ -3,11 +3,12 @@
 The optional CC: Tweaked integration (`docs/deviations/ComputerCraft.md`). The numbers `A11` and `A12` are those of `docs/API_GAPS.md`
 section 2. Nothing here was done by reaching into `thaumcraft.common.*`.
 
-## 1. The machines and the golems (A11, A12; being written)
+## 1. The machines and the golems (A11, A12): answered
 
-`tt_deconstructor`, `tt_braininajar`, `tt_arcaneear`, `tt_arcanebore` need `thaumcraft.api.machines` (A12) and the golem data of
-`tt_golemconnector` needs `thaumcraft.api.golems` (A11). Both are being added to Thaumcraft 4 Reload; the peripherals follow when a
-Thaumcraft with them is published (`docs/deviations/ComputerCraft.md` section 1).
+`thaumcraft.api.machines` (`IDeconstructor`, `IBrainJar`, `IArcaneEar`, `IArcaneBore`) and `thaumcraft.api.golems` (`GolemApi`,
+`GolemView`) are in Thaumcraft 4 Reload since `316897d` (2026-11-01, `thaumcraft_ref` of `gradle.properties`); the peripherals
+`tt_deconstructor`, `tt_braininajar`, `tt_arcaneear`, `tt_arcanebore` and the golem data of `tt_golemconnector` use them
+(`docs/deviations/ComputerCraft.md` section 1).
 
 ## 2. The label of a jar (P3)
 

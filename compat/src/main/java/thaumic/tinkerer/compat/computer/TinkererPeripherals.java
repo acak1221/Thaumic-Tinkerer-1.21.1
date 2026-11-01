@@ -16,6 +16,10 @@ package thaumic.tinkerer.compat.computer;
 import org.jetbrains.annotations.Nullable;
 import thaumcraft.api.aspects.IAspectContainer;
 import thaumcraft.api.aspects.IEssentiaTransport;
+import thaumcraft.api.machines.IArcaneBore;
+import thaumcraft.api.machines.IArcaneEar;
+import thaumcraft.api.machines.IBrainJar;
+import thaumcraft.api.machines.IDeconstructor;
 import thaumic.tinkerer.common.block.tile.TileAspectAnalyzer;
 import thaumic.tinkerer.common.block.tile.TileGolemConnector;
 import thaumic.tinkerer.common.block.tile.TileMagnet;
@@ -26,8 +30,9 @@ import thaumic.tinkerer.common.block.tile.tablet.TileAnimationTablet;
  *
  * <ol>
  *   <li>any {@link IAspectContainer}: {@code tt_aspectContainer} ({@link AspectContainerTable});</li>
- *   <li>the Deconstruction Table, the Brain in a Jar, the Arcane Ear and the Arcane Bore of Thaumcraft: not yet, they need
- *       {@code thaumcraft.api.machines} (request A12 of docs/API_GAPS.md);</li>
+ *   <li>the Deconstruction Table ({@code tt_deconstructor}), the Brain in a Jar ({@code tt_braininajar}), the Arcane Ear
+ *       ({@code tt_arcaneear}) and the Arcane Bore ({@code tt_arcanebore}) of Thaumcraft, found by their interfaces of
+ *       {@code thaumcraft.api.machines} (1.7.10 asked for the internal tile entity classes);</li>
  *   <li>any {@link IEssentiaTransport}: {@code tt_aspectTransport} ({@link EssentiaTransportTable});</li>
  *   <li>the add-on's own block entities that were {@code IPeripheral}s ("Hacky", in 1.7.10 every {@code IPeripheral} tile entity
  *       of a class in {@code thaumic.tinkerer}): the Dynamism Tablet, the two Attractors, the Aspectalyzer, the Golem
@@ -50,6 +55,14 @@ public final class TinkererPeripherals {
         if (tile == null) return null;
 
         if (tile instanceof IAspectContainer container) return new AspectContainerTable(container);
+
+        if (tile instanceof IDeconstructor deconstructor) return new DeconstructorTable(deconstructor);
+
+        if (tile instanceof IBrainJar jar) return new BrainInAJarTable(jar);
+
+        if (tile instanceof IArcaneEar ear) return new ArcaneEarTable(ear);
+
+        if (tile instanceof IArcaneBore bore) return new ArcaneBoreTable(bore);
 
         if (tile instanceof IEssentiaTransport transport) return new EssentiaTransportTable(transport);
 

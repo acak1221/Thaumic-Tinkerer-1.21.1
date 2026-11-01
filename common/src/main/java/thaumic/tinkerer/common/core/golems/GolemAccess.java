@@ -16,10 +16,9 @@ import net.minecraft.core.BlockPos;
  * What the Golem Connector needs to know about, and change in, a Thaumcraft golem (type, core, accessories, health,
  * position, home and markers).
  *
- * <p>Thaumcraft's golems have no public API ({@code docs/api/PORTING.md}: "Golems had no API in 1.7.10 and have none
- * now"), and the add-on may not reach into the mod. This interface is the shape the API is asked to provide
- * ({@code thaumcraft.api.golems}, request A11 in docs/api-requests/TileBlocks.md); until then {@link GolemAccessProvider}
- * answers with {@link UnavailableGolemAccess}, which behaves like the 1.7.10 connector without a golem.</p>
+ * <p>Golems had no API in 1.7.10, and the add-on may not reach into the mod. This interface is the shape the connector
+ * needs; {@link ApiGolemAccess} implements it over {@code thaumcraft.api.golems} (request A11 in docs/api-requests/TileBlocks.md),
+ * and {@link UnavailableGolemAccess} behaves like the 1.7.10 connector without a golem. {@link GolemAccessProvider} chooses.</p>
  */
 public interface GolemAccess {
 

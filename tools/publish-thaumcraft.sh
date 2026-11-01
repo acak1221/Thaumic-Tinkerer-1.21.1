@@ -9,7 +9,8 @@
 #   -d DIR     where the checkout is (made if absent)               (default: $THAUMCRAFT_DIR or ../Thaumcraft-1.21.1, next to this repository)
 #   -u URL     the repository to clone                              (default: $THAUMCRAFT_URL or https://github.com/acak1221/Thaumcraft-1.21.1)
 #
-# The add-on needs extensions of thaumcraft.api that are on main since 4c38e3f; an older Thaumcraft does not compile it. The default ref is a
+# The add-on needs extensions of thaumcraft.api that are on main since 4c38e3f, and the golem and machine API since 316897d; an older
+# Thaumcraft does not compile it. The default ref is a
 # commit of main, so the result does not change when the branch moves; to follow the branch, pass -b main. An existing checkout is fetched and moved to the ref; it is refused when it has local changes.
 # Gradle is ./gradlew of the checkout unless GRADLE_CMD says otherwise (a command, e.g. GRADLE_CMD=./gradlew). The build of Thaumcraft takes a
 # few minutes the first time.

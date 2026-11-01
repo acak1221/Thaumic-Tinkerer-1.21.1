@@ -17,7 +17,7 @@ import thaumic.tinkerer.testing.ComputerCraftRuntimeChecks;
  * {@code thaumic.tinkerer.fabric.testing.ComputerCraftGameTests}: the same tests in the same order, under the same names and with
  * the same timeouts and batches, on the template {@code thaumictinkerer:computercraftgametests.empty} (the class name prefixes the
  * template and the test names, which are then those of the Fabric run). Test-only, not distributed.
- * The Fabric-native wrappers (addonPeripheralsAreFoundAtTheirBlocks, genericPeripheralsAreFoundAtThaumcraftBlocks) call their NeoForge counterparts in {@link ComputerCraftNeoForgeChecks}.
+ * The Fabric-native wrappers (addonPeripheralsAreFoundAtTheirBlocks, genericPeripheralsAreFoundAtThaumcraftBlocks, thaumcraftMachinesAreFoundAtTheirBlocks) call their NeoForge counterparts in {@link ComputerCraftNeoForgeChecks}.
  */
 @PrefixGameTestTemplate(true)
 public final class ComputerCraftGameTests {
@@ -36,6 +36,12 @@ public final class ComputerCraftGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void genericPeripheralsAreFoundAtThaumcraftBlocks(GameTestHelper test) {
         ComputerCraftNeoForgeChecks.genericPeripheralsAreFoundAtThaumcraftBlocks(test);
+    }
+
+    /** Fabric-native on Fabric (its body uses the Fabric API): the NeoForge counterpart is {@link ComputerCraftNeoForgeChecks#thaumcraftMachinesAreFoundAtTheirBlocks}. */
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void thaumcraftMachinesAreFoundAtTheirBlocks(GameTestHelper test) {
+        ComputerCraftNeoForgeChecks.thaumcraftMachinesAreFoundAtTheirBlocks(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
@@ -66,6 +72,16 @@ public final class ComputerCraftGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
     public void luaReadsEssentiaTransports(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsEssentiaTransports(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    public void luaReadsThaumcraftMachines(GameTestHelper test) {
+        ComputerCraftRuntimeChecks.luaReadsThaumcraftMachines(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    public void luaReadsAndSteersAGolem(GameTestHelper test) {
+        ComputerCraftRuntimeChecks.luaReadsAndSteersAGolem(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

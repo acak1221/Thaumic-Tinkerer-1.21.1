@@ -26,4 +26,8 @@ public final class ComputerCraftNeoForgeChecks {
     public static void genericPeripheralsAreFoundAtThaumcraftBlocks(GameTestHelper test) {
         ComputerCraftRuntimeChecks.genericPeripheralsAreFoundAtThaumcraftBlocks(test, CAPABILITY);
     }
+
+    public static void thaumcraftMachinesAreFoundAtTheirBlocks(GameTestHelper test) {
+        ComputerCraftRuntimeChecks.thaumcraftMachinesAreFoundAtTheirBlocks(test, CAPABILITY);
+    }
 }

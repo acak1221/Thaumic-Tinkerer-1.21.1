@@ -33,9 +33,9 @@ import thaumic.tinkerer.common.item.ItemConnector;
  * looks for that golem within thirty blocks every five seconds. In 1.7.10 its only use was to be a ComputerCraft and
  * OpenComputers peripheral that reads and edits the golem ({@link GolemConnectorMethods}).
  *
- * <p>Not available in 1.21.1: the peripheral registration (no computer mod can be reached from loader-neutral code) and
- * the golem data (Thaumcraft's golems have no API, see {@link GolemAccessProvider}). The binding, the saved data and the
- * camouflage work.</p>
+ * <p>The peripheral {@code tt_golemconnector} is registered by the optional CC: Tweaked glue ({@code compat/.../computer},
+ * docs/deviations/ComputerCraft.md); the golem is read and changed through {@code thaumcraft.api.golems}
+ * ({@link GolemAccessProvider}). The binding, the saved data and the camouflage work without a computer mod.</p>
  */
 public class TileGolemConnector extends CamoDeviceBlockEntity {
 
@@ -91,7 +91,7 @@ public class TileGolemConnector extends CamoDeviceBlockEntity {
         return GolemAccessProvider.forEntity(golem);
     }
 
-    /** The peripheral surface ({@code tt_golemconnector}) of this connector, ready for a computer-mod bridge. */
+    /** The peripheral surface ({@code tt_golemconnector}) of this connector, with the golem it has found at this moment. */
     public GolemConnectorMethods peripheral() {
         return new GolemConnectorMethods(golemAccess(), worldPosition,
                 level == null ? "" : level.dimension().location().toString());

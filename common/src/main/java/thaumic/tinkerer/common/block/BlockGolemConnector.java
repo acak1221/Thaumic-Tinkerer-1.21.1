@@ -14,6 +14,7 @@ package thaumic.tinkerer.common.block;
 import com.mojang.serialization.MapCodec;
 import java.util.List;
 import org.jetbrains.annotations.Nullable;
+import dev.architectury.platform.Platform;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -86,14 +87,19 @@ public class BlockGolemConnector extends CamoDeviceBlock implements ITTinkererRe
     }
 
     /**
-     * Says what the block can do in this version: it is bound to a golem, but the computer link that reads and commands the
-     * golem (and the golem data of Thaumcraft's golems) is not available yet (docs/deviations/TileBlocks.md, 2.4).
+     * Without CC: Tweaked the connector can only remember its golem, so its item says that it needs the computer mod
+     * (docs/deviations/TileBlocks.md, 2.4); with CC: Tweaked installed it has no tooltip, as in 1.7.10.
      */
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         super.appendHoverText(stack, context, tooltip, flag);
-        tooltip.add(Component.translatable("tooltip.thaumictinkerer.golem_connector").withStyle(ChatFormatting.GRAY));
+        if (!Platform.isModLoaded(CC_TWEAKED)) {
+            tooltip.add(Component.translatable("tooltip.thaumictinkerer.golem_connector").withStyle(ChatFormatting.GRAY));
+        }
     }
+
+    /** The mod id of CC: Tweaked, the computer mod the connector is a peripheral of. */
+    private static final String CC_TWEAKED = "computercraft";
 
     @Nullable
     @Override

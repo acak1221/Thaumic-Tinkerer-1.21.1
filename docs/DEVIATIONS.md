@@ -130,15 +130,16 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
   Blood Magic, AE2 (`IMovableTile`, passenger handling), Tinkers' Construct repair, GregTech accelerator text, EnderIO planter,
   Electro-Magic Tools hoe.
 * **Computer peripherals**: ported for CC: Tweaked on both loaders, as an optional integration ([ComputerCraft](deviations/ComputerCraft.md)): the
-  peripherals of the Animation Tablet, the attractors, the Aspectalyzer, the Golem Connector and every Thaumcraft aspect container and essentia
-  transport (the Transvector Interface is one, as in 1.7.10), the Fume Dissipator's turtle tool, and the method pages of the `PERIPHERALS` research.
-  Not ported: the OpenComputers drivers (no 1.21.1 release). Waiting for Thaumcraft API: the peripherals of the Deconstruction Table, Brain in a Jar,
-  Arcane Ear and Arcane Bore (A12) and the golem data of the Golem Connector (A11).
+  peripherals of the Animation Tablet, the attractors, the Aspectalyzer, the Golem Connector (with the golem data, A11), Thaumcraft's Deconstruction
+  Table, Brain in a Jar, Arcane Ear and Arcane Bore (A12) and every Thaumcraft aspect container and essentia transport (the Transvector Interface is
+  one, as in 1.7.10), the Fume Dissipator's turtle tool, and the method pages of the `PERIPHERALS` research. Not ported: the OpenComputers drivers
+  (no 1.21.1 release).
 * **Energy through the Transvector Interface** (RF and EU in 1.7.10) is written for **neither** loader; fluids through it are forwarded on both (Fabric
   `TileBlocksFabric`, run in the GameTests; NeoForge `NeoForgeCapabilities`, which also offers the Interface's items as a capability, run in the NeoForge GameTests; `TileBlocks.md` sections 2.5 and 3, `api-requests/TileBlocks.md` section 6, `NEOFORGE.md`).
 * **The Kami foci's `canApplyUpgrade` override** (the original answered true for every upgrade) is dropped; the base rule applies (`Foci.md` section 10, `KamiGear.md` section 9).
 * **Gregtech hazard protection and the Thaumic Boots mod** (`IHazardProtector`, `IBoots`) for the Ichorcloth armour: neither mod exists for 1.21.1 (`KamiGear.md` section 3).
-* **Golem API** (Golem Connector data): API request A11/A12 is deferred; the Golem Connector block exists without golem data.
+* **Golem API** (Golem Connector data): answered by `thaumcraft.api.golems` (A11, Thaumcraft 4 Reload `316897d`); the connector reads and
+  steers its golem through it (`TileBlocks.md` section 2.4).
 * **Configurable dimension id and disabling the Bedrock dimension** (a datapack dimension has a resource id and is switched off by the
   data pack; `KamiWorld.md` section 9).
 * **Multiblock diagram page** of the Levitational Locomotive research, EnderStorage page of the Ender Rift research.

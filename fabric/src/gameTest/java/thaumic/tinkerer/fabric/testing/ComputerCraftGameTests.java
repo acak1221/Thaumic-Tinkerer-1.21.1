@@ -33,6 +33,11 @@ public final class ComputerCraftGameTests implements FabricGameTest {
         ComputerCraftRuntimeChecks.genericPeripheralsAreFoundAtThaumcraftBlocks(test, LOOKUP);
     }
 
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void thaumcraftMachinesAreFoundAtTheirBlocks(GameTestHelper test) {
+        ComputerCraftRuntimeChecks.thaumcraftMachinesAreFoundAtTheirBlocks(test, LOOKUP);
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
     public void luaDrivesTheDynamismTablet(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaDrivesTheDynamismTablet(test);
@@ -61,6 +66,16 @@ public final class ComputerCraftGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
     public void luaReadsEssentiaTransports(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsEssentiaTransports(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    public void luaReadsThaumcraftMachines(GameTestHelper test) {
+        ComputerCraftRuntimeChecks.luaReadsThaumcraftMachines(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    public void luaReadsAndSteersAGolem(GameTestHelper test) {
+        ComputerCraftRuntimeChecks.luaReadsAndSteersAGolem(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
