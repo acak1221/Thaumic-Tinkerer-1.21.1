@@ -322,6 +322,6 @@ class KamiGearResourcesTest {
             calls++;
             assertTrue(at > guard && at < end, "an S2C payload type is registered outside the server guard at offset " + at);
         }
-        assertEquals(2, calls, "the armour status and the beam");
+        assertEquals(1, calls, "the beam (the armour status is the synced player data attachment of KamiArmorHandler)");
     }
 }
