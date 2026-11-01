@@ -43,8 +43,9 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
 * **Config** is JSON (`config/thaumictinkerer.json`, `ConfigHandler`), not a Forge `.cfg`; the switches and defaults are the original's.
   There is a `/maxresearch` debug command (the original's `/maxresearch` equivalent: 99 of every aspect), only when
   `enableDebugCommands` is on. Three options the original wrote are not written any more because nothing in the port reads them
-  (`tooltipIndicators.enabled`: the [TT] prefix is in the language files; `oreDictMetal.enabled`: the recipes use the shared tags whenever they
-  have members; `repairTconTools.enabled`: no Tinkers' Construct); an old file with them still loads. A file that is not valid JSON, or not a JSON
+  (`tooltipIndicators.enabled`: the [TT] prefix is in the language files; `oreDictMetal.enabled`: nothing asks it, the Infused Seeds' loot names the
+  shared tag `c:ingots/copper` either way; `repairTconTools.enabled`: no Tinkers' Construct); an old file with them still loads. No behaviour changed:
+  the three values were read and written back, never used. A file that is not valid JSON, or not a JSON
   object, is **not** overwritten with the defaults: the defaults hold for that run, an error in the log names the file, and the file is left to be fixed.
 * **Config on a server** (new; the original had no sync, every side read its own `.cfg`, so a client with `modFlight.enabled` on could fly with the
   Focus of Flight on a server that had it off). On join the server sends its values (`ConfigSync`, `PacketConfigSync`): the options a client evaluates as

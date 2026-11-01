@@ -600,6 +600,14 @@ The ten mixins of `thaumictinkerer.mixins.json` (`fabric/src/main/java/thaumic/t
   and passed (`All 14 required tests passed :)`, `All 173 required tests passed :)`), after the change of
   `livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow` for NeoForge's arithmetic (section 14); section 9 ("What ran on NeoForge") has the commands
   and what was not verified.
+* *2026-11-01, the additions of that day* (the hardness-zero rule, the `DamageContainer` mixin, `BlockProtection`'s backends; Gradle logs
+  `/tmp/tt-split/fix-core-*.log` of the development machine, not committed): `./gradlew runTinkererGameTest -PtinkererGameTestFilter='coregametests.*,hooksgametests.*'`
+  on Fabric: `All 22 required tests passed :)` (the 19 of `HooksGameTests` and the 3 of `CoreGameTests`); `./gradlew :neoforge:runGameTest
+  -PtinkererGameTestFilter='coregametests.*,hooksgametests.*,hooksneoforgetests.*,itemcapabilitiesneoforgetests.*,tileblocksneoforgetests.*,tileblocksgametests.*,machinesgametests.*,enchantmentsgametests.*,kamiworldgametests.*'`:
+  `All 185 required tests passed :)`, `hooksneoforgetests.aCancelledHitLeavesNoDamageContainer` and the 19 hook checks among them. The probing check
+  `theAddonsOwnBreakListenersDoNothingWhileAsked` passed because `ModEnchantmentHandler.onBreakBlock` and `ToolHandler.onBlockBreak` already returned while probing.
+  Not made: a mutation run (each new check with its fix taken out), so that the checks fail without the fixes is reasoned (a NaN is not `== 0F`; the stack
+  holds one container per cancelled hit in the bytecode), not seen.
 * *Not run at all:* every client side (below).
 
 JUnit (`./gradlew tinkererTest`): `TinkererEventsTest` (chain order, zero/negative/NaN cancel, a lone listener, no listener, the clamp of the use

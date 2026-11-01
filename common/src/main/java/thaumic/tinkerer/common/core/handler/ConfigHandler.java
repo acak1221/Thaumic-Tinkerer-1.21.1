@@ -41,7 +41,8 @@ import org.slf4j.LoggerFactory;
  * ids, dimension ids) are gone: the potions, enchantments and the Bedrock dimension are registry entries now, and the
  * dimension is a data pack (see docs/DEVIATIONS.md). So are three options that 1.7.10 wrote but nothing of the port reads:
  * {@code tooltipIndicators.enabled} (the [TT] prefix of the research text is in the language files), {@code oreDictMetal.enabled}
- * (the recipes use the shared tags whenever they have members) and {@code repairTconTools.enabled} (no Tinkers' Construct); a
+ * (nothing of the port asks it; the Infused Seeds' loot names the shared tag {@code c:ingots/copper} either way) and
+ * {@code repairTconTools.enabled} (no Tinkers' Construct); a
  * file that still has them keeps loading, and they are left out when it is rewritten. The file is written with the defaults the
  * first time and is rewritten with every known key on each load, so new options appear in it; a file that cannot be read or is
  * not a JSON object is left as it is (the defaults hold for that run, and an error names the file).</p>

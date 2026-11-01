@@ -249,7 +249,7 @@ public class BlockInfusedGrain extends CropBlock implements EntityBlock {
     /** The 1.7.10 {@code BonemealEventHandler} cancelled bone meal on these crops unless {@code cropsAllowBonemeal}. */
     @Override
     public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state) {
-        return ConfigHandler.cropsAllowBonemeal && !isMaxAge(state);
+        return ConfigHandler.cropsAllowBonemeal(level) && !isMaxAge(state);
     }
 
     /** Grows by the usual two to five stages, keeping the texture group (vanilla would reset the state). */

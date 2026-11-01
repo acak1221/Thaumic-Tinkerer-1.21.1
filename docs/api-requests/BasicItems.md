@@ -1,7 +1,8 @@
 # BasicItems: requests to the Thaumcraft API and to the other groups
 
 Group BasicItems: Spellbinding Cloth, Talisman of Remedium, Talisman of Withhold, Tome of Knowledge Sharing, Infused
-Scribing Tools, Helmet of Revealing, `ExperienceHelper`, `ItemNBTHelper`, `MiscHelper`, `ClientTickHandler`.
+Scribing Tools, Helmet of Revealing, `ExperienceHelper`, `MiscHelper`, `ClientTickHandler` (the 1.7.10 `ItemNBTHelper` is gone: the items keep their
+state in typed data components).
 The numbers `A1`..`A13` and `N1`..`N4` are those of `docs/API_GAPS.md` section 2. Nothing in the group reaches into
 `thaumcraft.common.*` or `thaumcraft.client.*` (the test `TinkererApiOnlyTest` checks it): each item below is either already
 answered by the API or a named workaround with the loss written down. Priorities are the group's own opinion (P1 changes

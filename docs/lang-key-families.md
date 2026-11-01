@@ -8,12 +8,12 @@ No text was translated or edited. A value changed only where a literal `%` becam
 
 | Source | Target | Keys in .lang | Keys in .json | Renamed keys | Duplicates | Escaped `%` | Fragment files | Fragment keys |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `en_US.lang` | `en_us.json` | 478 | 680 | 114 | 1 | 1 | 10 | 53 |
+| `en_US.lang` | `en_us.json` | 478 | 684 | 114 | 1 | 1 | 11 | 57 |
 | `en_GB.lang` | `en_gb.json` | 14 | 14 | 1 | 0 | 0 | 0 | 0 |
 | `de_DE.lang` | `de_de.json` | 437 | 586 | 101 | 1 | 1 | 7 | 14 |
 | `fr_Fr.lang` | `fr_fr.json` | 464 | 627 | 102 | 1 | 1 | 7 | 14 |
 | `ko_KR.lang` | `ko_kr.json` | 421 | 570 | 91 | 1 | 1 | 7 | 14 |
-| `ru_RU.lang` | `ru_ru.json` | 467 | 676 | 105 | 1 | 1 | 11 | 74 |
+| `ru_RU.lang` | `ru_ru.json` | 467 | 680 | 105 | 1 | 1 | 11 | 78 |
 | `zh_CN.lang` | `zh_cn.json` | 469 | 632 | 107 | 1 | 1 | 7 | 14 |
 
 ## Key families
@@ -50,7 +50,7 @@ The native Thaumonomicon reads an entry's name and summary only from `tc.researc
 * `tc.research_name.<KEY>` = value of `ttresearch.name.<KEY>`.
 * `tc.research_text.<KEY>` = value of `ttresearch.prefix` (or `ttresearch.prefix.kami` for a Kami entry) immediately followed by the value of `ttresearch.lore.<KEY>`, with no separator added, as `TTResearchItem.getText()` builds it. The prefixes keep their own trailing space where a locale has one (`de_de`, `ko_kr`); `en_us` has none.
 * `ttresearch.page.<KEY>.<n>` stay verbatim: they are the page translation keys.
-* The original adds the prefix only while the config option `tooltipIndicators.enabled` is true (default true, `ConfigHandler.useTootlipIndicators`). The converter assumes the default; the option is the code port's decision.
+* The original adds the prefix only while the config option `tooltipIndicators.enabled` is true (default true). The converter assumes the default; the port has no such option (the prefix is part of the language files).
 
 Kami entries (`new KamiResearchItem(` in the Java source, key resolved through `LibResearch`): **25**.
 
@@ -103,10 +103,11 @@ New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objec
 | Locale | Fragment | Keys | Replaced keys |
 | --- | --- | --- | --- |
 | `en_us` | `lang-extra/basic_items.en_us.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `en_us` | `lang-extra/core.en_us.json` | 1 | none |
-| `en_us` | `lang-extra/foci.en_us.json` | 1 | none |
+| `en_us` | `lang-extra/core.en_us.json` | 3 | none |
+| `en_us` | `lang-extra/foci.en_us.json` | 2 | none |
 | `en_us` | `lang-extra/kami_gear.en_us.json` | 1 | none |
 | `en_us` | `lang-extra/kami_world.en_us.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
+| `en_us` | `lang-extra/machines.en_us.json` | 1 | none |
 | `en_us` | `lang-extra/recipe_viewers.en_us.json` | 13 | none |
 | `en_us` | `lang-extra/simple_blocks.en_us.json` | 4 | none |
 | `en_us` | `lang-extra/tags.en_us.json` | 15 | none |
@@ -134,11 +135,11 @@ New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objec
 | `ko_kr` | `lang-extra/tile_blocks.ko_kr.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `ko_kr` | `lang-extra/tooltips.ko_kr.json` | 5 | none |
 | `ru_ru` | `lang-extra/basic_items.ru_ru.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
-| `ru_ru` | `lang-extra/core.ru_ru.json` | 1 | none |
-| `ru_ru` | `lang-extra/foci.ru_ru.json` | 1 | none |
+| `ru_ru` | `lang-extra/core.ru_ru.json` | 3 | none |
+| `ru_ru` | `lang-extra/foci.ru_ru.json` | 2 | none |
 | `ru_ru` | `lang-extra/kami_gear.ru_ru.json` | 1 | none |
 | `ru_ru` | `lang-extra/kami_world.ru_ru.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
-| `ru_ru` | `lang-extra/machines.ru_ru.json` | 1 | none |
+| `ru_ru` | `lang-extra/machines.ru_ru.json` | 2 | none |
 | `ru_ru` | `lang-extra/recipe_viewers.ru_ru.json` | 13 | none |
 | `ru_ru` | `lang-extra/simple_blocks.ru_ru.json` | 10 | none |
 | `ru_ru` | `lang-extra/tags.ru_ru.json` | 15 | none |

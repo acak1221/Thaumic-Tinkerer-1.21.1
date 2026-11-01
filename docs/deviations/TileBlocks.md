@@ -16,14 +16,15 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 | block metadata: facing (`orientation` field, or metadata 2..5) | block state property `facing` (`FACING`, six ways for the Remote Placer and the Dislocator, `HORIZONTAL_FACING` for the Tablet). `Direction.get3DDataValue()` equals `ForgeDirection.ordinal()`, so the saved `Direction` of the locomotive and the arithmetic of the placer are unchanged |
 | metadata bit 8 of the Tablet, metadata 1 of the placer/dislocator ("powered") | block state property `powered` |
 | `TileCamo` (block id + metadata of the camouflage) | `CamoDeviceBlockEntity`: the whole `BlockState`, saved as a block-state tag under `camo`; the block's own boolean property `camo` mirrors "has a camouflage" |
-| "not bound" = `y == -1` of `TileTransvector` | a nullable `BlockPos` plus the saved flag `linked`. `y == -1` is a real height in 1.21.1 (the world starts at -64) |
-| the Binder's "nothing remembered" = `posy == -1` | the absence of `posy` in the stack's custom data. The keys `posx`, `posy`, `posz`, `ConnectingGolem` are kept |
+| "not bound" = `y == -1` of `TileTransvector` (keys `xt`, `yt`, `zt`) | a nullable `BlockPos`, saved under `target` in the vanilla position format (`NbtUtils.writeBlockPos`/`readBlockPos`) and absent when not bound. `y == -1` is a real height in 1.21.1 (the world starts at -64) |
+| the Binder's "nothing remembered" = `posy == -1` (keys `posx`, `posy`, `posz`, no dimension) | a typed data component `thaumictinkerer:connector_device` (`ItemConnector.REMEMBERED_DEVICE`, a `GlobalPos`: dimension and position, vanilla codecs), absent when nothing is remembered. The unused 1.7.10 flag `ConnectingGolem` is gone (see 2.7) |
+| the golem id of the Golem Connector (two longs, `UUIDMost`/`UUIDLeast` in the port's earlier revisions) | the vanilla UUID format (`putUUID`/`getUUID`) under `golem` |
 | `ForgeDirection`, `ChunkCoordinates`, `Vec3` | `Direction`, `BlockPos`, `Vec3` |
 | `IInventory`/`ISidedInventory` | `Container`/`WorldlyContainer`; `getAccessibleSlotsFromSide` = `getSlotsForFace` |
 | `IWandable` clicks and `onBlockActivated` | In 1.21.1 `Block.useItemOn` runs before `Item.useOn`, and the wand item would run the block's `IWandable` after it. A plain wand click is therefore handled by the block (turns the Tablet, the Placer, the Dislocator); a sneaking wand click is not (vanilla skips the block when sneaking with an item) and reaches `IWandable.onWandRightClick`, which opens the Remote Placer's menu. For the Tablet and the Dislocator (not `IWandable`) this is what 1.7.10 did. **For the Remote Placer it is not**: see 2.2, "The wand turns the placer" |
 | GUI ids and `IGuiHandler` | Architectury extended menus (`animation_tablet`, `remote_placer`), screens registered in `TileBlocksClient` |
 | `PacketTabletButton`, `PacketPlacerButton` (SimpleNetworkWrapper) | `CustomPacketPayload` records `thaumictinkerer:tablet_button` and `thaumictinkerer:placer_button`, client to server |
-| stack NBT | the custom-data component |
+| stack NBT | a data component (the Binder's own typed one, above) |
 | `FakePlayer` of Forge | `TinkererFakePlayer extends ServerPlayer` (the add-on is loader neutral and cannot use the Fabric or NeoForge class); see 2.5 |
 | `ThaumicTinkerer.registry.getFirstBlockFromClass` | `TileBlocks` accessors and the registry paths of `LibBlockNames` |
 | `Item.itemShard:n`, `blockLifter`, `blockMagicalLog`, `blockCosmeticSolid:n`, `itemGolemBell`, `itemResource:10`, `blockStoneDevice` in recipes | `ItemApi.legacyItemIds`/`ItemApi.getItem/getBlock` through `TileBlocks.legacyItem/legacyBlock/anyOfLegacyBlocks`, so the 1.7.10 field and metadata pair is the single source. `blockStoneDevice` without a metadata is the wildcard, as the 1.7.10 crafting manager treated a bare `Block` |
@@ -90,6 +91,25 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   negative value (the original only refused values above 3 and wrote an invalid metadata for a negative one).
 * **AE2 `IMovableTile` (forced).** Not applicable to 1.21.1; `setRemoved` stops a break in progress, which is what
   `prepareToMove` was for.
+* **The tablet asks before it changes a block (new, for safety).** 1.7.10 asked nobody (Forge's `PlayerInteractEvent` only for the right
+  click). Before a click on a block the fake player asks `BlockProtection` (`docs/HOOKS.md` section 16: the world border, a dedicated server's
+  spawn protection, adventure and spectator mode, and the protection mods through the loader's break and place events), and the tablet leaves
+  the block alone when the answer is no: a break asks `mayBreak` for the block (when the swing starts the break, and again if another block is
+  in front while it breaks); a right click asks `mayPlace` for the block in front with its present state, or, with nothing in front, `mayPlace`
+  for the empty block in front with the held block item's block (it goes there) or `mayBreak` for the block below it (a hoe tills that).
+  Attacks and uses on entities ask nothing: the question is about blocks. The loaders' own events still see some of what the tablet does:
+  NeoForge fires its attack and entity-interaction events in `Player.attack`/`interactOn`; Fabric API fires `UseBlockCallback` in
+  `ServerPlayerGameMode.useItemOn` and `AttackEntityCallback` in `ServerPlayer.attack`, but `UseEntityCallback` only from the packet handler,
+  so a Fabric claim mod does not see the tablet's uses on entities (read in the bytecode of fabric-events-interaction-v0 0.7.14). Run: `tabletRespectsTheWorldBorder` (the game's part; the protection mods' part is the
+  core group's backends, `HooksGameTests`).
+* **Item cooldowns run out (fix).** 1.21.1 items have cooldowns that run in the player's tick (1.7.10 had none); the fake player is never
+  ticked, so the first ender pearl, wind charge or chorus fruit of a tablet started a cooldown that never ended and the item was never used
+  again. `TabletFakePlayer.onUpdate` runs the cooldowns up to the level's game time (`TinkererFakePlayer.advanceCooldowns`). Run:
+  `tabletCooldownsRunOut` (three pearls, a second one goes after the first one's twenty ticks).
+* **The fake player's eye is the tablet's centre (decision, follows from the fake player's fix in 2.9).** An item that looks for a block along
+  the player's view on a click into the air (a bucket, a glass bottle) or throws something (a pearl, a snowball) now starts from the middle of
+  the tablet, where the tablet's own ray starts. Before, the eye was 1.62 above it (the entity type's eye height, 2.9), in the second block
+  above the tablet.
 * **Item rendering on the tablet (unverified estimate).** The held item is drawn with `ItemDisplayContext.FIXED` at scale
   1.55 for blocks and 1.9 for other items. The 1.7.10 numbers belong to its own item renderer and cannot be reused; these
   two are a visual estimate and have not been looked at in a game.
@@ -107,11 +127,25 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 * **The east quirk is kept (decision).** In 1.7.10 `receiveRedstonePulse` had `case 5` (east) copied from `case 4` (west),
   so an east-facing placer aimed `x - blocks`. `TileRPlacer.EAST_AIMS_WEST_AS_IN_1_7_10 = true` keeps it; set it to `false`
   to aim east. The facing, the side of the click and the picture of the GUI are unaffected.
-* **The fake player stands at the placer (decision).** The original used `FakePlayerFactory.getMinecraft`, a single shared
-  player at the world spawn. The port gives the placer its own `TinkererFakePlayer` with the profile of that shared player
-  (`[Minecraft]`, `41C82C87-7AfB-4024-BA57-13D2C99CAE77`), standing in the placer and looking along its facing, so items that
-  depend on the player's position or look (stairs, logs, lecterns, buckets) place as expected and protection mods see the
-  placer's chunk.
+* **The fake player stands at the target (decision; fix of the bucket).** The original used `FakePlayerFactory.getMinecraft`, a single
+  shared player at the world spawn. The port gives the placer its own `TinkererFakePlayer` with the profile of that shared player
+  (`[Minecraft]`, `41C82C87-7AfB-4024-BA57-13D2C99CAE77`, `TinkererFakePlayer.MINECRAFT_PROFILE`), looking along the placer's facing, so
+  that what is placed is turned as expected (stairs, logs, lecterns). It stands at the target, its eye just inside the face through which
+  that look enters the target (the face toward the placer; the far one for the east quirk below), and it reaches one block
+  (`BLOCK_INTERACTION_RANGE` 1). An item that looks for a block along the player's view on the click into the air (a bucket, a glass
+  bottle, a boat, a lily pad, a spawn egg) therefore finds the target and the face of the block beyond it, and nothing else: **a water
+  bucket pours into the target when there is a block beyond it, and does nothing when there is none**; a thrown item leaves from the
+  target. An earlier revision stood the player in the middle of the placer with its eye 1.62 above that (2.9), so the bucket's look started
+  in the second block above the placer and ran four and a half blocks along the facing: the water went wherever that ray met a block (for a
+  placer facing down, the ray met the placer's own top, and the water landed on it, behind the placer). (The review that found this guessed the eye was inside the placer; it was
+  above. Neither was the target. The old behaviour was worked out by reading, it was not run.) Run: `remotePlacerPoursABucketIntoItsTarget`
+  (a placer facing north and one facing down fill their targets, nothing behind or above them; with nothing beyond the target the bucket
+  stays full).
+* **The placer asks before it places (new, for safety).** Before the click the fake player asks `BlockProtection.mayPlace` for the target
+  (with the held block item's block, or the target's present state for another item); when the answer is no, nothing happens and the item
+  stays in the slot. Run: `placerAndDislocatorRespectTheWorldBorder` (the game's part).
+* **Item cooldowns run out (fix).** As for the Tablet (2.1): before each use the fake player's cooldowns are run up to the level's game time
+  (at most 6000 ticks at once), so an ender pearl in a placer is thrown again on a pulse after its cooldown, not never.
 * **The click (decision).** `onItemUseFirst` and `onItemUse` of the original are `ServerPlayerGameMode.useItemOn` with side
   = the opposite of the facing and the hit at the lower corner of the target (the original passed 0, 0, 0). When nothing
   happens, the right click in the air follows, as `onItemRightClick` did. An item that was used up leaves the slot empty
@@ -226,7 +260,8 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   that reads golems or send the reader to the 1.7.10 documentation web page (`GuiResearchPeripheral`, ENTER, is not
   ported: the page lived in a GUI that the add-on does not have). Page 1 (binding, thirty blocks) is unchanged and true.
 * **A stale id is cleared (fix).** The original `readCustomNBT` kept the previous UUID when the tag had none; the port sets
-  it to none, so an unbound connector stays unbound after a sync.
+  it to none, so an unbound connector stays unbound after a sync. The id is saved in the vanilla UUID format (section 1); a connector
+  saved by an earlier revision of the port (two longs) loads unbound.
 
 ### 2.5 Transvector Interface
 
@@ -269,6 +304,22 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   when the interface was not bound to an aspect container, so a tube or a phial that poured into an unbound interface lost
   the essentia. The port returns the whole amount (nothing was taken), `doesContainerAccept` is `false`, and `getAspects`
   is an empty list instead of `null`.
+* **Never bound to itself or to another Interface (fix, was a server crash).** The Binder refuses Interface to Interface (2.7), but a
+  Dislocator can make such a binding: it moves an Interface onto the block that Interface is bound to (the Interface is then bound to its own
+  place), or two Interfaces into each other's targets. Every question then asked the Interface again (a hopper's `getContainerSize`, a
+  comparator's, a tube's `getEssentiaAmount`, and `setChanged`, which a click on the Interface runs) until the stack overflowed: a crash of
+  the server, again after every restart as soon as something asked. Every forwarding path now goes through
+  `TileTransvectorInterface.bound()`, which answers null for the Interface itself and for another Interface, on both sides, and on the server
+  `getTile()` ends such a binding (`TileTransvector.mayBindTo`, new), so a world saved with one repairs itself at the first question; a
+  `setTarget` to itself or to another Interface ends at once. The loader glue (`TileBlocksFabric`, `NeoForgeCapabilities`) already refused
+  both. Run: `interfaceMovedOntoItsOwnTargetEndsTheBinding` (a Dislocator moves the Interface onto its chest; a hopper's push and a player's
+  click, each on the saved state, end the binding without a crash) and `interfacesBoundToEachOtherEndTheBinding`. Not run: the same against
+  the code before the fix (the crash is worked out by reading).
+* **The two item rules of 1.21.1's `Container` are forwarded (fix).** `canTakeItem(Container, int, ItemStack)` (may a hopper take this
+  stack out) and `getMaxStackSize(ItemStack)` were the `Container` defaults (yes; the Interface's own limit), so the bound block's own rule
+  was not asked (a chiseled bookshelf lets a hopper take a book only when the hopper has room for it). Both are the bound inventory's
+  answers now (unbound: no, 0). Run:
+  `interfaceForwardsTheHopperRules`.
 * **Binding that is gone (decision).** `getTile()` ends a binding on the server when the bound block entity is gone (for the
   Interface; the Dislocator needs none) or the target is beyond the range, as the original did by setting `y = -1`; a
   client that has not received the target yet keeps it, and a target in an unloaded chunk answers "no block entity" and keeps
@@ -279,13 +330,23 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 ### 2.6 Transvector Dislocator
 
-* **`checkBlock` is kept as written (kept, decision).** The original expression is
+* **`checkBlock` refuses what a player cannot break (deviation from 1.7.10, for safety; lead decision).** The original expression is
   `(!node && !blacklisted && hardness != -1 && block != null) || block != air`. Every non-air block passes through the
-  second operand and air passes the first, so the check is true for every block: nodes, bedrock and the portable hole's
-  blacklist are swapped too. The port keeps the expression (the blacklist is `ThaumcraftApi.portableHoleBlackList`, which
-  mirrors the block tag `thaumcraft:portable_hole_blacklist`). If the lead wants the evident intention (refuse nodes,
-  bedrock and the blacklist), delete the final `|| !state.isAir()` of `TileTransvectorDislocator.checkBlock`. A GameTest
-  (`dislocatorChecksLetEveryBlockThrough`) pins the present behaviour for bedrock and would have to change with it.
+  second operand and air passes the first, so in 1.7.10 the check was true for every block: nodes, bedrock and the portable hole's
+  blacklist were swapped too, and so a Dislocator could take bedrock out of the floor of the world, barriers, end portal frames and
+  command blocks. An earlier revision of the port kept that. The port now drops the trailing `|| block != air` (the evident intention) and
+  refuses `destroySpeed < 0` (bedrock, barriers, end portal frames, portals, the light block) and any `GameMasterBlock` (command,
+  structure and jigsaw blocks; vanilla's are unbreakable anyway, the clause is for other mods' operator blocks): not a node, not on
+  `ThaumcraftApi.portableHoleBlackList` (which mirrors the block tag `thaumcraft:portable_hole_blacklist`), breakable, no operator block.
+  Air passes, so a block can still be moved into an empty place. A refused block is not swapped, the entities are moved as before (1.7.10
+  moved them whatever the check said). Spawners (hardness 5) and other breakable block entities still move with their data. Run:
+  `dislocatorRefusesWhatAPlayerCannotBreak` (replaces `dislocatorChecksLetEveryBlockThrough`, which pinned the old behaviour).
+* **The Dislocator asks before it swaps (new, for safety).** 1.7.10 asked nobody. Before a swap a fake player of the Dislocator's own (the
+  Remote Placer's profile `[Minecraft]`, standing in the Dislocator) asks `BlockProtection` for **both ends**: the game's rules for each place
+  always (the entities there are moved whatever the blocks do), and, when the blocks will be swapped, `mayBreak` for a block that goes and
+  `mayPlace` for one that comes (air is neither). When any answer
+  is no, nothing changes places, blocks or entities (moving a mob or a chest out of a claim is as much a change as breaking it), and the
+  Dislocator rests its ten ticks. Run: `placerAndDislocatorRespectTheWorldBorder` (the game's part).
 * **Block entity swap (forced).** The original swapped metadata and the tile NBT (`writeToNBT`, `createAndLoadEntity`). The
   port swaps the block state and the full block-entity data (`saveWithFullMetadata`, `BlockEntity.loadStatic`), after
   replacing the old block entity by a fresh one so that removing the block does not spill the old one's contents.
@@ -308,7 +369,13 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 * **The device is also updated (decision).** The original marked the *new target* for an update. The port marks both the
   target and the device, so a client sees the binding of an Interface at once.
 * **Interface to interface (kept).** Two Interfaces cannot be bound to each other ("interffail"); an Interface can still
-  be bound to a Dislocator, as in the original.
+  be bound to a Dislocator, as in the original. (A Dislocator could still make such a binding; the Interface ends it, 2.5.)
+* **The remembered device has a dimension (fix).** 1.7.10 kept only the coordinates, so a player who remembered a device in the
+  Overworld and clicked in the Nether bound whatever device stood at those coordinates there, or loaded the Nether chunk at those
+  coordinates, however far from anything loaded, to find nothing. The Binder keeps a `GlobalPos` (section 1); a device remembered in
+  another dimension is not present: the Binder forgets it with "notpresent" (the golem branch the same), and the level is not asked, so no
+  chunk is loaded. Run: `binderComparesTheDimension`. The flag `ConnectingGolem` of 1.7.10's stack NBT, which nothing in the port set or read
+  but a unit test, is gone.
 * **A remembered Golem Connector clicked on a block (kept).** The original forgets it with "notpresent", because it is
   not a `TileTransvector`: the connector is bound by sneaking and clicking the golem. The port does the same.
 
@@ -369,6 +436,27 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   (dimensions 0 by 0), no game mode change, no spawn-height lookup (so creating one does not load chunks). The Tablet's
   `TabletFakePlayer` positions it at the tablet's centre with the tablet's yaw and a pitch of -15 and keeps only slot 0.
   The 1.7.10 mixin `AccessorItemInWorldManager` is not needed (see 2.1). It is not on the ground (see 2.1).
+* **The 0 by 0 size now holds (fix).** The `Entity` constructor takes the size and the eye height of the entity type (a player's 0.6 by
+  1.8, eye 1.62); the `getDefaultDimensions` override is only asked when the dimensions are refreshed, which a player that is never ticked and
+  never changes its pose does not do by itself. So the box was 0.6 by 1.8 and the eye 1.62 above the position, which this section used to
+  call "0 by 0". The constructor refreshes the dimensions now: the box is 0 by 0 and **the eye is the position**, which the owners set (the
+  Tablet's centre, 2.1; just inside the Remote Placer's target, 2.2). What changes: the start of an item's look and of a thrown item.
+* **No statistics, scores, rides, beds or screens (fix).** Vanilla gave the fake player all of these. Now refused: `awardStat`/`resetStat`
+  (a scoreboard objective on a statistic, blocks mined or items used, listed "[ThaumcraftTablet]" or "[Minecraft]" with the devices' work),
+  `awardKillScore` (the kill-count and team-kill objectives, the player's score), `startRiding` (a Tablet in right-click mode in front of a
+  boat or a minecart sat a player that is never ticked in it, and the vehicle stood still with it for good), `startSleepInBed` and
+  `startSleeping` (at night it lay down in a bed in front of a Tablet, and the bed stayed occupied by a player that never wakes; in the day
+  vanilla set its respawn point to the bed), `openHorseInventory` (vanilla opens it without `openMenu`). A villager or wandering trader that
+  started trading with the fake player is let go at once (`interactWithEntity`), or it would stay "busy" for every real player. On NeoForge
+  the extended menus (`openMenu(MenuProvider, Consumer<RegistryFriendlyByteBuf>)`, which Architectury's `openExtendedMenu`, NeoForge's
+  `openMenu(MenuProvider, BlockPos)` and NeoForge's plain `openMenu` go through) are refused as the plain one is, and `isFakePlayer()` is true;
+  both are written without `@Override` in the loader-neutral class (vanilla has neither method) and override NeoForge's by dispatch. Run:
+  `fakePlayerHasNoStatsScoresOrScreens`, `tabletDoesNotBoardVehicles`, `tabletDoesNotSleepInABed` (a fake player's click on a bed in a night of
+  one synchronous call, so the time of the other checks does not change, then the tablet's own clicks in the day), and on NeoForge only
+  `fakePlayerIsAFakePlayerWithoutExtendedMenus` (`TileBlocksNeoForgeTests`). Fabric API's `FakePlayer` class cannot be used from common code, so
+  a Fabric mod that tests `instanceof FakePlayer` does not see the devices' player as one.
+* **Item cooldowns (fix).** `advanceCooldowns()` runs the item cooldowns up to the level's game time, at most 6000 ticks per call; the Tablet
+  calls it every tick, the Remote Placer before each use (2.1, 2.2).
 * **No advancements (decision).** The `ServerPlayer` constructor registers the criterion listeners of the profile, so a kill
   of the tablet or a block of the placer could complete an advancement of `[ThaumcraftTablet]` or `[Minecraft]`, give its
   rewards and announce it in the chat. `TinkererFakePlayer.getAdvancements()` takes the listeners off whenever the
@@ -390,6 +478,18 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   described in this document from those pictures.
 
 ## 4. Unverified
+
+Round of 2026-11-01 (the fixes of the review: the Interface's self-binding, the Dislocator's check, `BlockProtection` in the three devices,
+the Remote Placer's bucket, the fake player's cooldowns, size, statistics, rides, beds and menus, the Binder's dimension, the saved formats,
+the two forwarded item rules): on a Fabric GameTest server `-PtinkererGameTestFilter='tileblocksgametests.*'` ran the group's 46 GameTests
+("All 46 required tests passed"; the 35 before, 11 new, `dislocatorChecksLetEveryBlockThrough` replaced by
+`dislocatorRefusesWhatAPlayerCannotBreak`), and on a NeoForge GameTest server `tileblocksgametests.*,tileblocksneoforgetests.*` ran 49 (the
+same 46 and the three NeoForge-only checks, one of them new: "All 49 required tests passed"); the loaders' `BlockProtection` backends were
+installed in both runs. The JUnit classes of the `tileblocks` package (37 tests), `EnchantmentResourcesTest` (the Enchanter's mineable tag
+moved to `mineable/enchantments/pickaxe`), `KamiWorldResourcesTest` and `NeoForgeGameTestCatalogueTest` passed. **Not run:** the new checks
+against the code before the fixes (what the old code did, the crash of the self-bound Interface, the old bucket's ray, is worked out by
+reading); spawn protection and adventure mode (only the world border of the game's rules is exercised, by moving it for one synchronous call);
+a real protection mod; a client.
 
 NeoForge (2026-10-31, `docs/NEOFORGE.md`): the group's 35 GameTests passed on a NeoForge GameTest server
 (`-PtinkererGameTestFilter='tileblocksgametests.*'`: "All 35 required tests passed"), and the two NeoForge-only checks of the

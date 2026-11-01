@@ -765,8 +765,8 @@ def render_doc(plan: Plan) -> str:
         "has one (`de_de`, `ko_kr`); `en_us` has none.")
     add("* `ttresearch.page.<KEY>.<n>` stay verbatim: they are the page translation keys.")
     add("* The original adds the prefix only while the config option `tooltipIndicators.enabled` is true "
-        "(default true, `ConfigHandler.useTootlipIndicators`). The converter assumes the default; "
-        "the option is the code port's decision.")
+        "(default true). The converter assumes the default; the port has no such option (the prefix is part "
+        "of the language files).")
     add("")
     kami = plan.kami_keys
     add(f"Kami entries (`new KamiResearchItem(` in the Java source, key resolved through `LibResearch`): **{len(kami)}**.")

@@ -230,11 +230,20 @@ once bound) and `tileblocksneoforgetests.interfaceFluidCapabilityCacheFollowsThe
 `Capabilities.FluidHandler.BLOCK`: none while unbound; binding invalidates and the cached handler fills the tank; after the tank is broken the held
 handler reaches nothing, the interface lets the binding go and the cache has none; rebound, then unbound by `setTarget(null)`, none again).
 
+On 2026-11-01 (the item capabilities of the other devices, the two mixins of `docs/HOOKS.md` sections 3 and 4, `NeoForgeBlockProtection`):
+`:neoforge:compileJava` and `:neoforge:compileGameTestJava` passed, and `:neoforge:runGameTest
+-PtinkererGameTestFilter='coregametests.*,hooksgametests.*,hooksneoforgetests.*,itemcapabilitiesneoforgetests.*,tileblocksneoforgetests.*,tileblocksgametests.*,machinesgametests.*,enchantmentsgametests.*,kamiworldgametests.*'`
+ended in `All 185 required tests passed :)`: the five new NeoForge-only scenarios, the hook and `BlockProtection` checks, and the groups whose devices now have an
+item capability (vanilla hoppers reach them through it now: read in the 21.1.259 bytecode, `HopperBlockEntity` first calls
+`VanillaInventoryCodeHooks.insertHook` / `extractHook`, which ask `Level.getCapability(Capabilities.ItemHandler.BLOCK, ...)`, and takes the vanilla container path
+only when there is no handler). The whole suite was not run then.
+
 **Not verified on NeoForge:**
 
 * The wings on a player and the ghost blocks in a world (`KamiGearNeoForgeClient`): the client smoke does not put on the robes or use the Looking Glass, on
   either loader.
-* A GPU, a dedicated server with a real client, other mods' pipes and tanks.
+* A GPU, a dedicated server with a real client, other mods' pipes and tanks (the item capabilities of the devices were tested through
+  `level.getCapability` and its handlers, not with another mod's pipe).
 
 ## Client smoke on NeoForge
 

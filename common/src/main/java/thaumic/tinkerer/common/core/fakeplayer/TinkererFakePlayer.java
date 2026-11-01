@@ -51,7 +51,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * A server-side player that is never connected and never added to the level: the stand-in of the Animation Tablet and
- * the Remote Placer (1.7.10: Forge's {@code FakePlayer}).
+ * the Remote Placer (1.7.10: Forge's {@code FakePlayer}), and the player the Transvector Dislocator asks the protection
+ * questions with (new in the port).
  *
  * <p>The add-on is loader neutral, so it cannot use the FakePlayer of Fabric API or NeoForge. This is a plain
  * {@link ServerPlayer} with a dummy packet listener (every packet is dropped), no menus, no chat, no damage, no

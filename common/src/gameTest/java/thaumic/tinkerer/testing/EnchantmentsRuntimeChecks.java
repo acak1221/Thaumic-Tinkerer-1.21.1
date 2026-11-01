@@ -3,7 +3,6 @@ package thaumic.tinkerer.testing;
 import com.mojang.authlib.GameProfile;
 import dev.architectury.event.events.common.BlockEvent;
 import dev.architectury.registry.menu.MenuRegistry;
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -1731,15 +1730,7 @@ public final class EnchantmentsRuntimeChecks {
                 return true;
             }
         };
-        BlockProtection.Backend installed;
-        try {
-            // BlockProtection has no getter for its backend; the check reads the field so that it can put it back.
-            Field field = BlockProtection.class.getDeclaredField("backend");
-            field.setAccessible(true);
-            installed = (BlockProtection.Backend) field.get(null);
-        } catch (ReflectiveOperationException e) {
-            throw new GameTestAssertException("the backend of BlockProtection cannot be read: " + e);
-        }
+        BlockProtection.Backend installed = BlockProtection.backend();
         BlockProtection.setBackend(asking);
         try {
             test.assertTrue(BlockProtection.mayBreak(player, test.getLevel(), absolute, stone), "the question is answered yes");

@@ -13,11 +13,10 @@
  */
 package thaumic.tinkerer.common.core.helper;
 
-import dev.architectury.event.EventResult;
-import dev.architectury.event.events.common.BlockEvent;
 import dev.architectury.utils.GameInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -30,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 
 /** Odds and ends of 1.7.10 that several groups use: distances, motion towards a point, block breaking with a check. */
 public final class MiscHelper {
@@ -42,19 +42,18 @@ public final class MiscHelper {
     }
 
     /**
-     * Replaces the block at the position with the given state, unless a listener of the block-break event vetoes it.
-     * 1.7.10 posted {@code BlockEvent.BreakEvent} on the Forge bus; the port asks the Architectury
-     * {@link BlockEvent#BREAK} listeners (which protection mods and the claim systems that use Architectury join), and
-     * only a {@link ServerPlayer} can be asked: for any other player, or none, the replacement is not vetoed.
+     * Replaces the block at the position with the given state, unless the player may not break it there.
+     * 1.7.10 posted {@code BlockEvent.BreakEvent} on the Forge bus; the port asks {@link BlockProtection#mayBreak} (the game's
+     * rules and the loader's own break event, so protection mods of either loader are asked). Only a {@link ServerPlayer} on a
+     * {@link ServerLevel} can be asked: for any other player, or none, the replacement is not vetoed.
      *
      * @param flag the {@code Block.UPDATE_*} flags of {@code Level.setBlock}
      * @return true when the block was set
      */
     public static boolean breakBlockWithCheck(Level level, BlockPos pos, BlockState replacement, int flag, Player player) {
-        if (player instanceof ServerPlayer serverPlayer) {
-            EventResult result = BlockEvent.BREAK.invoker().breakBlock(level, pos, level.getBlockState(pos), serverPlayer,
-                    null);
-            if (result.isFalse()) return false;
+        if (player instanceof ServerPlayer serverPlayer && level instanceof ServerLevel serverLevel
+                && !BlockProtection.mayBreak(serverPlayer, serverLevel, pos, level.getBlockState(pos))) {
+            return false;
         }
         level.setBlock(pos, replacement, flag);
         return true;

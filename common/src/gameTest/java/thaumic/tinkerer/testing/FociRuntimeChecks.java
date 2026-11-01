@@ -1,13 +1,11 @@
 package thaumic.tinkerer.testing;
 
 import io.netty.buffer.Unpooled;
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -1455,15 +1453,7 @@ public final class FociRuntimeChecks {
 
     /** Runs the check with another protection backend and puts back the one the loader installed. */
     private static void withProtection(GameTestHelper test, BlockProtection.Backend backend, Runnable check) {
-        BlockProtection.Backend installed;
-        try {
-            // BlockProtection has no getter for its backend; the check reads the field so that it can put it back.
-            Field field = BlockProtection.class.getDeclaredField("backend");
-            field.setAccessible(true);
-            installed = (BlockProtection.Backend) field.get(null);
-        } catch (ReflectiveOperationException e) {
-            throw new GameTestAssertException("the backend of BlockProtection cannot be read: " + e);
-        }
+        BlockProtection.Backend installed = BlockProtection.backend();
         BlockProtection.setBackend(backend);
         try {
             check.run();

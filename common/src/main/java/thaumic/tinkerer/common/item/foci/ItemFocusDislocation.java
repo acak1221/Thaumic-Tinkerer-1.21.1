@@ -141,8 +141,9 @@ public class ItemFocusDislocation extends ItemModFocus {
         return true;
     }
 
-    private static boolean isBlockAllowed(BlockState state) {
-        return isBlockAllowed(ConfigHandler.blockBlacklist, BuiltInRegistries.BLOCK.getKey(state.getBlock()),
+    /** The config's list as it holds for {@code level}: on a client connected to a server, the server's list (sent on join). */
+    private static boolean isBlockAllowed(@Nullable BlockGetter level, BlockState state) {
+        return isBlockAllowed(ConfigHandler.dislocationBlacklist(level), BuiltInRegistries.BLOCK.getKey(state.getBlock()),
                 tag -> state.is(TagKey.create(Registries.BLOCK, tag)));
     }
 
@@ -172,9 +173,14 @@ public class ItemFocusDislocation extends ItemModFocus {
                 || isFlowingFluid(state) || state.getDestroySpeed(level, pos) < 0F || state.getBlock() instanceof GameMasterBlock;
     }
 
-    /** On a blacklist: the config's, Thaumcraft's portable-hole tag (with the pistons) or the add-on's own tag. */
+    /** On a blacklist: the config's (as it holds for {@code level}), Thaumcraft's portable-hole tag (with the pistons) or the add-on's own tag. */
+    public static boolean isBlacklisted(@Nullable BlockGetter level, BlockState state) {
+        return !isBlockAllowed(level, state) || state.is(PORTABLE_HOLE_BLACKLIST) || state.is(DISLOCATION_BLACKLIST);
+    }
+
+    /** {@link #isBlacklisted(BlockGetter, BlockState)} with this side's own config. */
     public static boolean isBlacklisted(BlockState state) {
-        return !isBlockAllowed(state) || state.is(PORTABLE_HOLE_BLACKLIST) || state.is(DISLOCATION_BLACKLIST);
+        return isBlacklisted(null, state);
     }
 
     /**
@@ -182,7 +188,7 @@ public class ItemFocusDislocation extends ItemModFocus {
      * checked except the vis and the player): asked of the block to take and of the load to put down.
      */
     public static boolean canCarry(BlockGetter level, BlockPos pos, BlockState state) {
-        return !isImpossibleLoad(level, pos, state) && !isBlacklisted(state);
+        return !isImpossibleLoad(level, pos, state) && !isBlacklisted(level, state);
     }
 
     /**
@@ -286,7 +292,7 @@ public class ItemFocusDislocation extends ItemModFocus {
             if (!level.isClientSide) clearPickedBlock(wand, focus);
             return;
         }
-        if (isBlacklisted(state)) {
+        if (isBlacklisted(level, state)) {
             // Taken before the blacklist named it: it stays in the focus (it would be lost if dropped) until the list changes.
             if (!level.isClientSide) {
                 player.displayClientMessage(Component.translatable("ttmisc.focusDislocation.blacklisted"), true);

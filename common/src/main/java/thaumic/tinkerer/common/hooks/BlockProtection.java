@@ -60,6 +60,11 @@ public final class BlockProtection {
         backend = Objects.requireNonNull(newBackend);
     }
 
+    /** The installed backend (the GameTests swap it for a test backend and put it back). */
+    public static Backend backend() {
+        return backend;
+    }
+
     /** True while a backend posts a loader event as a question; the add-on's own listeners of break/place events then do nothing. */
     public static boolean isProbing() {
         return PROBING.get();

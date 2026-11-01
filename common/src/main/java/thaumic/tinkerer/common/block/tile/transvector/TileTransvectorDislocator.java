@@ -99,16 +99,17 @@ public class TileTransvectorDislocator extends TileTransvector implements Redsto
         BlockData endData = new BlockData(serverLevel, endCoords);
         BlockData targetData = new BlockData(serverLevel, targetCoords);
 
+        boolean swap = checkBlock(serverLevel, targetCoords) && checkBlock(serverLevel, endCoords);
         TinkererFakePlayer fake = player(serverLevel);
-        if (!mayChange(serverLevel, fake, targetCoords, targetData.state, endData.state)
-                || !mayChange(serverLevel, fake, endCoords, endData.state, targetData.state)) {
+        if (!mayChange(serverLevel, fake, targetCoords, targetData.state, endData.state, swap)
+                || !mayChange(serverLevel, fake, endCoords, endData.state, targetData.state, swap)) {
             // A protected end: neither the blocks nor the entities change places (moving a mob or a chest out of a claim
             // is as much a change as breaking it).
             cooldown = COOLDOWN;
             return;
         }
 
-        if (checkBlock(serverLevel, targetCoords) && checkBlock(serverLevel, endCoords)) {
+        if (swap) {
             endData.clearBlockEntityAt();
             targetData.clearBlockEntityAt();
 
@@ -143,12 +144,14 @@ public class TileTransvectorDislocator extends TileTransvector implements Redsto
     }
 
     /**
-     * May a player take {@code now} away from {@code pos} and put {@code next} there? The game's rules for the place
-     * ({@link BlockProtection#gameAllows}, also when both are air: the entities there are moved), then
-     * {@link BlockProtection#mayBreak} for a block that goes and {@link BlockProtection#mayPlace} for one that comes.
+     * May a player change {@code pos}? The game's rules for the place ({@link BlockProtection#gameAllows}) always, as the
+     * entities there are moved whatever the blocks do; when the blocks are swapped, {@link BlockProtection#mayBreak} for the
+     * block {@code now} that goes and {@link BlockProtection#mayPlace} for the block {@code next} that comes (air is neither).
      */
-    private static boolean mayChange(ServerLevel level, TinkererFakePlayer fake, BlockPos pos, BlockState now, BlockState next) {
+    private static boolean mayChange(ServerLevel level, TinkererFakePlayer fake, BlockPos pos, BlockState now, BlockState next,
+            boolean swap) {
         if (!BlockProtection.gameAllows(fake, level, pos)) return false;
+        if (!swap) return true;
         if (!now.isAir() && !BlockProtection.mayBreak(fake, level, pos, now)) return false;
         return next.isAir() || BlockProtection.mayPlace(fake, level, pos, next);
     }
