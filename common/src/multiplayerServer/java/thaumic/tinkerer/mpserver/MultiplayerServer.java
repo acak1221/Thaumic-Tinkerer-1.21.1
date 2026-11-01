@@ -65,6 +65,22 @@ public final class MultiplayerServer {
             if ("RUNNING".equals(armed.status())) armed.status("COMPLETED", "the server was stopped");
         });
         PlayerEvent.PLAYER_JOIN.register(player -> guarded("join", () -> Scenes.joined(player, armed)));
+        // What reached the server of a player's right clicks (after the protection mods' own listeners, which run first or cancel):
+        // a record for the report, never an answer (always pass).
+        dev.architectury.event.events.common.InteractionEvent.RIGHT_CLICK_BLOCK.register((player, hand, pos, face) -> {
+            if (!player.level().isClientSide && hand == net.minecraft.world.InteractionHand.MAIN_HAND) {
+                armed.event("right_click_block", player.getGameProfile().getName(), net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getKey(player.getMainHandItem().getItem()) + " on " + pos.toShortString() + " face " + face);
+            }
+            return dev.architectury.event.EventResult.pass();
+        });
+        dev.architectury.event.events.common.InteractionEvent.RIGHT_CLICK_ITEM.register((player, hand) -> {
+            if (!player.level().isClientSide && hand == net.minecraft.world.InteractionHand.MAIN_HAND) {
+                armed.event("right_click_item", player.getGameProfile().getName(), net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getKey(player.getMainHandItem().getItem()) + " at " + player.blockPosition().toShortString());
+            }
+            return dev.architectury.event.CompoundEventResult.pass();
+        });
         PlayerEvent.PLAYER_QUIT.register(player -> guarded("quit", () -> Scenes.left(player, armed)));
         CommandRegistrationEvent.EVENT.register((dispatcher, context, selection) -> TtmpCommand.register(dispatcher, armed));
 

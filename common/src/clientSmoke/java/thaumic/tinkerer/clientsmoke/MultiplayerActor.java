@@ -262,7 +262,8 @@ abstract class MultiplayerActor extends ScriptedPhase {
     /** What decides whether a click of this client is acted on at all: an item in use, a block being broken, an item cooldown, the mouse grab. */
     static String clientState(Minecraft client) {
         ItemStack held = client.player.getMainHandItem();
-        return "usingItem=" + client.player.isUsingItem() + " destroying=" + client.gameMode.isDestroying() + " cooldown="
+        return "selected=" + client.player.getInventory().selected + " held=" + MultiplayerClient.itemId(held) + " usingItem="
+                + client.player.isUsingItem() + " destroying=" + client.gameMode.isDestroying() + " cooldown="
                 + (!held.isEmpty() && client.player.getCooldowns().isOnCooldown(held.getItem())) + " mouseGrabbed=" + client.mouseHandler.isMouseGrabbed();
     }
 

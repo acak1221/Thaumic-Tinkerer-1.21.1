@@ -320,6 +320,7 @@ final class ClaimScenes {
                 values.put("blocks", Scenes.blocks(level, List.of(stone)));
                 values.put("carried", carried == null ? "nothing" : Scenes.id(carried.state()));
                 values.put("server_using", player.isUsingItem());
+                values.put("server_held", BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()) + "@" + player.getInventory().selected);
                 boolean ok = state.isAir() && carried != null && carried.state().is(Blocks.STONE) && paid;
                 return Outcome.of(ok, who + " cast the Focus of Dislocation on the stone at " + Scenes.pos(stone) + (inClaim(stone) ? " in the claim"
                         : " outside the claim (two chunks away)") + ": block " + before.get("state") + " -> " + Scenes.id(state) + ", vis "
@@ -339,6 +340,7 @@ final class ClaimScenes {
                 values.put("blocks", Scenes.blocks(level, shown));
                 values.put("carried", carried == null ? "nothing" : Scenes.id(carried.state()));
                 values.put("server_using", player.isUsingItem());
+                values.put("server_held", BuiltInRegistries.ITEM.getKey(player.getMainHandItem().getItem()) + "@" + player.getInventory().selected);
                 boolean ok = inside ? there.isAir() && level.getBlockState(B_STONE_IN).is(Blocks.STONE) && carried != null && carried.state().is(Blocks.STONE)
                         : there.is(Blocks.STONE) && carried == null;
                 ok &= Scenes.vis(wand).equals(before.get("vis"));
