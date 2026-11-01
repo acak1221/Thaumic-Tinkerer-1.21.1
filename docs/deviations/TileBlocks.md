@@ -461,9 +461,9 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   cube for smooth lighting in both looks, so it darkens the floor next to it even when it imitates glass (a real glass block does not;
   the client smoke's comparison shows exactly that and nothing else, see below); 1.7.10's camouflage blocks were not "normal cubes" and
   cast no ambient occlusion. **Seen** in the client smoke's camouflage phase (`docs/CLIENT_VERIFICATION.md`, Mesa software renderer):
-  the Interface, Dislocator, Remote Placer and two Golem Connectors imitating grass (tinted), oak leaves (tinted, cut out), glass, ice
-  (translucent), glowstone and an oak log on its side, first camouflaged as stone and then changed, look like the real blocks in the same
-  places (`camo-devices.png` against `camo-real-blocks.png`). **Not seen:** a GPU, play, the camouflage lit by torches, other mods'
+  two Interfaces, a Dislocator, a Remote Placer and two Golem Connectors imitating grass (tinted), oak leaves (tinted, cut out), glass
+  (on a Golem Connector: no hole in the floor), ice (translucent), glowstone (on a Golem Connector) and an oak log on its side, first
+  camouflaged as stone and then changed, look like the real blocks in the same places (`camo-devices.png` against `camo-real-blocks.png`). **Not seen:** a GPU, play, the camouflage lit by torches, other mods'
   connected textures or animated models.
 * **A camouflaged device occludes nothing (fix, found by the first client run).** While `camo=true` the device's own model is
   not drawn (until 2026-11-01 the block was `RenderShape.INVISIBLE` and a block entity renderer drew the camouflage; now its wrapped

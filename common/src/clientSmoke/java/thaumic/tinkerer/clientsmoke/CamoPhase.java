@@ -57,9 +57,14 @@ final class CamoPhase extends ScriptedPhase {
             Blocks.OAK_LOG.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X));
     /** The camouflage every cell has first, before it is changed to its own. */
     private static final BlockState FIRST = Blocks.STONE.defaultBlockState();
-    /** The device of each cell in the device row; the Golem Connector (opaque in its own look) imitates ice and glowstone. */
-    private static final List<String> DEVICES = List.of(LibBlockNames.INTERFACE, LibBlockNames.DISLOCATOR, LibBlockNames.REMOTE_PLACER,
-            LibBlockNames.GOLEMCONNECTOR, LibBlockNames.GOLEMCONNECTOR, LibBlockNames.INTERFACE);
+    /**
+     * The device of each cell in the device row. The Golem Connector, opaque in its own look, imitates glass (it must not leave a hole in
+     * the floor) and glowstone. It blocks light in both looks, so the floor next to it is darker than next to a real block; seen through
+     * translucent ice that counted as a difference of the camouflage (24 % of the silhouette on NeoForge's smooth lighting in the first
+     * run with the connector under ice, 0 % on Indigo's), while through glass the floor is not part of the comparison.
+     */
+    private static final List<String> DEVICES = List.of(LibBlockNames.INTERFACE, LibBlockNames.DISLOCATOR, LibBlockNames.GOLEMCONNECTOR,
+            LibBlockNames.REMOTE_PLACER, LibBlockNames.GOLEMCONNECTOR, LibBlockNames.INTERFACE);
 
     private static final String EMPTY = "camo-empty-stage";
     private static final String REAL = "camo-real-blocks";
