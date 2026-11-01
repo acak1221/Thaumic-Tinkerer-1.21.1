@@ -76,15 +76,11 @@ passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9).
 
 These need a file that this group does not own; nothing was edited there.
 
-1. **Cursed Spirit's Blade is not enchantable with the vanilla sword enchantments** (Sharpness, Smite, Bane of Arthropods,
-   Looting, Knockback, Fire Aspect, Sweeping Edge, Unbreaking, Mending), because every one of them hangs on
-   `#minecraft:swords` (`#minecraft:enchantable/sword`, `sharp_weapon`, `weapon`, `fire_aspect`, `durability`, `vanishing`)
-   and `thaumictinkerer:blood_sword` is in no vanilla sword tag. The 1.7.10 `ItemSword` could take them. Fix, two files:
-   - `data/minecraft/tags/item/swords.json` (KamiGear's file): add `{ "id": "thaumictinkerer:blood_sword", "required": false }`.
-   - `data/thaumictinkerer/tags/item/enchantable/vampirism.json` (Enchantments' file) includes `#minecraft:swords`, which
-     would then include the blade, while the original `EnchantmentVampirism.canApply` refused `ItemBloodSword`. Replace the
-     `#minecraft:swords` entry by a dedicated tag `thaumictinkerer:swords_without_blood_sword` (the same sword list without
-     the blade) or by an explicit list of the swords. The four strike enchantments list `blood_sword` explicitly already.
+1. **Cursed Spirit's Blade and the vanilla sword enchantments: closed, nothing was missing.** The blade is listed in
+   `data/minecraft/tags/item/enchantable/{sword,sharp_weapon,fire_aspect,durability}.json` (files of the Enchantments group, there since
+   the first import) and stays out of `#minecraft:swords`, which the tag of Vampirism holds; so it takes the vanilla sword enchantments
+   at the table and the anvil and refuses Vampirism, as the 1.7.10 `ItemSword` did (GameTest
+   `theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil`, `docs/deviations/Machines.md` section 8). The request of this item is void.
 2. **NeoForge backend of `ItemRenderers` for `mob_display`:** written (`NeoForgeItemRenderers`, section 2 above), not seen drawn.
 3. **`assets/minecraft/atlases/blocks.json`** carries the five entity-style textures of this group's JSON models (`models/repairer`,
    `magnet_n`, `magnet_s`, `mob_magnet_n`, `mob_magnet_s`). Two groups must not both create that file in the same jar: if

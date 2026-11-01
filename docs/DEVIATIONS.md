@@ -269,9 +269,16 @@ None of these is a known defect. Each is something the port decided or assumed w
    `EnchantmentFormulasTest.aLandingWithSlowFallIsWhatTheTickRuleOfTheOriginalLeftOfTheFall` (a literal copy of the original's handler and of the 1.7.10 move,
    drops of 2 to 102 blocks at levels 1, 2, 3 and 5, equal within 1e-4) and `slowFallOneStillCostsHalfAHeartOnADropOfFourToSixBlocksAndTheHigherLevelsNothing`;
    GameTests `slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall` and `shockwaveHurtsTheCreaturesAroundALanding`. `Enchantments.md` sections 4 and 12.
-7. **The Cursed Spirit's Blade cannot take the vanilla sword enchantments** (Sharpness, Smite, Looting, Fire Aspect, Unbreaking, Mending ...), which the 1.7.10 `ItemSword`
-   took: it is in none of the vanilla sword tags. The fix touches files of other groups (`data/minecraft/tags/item/swords.json` and the Vampirism tag, which must keep refusing
-   the blade) and is a request to the lead, **not done** (`Machines.md` section 8, `api-requests/Machines.md` section 5).
+7. **The Cursed Spirit's Blade and the vanilla sword enchantments: resolved, it takes them as in 1.7.10 (the open point was out of date).** *Evidence*:
+   `ItemBloodSword extends ItemSword` with the thaumium enchantability and no override of `getItemEnchantability`, `isBookEnchantable` or
+   `canApplyAtEnchantingTable` (pinned source); the 1.7.10 table and anvil asked `EnumEnchantmentType.weapon` (`item instanceof ItemSword`) and
+   `breakable` (`isDamageable()`) (MCP `enchantment/EnumEnchantmentType.java`, `enchantment/Enchantment.java` `canApply`, `inventory/ContainerRepair.java`),
+   so it took Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting and Unbreaking, and Vampirism refused it
+   (`EnchantmentVampirism.canApply`). In the port the blade has been in the item tags `minecraft:enchantable/sword`, `sharp_weapon`, `fire_aspect` and
+   `durability` since the first import (`Enchantments.md` section 5) and stays out of `#minecraft:swords`, which the Vampirism tag holds; the request of
+   `api-requests/Machines.md` section 5 was never needed. *Decision*: keep it; Sweeping Edge, Mending and Curse of Vanishing (not in 1.7.10) go on the blade
+   as on any sword. *Test*: GameTest `theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil` (the table's list at a power of 30, a book of each of ten
+   enchantments in a real anvil menu, Vampirism refused by both). `Machines.md` sections 8 and 11.
 8. **The gateway tooltip of the original (Waila, now Jade) was inverted**: it showed "allow incoming" when the gate's `locked` flag is true, which is the opposite of what the flag
    does. Decided: the Jade port shows what the flag does (`deviations/Tooltips.md`). Two more decisions from `KamiWorld.md` section 10:
    **`PORTING_RULES` 1.3** (groups reach each other by registry path) has no exception for the four KamiGear helpers that the gateway uses (`ItemSkyPearl`, `SlotSkyPearl`,

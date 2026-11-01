@@ -333,11 +333,16 @@ and receives each of them.
 - **Model.** `blood_sword_0` / `blood_sword_active` with the override on the item property `thaumictinkerer:activated`
   (section 2). The client harness checks that the predicate has a property function and draws the activated variant
   (`ItemVariants` sets the component); not run since the change.
-- **Enchanting (open, shared files).** The blade is not in `#minecraft:swords`, so the vanilla sword enchantments (Sharpness,
-  Smite, Bane of Arthropods, Looting, Knockback, Fire Aspect, Sweeping Edge, Unbreaking, Mending) cannot be put on it, while
-  the 1.7.10 `ItemSword` took them. Only the four strike enchantments of the add-on list it. The fix is in two files of
-  other groups (`data/minecraft/tags/item/swords.json` and the Vampirism tag, which must keep refusing the blade): request
-  in section 5 of `docs/api-requests/Machines.md`.
+- **Enchanting (as in 1.7.10).** The 1.7.10 blade was an `ItemSword` without overrides of the enchantability (thaumium's) or of the
+  book check, so the table (`EnchantmentHelper.mapEnchantmentData`) and the anvil (`Enchantment.canApply`) gave it every enchantment of
+  `EnumEnchantmentType.weapon` (`item instanceof ItemSword`: Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting) and of
+  `breakable` (Unbreaking); Vampirism refused it (`EnchantmentVampirism.canApply`). Here the blade stays out of `#minecraft:swords` (the
+  tag of Vampirism holds it) and is listed in the item tags those enchantments ask, `minecraft:enchantable/sword`, `sharp_weapon` (and so
+  `weapon`), `fire_aspect` and `durability` (and so `vanishing`), files of the Enchantments group (`Enchantments.md` section 5). So it also
+  takes Sweeping Edge, Mending and Curse of Vanishing, which 1.7.10 did not have, as any sword. The section of this document that said the
+  blade could not take them was out of date (the tags were in the first import); the GameTest
+  `theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil` checks the table's list at a power of 30 and a book of each in a real anvil menu,
+  and the refusal of Vampirism (`docs/DEVIATIONS.md` section 6, point 7).
 
 ## 9. Values checked against the original on purpose
 
@@ -372,7 +377,7 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
 - ComputerCraft and OpenComputers peripherals (Aspectalyzer, Attractors), AE2 `IMovableTile`, Tinkers' Construct
   tool repair. (NEI integration and Waila providers were not this group's job; they are ported now as EMI/JEI pages and Jade
   tooltips, `RecipeViewers.md`, `Tooltips.md`.)
-- The enchantability of the blade (shared tag files): the request in `docs/api-requests/Machines.md`. (The NeoForge poster of `LIVING_DROPS`, listed here
+- (The enchantability of the blade, listed here before, was there all along: section 8.) (The NeoForge poster of `LIVING_DROPS`, listed here
   before, is written now, section 12; the NeoForge backend of `ItemRenderers` is written, not seen drawn.) (The scan
   check, the sparkles, the aspect tag drawing and the Thaumcraft entity keys use the API since the review.)
 - Recipe-viewer pages for the necromancy recipes: done since 2026-10-31 as an EMI and a JEI category (`RecipeViewers.md`).
