@@ -30,6 +30,9 @@ Which files are under which licence:
   unchanged from the Thaumcraft repository; `gradlew` and `gradlew.bat` carry the Apache-2.0 notice of Gradle.
 - `LICENSE-MIT` is a byte copy of the licence file of the Thaumcraft 4 Reload repository, so its second line still names the original Thaumcraft 4.2.3.5
   (c) Azanor, as it does there. The MIT files listed above contain no Thaumcraft code; the line is inherited, it is not a statement about them.
+- Development-only downloads: the multiplayer check (`docs/MULTIPLAYER_VERIFICATION.md`) puts Open Parties and Claims (Xaero96 and contributors,
+  LGPL-3.0) and, on Fabric, Forge Config API Port (Fuzs, MPL-2.0) with the night-config library it bundles (LGPL-3.0) on the class path of its test server; Gradle
+  downloads them from Modrinth's Maven and Maven Central. None of them is in this repository or in a jar of the add-on.
 - The add-on jars (Fabric and NeoForge) are separate downloads; the Thaumcraft jars contain none of them, and this repository contains no Thaumcraft 4 jar, no
   Thaumcraft assets and no Thaumcraft 4 source.
 - Publishing the port does not establish rights in Thaumcraft 4 (Azanor), which Thaumic Tinkerer is a derivative work

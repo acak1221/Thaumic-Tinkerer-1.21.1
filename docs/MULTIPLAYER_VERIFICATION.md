@@ -17,7 +17,7 @@ It is a development tool, like the client smoke (`CLIENT_VERIFICATION.md`), and 
 
 ```bash
 # Gradle is started as ./gradlew in the project root; GRADLE_CMD replaces it, as for tools/client-smoke.sh
-tools/multiplayer-smoke.sh                 # Fabric (the default): 4 to 6 minutes after the first compile
+tools/multiplayer-smoke.sh                 # Fabric (the default): about 6 minutes after the first compile
 tools/multiplayer-smoke.sh --neoforge      # the same on NeoForge
 tools/multiplayer-smoke.sh -l /path/gradle.log -t 1200 -p 25591   # Gradle log, client watchdog (s), server port
 GRADLE_CMD='<wrapper> {LOG}' tools/multiplayer-smoke.sh            # a wrapper that serialises Gradle and writes the log itself
@@ -97,7 +97,11 @@ sides: the server's verdict and what its own world and inventory show, which mus
 The world: the flat preset (bedrock at y −64, grass at −61), world spawn (0, −60, 0), spawn protection 16 (a non-operator may not build
 where `max(|x|, |z|) <= 16`). The lead is in survival and holds a silverwood staff with thaumium caps and the Focus of Dislocation (full of
 every primal), the Placement Mirror (stone, 5 x 5), the Awakened Ichorium Pickaxe, a diamond sword, an iron pickaxe, 64 stone and a second
-staff with the Focus of Uprising.
+staff with the Focus of Uprising; a scene that needs another item (planks, the Awakened Ichorium Sword or Axe, the Shadowbeam staff, the
+Gem Boots, 64 more stone) gets it at its stage. The second player holds the same Dislocation staff, mirror and pickaxe, the Awakened
+Ichorium Axe in tree mode and 64 stone. Order: the lead does `flight`, then `tablet` (the second player watches), then `a_claim`, then the
+rest; the second player works at the claim (`b_*`, its first stage waits for the claim) while the lead goes on, and the lead's last stage
+waits until the second player has left.
 
 | | Scenario | Who | What must happen |
 |---|---|---|---|
@@ -116,6 +120,21 @@ staff with the Focus of Uprising.
 | c | `pickaxe_inside` / `_outside` | lead | a sneaking left click on bedrock at y −64 in a pit: inside, the bedrock stays; outside, it becomes the Bedrock portal; no damage to the pickaxe; the server saw the player sneaking |
 | d | `enchanter` | lead | right click on the Osmotic Enchanter opens its menu from the server; the diamond sword goes into the tool slot by two container clicks; a click on the first offered enchantment's button sends `PacketEnchanterAddEnchant`; the client's block entity shows the choice (the server's update) and the server's Enchanter holds the sword and the enchantment (picture `lead-enchanter.png`) |
 | e | `tablet` / `tablet_sync` | lead, peer | the second player stands at the Animation Tablet, tells the server its own client shows it empty in left-click mode; the lead opens the tablet's menu, puts the iron pickaxe in by container clicks and clicks the right-click button (`PacketTabletButton`); the second player's **client-side block entity** must then show the pickaxe and right-click mode, and the server compares that with its own state (pictures `lead-tablet.png`, `peer-tablet.png`) |
+| f | `placer_menu` | lead | the outside Remote Placer (x = 40, facing west): a sneaking wand click on it opens its screen from the server (`BlockRPlacer.onWandRightClick`); four planks go into its slot by two container clicks; a click on the third distance button sends `PacketPlacerButton`; the server's placer has distance 3 and the planks, the lead none; the client's block entity shows the same after the screen closed (picture `lead-placer.png`) |
+| f | `placer_outside` / `placer_inside` | lead | a right click on a stone button outside the radius (x = 42 / 18) pulses the placer at x = 40 / 16 through the stone it sits on: outside, its fake player `[Minecraft]` puts planks three blocks west (as 1.7.10 does) and the slot keeps 3; inside (loaded by the harness with 4 planks at distance 1: a non-operator cannot open its screen inside the radius), nothing is placed at x = 15 and the slot keeps 4. The client shows the same block and slot |
+| f | `dislocator_inside` / `_outside` | lead | the same with a Transvector Dislocator facing west, lapis in front of it and bound to an emerald block outside the radius: inside (front x = 15), nothing moves; outside, the two blocks swap (as in 1.7.10). The client shows the same blocks |
+| f | `device_tablet_inside` / `_outside` | lead | an Animation Tablet in redstone and left-click mode holding an iron pickaxe, in front of a stone: the button powers it; inside, its fake player `[ThaumcraftTablet]` breaks nothing and the pickaxe stays new; outside, the stone is broken and the pickaxe worn by 1 (as in 1.7.10). The client shows the same block and tool (pictures `lead-devices-inside.png`, `lead-devices-outside.png`) |
+| g | `enchanter_start` | lead | after `enchanter`, on the same screen: the harness built six pillars (two Obsidian Totems and a Nitor each) and put a wand full of vis into the wand slot; a click on the start button sends `PacketEnchanterStartWorking`; the client's block entity shows the work running and then the sword with Sharpness I; the server's sword has Sharpness I, the Enchanter is idle again and its wand paid ordo (picture `lead-enchanter-done.png`) |
+| g | `armor_off` / `armor_on` | lead | the stage puts the Gem Boots on (Haste II while the awakened armour is on); the add-on's "Toggle Awakened Armor" key (unbound by default, as in 1.7.10; bound to U as in the controls screen) is pressed: `PacketToggleArmor`; the server's switch and the boots' Haste follow it, and so do the client's own copy of the switch and the effect the server sent it |
+| g | `soul_hearts` | lead | a left click with the Awakened Ichorium Sword in Soul mode on an iron golem without AI (an animal would be discarded at once: `spawn-animals=false`): the server gives half a Soul Heart and sends `PacketSoulHearts`; the client's `SoulHeartClientHandler` holds the same number and its HUD draws it (picture `lead-soul-hearts.png`) |
+| g | `shadow_beam` | lead | the use key held for 30 ticks with a staff carrying the Shadowbeam focus, looking into the sky: the server takes ordo, perditio and aer every tick and sends the beam's path (`PacketShadowBeam`) to the players within 64 blocks; the client draws its dark dust along it (counted in its own particle engine) and its wand shows the server's vis (picture `lead-shadow-beam.png`) |
+| g | `gate_teleport` / `gate_lock` / `gate_locked` | lead | two Celestial Gateways, A holding a Sky Pearl attuned to B ten blocks south. Sneaking on A opens the destinations screen (the gate's own client tick); a real shift key (see "How the clients act") and a click on B's pearl send `PacketWarpGateTeleport`: the lead stands on B on both sides. At B, its screen's lock button sends `PacketWarpGateButton`: B is locked on both sides. The same shift click from A again: refused, the lead stays on A and gets the gate's message "... does not accept incoming teleports" (pictures `lead-warp-destinations.png`, `lead-warp-gate.png`) |
+| h | `a_claim` | lead | Open Parties and Claims on the server: the lead types OPAC's own command, `/oclaims claim 96 -32 111 -17` and `/oclaims claim 112 -32 127 -17` (one chunk each; see "What it found"); OPAC owns the chunks (6, -2) and (7, -2), x 96..127, z -32..-17, for the lead (read through OPAC's API by reflection in the harness) |
+| h | `a_dislocation_own`, `a_mirror_own`, `a_pickaxe_own`, `a_axe_own` | lead | in its own claim the owner's tools work: the Focus of Dislocation takes a stone and pays, the Placement Mirror places all 25, the Awakened Ichorium Pickaxe makes the Bedrock portal, the Awakened Ichorium Axe in tree mode fells a tree of four logs |
+| h | `a_placer_own`, `a_dislocator_own` | lead | the owner presses the button of a Remote Placer and of a Transvector Dislocator standing in its own claim: **nothing happens** (the devices act as their fake player `[Minecraft]`, a stranger to OPAC; see "What it found") |
+| h | `b_*_in` | peer | the second player, in no party with the lead, from the wilderness on blocks in the claim: the Focus of Dislocation, carrying the stone it took outside (`b_dislocation_out` comes first), puts nothing down in the claim and keeps its load; the Placement Mirror places nothing; the pickaxe leaves the bedrock (its pit is in the claim); the axe cannot break the log |
+| h | `b_mirror_edge`, `b_axe_edge`, `b_placer_into_claim`, `b_dislocator_into_claim` | peer | over the claim's edge, where only the add-on's question can stop it: the mirror on a wall outside whose square reaches two columns in places the 15 positions outside and none of the 10 inside; tree mode on a log outside fells it but no log of the branch inside; a placer outside aiming two blocks into the claim places nothing; a Dislocator outside whose front (air) is in the claim and whose end (emerald) is outside moves nothing into it (pictures `peer-claim-mirror-edge.png`, `peer-claim-tree-edge.png`) |
+| h | `b_*_out` | peer | the same tools and devices outside the claim work: a stone taken and paid for, and after the refusal in the claim put back on its cobblestone (`b_dislocation_place_out`; two chunks away from the claim: OPAC also refuses a stranger's item use in the chunks next to a claim), 25 stone placed, the portal made, a tree felled, planks placed, a swap. The client shows the same blocks, vis and stacks in every scene |
 | | `every_scenario_has_a_server_result` | server | at the end, every scenario above has a result in the server's report |
 
 ## Output
@@ -130,6 +149,9 @@ staff with the Focus of Uprising.
 | `gradle.log` | a copy of the Gradle log (by the script) |
 
 ## Results
+
+The second part (sections f to h) is reported in its own subsection below; this first one is the first part's (sections a to e), as it stood
+before the second part was added.
 
 The final runs (2026-11-01), each started as `GRADLE_CMD='<wrapper> {LOG}' tools/multiplayer-smoke.sh [--neoforge]` (the wrapper serialises
 Gradle on the machine and is not part of the repository). Both ended `BUILD SUCCESSFUL`, exit 0, and `summary.txt` "no problems":
@@ -173,7 +195,7 @@ What the lines say, the same on both loaders unless noted:
   `item=minecraft:iron_pickaxe leftClick=false` 51.0 s (Fabric) and 57.3 s (NeoForge) after it said it was ready (the lead's thirteen
   scenarios came first), and the server's state was the same (`peer-tablet.png`: the second player sees the lead and the pickaxe on the tablet).
 
-### What it found
+### What the first part found
 
 * **Defects of the add-on's code: none.** Every scenario passed on both loaders once the harness itself worked. In particular the Focus of
   Dislocation, the Placement Mirror and the Awakened Ichorium Pickaxe respect a real dedicated server's spawn protection, including a mirror square
@@ -207,14 +229,107 @@ pictures each (the one PASS fewer than the last recorded runs is a fire block's 
 Earlier runs while the harness was written (Fabric 1 to 3, NeoForge 1) failed or were stopped for the harness problems above only; Fabric run 3, the
 first complete one, had 63 PASS and 0 FAIL (before the two Dislocation placement scenarios existed).
 
+### Second part: devices, packets and Open Parties and Claims (2026-11-01)
+
+The final runs (2026-11-01, the tree of this section's last commit), each started as
+`GRADLE_CMD='<wrapper> {LOG}' tools/multiplayer-smoke.sh [--neoforge]` with its own port (`-p 25631` / `-p 25632`): both ended `BUILD SUCCESSFUL`,
+exit 0, and `summary.txt` "no problems":
+
+| Report | Fabric | NeoForge |
+|---|---|---|
+| `server-report.json` | COMPLETED, 62 PASS | COMPLETED, 62 PASS |
+| `server-kami-off-report.json` | COMPLETED, 6 PASS | COMPLETED, 6 PASS |
+| `lead/report.json` | COMPLETED, 42 PASS | COMPLETED, 42 PASS |
+| `peer/report.json` | COMPLETED, 23 PASS, 1 INFO | COMPLETED, 23 PASS, 1 INFO |
+| `mismatch` / `mismatch-kami` / `kami-on` | COMPLETED, 3 / 2 / 3 PASS | COMPLETED, 3 / 2 / 3 PASS |
+| all seven reports | **141 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN** | **141 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN** |
+| the Gradle task | 5 min 49 s | 5 min 56 s |
+| pictures | 16, none blank | 16, none blank |
+
+What the lines say, the same on both loaders unless noted (numbers from the Fabric run):
+
+* **f. Devices under spawn protection.** Inside the radius none of the three changed anything: the placer's planks stayed in its slot (4) and x = 15
+  stayed air, the Dislocator's lapis and emerald stayed where they were, the tablet's stone stayed and its pickaxe kept damage 0. Outside, each did
+  what 1.7.10 does: planks three blocks west of the placer (the distance the lead set on its screen, `PacketPlacerButton`; slot 4 -> 3), lapis and
+  emerald swapped, the stone broken by the tablet's fake player and the pickaxe worn to damage 1. The lead's client showed the same blocks, slots
+  and tool every time (`lead-devices-inside.png`, `lead-devices-outside.png`: the three rows seen from the east, inside unchanged, outside with
+  the planks, the emerald in front of the Dislocator and the tablet's stone gone).
+* **g. The packets.** `PacketEnchanterStartWorking`: the client's Enchanter showed the work running, then the sword with Sharpness I; the server's
+  wand in the Enchanter paid ordo 10000 -> 8920. `PacketToggleArmor`: the switch went off and on again on both sides, and Haste II of the Gem Boots
+  with it. `PacketSoulHearts`: 0 -> 1 on the server and on the client (`lead-soul-hearts.png`: the iron golem in the cross-hair, the half Soul Heart
+  drawn above the right end of the health bar). `PacketShadowBeam`: the server took aer 25000 -> 24626, ordo and perditio 25000 -> 24354 in 30
+  ticks; the client counted up to 4612 dust particles of the beam's colour (NeoForge 4498; 0 before) and its wand showed the server's vis (`lead-shadow-beam.png`: a
+  dark cloud along the beam up into the sky). `PacketWarpGateTeleport`: the lead went from gate A (60, -59, 50) to gate B (60, -59, 60) on both
+  sides, with GLFW reporting the real shift key down (`lead-warp-destinations.png`: the map centred on gate A, the pearl of gate B below it).
+  `PacketWarpGateButton`: gate B locked on both sides (`lead-warp-gate.png`); the next shift click from A was refused, the lead stayed and got "The
+  Celestial Gateway in the destination does not accept incoming teleports."
+* **h. Open Parties and Claims.** The lead's two commands claimed (6, -2) and (7, -2) ("Successfully claimed the chunk at ..."). In its own claim
+  the lead's Focus of Dislocation took a stone, its mirror placed 25 of 25, its pickaxe made the portal, tree mode felled 4 of 4 logs (attack key
+  held 6 ticks); its placer and Dislocator did nothing (the documented limitation below). The second player: on blocks in the claim OPAC refused
+  the clicks themselves ("(Main Hand) You are not allowed to interact with this block (minecraft:stone)!", also for the polished andesite, the
+  bedrock and the log), the loaded focus kept its stone and the mirror placed nothing; over the edge the mirror placed 15 of 15 outside and 0 of 10
+  inside (on Fabric OPAC answers each of the ten place questions, now asked through `PlayerBlockBreakEvents.BEFORE`, with its chat message for the
+  air there; on NeoForge its place handler sends none), tree mode broke the
+  clicked log outside and left the branch in the claim (2 of 2 logs; one OPAC message for the question about it), the placer placed nothing at
+  (110, -60, -17) and the Dislocator moved nothing into the claim; outside the claim everything worked (a stone taken and, after the refusal, put
+  back; 25 placed; the portal; 3 of 3 logs felled; planks placed; the swap). Every client view agreed with the server's
+  (`peer-claim-mirror-edge.png`: the placed stone in front of the second player, the two columns in the claim shown only as the mirror's
+  translucent ghost blocks; `peer-claim-tree-edge.png`: the dropped log at the foot of the trunk, the trunk and the branch still standing).
+
+#### What the second part found
+
+* **A defect of the add-on's code, fixed: on Fabric a place question did not reach the claims mod.** Fabric API has no place event, and Open
+  Parties and Claims 0.33.0 on Fabric listens to `AttackBlockCallback`, `PlayerBlockBreakEvents.BEFORE`, `UseBlockCallback`, `UseItemCallback`,
+  `UseEntityCallback` and `AttackEntityCallback` (`xaero.pac.common.event.CommonEventsFabric.registerFabricAPIEvents`) and to no place event
+  (`CommonEvents.onEntityPlaceBlock`, posted only from NeoForge's `BlockEvent.EntityPlaceEvent`, says "only supported by Forge atm"). The Fabric
+  backend asked placements through Architectury's `BlockEvent.PLACE`, which OPAC does not hear. The first run in which the claim scenes ran, before the fix, showed it on Fabric:
+  the second player's Placement Mirror on a wall outside the claim placed **10 of the 10** positions inside it (`b_mirror_edge`), and a
+  Transvector Dislocator outside moved its emerald block into the claim (`b_dislocator_into_claim`). The Remote Placer aiming into the claim placed
+  nothing even then, because its fake player's real use passes `UseBlockCallback`, which OPAC refuses. NeoForge was not affected (OPAC hears its
+  `EntityPlaceEvent`, which the NeoForge backend posts). Fix (`FabricBlockProtection.mayPlace`, loader-general, no OPAC code): the place question
+  also asks Fabric API's own `PlayerBlockBreakEvents.BEFORE` about what is at the position (what the placement replaces), so a mod that does not
+  let the player change that position refuses the placement there too (`HOOKS.md` section 16). Test: the Fabric-native GameTest
+  `blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents` now also checks that a `BEFORE` listener refusing a free cell makes `mayPlace` false there,
+  asked once while probing about the air there, nothing placed (Fabric hook GameTests: "All 19 required tests passed"). After the fix both scenes
+  are refused on Fabric as on NeoForge.
+* **A limitation, for the owner to decide: the devices are strangers to a claims mod in their owner's claim too.** The Remote Placer and the
+  Transvector Dislocator act as their fake player `[Minecraft]` (the shared machine player of 1.7.10's `FakePlayerFactory.getMinecraft`), the
+  Animation Tablet as `[ThaumcraftTablet]`. OPAC compares the acting player with the claim's owner and party (`ChunkProtection.hasChunkAccess`:
+  `accessorId.equals(claimConfig.getPlayerId())`, then party and allies); a fake player passes only when its name or UUID is in OPAC's server option
+  `staticFakePlayers` (default `[IntegratedTunnels]` and Ars Nouveau's UUID), and then only where the claim matches the fake player's own position
+  (`isAllowedStaticFakePlayerAction`). So the lead's own placer and Dislocator in its own claim are refused (`a_placer_own`, `a_dislocator_own`
+  record this as the expected result), as are the second player's aiming into it. The add-on cannot fix this with a loader-general change without
+  changing whom the devices act as (their owner, which 1.7.10 did not do) - a decision for the owner, not taken here. A server can list `[Minecraft]`
+  in `staticFakePlayers`; not tried, and the Remote Placer's fake player stands in its target block (up to four blocks from the placer), which OPAC
+  would take for the device's origin.
+* **What OPAC does, besides (all OPAC's own behaviour, documented so that nobody mistakes it for the add-on's):** it refuses the click itself
+  inside a claim (`UseBlockCallback` / `PlayerInteractEvent.RightClickBlock`, `AttackBlockCallback` / `LeftClickBlock`), before any code of the
+  add-on runs, so the `b_*_in` scenes are refused by OPAC directly and the edge scenes are the ones that only the add-on's question can stop. It
+  refuses a stranger's item use (a right click into the air: how the wand casts a focus) in every chunk **next to** a claim as well
+  (`claims.protection.neighborChunksItemUse`, on by default; `ChunkProtection.onItemRightClick` looks at the 3 x 3 chunks around the player), which
+  is why `b_dislocation_out` stands two chunks away (seen in `b_dislocation_in`, from chunk 5: "(Main Hand) You are not allowed to use this item this close to somebody else's claim (thaumcraft:wand)! Try empty hand?"). It answers a refused question with the same chat message as a refused click ("(Main Hand) You
+  are not allowed to interact with this block (minecraft:oak_log)!" for the branch log of `b_axe_edge`), so a player sees one line per refused log
+  of a tree-mode felling. Its claim command takes an area of 2 x 1 chunks for a single chunk: `ClaimsClaimCommands` treats an area as "more than 1
+  chunk" only when its middle differs from its first corner, and the middle of chunks 6 and 7 is 6, so `/oclaims claim 96 -32 127 -17` claimed
+  (6, -2) alone; the lead claims one chunk per command.
+* **Problems of the harness, found by these runs and fixed:** Forge Config API Port carries night-config inside its jar, which Fabric Loader does
+  not unpack from a development class path (OPAC did not start: `NoClassDefFoundError: com/electronwill/nightconfig/core/ConfigFormat`); the cow of
+  the Soul Hearts was discarded by vanilla on its first tick because `spawn-animals=false` (`ServerLevel.shouldDiscardEntity`), now an iron golem;
+  a client window that does not hold the mouse (two clients, one X display; in an early Fabric run the second player's) does not mine with
+  the attack key held, because `Minecraft.continueAttack` runs only with `mouseHandler.isMouseGrabbed()` (the harness makes the same `continueDestroyBlock` call; single clicks never needed the
+  grab); the server's harness set the second player's selected hotbar slot at join without telling its client, so the client's own press of
+  slot 0 changed nothing and sent nothing and the server took every cast of its Focus of Dislocation for a click with an empty hand (found with a
+  record of the right clicks that reach the server; the harness now sends `ClientboundSetCarriedItemPacket`); the refusal message was compared with
+  a translation made before the client had loaded its languages; the Kami-off server must not build the Kami scenes.
+
 ## Wiring
 
 | Tree | Package | What is in it |
 |---|---|---|
-| `common/src/multiplayerServer/java` | `thaumic.tinkerer.mpserver` | the server test mod: `MultiplayerServer` (armed by `-Dthaumictinkerer.mpServer=true`; Architectury's lifecycle, player and command events; watchdog; `server-ready`), `Scenes` (the world, the items, `stage`, `check`), `TtmpCommand`, `ServerReport` |
+| `common/src/multiplayerServer/java` | `thaumic.tinkerer.mpserver` | the server test mod: `MultiplayerServer` (armed by `-Dthaumictinkerer.mpServer=true`; Architectury's lifecycle, player and command events; watchdog; `server-ready`), `Scenes` (the world, the items, `stage`, `check`), `DeviceScenes` (sections f and g), `ClaimScenes` (section h; reads OPAC's claim owners by reflection, OPAC is not on its compile class path), `TtmpCommand`, `ServerReport` |
 | `fabric/src/multiplayerServer` | `thaumic.tinkerer.fabric.mpserver` | `TinkererMultiplayerServer` (the `server` entrypoint), `fabric.mod.json` (mod id `thaumictinkerer_mpserver`, environment `server`) |
 | `neoforge/src/multiplayerServer` | `thaumic.tinkerer.neoforge.mpserver` | `TinkererMultiplayerServerNeoForge` (`@Mod(value = "thaumictinkerer_mpserver", dist = Dist.DEDICATED_SERVER)`), `neoforge.mods.toml` |
-| `common/src/clientSmoke/java` | `thaumic.tinkerer.clientsmoke` | the client side: `MultiplayerClient` (the roles, the shared scripts: join, config sync, disconnect), `MultiplayerLeadPhase`, `MultiplayerPeerPhase`, `MultiplayerMismatchPhase`, `ServerLink` (`/ttmp`), `Input` (keys, clicks); `ClientSmoke` picks them by `-Dthaumictinkerer.clientSmoke.mode` |
+| `common/src/clientSmoke/java` | `thaumic.tinkerer.clientsmoke` | the client side: `MultiplayerClient` (the roles, the shared scripts: join, config sync, disconnect), `MultiplayerActor` (what the two acting clients share: staging, held keys, the comparison of the server's numbers with the client's world), `MultiplayerLeadPhase`, `MultiplayerPeerPhase`, `MultiplayerMismatchPhase`, `ServerLink` (`/ttmp`), `Input` (keys, key mappings, clicks, the X11 shift key), `BeamParticles` (the Shadowbeam's dust in the particle engine); `ClientSmoke` picks them by `-Dthaumictinkerer.clientSmoke.mode` |
 | `gradle/multiplayer.gradle` | (MIT) | `registerTinkererMultiplayer`: the task that prepares, starts, waits for, stops and summarises the seven JVMs |
 | `tools/multiplayer-smoke.sh` | (MIT) | the runner under Xvfb |
 
@@ -223,8 +338,14 @@ first complete one, had 63 PASS and 0 FAIL (before the two Dislocation placement
   harness), task `runTinkererMultiplayer`. NeoForge: source set `multiplayerServer` (`neoforge/build.gradle`), runs `mpServer` (mods
   `thaumictinkerer` and `thaumictinkerer_mpserver`), `mpLead`, `mpPeer`, `mpMismatch`, `mpMismatchKami`, `mpKamiOn` (mods `thaumictinkerer` and
   `thaumictinkerer_clientsmoke`), task `runMultiplayer`. The second server is the run `tinkererMpServer` / `mpServer` with one more JVM argument.
+* Open Parties and Claims: Loom's remapped configuration of the server's source set only (`loom.createRemapConfigurations`;
+  `modThaumicTinkererMultiplayerServerRuntimeOnly` in `fabric.gradle`, `modMultiplayerServerRuntimeOnly` in `neoforge/build.gradle`), with the
+  versions in `gradle.properties` (`opac_fabric_version=fabric-1.21.1-0.33.0`, `opac_neoforge_version=neoforge-1.21.1-0.33.0`, both published
+  2026-10-17; on Fabric also `forge_config_api_port_version=v21.1.6-1.21.1-Fabric`, published 2025-11-12, and night-config 3.8.0, the version
+  Forge Config API Port carries inside its jar, which Fabric Loader does not unpack from a development class path). No client run, no other run
+  and no jar has it; the add-on names no OPAC class.
 * `check` compiles the new source set on both loaders; no jar task includes it or the client smoke (checked after the last runs: the jars in
-  `build/libs` and `neoforge/build/libs` hold no `mpserver` or `clientsmoke` entry).
+  `build/libs` and `neoforge/build/libs` hold no `mpserver`, `clientsmoke`, `xaero`, `openpartiesandclaims` or `forgeconfigapiport` entry).
 * The test mod and the client harness import Minecraft, Architectury, the Thaumcraft API and the add-on only (the loader entries their loader);
   nothing of `thaumcraft.common` or `thaumcraft.client`.
 
@@ -235,18 +356,22 @@ first complete one, had 63 PASS and 0 FAIL (before the two Dislocation placement
 * **Offline mode.** `online-mode=false`: no authentication, no chat signing (`enforce-secure-profile=false`). Player names and UUIDs are the
   offline ones.
 * **Scripted players.** The clients press keys and click through the game's own input path, but nobody moves a mouse: the cross-hair is set by the
-  server's teleport, screens get synthetic clicks at the centre of a button, and only the few actions above are made. Every other packet and screen of
-  the add-on (the Remote Placer's buttons, the Enchanter's start button, the Kami armour toggles, the Celestial Gateway) is only proven to be
-  registered on both sides (payload census), not used.
-* **Spawn protection only.** The protection that is checked is vanilla's spawn protection of a dedicated server; no protection mod (claims) is
-  installed, so the loader-event half of `BlockProtection` is still covered only by the GameTests' test backend. The Remote Placer, the
-  Transvector Dislocator and the Animation Tablet's fake player, which ask the same `BlockProtection`, are not used in this check.
+  server's teleport, screens get synthetic clicks at the centre of a button (the destinations screen at the computed place of the pearl), and only
+  the actions above are made. Two places leave the game's input path a little: a key held over several ticks by a client whose window does not hold
+  the mouse (the attack key: the harness calls `continueDestroyBlock` as the game's own tick would; which of the two windows on the shared display has
+  it varies: in the final Fabric run the second client's did not, in the NeoForge one it did), and the one real shift key, an X event the harness
+  sends to its own window. Every packet of the add-on is now sent once in its main use; the Kami armour's login status
+  (`PacketArmorStatus`) is only received at login with its default value (on), not after a change.
+* **One claims mod, one configuration.** Open Parties and Claims 0.33.0 with its default configuration, on the server only (no client has it, so
+  no client-side prediction of OPAC is seen); no party, no ally, no OPAC permission system, no `staticFakePlayers`. Other claims mods (FTB Chunks,
+  Flan, GOML, ...) listen to other events; what the add-on asks is in `HOOKS.md` section 16, which mod hears what is theirs.
 * **What the client shows, not how it feels.** The client's copy of blocks, stacks, vis and block entities is compared with the server's after each
   action. A cast that the server refuses can still make the client swing and play the wand's sound (the client cannot know the spawn protection);
   nothing looks at that. Thaumcraft's `WandHelper.consumeAllVis` never changes a stack on a client, so no predicted vis payment can show either
   (the lead records every vis value its wand showed in the 40 ticks after a Dislocation cast: always the server's).
 * **One run per loader for the numbers below.** Timing (how long the second player waited, how fast the clients started) differs between runs.
-* **One flat world, peaceful, noon.** No other dimension (the Bedrock portal is made but not entered), no mobs, no weather.
+* **One flat world, peaceful, noon.** No other dimension (the Bedrock portal is made but not entered), no mobs but one iron golem without AI, no
+  weather.
 * **No GPU, no sound.** As for the client smoke: Mesa llvmpipe under Xvfb.
 * **Two loaders, not mixed.** A Fabric client on a Fabric server and a NeoForge client on a NeoForge server; a client of one loader cannot join
   the other's server anyway.

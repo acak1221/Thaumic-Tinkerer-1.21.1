@@ -640,7 +640,7 @@ GameTest does not run the callbacks it still has pending):
 | `mayBreakAndMayPlaceFollowTheListeners` (added 2026-11-01, `ProtectionRuntimeChecks`) | `BlockProtection` through the installed backend: nobody refuses, both true; an Architectury `BlockEvent.BREAK` / `PLACE` listener that cancels makes `mayBreak` / `mayPlace` false, is asked once while `isProbing()` is true, with the block there (break) or the state to be placed (place) and the player; nothing broken or placed; another position allowed; allowed again without the listeners (section 16) |
 | `spawnProtectionAndAdventureModeRefuse` (added 2026-11-01) | under spawn protection (the harness's test mixin `TinkererSpawnProtectionMixin`: the GameTest server has none of its own) both are false and no listener is asked; in adventure mode with an empty hand both are false; survival again, allowed |
 | `theAddonsOwnBreakListenersDoNothingWhileAsked` (added 2026-11-01) | a pickaxe of Tunnel and Disintegrate comes out of a `mayBreak` question unchanged (no direction remembered, no wear): the add-on's own `BlockEvent.BREAK` listeners return at once while probing. Passes only once `ModEnchantmentHandler.onBreakBlock` and `ToolHandler.onBlockBreak` test `BlockProtection.isProbing()` (section 16) |
-| `blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents` (added 2026-11-01; Fabric-native) | Fabric: a `PlayerBlockBreakEvents.BEFORE` listener that refuses makes `mayBreak` false, asked once while probing, nothing broken, another position allowed. NeoForge (`HooksNeoForgeChecks`): a `BlockEvent.BreakEvent` and an `EntityPlaceEvent` listener that cancel make `mayBreak` / `mayPlace` false, while probing; the place event's `getPlacedBlock()` is the state to be placed and its entity the player |
+| `blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents` (added 2026-11-01; Fabric-native) | Fabric: a `PlayerBlockBreakEvents.BEFORE` listener that refuses makes `mayBreak` false, asked once while probing, nothing broken, another position allowed; since the multiplayer check's second part the same listener refusing a free cell makes `mayPlace` false there too, asked once while probing about the air that is there, nothing placed, another cell allowed. NeoForge (`HooksNeoForgeChecks`): a `BlockEvent.BreakEvent` and an `EntityPlaceEvent` listener that cancel make `mayBreak` / `mayPlace` false, while probing; the place event's `getPlacedBlock()` is the state to be placed and its entity the player |
 
 NeoForge-only (`HooksNeoForgeTests`, added 2026-11-01): `aCancelledHitLeavesNoDamageContainer` (section 3).
 
@@ -814,7 +814,14 @@ block alone when the answer is no (which group calls it where is the groups' par
   * *Fabric* (`FabricBlockProtection`, installed by `ThaumicTinkererFabric.onInitialize`): break: Fabric API's `PlayerBlockBreakEvents.BEFORE`, then Architectury's
     `BlockEvent.BREAK` (on Fabric Architectury posts it from its own mixin in `ServerPlayerGameMode.destroyBlock`, not through Fabric's event, read in
     `architectury-fabric-13.0.11-sources.jar`), the first refusal decides; `PlayerBlockBreakEvents.CANCELED` is not invoked (it resends the block to the client after a
-    real cancelled break). Place: Architectury's `BlockEvent.PLACE` with the state and the player; Fabric API has no place event.
+    real cancelled break). Place: Architectury's `BlockEvent.PLACE` with the state and the player, then (since 2026-11-01) Fabric API's
+    `PlayerBlockBreakEvents.BEFORE` for the position with the block that is there now (air, water, grass: what the placement replaces); the first
+    refusal decides. Fabric API has no place event, so the claim mods written for Fabric guard a position through its break event and the click
+    (`UseBlockCallback`, which cannot be posted as a question: its listeners act). Found by the multiplayer check (`MULTIPLAYER_VERIFICATION.md`,
+    section h) with Open Parties and Claims 0.33.0, which on Fabric registers `AttackBlockCallback`, `PlayerBlockBreakEvents.BEFORE`,
+    `UseBlockCallback`, `UseItemCallback`, `UseEntityCallback` and `AttackEntityCallback` (`CommonEventsFabric.registerFabricAPIEvents`) and no place
+    event (`CommonEvents.onEntityPlaceBlock`: "only supported by Forge atm"): with `PLACE` alone a stranger's Placement Mirror put 10 of 10 blocks
+    into a claim over its edge and a Transvector Dislocator outside moved a block into it.
   * *NeoForge* (`NeoForgeBlockProtection`, installed by the `ThaumicTinkererNeoForge` constructor): break: `BlockEvent.BreakEvent(level, pos, state, player)` on
     `NeoForge.EVENT_BUS`, answered by `!isCanceled()`; not `CommonHooks.fireBlockBreak`, which adds its own game-mode and held-item refusals and resends the block to the
     client on a cancel. Place: `BlockEvent.EntityPlaceEvent` with `BlockSnapshot.create(level.dimension(), level, pos)`, the block below as the block placed against
@@ -829,5 +836,9 @@ block alone when the answer is no (which group calls it where is the groups' par
   `EntityPlaceEvent`, or of `BlockEvent.PLACE`. The test of the probing guard is `theAddonsOwnBreakListenersDoNothingWhileAsked`.
 
 Other mods' listeners are asked as for a real break or placement; one that has side effects of its own (a log line, a counter) has them for a question too, and one
-that tells a real attempt from a question cannot. Checks: section 12 (`mayBreakAndMayPlaceFollowTheListeners`, `spawnProtectionAndAdventureModeRefuse`,
-`theAddonsOwnBreakListenersDoNothingWhileAsked`, `blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents`). Not verified: a real claim mod on either loader.
+that tells a real attempt from a question cannot (Open Parties and Claims, for one, sends the player its "You are not allowed to interact with
+this block" for a refused question as for a refused click). Checks: section 12 (`mayBreakAndMayPlaceFollowTheListeners`, `spawnProtectionAndAdventureModeRefuse`,
+`theAddonsOwnBreakListenersDoNothingWhileAsked`, `blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents`). A real claims mod on both loaders: Open
+Parties and Claims 0.33.0 in the multiplayer check (`MULTIPLAYER_VERIFICATION.md`, section h): it hears the break question on both loaders and the
+place question on NeoForge (`BlockEvent.EntityPlaceEvent`) and, since the change above, on Fabric. The devices (Remote Placer, Transvector
+Dislocator, Animation Tablet) ask as their fake player, whom such a mod treats as a stranger also in their owner's claim (same section).

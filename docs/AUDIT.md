@@ -71,11 +71,13 @@ the game's own seed changes nothing (the same cells), so it is not a defect and 
 ## Not verified
 
 - The new tests were not run against the code before the fixes; that each would have caught its bug is reasoned, not seen.
-- A real protection mod (claims), third-party pipes, a GPU. Spawn protection on a real dedicated server, a real client receiving the
+- Third-party pipes, a GPU. A real protection mod (claims), spawn protection on a real dedicated server, a real client receiving the
   config payload and multiplayer with real clients were not verified by this audit; they were afterwards, by the multiplayer check
-  (`MULTIPLAYER_VERIFICATION.md`, final runs: 67 PASS, 0 FAIL on Fabric and on NeoForge). Still not seen with real clients: the Remote
-  Placer, the Dislocator and the Tablet under spawn protection, latency and packet loss (loopback only).
-- The follow-up: tree mode against a real claims mod (only the add-on's test backend and the loaders' own backends were run); the ore
+  (`MULTIPLAYER_VERIFICATION.md`: first part 67 PASS, 0 FAIL on Fabric and on NeoForge; its second part added the Remote Placer, the
+  Dislocator and the Tablet under spawn protection, every packet of the add-on, and Open Parties and Claims on both loaders, tree mode among
+  its scenes, and found that a place question on Fabric did not reach that mod; fixed). Still not seen: other claims mods, latency and packet
+  loss (loopback only).
+- The follow-up: the ore
   feature in a world with mods that add features to every biome (the test runs had none: the biome's steps held only the clusters) and in
   a world made before the change (reasoned, not tried: its generated chunks keep their ores, chunks generated afterwards get the
   feature's positions); the Bedrock dimension in a client.
