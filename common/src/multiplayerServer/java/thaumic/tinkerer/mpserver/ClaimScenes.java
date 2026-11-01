@@ -72,7 +72,12 @@ final class ClaimScenes {
 
     // ---- the second player: into the claim, over its edge, and outside -------------------------------------------
     static final BlockPos B_STONE_IN = new BlockPos(98, G + 1, -26);
-    static final BlockPos B_STONE_OUT = new BlockPos(84, G + 1, -30);
+    /**
+     * Two chunks west of the claim (chunk 4): OPAC refuses a stranger's item use (a right click into the air, which is how the wand
+     * casts its focus) in every chunk next to a claim as well ({@code claims.protection.neighborChunksItemUse}, on by default), so a
+     * cast from chunk 5 would be refused by OPAC itself, outside the claim.
+     */
+    static final BlockPos B_STONE_OUT = new BlockPos(72, G + 1, -30);
     static final BlockPos B_WALL_IN = new BlockPos(104, G, -19);
     /** On the edge: its square, x 93..97, reaches two columns into the claim. */
     static final BlockPos B_WALL_EDGE = new BlockPos(95, G, -30);

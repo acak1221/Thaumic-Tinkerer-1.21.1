@@ -14,7 +14,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -93,7 +93,7 @@ final class DeviceScenes {
 
     // ---- g. the packets ---------------------------------------------------------------------------------------------
     static final Vec3 ARMOR_SPOT = new Vec3(50.5, G, 30.5);
-    static final Vec3 COW_AT = new Vec3(50.5, G, 40.5);
+    static final Vec3 GOLEM_AT = new Vec3(50.5, G, 40.5);
     static final Vec3 BEAM_SPOT = new Vec3(60.5, G, 30.5);
     static final BlockPos GATE_A = new BlockPos(60, G, 50);
     static final BlockPos GATE_B = new BlockPos(60, G, 60);
@@ -142,13 +142,13 @@ final class DeviceScenes {
                     }
                 }, null, false));
         stages.put("armor_on", new Stage("armor_on", ARMOR_SPOT, ARMOR_SPOT.add(0, 1.62, -5), null, null, Scenes.SLOT_EMPTY, false));
-        // Soul Hearts: the Awakened Ichorium Sword in Soul mode, a left click on a cow that does not move.
-        stages.put("soul_hearts", new Stage("soul_hearts", new Vec3(COW_AT.x, G, COW_AT.z - 2.5), COW_AT.add(0, 0.7, 0), null, null,
+        // Soul Hearts: the Awakened Ichorium Sword in Soul mode, a left click on an iron golem that does not move.
+        stages.put("soul_hearts", new Stage("soul_hearts", new Vec3(GOLEM_AT.x, G, GOLEM_AT.z - 2.5), GOLEM_AT.add(0, 1.2, 0), null, null,
                 SLOT_EXTRA, false, player -> {
                     ItemStack sword = new ItemStack(TTRegistry.item(LibItemNames.ICHOR_SWORD_GEM));
                     sword.set(KamiComponents.TOOL_MODE.get(), 2);
                     setHotbar(player, SLOT_EXTRA, sword);
-                    cow(player.serverLevel());
+                    golem(player.serverLevel());
                 }, "slot", true));
         // Shadowbeam: a staff with the focus, the use key held while the lead looks up into the sky.
         stages.put("shadow_beam", new Stage("shadow_beam", BEAM_SPOT, BEAM_SPOT.add(0, 31.62, -20), null, null, SLOT_EXTRA, false,
@@ -207,20 +207,21 @@ final class DeviceScenes {
     }
 
     /**
-     * The cow of the Soul Hearts, made when the scenario is staged (one made while the world was being built, before its chunk's
-     * entities were loaded, was not there when the lead came): it does not move and survives every hit.
+     * The target of the Soul Hearts, made when the scenario is staged: an iron golem without AI that survives every hit. Not an
+     * animal: with {@code spawn-animals=false} (the run's server.properties) vanilla discards every animal on its first tick
+     * ({@code ServerLevel.shouldDiscardEntity}), and peaceful removes the monsters.
      */
-    static void cow(ServerLevel level) {
-        if (!level.getEntitiesOfClass(Cow.class, new net.minecraft.world.phys.AABB(COW_AT.subtract(2, 1, 2), COW_AT.add(2, 3, 2))).isEmpty()) return;
-        Cow cow = EntityType.COW.create(level);
-        if (cow == null) throw new IllegalStateException("no cow");
-        cow.setNoAi(true);
-        cow.setSilent(true);
-        cow.setPersistenceRequired();
-        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
-        cow.setHealth(1000F);
-        cow.moveTo(COW_AT.x, COW_AT.y, COW_AT.z, 180F, 0F);
-        if (!level.addFreshEntity(cow)) throw new IllegalStateException("the cow was not added at " + COW_AT);
+    static void golem(ServerLevel level) {
+        if (!level.getEntitiesOfClass(IronGolem.class, new net.minecraft.world.phys.AABB(GOLEM_AT.subtract(2, 1, 2), GOLEM_AT.add(2, 4, 2))).isEmpty()) return;
+        IronGolem golem = EntityType.IRON_GOLEM.create(level);
+        if (golem == null) throw new IllegalStateException("no iron golem");
+        golem.setNoAi(true);
+        golem.setSilent(true);
+        golem.setPersistenceRequired();
+        golem.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+        golem.setHealth(1000F);
+        golem.moveTo(GOLEM_AT.x, GOLEM_AT.y, GOLEM_AT.z, 180F, 0F);
+        if (!level.addFreshEntity(golem)) throw new IllegalStateException("the iron golem was not added at " + GOLEM_AT);
     }
 
     static void build(ServerLevel level, ServerReport report) {
@@ -407,7 +408,7 @@ final class DeviceScenes {
                 int was = (Integer) before.get("hp");
                 if (hp == was && !late(before, 5)) return Outcome.waiting("no Soul Heart yet");
                 values.put("hp", hp);
-                return Outcome.of(hp == was + 1, "a left click with the Awakened Ichorium Sword in Soul mode on the cow: the lead's Soul Hearts "
+                return Outcome.of(hp == was + 1, "a left click with the Awakened Ichorium Sword in Soul mode on the iron golem: the lead's Soul Hearts "
                         + was + " -> " + hp + " (PacketSoulHearts sent to its client)", values);
             }
             case "shadow_beam" -> {

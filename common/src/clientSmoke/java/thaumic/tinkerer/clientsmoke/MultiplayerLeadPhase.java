@@ -10,7 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.animal.Cow;
+import net.minecraft.world.entity.animal.IronGolem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -519,7 +519,7 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
         int[] hpBefore = { 0 };
         String[] aimed = { "" };
         return staged("soul_hearts", stage, before, mark)
-                .run("left click the cow", r -> {
+                .run("left click the iron golem", r -> {
                     hpBefore[0] = SoulHeartClientHandler.clientPlayerHP;
                     aimed[0] = String.valueOf(aimedEntity(r.client()) == null ? "nothing" : aimedEntity(r.client()).getType().toShortString());
                     Input.leftClick(r.client());
@@ -528,13 +528,13 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
                 .ticks(10)
                 .frames(6)
                 .then("picture", run.shots().shot("lead-soul-hearts", MultiplayerClient.GROUP,
-                        "The lead's HUD after one hit with the Awakened Ichorium Sword in Soul mode on a cow: half a Soul Heart above the health bar, drawn from the number the server sent (PacketSoulHearts)"))
+                        "The lead's HUD after one hit with the Awakened Ichorium Sword in Soul mode on an iron golem: half a Soul Heart above the health bar, drawn from the number the server sent (PacketSoulHearts)"))
                 .then("check", check("soul_hearts", () -> "", check), 30)
                 .run("record", r -> {
                     int mine = SoulHeartClientHandler.clientPlayerHP;
                     boolean agrees = String.valueOf(mine).equals(check[0].get("hp"));
-                    boolean cow = aimed[0].equals("cow") && aimedEntity(r.client()) instanceof Cow;
-                    MultiplayerClient.record(r, PHASE, "soul_hearts", "ichor_sword_gem", check[0].passed() && agrees && cow, "server "
+                    boolean golem = aimed[0].equals("iron_golem") && aimedEntity(r.client()) instanceof IronGolem;
+                    MultiplayerClient.record(r, PHASE, "soul_hearts", "ichor_sword_gem", check[0].passed() && agrees && golem, "server "
                             + check[0].status() + ": " + check[0].text() + "; client: the cross-hair showed " + aimed[0] + ", this client's Soul Hearts "
                             + hpBefore[0] + " -> " + mine + (agrees ? " (agrees with the server)" : " (differs from the server)"));
                 });

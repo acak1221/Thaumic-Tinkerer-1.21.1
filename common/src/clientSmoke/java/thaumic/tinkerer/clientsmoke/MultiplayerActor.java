@@ -223,8 +223,10 @@ abstract class MultiplayerActor extends ScriptedPhase {
                         attacking = true;
                     })
                     .then("hold it until the block is gone", r -> {
+                        Minecraft client = r.client();
                         BlockPos pos = MultiplayerClient.pos(stage[0].get("target"));
-                        boolean gone = !MultiplayerClient.blockId(r.client(), pos).equals(before[0].state());
+                        boolean gone = !MultiplayerClient.blockId(client, pos).equals(before[0].state());
+                        if (!gone) holdAttack(client, pos, Direction.byName(stage[0].get("face")));
                         return gone || ++held[0] >= 80;
                     }, 30)
                     .run("let go", r -> {
@@ -239,6 +241,20 @@ abstract class MultiplayerActor extends ScriptedPhase {
         if (run != null) script.frames(6).then("picture", run.shots().shot(picture, MultiplayerClient.GROUP, shows));
         return script.run("record", r -> recordBoth(r, name, target, stage[0], check[0], mark[0], true,
                 act == Act.HOLD_ATTACK ? "held the attack key " + held[0] + " ticks" : ""));
+    }
+
+    /**
+     * One tick of the attack key held on a block. The game's own tick does this ({@code Minecraft.continueAttack}: the mining of the
+     * block in the cross-hair goes on, the arm swings) only while its window holds the mouse ({@code keyAttack.isDown() &&
+     * mouseHandler.isMouseGrabbed()}); two clients share one X display here and only the focused window holds it, so for a window
+     * without it the harness makes the same two calls. A single click ({@code startAttack}) needs no grab.
+     */
+    static void holdAttack(Minecraft client, BlockPos pos, Direction face) {
+        if (client.mouseHandler.isMouseGrabbed() || client.player.isUsingItem() || !(client.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit)
+                || !hit.getBlockPos().equals(pos)) {
+            return;
+        }
+        if (client.gameMode.continueDestroyBlock(pos, face)) client.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
     }
 
     /** The click on a stone button that pulses a device (Remote Placer, Transvector Dislocator, Animation Tablet). */
