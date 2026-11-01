@@ -445,4 +445,22 @@ class KamiWorldLogicTest {
             throw new AssertionError("no scaffold");
         }));
     }
+
+    /**
+     * The Celestial Gateway's map tints its background with the original's hue, which runs from -0.5 to 1.5; it is taken modulo 1 as
+     * AWT's {@code Color.HSBtoRGB} took it (Mth.hsvToRgb would refuse a negative hue), and the channels are at most one step of 255
+     * from AWT's (truncated instead of rounded).
+     */
+    @Test
+    void theGatewayMapsTintIsTheOriginalsUpToOneStepPerChannel() {
+        for (int ticks = 0; ticks < 2000; ticks += 7) {
+            float hue = (float) (Math.sin(ticks / 150D) + 1F / 2F);
+            int awt = java.awt.Color.HSBtoRGB(hue, 0.5F, 0.4F) & 0xFFFFFF;
+            int tint = thaumic.tinkerer.client.gui.kami.GuiWarpGateDestinations.backgroundTint(ticks);
+            for (int shift = 0; shift <= 16; shift += 8) {
+                assertTrue(Math.abs(((awt >> shift) & 0xFF) - ((tint >> shift) & 0xFF)) <= 1,
+                        "ticks " + ticks + ", hue " + hue + ": " + Integer.toHexString(tint) + " against AWT " + Integer.toHexString(awt));
+            }
+        }
+    }
 }

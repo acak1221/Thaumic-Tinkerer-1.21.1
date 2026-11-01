@@ -13,23 +13,18 @@
 package thaumic.tinkerer.client.gui.kami;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.architectury.networking.NetworkManager;
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -250,7 +245,11 @@ public class GuiWarpGateDestinations extends Screen {
         }
     }
 
-    /** A line of the given width and translucency, drawn as a quad (1.7.10: {@code GL_LINES} of width 2, white). */
+    /**
+     * A line of the given width and translucency, drawn as a quad (1.7.10: {@code GL_LINES} of width 2, white) into the GUI's own
+     * batch ({@link RenderType#gui()}, translucent: what {@link GuiGraphics#fill} draws with), so it keeps its place among what the
+     * screen draws after it (the pearls' items flush the batch, so they are drawn over the lines, as in 1.7.10).
+     */
     private static void drawLine(GuiGraphics graphics, float x1, float y1, float x2, float y2, float lineWidth, float alpha) {
         float dx = x2 - x1;
         float dy = y2 - y1;
@@ -259,28 +258,33 @@ public class GuiWarpGateDestinations extends Screen {
         float nx = -dy / length * lineWidth / 2F;
         float ny = dx / length * lineWidth / 2F;
         Matrix4f pose = graphics.pose().last().pose();
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        VertexConsumer buffer = graphics.bufferSource().getBuffer(RenderType.gui());
         buffer.addVertex(pose, x1 + nx, y1 + ny, 0F).setColor(1F, 1F, 1F, alpha);
         buffer.addVertex(pose, x2 + nx, y2 + ny, 0F).setColor(1F, 1F, 1F, alpha);
         buffer.addVertex(pose, x2 - nx, y2 - ny, 0F).setColor(1F, 1F, 1F, alpha);
         buffer.addVertex(pose, x1 - nx, y1 - ny, 0F).setColor(1F, 1F, 1F, alpha);
-        BufferUploader.drawWithShader(buffer.buildOrThrow());
-        RenderSystem.disableBlend();
     }
 
     /**
      * 1.7.10 {@code drawDefaultBackground}: the texture of the End portal, tiled over the screen and tinted with a hue that
-     * drifts with {@code sin(ticks / 150)}, at saturation 0.5 and brightness 0.4.
+     * drifts with {@code sin(ticks / 150)}, at saturation 0.5 and brightness 0.4. The hue is taken modulo 1 as AWT's
+     * {@code Color.HSBtoRGB} of the original took it; {@link Mth#hsvToRgb} truncates each channel where AWT rounded (at most one
+     * step of 255 apart).
      */
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        float hue = (float) (Math.sin(ticks / 150D) + 1F / 2F);
-        int rgb = Color.HSBtoRGB(hue, 0.5F, 0.4F);
+        int rgb = backgroundTint(ticks);
         graphics.setColor(((rgb >> 16) & 0xFF) / 255F, ((rgb >> 8) & 0xFF) / 255F, (rgb & 0xFF) / 255F, 1F);
         graphics.blit(ENDER_FIELD, 0, 0, 0, 0F, 0F, width, height, 256, 256);
         graphics.setColor(1F, 1F, 1F, 1F);
+    }
+
+    /**
+     * The tint of the background after {@code ticks} ticks, RGB: the original's hue {@code sin(ticks / 150) + 1F / 2F} (which runs from
+     * -0.5 to 1.5: its {@code + 1F / 2F} adds a half), taken modulo 1 as AWT did.
+     */
+    public static int backgroundTint(double ticks) {
+        float hue = (float) (Math.sin(ticks / 150D) + 1F / 2F);
+        return Mth.hsvToRgb(hue - Mth.floor(hue), 0.5F, 0.4F);
     }
 }

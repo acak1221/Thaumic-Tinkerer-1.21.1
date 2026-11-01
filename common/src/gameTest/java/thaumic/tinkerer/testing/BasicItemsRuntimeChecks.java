@@ -1106,15 +1106,25 @@ public final class BasicItemsRuntimeChecks {
         ItemStack worn = TTRegistry.stack(LibItemNames.SPELL_CLOTH);
         worn.setDamageValue(17);
         test.assertTrue(roundTrip(test, worn).getDamageValue() == 17, "the wear of the cloth survives saving");
-        test.assertTrue(ItemSpellCloth.color(TTRegistry.stack(LibItemNames.SPELL_CLOTH)) == java.awt.Color.HSBtoRGB(0.75F, 0.5F, 1F),
-                "a new cloth is violet");
+        // the original's colour is AWT's Color.HSBtoRGB, which rounds each channel; Mth.hsvToRgb truncates it: at most one step apart
+        test.assertTrue(withinOneStep(ItemSpellCloth.color(TTRegistry.stack(LibItemNames.SPELL_CLOTH)), java.awt.Color.HSBtoRGB(0.75F, 0.5F, 1F)),
+                "a new cloth is violet: " + Integer.toHexString(ItemSpellCloth.color(TTRegistry.stack(LibItemNames.SPELL_CLOTH))));
         worn.setDamageValue(35);
         worn.setDamageValue(34);
-        test.assertTrue(ItemSpellCloth.color(worn) == java.awt.Color.HSBtoRGB(0.75F, (35F - 34F) / 35F * 0.5F, 1F),
+        test.assertTrue(withinOneStep(ItemSpellCloth.color(worn), java.awt.Color.HSBtoRGB(0.75F, (35F - 34F) / 35F * 0.5F, 1F)),
                 "a nearly worn cloth is nearly white");
         worn.setDamageValue(35);
         test.assertTrue(ItemSpellCloth.color(worn) == 0xFFFFFFFF, "a worn-out cloth is white");
         test.assertTrue(ThaumicTinkerer.failures().isEmpty(), "no registration failures: " + ThaumicTinkerer.failures());
         test.succeed();
+    }
+
+    /** Two opaque ARGB colours whose channels are at most one step of 255 apart. */
+    private static boolean withinOneStep(int a, int b) {
+        if ((a >>> 24) != (b >>> 24)) return false;
+        for (int shift = 0; shift <= 16; shift += 8) {
+            if (Math.abs(((a >> shift) & 0xFF) - ((b >> shift) & 0xFF)) > 1) return false;
+        }
+        return true;
     }
 }
