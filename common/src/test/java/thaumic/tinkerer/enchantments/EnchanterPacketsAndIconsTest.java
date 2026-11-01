@@ -2,6 +2,7 @@ package thaumic.tinkerer.enchantments;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.netty.buffer.Unpooled;
@@ -13,7 +14,9 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.HolderOwner;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
@@ -51,13 +54,38 @@ class EnchanterPacketsAndIconsTest {
     void theAddEnchantPacketCarriesThePositionTheEnchantmentAndTheLevel() {
         for (int level : new int[] { -1, 0, 1, 5 }) {
             PacketEnchanterAddEnchant sent = new PacketEnchanterAddEnchant(new BlockPos(-12, 63, 40000),
-                    ResourceLocation.parse("thaumictinkerer:final_strike"), level);
+                    ModEnchantments.finalStrike, level);
             RegistryFriendlyByteBuf buf = buffer();
             PacketEnchanterAddEnchant.STREAM_CODEC.encode(buf, sent);
             PacketEnchanterAddEnchant received = PacketEnchanterAddEnchant.STREAM_CODEC.decode(buf);
             assertEquals(sent, received, "level " + level);
+            assertSame(ModEnchantments.finalStrike, received.enchant(), "the key of the enchantment registry, the same object");
             assertEquals(0, buf.readableBytes());
         }
+    }
+
+    /**
+     * The packet carries the registry key of the enchantment ({@code ResourceKey.streamCodec}); on the wire that is its id, as when
+     * the packet carried a bare {@code ResourceLocation}: the position, the id and the level, nothing else. A key the server does
+     * not know (another add-on's enchantment) decodes and is left to {@code apply}, which refuses it.
+     */
+    @Test
+    void onTheWireTheEnchantmentIsItsIdAsBefore() {
+        BlockPos pos = new BlockPos(3, -60, 17);
+        RegistryFriendlyByteBuf buf = buffer();
+        PacketEnchanterAddEnchant.STREAM_CODEC.encode(buf, new PacketEnchanterAddEnchant(pos, Enchantments.SHARPNESS, 4));
+        assertEquals(pos, BlockPos.STREAM_CODEC.decode(buf));
+        assertEquals(ResourceLocation.withDefaultNamespace("sharpness"), ResourceLocation.STREAM_CODEC.decode(buf));
+        assertEquals(4, ByteBufCodecs.VAR_INT.decode(buf));
+        assertEquals(0, buf.readableBytes());
+
+        RegistryFriendlyByteBuf other = buffer();
+        BlockPos.STREAM_CODEC.encode(other, pos);
+        ResourceLocation.STREAM_CODEC.encode(other, ResourceLocation.fromNamespaceAndPath("another_mod", "lightning"));
+        ByteBufCodecs.VAR_INT.encode(other, 0);
+        PacketEnchanterAddEnchant unknown = PacketEnchanterAddEnchant.STREAM_CODEC.decode(other);
+        assertEquals(ResourceKey.create(Registries.ENCHANTMENT, ResourceLocation.fromNamespaceAndPath("another_mod", "lightning")),
+                unknown.enchant());
     }
 
     @Test

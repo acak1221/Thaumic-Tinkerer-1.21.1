@@ -43,6 +43,20 @@ class EnchantmentManagerTest {
 
     // ---- the table ------------------------------------------------------------------------------------------------
 
+    /** The fourteen keys of {@code ModEnchantments}, the only copy now, are those of the registry paths, each once. */
+    @Test
+    void theFourteenKeysAreThoseOfTheRegistryPathsOfTheEnchantments() {
+        List<ResourceKey<Enchantment>> keys = List.of(ModEnchantments.ascentBoost, ModEnchantments.slowFall, ModEnchantments.autoSmelt,
+                ModEnchantments.desintegrate, ModEnchantments.quickDraw, ModEnchantments.vampirism, ModEnchantments.dispersedStrikes,
+                ModEnchantments.finalStrike, ModEnchantments.focusedStrike, ModEnchantments.pounce, ModEnchantments.shatter,
+                ModEnchantments.shockwave, ModEnchantments.tunnel, ModEnchantments.valiance);
+        List<ResourceKey<Enchantment>> paths = java.util.Arrays.stream(LibEnchantNames.ALL)
+                .map(thaumic.tinkerer.common.lib.LibEnchantIDs::key).toList();
+        assertEquals(paths, keys, "in the order of LibEnchantNames.ALL");
+        assertEquals(14, keys.stream().distinct().count());
+        for (ResourceKey<Enchantment> key : keys) assertEquals("thaumictinkerer", key.location().getNamespace(), key.toString());
+    }
+
     @Test
     void theTableHasTheTwentyFourVanillaTheTwoOfThaumcraftAndTheFourteenOfTheAddOn() {
         List<ResourceKey<Enchantment>> all = EnchantmentManager.enchantments();

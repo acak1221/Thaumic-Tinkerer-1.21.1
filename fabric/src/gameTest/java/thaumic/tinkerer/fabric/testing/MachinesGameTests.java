@@ -77,6 +77,11 @@ public final class MachinesGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia(GameTestHelper test) {
+        MachinesRuntimeChecks.theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void aKineticAttractorPullsItemsAndPushesThemAway(GameTestHelper test) {
         MachinesRuntimeChecks.aKineticAttractorPullsItemsAndPushesThemAway(test);
     }
@@ -109,6 +114,11 @@ public final class MachinesGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theMobMagnetMenuSetsTheAdultFlagWithItsButtons(GameTestHelper test) {
         MachinesRuntimeChecks.theMobMagnetMenuSetsTheAdultFlagWithItsButtons(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound(GameTestHelper test) {
+        MachinesRuntimeChecks.aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
@@ -234,6 +244,11 @@ public final class MachinesGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void everyMobOfTheTableHasAnEntityType(GameTestHelper test) {
         MachinesRuntimeChecks.everyMobOfTheTableHasAnEntityType(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theInfusedSoulAspectsGlintByTheirItemsDefaultComponent(GameTestHelper test) {
+        MachinesRuntimeChecks.theInfusedSoulAspectsGlintByTheirItemsDefaultComponent(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

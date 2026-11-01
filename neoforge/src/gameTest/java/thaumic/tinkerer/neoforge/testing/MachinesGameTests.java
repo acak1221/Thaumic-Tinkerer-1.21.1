@@ -86,6 +86,11 @@ public final class MachinesGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia(GameTestHelper test) {
+        MachinesRuntimeChecks.theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void aKineticAttractorPullsItemsAndPushesThemAway(GameTestHelper test) {
         MachinesRuntimeChecks.aKineticAttractorPullsItemsAndPushesThemAway(test);
     }
@@ -118,6 +123,11 @@ public final class MachinesGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void theMobMagnetMenuSetsTheAdultFlagWithItsButtons(GameTestHelper test) {
         MachinesRuntimeChecks.theMobMagnetMenuSetsTheAdultFlagWithItsButtons(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound(GameTestHelper test) {
+        MachinesRuntimeChecks.aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
@@ -243,6 +253,11 @@ public final class MachinesGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void everyMobOfTheTableHasAnEntityType(GameTestHelper test) {
         MachinesRuntimeChecks.everyMobOfTheTableHasAnEntityType(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theInfusedSoulAspectsGlintByTheirItemsDefaultComponent(GameTestHelper test) {
+        MachinesRuntimeChecks.theInfusedSoulAspectsGlintByTheirItemsDefaultComponent(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

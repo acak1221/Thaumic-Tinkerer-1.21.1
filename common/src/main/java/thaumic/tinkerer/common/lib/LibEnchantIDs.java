@@ -17,27 +17,13 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.enchantment.Enchantment;
 
 /**
- * The identities of the fourteen enchantments. 1.7.10 configured numeric ids (220 to 225 and 166 to 173); 1.21.1 has
- * none, an enchantment is identified by its registry key and its level is read from the item's enchantments component
- * through that key. The field names are the 1.7.10 ones.
+ * The identity of an enchantment of the add-on. 1.7.10 configured numeric ids here (220 to 225 and 166 to 173); 1.21.1 has
+ * none, an enchantment is identified by its registry key and its level is read from the item's enchantments component through
+ * that key. The fourteen keys are the constants of {@link thaumic.tinkerer.common.enchantment.ModEnchantments}; this class
+ * makes them from the registry paths of {@link LibEnchantNames} (it used to hold a second copy of the fourteen under the
+ * 1.7.10 names of the numeric ids, {@code idAscentBoost} and so on).
  */
 public final class LibEnchantIDs {
-
-    public static final ResourceKey<Enchantment> idAscentBoost = key(LibEnchantNames.ASCENT_BOOST);
-    public static final ResourceKey<Enchantment> idSlowFall = key(LibEnchantNames.SLOW_FALL);
-    public static final ResourceKey<Enchantment> idAutoSmelt = key(LibEnchantNames.AUTO_SMELT);
-    public static final ResourceKey<Enchantment> idDesintegrate = key(LibEnchantNames.DESINTEGRATE);
-    public static final ResourceKey<Enchantment> idQuickDraw = key(LibEnchantNames.QUICK_DRAW);
-    public static final ResourceKey<Enchantment> idVampirism = key(LibEnchantNames.VAMPIRISM);
-
-    public static final ResourceKey<Enchantment> dispersedStrikes = key(LibEnchantNames.dispersedStrikes);
-    public static final ResourceKey<Enchantment> shatter = key(LibEnchantNames.shatter);
-    public static final ResourceKey<Enchantment> finalStrike = key(LibEnchantNames.finalStrike);
-    public static final ResourceKey<Enchantment> focusedStrike = key(LibEnchantNames.focusedStrike);
-    public static final ResourceKey<Enchantment> pounce = key(LibEnchantNames.pounce);
-    public static final ResourceKey<Enchantment> shockwave = key(LibEnchantNames.shockwave);
-    public static final ResourceKey<Enchantment> tunnel = key(LibEnchantNames.tunnel);
-    public static final ResourceKey<Enchantment> valiance = key(LibEnchantNames.valiance);
 
     private LibEnchantIDs() {}
 

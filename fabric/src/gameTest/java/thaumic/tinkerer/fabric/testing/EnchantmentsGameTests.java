@@ -182,6 +182,11 @@ public final class EnchantmentsGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void anItemOfTheConventionShearsTagIsShearsForTheDiggingEnchantments(GameTestHelper test) {
+        EnchantmentsRuntimeChecks.anItemOfTheConventionShearsTagIsShearsForTheDiggingEnchantments(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theAnvilChargesOnePerLevelForABookAndNothingForAToolOfTheEnchantmentsOfTheAddOn(GameTestHelper test) {
         EnchantmentsRuntimeChecks.theAnvilChargesOnePerLevelForABookAndNothingForAToolOfTheEnchantmentsOfTheAddOn(test);
     }

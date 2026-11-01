@@ -27,9 +27,9 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchCategories;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.TileAspectAnalyzer;
@@ -136,7 +136,7 @@ public class BlockAspectAnalyzer extends BaseEntityBlock implements ITTinkererRe
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ASPECT_ANALYZER, LibResearch.KEY_ASPECT_ANALYZER,
                 new ItemStack(this), new AspectList().add(Aspect.ORDER, 1).add(Aspect.ENTROPY, 1), "TWT", "WMW", "TWT",
-                'W', ItemApi.getBlock("blockWoodenDevice", 6), 'M', ItemApi.getItem("itemThaumometer", 0), 'T',
-                ItemApi.getItem("itemResource", 2));
+                'W', ItemsTC.stack("greatwood_planks"), 'M', ItemsTC.stack("thaumometer"), 'T',
+                ItemsTC.stack("thaumium_ingot"));
     }
 }

@@ -26,9 +26,9 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.TileSummon;
 import thaumic.tinkerer.common.content.Machines;
@@ -98,6 +98,6 @@ public class BlockSummon extends BaseEntityBlock implements ITTinkererRegisterab
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_SUMMON + "0", LibResearch.KEY_SUMMON,
                 new ItemStack(this), new AspectList().add(Aspect.ORDER, 50).add(Aspect.ENTROPY, 50), "WWW", "SSS", 'S',
-                new ItemStack(Items.STONE), 'W', ItemApi.getBlock("blockCosmeticSolid", 1));
+                new ItemStack(Items.STONE), 'W', ItemsTC.stack("obsidian_tile"));
     }
 }

@@ -41,10 +41,10 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import thaumcraft.api.IRepairable;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.core.helper.EnumMobAspect;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
@@ -177,7 +177,7 @@ public class ItemBloodSword extends SwordItem implements IRepairable, ITTinkerer
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_BLOOD_SWORD, new ItemStack(this), 6,
                 new AspectList().add(Aspect.HUNGER, 20).add(Aspect.DARKNESS, 5).add(Aspect.SOUL, 10).add(Aspect.MAN, 6),
-                ItemApi.getItem("itemSwordThaumium", 0), new ItemStack(Items.ROTTEN_FLESH),
+                ItemsTC.stack("thaumium_sword"), new ItemStack(Items.ROTTEN_FLESH),
                 new ItemStack(Items.PORKCHOP), new ItemStack(Items.BEEF), new ItemStack(Items.BONE),
                 new ItemStack(Items.DIAMOND), new ItemStack(Items.GHAST_TEAR));
     }

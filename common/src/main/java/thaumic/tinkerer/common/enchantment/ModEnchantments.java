@@ -24,6 +24,7 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import org.jetbrains.annotations.Nullable;
 import thaumic.tinkerer.common.lib.LibEnchantIDs;
+import thaumic.tinkerer.common.lib.LibEnchantNames;
 
 /**
  * The fourteen enchantments of Thaumic Tinkerer.
@@ -37,20 +38,20 @@ import thaumic.tinkerer.common.lib.LibEnchantIDs;
  */
 public final class ModEnchantments {
 
-    public static final ResourceKey<Enchantment> ascentBoost = LibEnchantIDs.idAscentBoost;
-    public static final ResourceKey<Enchantment> slowFall = LibEnchantIDs.idSlowFall;
-    public static final ResourceKey<Enchantment> autoSmelt = LibEnchantIDs.idAutoSmelt;
-    public static final ResourceKey<Enchantment> desintegrate = LibEnchantIDs.idDesintegrate;
-    public static final ResourceKey<Enchantment> quickDraw = LibEnchantIDs.idQuickDraw;
-    public static final ResourceKey<Enchantment> vampirism = LibEnchantIDs.idVampirism;
-    public static final ResourceKey<Enchantment> dispersedStrikes = LibEnchantIDs.dispersedStrikes;
-    public static final ResourceKey<Enchantment> finalStrike = LibEnchantIDs.finalStrike;
-    public static final ResourceKey<Enchantment> focusedStrike = LibEnchantIDs.focusedStrike;
-    public static final ResourceKey<Enchantment> pounce = LibEnchantIDs.pounce;
-    public static final ResourceKey<Enchantment> shatter = LibEnchantIDs.shatter;
-    public static final ResourceKey<Enchantment> shockwave = LibEnchantIDs.shockwave;
-    public static final ResourceKey<Enchantment> tunnel = LibEnchantIDs.tunnel;
-    public static final ResourceKey<Enchantment> valiance = LibEnchantIDs.valiance;
+    public static final ResourceKey<Enchantment> ascentBoost = LibEnchantIDs.key(LibEnchantNames.ASCENT_BOOST);
+    public static final ResourceKey<Enchantment> slowFall = LibEnchantIDs.key(LibEnchantNames.SLOW_FALL);
+    public static final ResourceKey<Enchantment> autoSmelt = LibEnchantIDs.key(LibEnchantNames.AUTO_SMELT);
+    public static final ResourceKey<Enchantment> desintegrate = LibEnchantIDs.key(LibEnchantNames.DESINTEGRATE);
+    public static final ResourceKey<Enchantment> quickDraw = LibEnchantIDs.key(LibEnchantNames.QUICK_DRAW);
+    public static final ResourceKey<Enchantment> vampirism = LibEnchantIDs.key(LibEnchantNames.VAMPIRISM);
+    public static final ResourceKey<Enchantment> dispersedStrikes = LibEnchantIDs.key(LibEnchantNames.dispersedStrikes);
+    public static final ResourceKey<Enchantment> finalStrike = LibEnchantIDs.key(LibEnchantNames.finalStrike);
+    public static final ResourceKey<Enchantment> focusedStrike = LibEnchantIDs.key(LibEnchantNames.focusedStrike);
+    public static final ResourceKey<Enchantment> pounce = LibEnchantIDs.key(LibEnchantNames.pounce);
+    public static final ResourceKey<Enchantment> shatter = LibEnchantIDs.key(LibEnchantNames.shatter);
+    public static final ResourceKey<Enchantment> shockwave = LibEnchantIDs.key(LibEnchantNames.shockwave);
+    public static final ResourceKey<Enchantment> tunnel = LibEnchantIDs.key(LibEnchantNames.tunnel);
+    public static final ResourceKey<Enchantment> valiance = LibEnchantIDs.key(LibEnchantNames.valiance);
 
     /** The four slots of {@code player.inventory.armorInventory}. */
     private static final EquipmentSlot[] ARMOR = { EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST,

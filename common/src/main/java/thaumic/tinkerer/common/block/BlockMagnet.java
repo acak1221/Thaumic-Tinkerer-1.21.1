@@ -43,10 +43,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.level.BlockGetter;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.WandHelper;
 import thaumic.tinkerer.common.block.tile.TileMagnet;
@@ -131,7 +131,7 @@ public class BlockMagnet extends BaseEntityBlock implements ITTinkererRegisterab
                         return new ContainerMobMagnet(id, inventory, mobMagnet);
                     }
                 });
-                level.playSound(null, pos, key(), SoundSource.BLOCKS, 1F, 0.5F);
+                level.playSound(null, pos, wandSound(), SoundSource.BLOCKS, 1F, 0.5F);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }
@@ -148,9 +148,12 @@ public class BlockMagnet extends BaseEntityBlock implements ITTinkererRegisterab
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
-    /** {@code thaumcraft:key}, the sound of a wand opening a device. */
-    private static SoundEvent key() {
-        return SoundEvent.createVariableRangeEvent(ThaumcraftSoundIds.KEY);
+    /**
+     * {@code thaumcraft:key}, the sound of a wand opening a device: Thaumcraft's registered event (the port used to make a new,
+     * unregistered {@code SoundEvent} of the id on every click, which the sound packet then carried in full instead of by id).
+     */
+    private static SoundEvent wandSound() {
+        return ThaumcraftSoundIds.event(ThaumcraftSoundIds.KEY);
     }
 
     @Override
@@ -199,8 +202,8 @@ public class BlockMagnet extends BaseEntityBlock implements ITTinkererRegisterab
                         new AspectList().add(Aspect.AIR, 20).add(Aspect.ORDER, 5).add(Aspect.EARTH, 15)
                                 .add(Aspect.ENTROPY, 5),
                         " I ", "SIs", "WFW", 'I', new ItemStack(Items.IRON_INGOT), 's',
-                        ItemApi.getItem("itemShard", 3), 'S', ItemApi.getItem("itemShard", 0), 'W',
-                        ItemApi.getBlock("blockMagicalLog", 0), 'F', TTRegistry.stack(LibItemNames.FOCUS_TELEKINESIS)),
+                        ItemsTC.stack("earth_shard"), 'S', ItemsTC.stack("air_shard"), 'W',
+                        ItemsTC.stack("greatwood_log"), 'F', TTRegistry.stack(LibItemNames.FOCUS_TELEKINESIS)),
                 new ThaumicTinkererArcaneRecipe(LibResearch.KEY_MOB_MAGNET, LibResearch.KEY_MAGNETS,
                         TTRegistry.stack(LibBlockNames.MOB_MAGNET),
                         new AspectList().add(Aspect.AIR, 20).add(Aspect.ORDER, 5).add(Aspect.EARTH, 15)
@@ -208,7 +211,7 @@ public class BlockMagnet extends BaseEntityBlock implements ITTinkererRegisterab
                         " G ", "SGs", "WFW",
                         // 1.7.10: RecipeHelper.oreDictOrStack(gold ingot, "ingotCopper"): the copper ingot when the ore
                         // dictionary has one, which is always true in 1.21.1 (vanilla copper).
-                        'G', "ingotCopper", 's', ItemApi.getItem("itemShard", 3), 'S', ItemApi.getItem("itemShard", 0),
-                        'W', ItemApi.getBlock("blockMagicalLog", 0), 'F', TTRegistry.stack(LibItemNames.FOCUS_TELEKINESIS)));
+                        'G', "ingotCopper", 's', ItemsTC.stack("earth_shard"), 'S', ItemsTC.stack("air_shard"),
+                        'W', ItemsTC.stack("greatwood_log"), 'F', TTRegistry.stack(LibItemNames.FOCUS_TELEKINESIS)));
     }
 }

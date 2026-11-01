@@ -16,13 +16,10 @@ public final class LibBlockNames {
 
     public static final String DARK_QUARTZ = "dark_quartz";
     public static final String DARK_QUARTZ_SLAB = "dark_quartz_slab";
-    public static final String DARK_QUARTZ_SLAB_FULL = "dark_quartz_slab_full";
     public static final String DARK_QUARTZ_STAIRS = "dark_quartz_stairs";
     public static final String TRAVEL_SLAB = "travel_slab";
-    public static final String TRAVEL_SLAB_FULL = "travel_slab_full";
     public static final String TRAVEL_STAIRS = "travel_stairs";
     public static final String WARD_SLAB = "ward_slab";
-    public static final String WARD_SLAB_FULL = "ward_slab_full";
     public static final String INTERFACE = "interface";
     public static final String GASEOUS_LIGHT = "gaseous_light";
     public static final String GASEOUS_SHADOW = "gaseous_shadow";

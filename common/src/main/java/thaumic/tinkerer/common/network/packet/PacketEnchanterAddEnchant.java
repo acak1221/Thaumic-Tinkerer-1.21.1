@@ -23,7 +23,6 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -36,18 +35,19 @@ import thaumic.tinkerer.common.lib.LibMisc;
 /**
  * Client to server: the player chose an enchantment of the Osmotic Enchanter, or changed its level. The level is 0 for
  * "add", -1 for "remove" and the new level otherwise (1.7.10 {@code PacketEnchanterAddEnchant}, which sent the numeric id of
- * the enchantment; the port sends its registry id).
+ * the enchantment; the port sends its registry key, {@link ResourceKey#streamCodec}: on the wire the id of the enchantment, so a
+ * key the server does not know arrives as one and is refused by {@link #apply}, not by the decoder).
  */
-public record PacketEnchanterAddEnchant(BlockPos pos, ResourceLocation enchant, int level) implements CustomPacketPayload {
+public record PacketEnchanterAddEnchant(BlockPos pos, ResourceKey<Enchantment> enchant, int level) implements CustomPacketPayload {
     public static final Type<PacketEnchanterAddEnchant> TYPE = new Type<>(LibMisc.id("enchanter_add_enchant"));
     public static final StreamCodec<RegistryFriendlyByteBuf, PacketEnchanterAddEnchant> STREAM_CODEC = StreamCodec.composite(
             BlockPos.STREAM_CODEC, PacketEnchanterAddEnchant::pos,
-            ResourceLocation.STREAM_CODEC, PacketEnchanterAddEnchant::enchant,
+            ResourceKey.streamCodec(Registries.ENCHANTMENT), PacketEnchanterAddEnchant::enchant,
             ByteBufCodecs.VAR_INT, PacketEnchanterAddEnchant::level,
             PacketEnchanterAddEnchant::new);
 
     public PacketEnchanterAddEnchant(TileEnchanter tile, ResourceKey<Enchantment> enchant, int level) {
-        this(tile.getBlockPos(), enchant.location(), level);
+        this(tile.getBlockPos(), enchant, level);
     }
 
     @Override
@@ -71,27 +71,26 @@ public record PacketEnchanterAddEnchant(BlockPos pos, ResourceLocation enchant, 
         TileEnchanter tile = PacketTile.resolve(sender, pos, TileEnchanter.class, ContainerEnchanter.class, menu -> menu.enchanter);
         if (tile == null || tile.working) return false;
 
-        ResourceKey<Enchantment> key = ResourceKey.create(Registries.ENCHANTMENT, enchant);
-        if (!EnchantmentManager.isKnown(key)) return false;
+        if (!EnchantmentManager.isKnown(enchant)) return false;
 
         if (level == -1) {
-            int index = tile.enchantments.indexOf(key);
+            int index = tile.enchantments.indexOf(enchant);
             if (index != -1) {
                 tile.removeLevel(index);
                 tile.removeEnchant(index);
             }
         } else {
-            if (!tile.enchantments.contains(key)) {
+            if (!tile.enchantments.contains(enchant)) {
                 ItemStack tool = tile.getItem(TileEnchanter.SLOT_TOOL);
                 // The rule of the screen's buttons, so that nothing is added that the screen would not offer.
-                if (EnchantmentManager.canOffer(sender, tool, key, tile.enchantments)) {
-                    tile.appendEnchant(key);
+                if (EnchantmentManager.canOffer(sender, tool, enchant, tile.enchantments)) {
+                    tile.appendEnchant(enchant);
                     tile.appendLevel(1);
                 }
             } else {
-                Optional<Holder.Reference<Enchantment>> holder = ModEnchantments.holder(sender.level().registryAccess(), key);
+                Optional<Holder.Reference<Enchantment>> holder = ModEnchantments.holder(sender.level().registryAccess(), enchant);
                 int maxLevel = holder.map(reference -> reference.value().getMaxLevel()).orElse(1);
-                tile.setLevel(tile.enchantments.indexOf(key), Math.max(1, Math.min(maxLevel, level)));
+                tile.setLevel(tile.enchantments.indexOf(enchant), Math.max(1, Math.min(maxLevel, level)));
             }
         }
         tile.updateAspectList();

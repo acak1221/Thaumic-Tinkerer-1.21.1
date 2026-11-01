@@ -340,18 +340,19 @@ public class TileEnchanter extends BlockEntity implements WorldlyContainer, Exte
     private static BlockState totemState;
     private static Block nitorBlock;
 
-    /** {@code blockCosmeticSolid:0}: the Obsidian Totem of Thaumcraft. */
+    /**
+     * The Obsidian Totem of Thaumcraft: {@code cosmetic_solid_tough[variant=0]}, the 1.7.10 {@code blockCosmeticSolid:0}. The API
+     * has no name for that state of the block yet, so it is still looked up by the legacy field and metadata
+     * ({@code docs/api-requests/Enchantments.md} section 7).
+     */
     private static synchronized BlockState obsidianTotem() {
         if (totemState == null) totemState = BlocksTC.state("blockCosmeticSolid", 0);
         return totemState;
     }
 
-    /** {@code blockAiry:1}: the Nitor that is placed in the world. */
+    /** {@code thaumcraft:nitor}, the Nitor that is placed in the world (1.7.10 {@code blockAiry:1}). */
     private static synchronized Block nitor() {
-        if (nitorBlock == null) {
-            BlockState state = BlocksTC.state("blockAiry", 1);
-            if (state != null) nitorBlock = state.getBlock();
-        }
+        if (nitorBlock == null) nitorBlock = BlocksTC.get("nitor");
         return nitorBlock;
     }
 

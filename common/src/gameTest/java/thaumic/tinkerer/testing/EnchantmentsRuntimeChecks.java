@@ -21,6 +21,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.EnchantmentTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
@@ -44,11 +45,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftApiHelper;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.blocks.BlocksTC;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchCategories;
 import thaumcraft.api.research.ResearchItem;
 import thaumcraft.api.wands.WandCap;
@@ -154,7 +155,7 @@ public final class EnchantmentsRuntimeChecks {
 
     /** A wand of greatwood with a thaumium cap, every primal full. */
     private static ItemStack fullWand(GameTestHelper test) {
-        ItemStack wand = ItemApi.getItem("itemWandCasting", 0);
+        ItemStack wand = ItemsTC.stack("wand");
         test.assertTrue(WandHelper.isWand(wand), "a wand can be made");
         WandHelper.setRod(wand, WandRod.byTag("greatwood"));
         WandHelper.setCap(wand, WandCap.byTag("thaumium"));
@@ -167,8 +168,8 @@ public final class EnchantmentsRuntimeChecks {
 
     /** Six columns of two Obsidian Totems under a Nitor around the enchanter (inside the 8 by 8 area of the test). */
     private static void pillars(GameTestHelper test, int[][] columns) {
-        BlockState totem = BlocksTC.state("blockCosmeticSolid", 0);
-        BlockState nitor = BlocksTC.state("blockAiry", 1);
+        BlockState totem = BlocksTC.state("blockCosmeticSolid", 0); // cosmetic_solid_tough[variant=0]: the API names no such state
+        BlockState nitor = BlocksTC.get("nitor").defaultBlockState();
         for (int[] column : columns) {
             test.setBlock(new BlockPos(column[0], 1, column[1]), totem);
             test.setBlock(new BlockPos(column[0], 2, column[1]), totem);
@@ -423,7 +424,7 @@ public final class EnchantmentsRuntimeChecks {
         TileEnchanter tile = enchanter(test);
         tile.setItem(0, new ItemStack(Items.DIAMOND_SWORD));
         // no menu open: the packet is refused
-        test.assertTrue(!new PacketEnchanterAddEnchant(tile.getBlockPos(), Vanilla.SHARPNESS.location(), 0).apply(player),
+        test.assertTrue(!new PacketEnchanterAddEnchant(tile.getBlockPos(), Vanilla.SHARPNESS, 0).apply(player),
                 "without the menu open");
         test.assertTrue(tile.enchantments.isEmpty(), "nothing chosen");
         test.assertTrue(!new PacketEnchanterStartWorking(tile.getBlockPos()).apply(player), "and nothing started");
@@ -1444,6 +1445,45 @@ public final class EnchantmentsRuntimeChecks {
 
     private static boolean offers(GameTestHelper test, ItemStack stack, ResourceKey<Enchantment> key) {
         return EnchantmentManager.canApply(test.getLevel().registryAccess(), stack, key, List.of());
+    }
+
+    /**
+     * Efficiency, Fortune and Silk Touch are refused on shears: a {@code ShearsItem}, or an item of the convention tag
+     * {@code #c:tools/shear}, which both loaders fill (the vanilla shears are in it). The check lists a diamond pickaxe in the tag
+     * for one moment (the item tags are bound again around three questions, within one tick of the server): while it is listed,
+     * the Enchanter treats it as shears; Unbreaking, which 1.7.10 gave to anything that wore out, still goes on it.
+     */
+    public static void anItemOfTheConventionShearsTagIsShearsForTheDiggingEnchantments(GameTestHelper test) {
+        test.assertTrue(new ItemStack(Items.SHEARS).is(EnchantmentManager.SHEARS), "the loader lists the vanilla shears in #c:tools/shear");
+        ItemStack pick = new ItemStack(Items.DIAMOND_PICKAXE);
+        test.assertTrue(!pick.is(EnchantmentManager.SHEARS) && offers(test, pick, Vanilla.EFFICIENCY), "Efficiency goes on a pickaxe");
+
+        Registry<Item> items = BuiltInRegistries.ITEM;
+        java.util.Map<TagKey<Item>, List<Holder<Item>>> bound = new java.util.HashMap<>();
+        items.getTags().forEach(pair -> bound.put(pair.getFirst(), pair.getSecond().stream().toList()));
+        java.util.Map<TagKey<Item>, List<Holder<Item>>> withPick = new java.util.HashMap<>(bound);
+        List<Holder<Item>> shears = new java.util.ArrayList<>(bound.getOrDefault(EnchantmentManager.SHEARS, List.of()));
+        shears.add(Items.DIAMOND_PICKAXE.builtInRegistryHolder());
+        withPick.put(EnchantmentManager.SHEARS, shears);
+        boolean listed;
+        List<ResourceKey<Enchantment>> offered = new java.util.ArrayList<>();
+        boolean unbreaking;
+        items.bindTags(withPick);
+        try {
+            listed = pick.is(EnchantmentManager.SHEARS);
+            for (ResourceKey<Enchantment> digger : List.of(Vanilla.EFFICIENCY, Vanilla.FORTUNE, Vanilla.SILK_TOUCH)) {
+                if (offers(test, pick, digger)) offered.add(digger);
+            }
+            unbreaking = offers(test, pick, Vanilla.UNBREAKING);
+        } finally {
+            items.bindTags(bound);
+        }
+        test.assertTrue(listed, "the pickaxe was in #c:tools/shear for the check");
+        test.assertTrue(offered.isEmpty(), "Efficiency, Fortune and Silk Touch were refused while it was listed: " + offered);
+        test.assertTrue(unbreaking, "Unbreaking was not");
+        test.assertTrue(!pick.is(EnchantmentManager.SHEARS) && offers(test, pick, Vanilla.EFFICIENCY),
+                "out of the tag again, it is a pickaxe");
+        test.succeed();
     }
 
     /**

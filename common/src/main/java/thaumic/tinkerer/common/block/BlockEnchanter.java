@@ -35,9 +35,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.TileEnchanter;
 import thaumic.tinkerer.common.content.Enchantments;
@@ -136,8 +136,8 @@ public class BlockEnchanter extends BaseEntityBlock implements ITTinkererRegiste
     public ThaumicTinkererRecipe getRecipeItem() {
         // 5 Obsidian Tiles (blockCosmeticSolid:1), 2 Thaumium Ingots (itemResource:2) and the Spellbinding Cloth around the
         // vanilla enchanting table.
-        ItemStack obsidianTile = ItemApi.getBlock("blockCosmeticSolid", 1);
-        ItemStack thaumiumIngot = ItemApi.getItem("itemResource", 2);
+        ItemStack obsidianTile = ItemsTC.stack("obsidian_tile");
+        ItemStack thaumiumIngot = ItemsTC.stack("thaumium_ingot");
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_ENCHANTER, new ItemStack(this), 15,
                 new AspectList().add(Aspect.MAGIC, 50).add(Aspect.ENERGY, 20).add(Aspect.ELDRITCH, 20)
                         .add(Aspect.VOID, 20).add(Aspect.MIND, 10),

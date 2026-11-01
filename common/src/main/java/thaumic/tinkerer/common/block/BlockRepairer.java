@@ -34,9 +34,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.TileRepairer;
 import thaumic.tinkerer.common.content.Machines;
@@ -171,9 +171,9 @@ public class BlockRepairer extends BaseEntityBlock implements ITTinkererRegister
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_REPAIRER, new ItemStack(this), 8,
                 new AspectList().add(Aspect.TOOL, 15).add(Aspect.CRAFT, 20).add(Aspect.ORDER, 10).add(Aspect.MAGIC, 15),
-                ItemApi.getBlock("blockCosmeticSolid", 4), new ItemStack(Items.IRON_INGOT),
+                ItemsTC.stack("thaumium_block"), new ItemStack(Items.IRON_INGOT),
                 new ItemStack(Items.GOLD_INGOT), new ItemStack(Items.DIAMOND), new ItemStack(Items.COBBLESTONE),
-                new ItemStack(Items.OAK_PLANKS), new ItemStack(Items.LEATHER), ItemApi.getItem("itemResource", 7),
-                ItemApi.getItem("itemResource", 2));
+                new ItemStack(Items.OAK_PLANKS), new ItemStack(Items.LEATHER), ItemsTC.stack("enchanted_fabric"),
+                ItemsTC.stack("thaumium_ingot"));
     }
 }
