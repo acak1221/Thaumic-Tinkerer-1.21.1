@@ -52,6 +52,8 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.blocks.BlocksTC;
 import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchCategories;
+import thaumcraft.api.research.ResearchItem;
+import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.block.BlockAnimationTablet;
 import thaumic.tinkerer.common.block.BlockRPlacer;
@@ -177,6 +179,44 @@ public final class TileBlocksRuntimeChecks {
             test.assertTrue(TTRecipes.has(recipe), "recipe " + recipe);
         }
         test.assertTrue(ThaumicTinkerer.failures().isEmpty(), "registration failures: " + ThaumicTinkerer.failures());
+        test.succeed();
+    }
+
+    /**
+     * The research of the Levitational Locomotive ends with its multiblock diagram (the original's
+     * {@code ResearchHelper.LeviationaryHelp}): a {@code COMPOUND_CRAFTING} page whose list is the one Thaumcraft's wand
+     * construct pages have, {@code [vis, width, height, depth, blocks]}: no vis, five blocks by one by one, and the blocks
+     * relay, empty space, locomotive, empty space, relay. The text, infusion and arcane pages before it are unchanged.
+     */
+    public static void locomotiveResearchShowsItsDiagram(GameTestHelper test) {
+        ResearchItem research = ResearchCategories.getResearch(LibResearch.KEY_MOBILIZER);
+        test.assertTrue(research != null, "the locomotive research is registered");
+        ResearchPage[] pages = research.getPages();
+        test.assertTrue(pages != null && pages.length == 4, "four pages: " + (pages == null ? null : pages.length));
+        test.assertTrue(pages[0].type == ResearchPage.PageType.TEXT, "page 1 is the text: " + pages[0].type);
+        test.assertTrue(pages[1].type == ResearchPage.PageType.INFUSION_CRAFTING, "page 2 is the infusion: " + pages[1].type);
+        test.assertTrue(pages[2].type == ResearchPage.PageType.ARCANE_CRAFTING, "page 3 is the relay's recipe: " + pages[2].type);
+        ResearchPage diagram = pages[3];
+        test.assertTrue(diagram.type == ResearchPage.PageType.COMPOUND_CRAFTING, "page 4 is the diagram: " + diagram.type);
+        test.assertTrue(diagram.recipe instanceof java.util.List<?> shape && shape.size() == 5, "the list of five: " + diagram.recipe);
+        java.util.List<?> list = (java.util.List<?>) diagram.recipe;
+        test.assertTrue(list.get(0) instanceof thaumcraft.api.aspects.AspectList aspects && aspects.size() == 0, "no vis: " + list.get(0));
+        test.assertTrue(Integer.valueOf(5).equals(list.get(1)) && Integer.valueOf(1).equals(list.get(2)) && Integer.valueOf(1).equals(list.get(3)),
+                "five wide, one high, one deep: " + list.subList(1, 4));
+        test.assertTrue(list.get(4) instanceof java.util.List<?> cells && cells.size() == 5, "five blocks: " + list.get(4));
+        java.util.List<?> blocks = (java.util.List<?>) list.get(4);
+        net.minecraft.world.item.Item relay = TileBlocks.relayBlock().asItem(), locomotive = TileBlocks.mobilizerBlock().asItem();
+        test.assertTrue(relay != Items.AIR && locomotive != Items.AIR, "the relay and the locomotive have items");
+        net.minecraft.world.item.Item[] expected = { relay, null, locomotive, null, relay };
+        for (int i = 0; i < 5; i++) {
+            test.assertTrue(blocks.get(i) instanceof ItemStack, "cell " + i + " is a stack: " + blocks.get(i));
+            ItemStack stack = (ItemStack) blocks.get(i);
+            if (expected[i] == null) {
+                test.assertTrue(stack.isEmpty(), "cell " + i + " is the empty space between the devices: " + stack);
+            } else {
+                test.assertTrue(stack.is(expected[i]) && stack.getCount() == 1, "cell " + i + " is " + expected[i] + ": " + stack);
+            }
+        }
         test.succeed();
     }
 

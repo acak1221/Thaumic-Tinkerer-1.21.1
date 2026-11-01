@@ -108,6 +108,15 @@ final class PortFixtures {
         for (Research r : added.values()) pool.add(new PoolEntry(r.key(), r.category(), false, false));
         Map<String, PortResearch> research = new LinkedHashMap<>();
         for (Research r : expected) research.put(r.key(), portResearch(r, pool, lastByName));
+        // The Levitational Locomotive shows the original's unused multiblock diagram as a fourth page (TileBlocks.md 2.3).
+        PortResearch locomotive = research.get("LEVITATOR_LOCOMOTIVE");
+        if (locomotive != null) {
+            List<PortPage> pages = new ArrayList<>(locomotive.pages());
+            pages.add(new PortPage("compound", null, List.of()));
+            research.put(locomotive.key(), new PortResearch(locomotive.key(), locomotive.category(), locomotive.aspects(), locomotive.column(),
+                    locomotive.row(), locomotive.complexity(), locomotive.parents(), locomotive.parentsHidden(), locomotive.siblings(),
+                    locomotive.flags(), locomotive.warp(), pages, locomotive.icon(), locomotive.iconAspect()));
+        }
         for (Research r : added.values()) {
             PortResearch p = portResearch(r, pool, lastByName);
             if (r.key().equals("REMOTE_PLACER")) {
