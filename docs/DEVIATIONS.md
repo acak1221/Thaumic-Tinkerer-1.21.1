@@ -133,8 +133,13 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **read** i
   Blood Magic, AE2 (`IMovableTile`, passenger handling), Tinkers' Construct repair, GregTech accelerator text, EnderIO planter,
   Electro-Magic Tools hoe, IC2 EU of the Transvector Interface (its RF is forwarded as each loader's energy, `TileBlocks.md` section 2.5).
 * **Computer peripherals** (ComputerCraft / OpenComputers) of the Animation Tablet, Transvector Interface, Golem Connector, Aspectalyzer and
-  the attractors. The method tables exist as plain Java; nothing registers them. The `peripherals` research category exists and is empty. The ComputerCraft turtle
-  tool of the Fume Dissipator (`FumeTool`, `FumePeripheral`) is not ported either (`SimpleBlocks.md` section 3).
+  the attractors, and of Thaumcraft's Arcane Bore, Arcane Ear, Brain in a Jar and Deconstruction Table: **not ported, by the owner's decision of 2026-11-01.**
+  CC: Tweaked, the maintained continuation of ComputerCraft, exists for 1.21.1 on both loaders, and a port of every peripheral and of the turtle upgrade was
+  written and tested (CC: Tweaked 1.116.1; real Lua on real computers in the GameTests of both loaders); it is kept, not merged, on the branch
+  `computercraft` (35c2fad) in case the decision changes. OpenComputers has no 1.21.1 release. The method tables exist as plain Java; nothing registers them.
+  The `peripherals` research category exists and is empty. The ComputerCraft turtle tool of the Fume Dissipator (`FumeTool`, `FumePeripheral`) is not ported
+  either (`SimpleBlocks.md` section 3). The Golem Connector stays registered (`TileBlocks.md` 2.4) without a use of its own; the golem and machine API that
+  Thaumcraft 4 Reload gained for the port (`thaumcraft.api.golems`, `thaumcraft.api.machines`, A11 and A12 of `API_GAPS.md`) is not used by the add-on.
 * **The Kami foci's `canApplyUpgrade` override** (the original answered true for every upgrade) is dropped; the base rule applies (`Foci.md` section 10, `KamiGear.md` section 9).
 * **Gregtech hazard protection and the Thaumic Boots mod** (`IHazardProtector`, `IBoots`) for the Ichorcloth armour: neither mod exists for 1.21.1 (`KamiGear.md` section 3).
 * **Golem API** (Golem Connector data): API request A11/A12 is deferred; the Golem Connector block exists without golem data.

@@ -155,6 +155,9 @@ SimpleBlocks, Enchantments).
 
 ### 1.11 Peripherals (ComputerCraft / OpenComputers)
 
+Not ported by the owner's decision of 2026-11-01 (`DEVIATIONS.md` section 4); the port written for CC: Tweaked is kept on the branch `computercraft`.
+A11 and A12 below exist in Thaumcraft 4 Reload since its commit 316897d, unused by the add-on.
+
 | Peripheral | Verdict | Route / proposal |
 |---|---|---|
 | Generic `IAspectContainer` and `IEssentiaTransport` peripherals (`PeripheralAspectContainer`, `PeripheralEssentiaTransport`) | COVERED | pure API interfaces; implement with CC:Tweaked (`PeripheralLookup` on Fabric, capability on NeoForge). |
