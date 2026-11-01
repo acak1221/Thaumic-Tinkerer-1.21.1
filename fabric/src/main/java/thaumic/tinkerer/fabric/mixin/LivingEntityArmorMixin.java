@@ -22,9 +22,9 @@ import thaumic.tinkerer.common.hooks.TinkererEvents;
  * {@code CombatRules.getDamageAfterAbsorb}. The method is wrapped: the original runs untouched (the wear included), then the
  * listeners see how much it took off ({@code damage - result}) and may replace that amount. The damage handed back is the
  * game's own value when nobody changed anything (no float rounding of the round trip, and no NaN for an infinite blow) and
- * {@code damage - absorbed} when a listener did: that rule is {@link TinkererEvents#damageAfterArmorAbsorb}. The tests of the
- * source (a source that bypasses armour) and of the amount live in {@link TinkererEvents#postLivingArmorAbsorb}, the one rule for
- * both loaders.
+ * {@code damage - absorbed} when a listener did: that rule is {@link TinkererEvents#damageAfterArmorAbsorb}. The test of the
+ * amount lives in {@link TinkererEvents#postLivingArmorAbsorb}, the one rule for both loaders; every source is posted, one that
+ * bypasses armour with nothing absorbed by the game (the original returns the damage untouched for it).
  *
  * <p><b>Priority 900, below the default, on purpose.</b> Thaumcraft wraps the same method ({@code LivingEntityMagicWardMixin}: the
  * priority-1 pass of the original's {@code ISpecialArmor}, the worn wards, comes off the damage first, then the ordinary armour sees

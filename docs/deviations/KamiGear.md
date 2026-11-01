@@ -75,50 +75,81 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
 ## 3. Armour
 
 - **Absorption: `ISpecialArmor` is the loader event `LIVING_ARMOR_ABSORB`** (request K1 of `docs/api-requests/KamiGear.md`, answered;
-  the event itself is described in section 13). Every piece takes `0.0425 x its armour points` of a blow, flat (by the material's
-  array 3/8/6/3 indexed by armour type: helmet and boots 12.75%, chestplate 34%, leggings 25.5%, the set 85%; see the open point on the
-  index below), and never wears. `IchorAbsorption.onLivingArmorAbsorb`, registered by
-  `KamiArmorHandler.register()`, **replaces** the amount that the 1.21.1 formula takes off: for a wearer of the pieces it is
-  `damage x (the summed ratios of the worn Ichorcloth pieces)` plus the share that the 1.21.1 formula gives to the armour that is **not**
-  Ichorcloth (the entity's armour value less the points of the Ichorcloth pieces, with its toughness), never more than the blow. 1.7.10's
-  `ArmorProperties.ApplyArmor` added the ratios of all pieces of one priority (a plain `ItemArmor` gave `damageReduceAmount / 25`, 4% a
-  point, an `ISpecialArmor` what it returned) and took the sum off the blow; the sum is the same here, with the 1.21.1 formula standing in
-  for the 4% of the other armour. For an entity that wears no Ichorcloth the listener returns the amount it was given, so any other
-  armour is exactly vanilla's. Blow of 10 (checked by the GameTests): the full set lets 1.5 through where the formula alone, on the same
-  twenty armour points, lets 4.0; a blow of 40 lets 6.0 through, the formula alone 33.6; a helmet alone 8.725; chestplate and leggings
-  4.05; an Ichorcloth chestplate with iron helmet, leggings and boots (9 points, 1.6 of 10 under the formula) 5.0.
+  the event itself is described in section 13). For a **player**, every piece takes `0.0425 x its armour points` of a blow, flat, of **every** blow
+  (the sources that bypass armour included), and never wears; the points are those Forge 1.7.10 handed the original's `getProperties`: helmet 3,
+  **chestplate 6, leggings 8**, boots 3 (helmet and boots 12.75%, chestplate 25.5%, leggings 34%, the set 85%). Any **other wearer** has vanilla's armour
+  only. Each of the three rules is the original's effective behaviour, read in the sources of Forge and Minecraft 1.7.10 (the evidence is below;
+  until 2026-11-01 they were open points 1 to 3 of `docs/DEVIATIONS.md` section 6, and the port had chosen the chestplate 8, no reduction of
+  armour-bypassing damage and the same rule for every wearer). `IchorAbsorption.onLivingArmorAbsorb`, registered by `KamiArmorHandler.register()`,
+  **replaces** the amount that the 1.21.1 formula takes off: for a player who wears pieces it is `damage x (the summed ratios of the worn Ichorcloth
+  pieces)` plus the share that the 1.21.1 formula gives to the armour that is **not** Ichorcloth (the player's armour value less the points of the
+  Ichorcloth pieces, with its toughness; nothing for a source that bypasses armour, as vanilla), never more than the blow. 1.7.10's
+  `ArmorProperties.ApplyArmor` added the ratios of all pieces of one priority (a plain `ItemArmor` gave `damageReduceAmount / 25`, 4% a point, an
+  `ISpecialArmor` what it returned) and took the sum off the blow; the sum is the same here, with the 1.21.1 formula standing in for the 4% of the other
+  armour. For an entity that wears no Ichorcloth the listener returns the amount it was given, so any other armour is exactly vanilla's. Blow of 10
+  (checked by the GameTests): the full set lets 1.5 through where the formula alone, on the same twenty armour points, lets 4.0; a blow of 40 lets 6.0
+  through, the formula alone 33.6; a helmet alone 8.725; chestplate and leggings 4.05; an Ichorcloth chestplate with iron helmet, leggings and boots (9
+  points, 1.6 of 10 under the formula) 5.85; starvation, magic, a fall or drowning of 10 lets 1.5 through, a hit of the void (4) 0.6.
+  - **Evidence (read 2026-11-01).** Forge 1.7.10 is the branch `1.7.10` of MinecraftForge (commit `9274e4fe`); Minecraft 1.7.10 is an MCP decompile,
+    <https://github.com/Kittycat7J/MCP-1.7.10-Docker/tree/bb5cf03e3571c9e06f7801425f38598a45e1ee49/src/minecraft/net/minecraft> (`MCP` below).
+    - `ISpecialArmor.ArmorProperties.ApplyArmor(entity, inventory, source, damage)`
+      (<https://github.com/MinecraftForge/MinecraftForge/blob/1.7.10/src/main/java/net/minecraftforge/common/ISpecialArmor.java>, lines 93-175) loops `x`
+      over the inventory it is given and calls `getProperties(entity, stack, source, damage / 25D, x)` for every `ISpecialArmor` stack (line 112) **without
+      a look at the source**; only a plain `ItemArmor` is skipped for an unblockable source (line 114: `stack.getItem() instanceof ItemArmor &&
+      !source.isUnblockable()`).
+    - Its only caller is the patch of `EntityPlayer.damageEntity`
+      (<https://github.com/MinecraftForge/MinecraftForge/blob/1.7.10/patches/minecraft/net/minecraft/entity/player/EntityPlayer.java.patch>, line 321:
+      `ApplyArmor(this, field_71071_by.field_70460_b, ...)`, `inventory.armorInventory`, in place of vanilla's `func_70655_b`, `applyArmorCalculations`); a
+      search of the whole branch finds no other. The patch of `EntityLivingBase.damageEntity` (`.../entity/EntityLivingBase.java.patch`, line 151) keeps
+      `func_70655_b`, which for a mob is vanilla's `applyArmorCalculations` (MCP `entity/EntityLivingBase.java` lines 813-822: nothing for
+      `isUnblockable()`, otherwise `(25 - getTotalArmorValue()) / 25`) over `getTotalArmorValue` (lines 795-809: the sum of `damageReduceAmount` of
+      every `ItemArmor` in `getLastActiveItems()`). So a mob in the pieces had plain armour.
+    - `ForgeHooks.getTotalArmorValue(player)` (`.../common/ForgeHooks.java`, lines 190-206), the armour bar of `GuiIngameForge.renderArmor` (line 269),
+      calls `getArmorDisplay(player, stack, x)` with the same index `x` in `armorInventory`.
+    - `ItemArmor.ArmorMaterial.getDamageReductionAmount(i)` returns `damageReductionAmountArray[i]` (MCP `item/ItemArmor.java` lines 212-214), and the
+      `ItemArmor` constructor stores `getDamageReductionAmount(armorType)` as `damageReduceAmount` (lines 61-65): the array `{3, 8, 6, 3}` is laid out by
+      armour type (helmet 0, chestplate 1, leggings 2, boots 3; `EMPTY_SLOT_NAMES`, line 24). `ContainerPlayer` puts the piece of armour type `t` into
+      inventory slot `getSizeInventory() - 1 - t` (MCP `inventory/ContainerPlayer.java` lines 33-42), which is `armorInventory[3 - t]`
+      (`InventoryPlayer.armorItemInSlot`, lines 440-442). So the original's `getProperties` and `getArmorDisplay` read the array at `3 - armorType`: the
+      chestplate at 2 (**6**), the leggings at 1 (**8**). The full set (20 points, 85%), a helmet alone and boots alone are the same either way.
+  - **What the port does with it.** `KamiArmorMaterials.playerPoints(type)` is the array at `3 - armorType` (3/6/8/3) and is what the materials carry, so
+    the HUD (1.7.10 `getArmorDisplay`), the tooltip ("+6 Armor" on the chestplate) and `getDefense()` of a piece, from which the listener works out the
+    ratio, show and use a player's points. `KamiArmorMaterials.mobPoints(type)` is the array at the armour type (3/8/6/3), the `damageReduceAmount` of
+    vanilla's path. The JUnit test `theSlotForgeHandedTheArmourWasItsIndexInTheArmourInventory` derives both from a literal copy of Forge's loop.
   - Kept as the original had it: the awakened pieces absorb the same 85% whatever their own switches and the master switch say (`getProperties`
     looked at neither); a piece counts only in the slot it is made for; the pieces never wear. They have no durability (`UNBREAKABLE` is not
     needed: an `ArmorItem` made without `Properties.durability` cannot be damaged, so the game's own wear call `hurtArmor` does nothing to
     them while it still wears iron or diamond beside them; the GameTest shows both).
-  - **Open point: the index that 1.7.10 gave `getProperties` and `getArmorDisplay` (not verifiable here, not carried over).** The original reads
-    `getArmorMaterial().getDamageReductionAmount(slot)` from an array laid out by *armour type* (helmet 0, chestplate 1, leggings 2, boots 3: 3/8/6/3).
-    As far as I remember Forge 1.7.10 (not read: **there is no Forge 1.7.10 source or jar in this environment**), `ArmorProperties.ApplyArmor` and
-    `ForgeHooks.getTotalArmorValue` pass the index *in `armorInventory`* as `slot` (boots 0, leggings 1, chestplate 2, helmet 3, which is also the order the
-    original's own code uses: `getCurrentArmor(0)` for the boots, `getCurrentArmor(3 - armorType)` for the others). If that is right, 1.7.10 gave the boots 3,
-    the leggings **8**, the chestplate **6** and the helmet 3 points, for the absorption and for the HUD alike: chestplate and leggings swapped, so a chestplate
-    alone took 25.5% and leggings alone 34%, the reverse of the numbers above. The full set (20 points, 85%), a helmet alone and boots alone are the same
-    either way; only partial sets (chestplate or leggings without the other) and the points the tooltip lists per piece differ. The port **keeps the
-    intended assignment** (chestplate 8, leggings 6, as the material's array says): the swap looks like an oversight of the original, not a design, and it
-    cannot be proved from here. If it is shown to be right and wanted, swap `CHESTPLATE` and `LEGGINGS` in `KamiArmorMaterials.create` (the HUD, the tooltip
-    and the listener read the same numbers) and the 34% / 25.5% / 4.05 / 5.0 expectations of `KamiGearLogicTest` and of the GameTests.
-  - **Damage that bypasses armour** (`DamageTypeTags.BYPASSES_ARMOR`: starvation, drowning, magic, falling, the void...) is not reduced, and the
-    event is not posted for it. The original `getProperties` has no look at the source, and Forge's `ApplyArmor` asked `isUnblockable()`
-    only for plain `ItemArmor`; whether the player's damage path of Forge 1.7.10 called `ApplyArmor` at all for unblockable damage could not be
-    checked (**there is no Forge 1.7.10 source or jar in this environment**: what is said here about `ApplyArmor`, its ratio sum and its priorities is
-    from its documented behaviour and from how Thaumcraft's own port describes it, `thaumcraft.common.lib.MagicWard`), so the original may have
-    reduced those hits by 85% too. The port follows request K1 (no reduction); the one place to change if that is shown to be wrong is the
-    `BYPASSES_ARMOR` test in `TinkererEvents.postLivingArmorAbsorb`.
-  - **Mobs.** The event is posted for every living entity and the listener answers for any wearer of the pieces. Forge 1.7.10 consulted
-    `ISpecialArmor` from the player's damage path (to the best of my knowledge, not verified, see above); 1.21.1 lets mobs wear armour like
-    players, so a zombie in the set takes the 85% too (plus the vanilla share of its own base armour, 2 points).
-  - **The armour points and the toughness of the materials are a display only.** The materials `ichor` and `ichor_gem` keep the original's 3/8/6/3
-    armour points and enchantability 20: those are what 1.7.10's `getArmorDisplay` showed (twenty points, ten icons, for the set) and what the
-    1.21.1 HUD and the tooltip ("+8 Armor") show now. They **never stack** with the 85%, because the listener replaces the formula's amount instead of
-    adding to it: with twenty points on the HUD a blow of 10 leaves 1.5, not 4.0 (nor any sum of the two), and a blow of 40 leaves 6.0, not 33.6. The
-    **toughness of 5 per piece is gone** (it was the stand-in for the missing absorption; the tooltip listed an "Armor Toughness" the original never had, and it would have counted in
-    the share of any other armour worn with the pieces); the pieces have none, as in 1.7.10. Without a poster of
-    the event (a loader without the armour-step wrapper; Fabric and NeoForge both have it, section 13) the pieces are plain 3/8/6/3 armour: 60% of a blow of 10, 16% of a blow of 40.
+  - **Damage that bypasses armour is reduced for a player** (`ApplyArmor` asked the `ISpecialArmor` pieces for every source, above). The event is
+    therefore posted for every source (`TinkererEvents.postLivingArmorAbsorb` no longer tests `bypasses_armor`; vanilla's own step takes nothing of such a
+    hit, so the listener sees 0 absorbed), and `IchorAbsorption` takes the Ichorcloth share of it, with no share for the other armour (1.7.10 skipped the
+    plain `ItemArmor` for it). Every damage type of 1.21.1's tag `minecraft:bypasses_armor` and the three Thaumcraft adds to it, against what 1.7.10 did
+    (MCP `util/DamageSource.java` lines 11-24 and 57-58 for the flags; a hit reached `EntityPlayer.damageEntity`, and so `ApplyArmor`, through
+    `attackEntityFrom`, MCP `entity/player/EntityPlayer.java` lines 687-728 and `entity/EntityLivingBase.java` lines 580-614):
+
+    | 1.21.1 damage type | 1.7.10 source (unblockable) | 1.7.10, a player in the full set | Here |
+    |---|---|---|---|
+    | `on_fire`, `in_wall`, `drown`, `generic`, `wither`, `starve`, `fall`, `magic`, `indirect_magic` | `onFire`, `inWall`, `drown`, `generic`, `wither`, `starve`, `fall` (also the ender pearl's 5), `magic` (instant damage, poison), `causeIndirectMagicDamage` (a thrown potion) | 85% taken off | 85% taken off |
+    | `out_of_world` (the void, 4 a hit) | `outOfWorld` (`EntityLivingBase.kill()`, 4 a hit, line 928) | 85% taken off (0.6 a hit) | the same |
+    | `generic_kill` (`/kill`, `Float.MAX_VALUE`) | `/kill` hurt with `outOfWorld` and `Float.MAX_VALUE` (MCP `command/CommandKill.java` line 24) | 85% taken off, the rest (15% of `Float.MAX_VALUE`) still kills | the same (JUnit `aKillStillKillsAWearerOfTheFullSet`) |
+    | `thaumcraft:taint`, `thaumcraft:dissolve`, `thaumcraft:indirect_magic` | Thaumcraft 4.2.3.5 `DamageSourceThaumcraft.taint` and `dissolve` (`setDamageBypassesArmor()`, read in the bytecode), the golem orb's indirect magic | 85% taken off | 85% taken off |
+    | `cramming`, `fly_into_wall`, `dragon_breath`, `freeze`, `stalagmite`, `sonic_boom`, `outside_border` | none (Minecraft 1.8 to 1.19) | (did not exist) | 85% taken off: **decision** by the rule of `ApplyArmor`, which asked the pieces for every source that reached the player's armour step (the owner may revert it per type with a tag test in `IchorAbsorption.onLivingArmorAbsorb`) |
+
+    A mob in the pieces gets nothing against these sources, as vanilla. The GameTest `ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes` hurts
+    a player in the set with starvation, magic, a fall, drowning, the void and the source of `/kill`.
+  - **Mobs: vanilla armour only** (the patch of `EntityLivingBase.damageEntity` kept `applyArmorCalculations`, above). For a wearer that is not a player
+    the listener leaves vanilla's amount alone, except that it works the 1.21.1 formula out with the 1.7.10 points of that path: a chestplate counts 8 and
+    leggings 6 (`damageReduceAmount`), where the material's attributes give 6 and 8; the full set has 20 either way. A zombie in the full set (its own 2
+    points and 20) is armoured as vanilla armour of 22 points (3.2 of a blow of 10 get through); a zombie in the chestplate alone as 2 + 8 points (8.0
+    of 10). The pieces never wore on a mob in 1.7.10 either (`EntityLivingBase.damageArmor` is empty, MCP line 811). Fake players are players.
+  - **The armour points and the toughness of the materials.** The materials `ichor` and `ichor_gem` carry a player's points (3/6/8/3) and
+    enchantability 20: what 1.7.10's `getArmorDisplay` showed (twenty points, ten icons, for the set) and what the 1.21.1 HUD and the tooltip ("+6 Armor" on
+    the chestplate) show now; 1.7.10's tooltip listed no armour (armour was no attribute then). For a player they **never stack** with the 85%, because the
+    listener replaces the formula's amount instead of adding to it: with twenty points on the HUD a blow of 10 leaves 1.5, not 4.0 (nor any sum of the two),
+    and a blow of 40 leaves 6.0, not 33.6. The **toughness of 5 per piece is gone** (it was the stand-in for the missing absorption; the tooltip listed an
+    "Armor Toughness" the original never had, and it would have counted in the share of any other armour worn with the pieces); the pieces have none, as in
+    1.7.10. Without a poster of the event (a loader without the armour-step wrapper; Fabric and NeoForge both have it, section 13) the pieces are plain
+    3/6/8/3 armour: 60% of a blow of 10, 16% of a blow of 40.
   - **Order with Thaumcraft's own ward pass.** Thaumcraft's `LivingEntityMagicWardMixin` wraps the same method for the priority-1 pieces of the
     original's `ISpecialArmor` (the void robes and the Fortress armour: their share comes off the damage first, then the ordinary armour sees what
     is left), which is the order of `ApplyArmor`. The add-on's `LivingEntityArmorMixin` has priority 900 so that it is applied first and is the inner
@@ -461,7 +492,7 @@ are registered once, from `KamiArmorHandler.register()` (which `KamiGear.registe
 |---|---|---|---|
 | `LIVING_JUMP` | `ItemGemBoots.onLivingJump` | a player in the switched-on Gem Boots: vertical motion + 0.3 | both (changes the motion both compute, by one rule) |
 | `LIVING_FALL` | `ItemGemBoots.onLivingFall` | a player in the Gem Boots (switched on or off): fall distance 0 | both (changes the distance both compute; no world effect) |
-| `LIVING_ARMOR_ABSORB` | `IchorAbsorption.onLivingArmorAbsorb` | a wearer of Ichorcloth pieces: the armour takes `0.0425 x points` per piece plus the other armour's share | server (the armour step runs only there) |
+| `LIVING_ARMOR_ABSORB` | `IchorAbsorption.onLivingArmorAbsorb` | a player in Ichorcloth pieces: the armour takes `0.0425 x points` per piece (3/6/8/3) of every source plus the other armour's share; any other wearer: vanilla's armour with the 1.7.10 points of vanilla's path (3/8/6/3) | server (the armour step runs only there) |
 
 **The group needs a poster of each of these three events on every loader** (`TinkererEvents.postLivingJump`, `postLivingFall`, `postLivingArmorAbsorb`); the first two are in
 `docs/HOOKS.md` sections 5 and 6, the third is new and described here. Fabric has them (mixins), and so has NeoForge since 2026-10-31 (`NeoForgeEventPosters` for the jump
@@ -482,8 +513,9 @@ invulnerability frames; `absorbed` is vanilla's amount, or what the listeners be
 
 *The rules* (all in `TinkererEvents.postLivingArmorAbsorb`, the one place both loaders share):
 
-* **Not posted** for a source of the tag `bypasses_armor` (the game does not reduce such a hit by armour) nor for a damage that is not positive and finite. The same for a
-  hit that never reaches the armour step (cancelled by `LIVING_DAMAGE`, refused by the invulnerability frames, an invulnerable entity).
+* **Posted for every source**, the tag `bypasses_armor` included (the game's own step takes nothing of such a hit, so `absorbed` is 0; Forge 1.7.10's `ApplyArmor`
+  asked every `ISpecialArmor` piece whatever the source, section 3). **Not posted** for a damage that is not positive and finite, nor for a hit that never reaches the
+  armour step (cancelled by `LIVING_DAMAGE`, refused by the invulnerability frames, an invulnerable entity).
 * The result is held between `0` and `damage` (a listener cannot make the armour heal or take more than the blow); a NaN is ignored (the value stays what it was).
 * Listeners run in the order they were registered and each sees the last one's result in `absorbed`: a listener that *replaces* the value (Ichorcloth) overrides the ones
   before it, one that *adjusts* it (a bonus on top) composes. With nobody listening, or with a result equal to `absorbed`, the game gets its own value back **bit for bit**
@@ -509,29 +541,32 @@ runs the added functions in insertion order (each gets the container and the red
 The handler that the plan proposed for the NeoForge module (which handles `LivingIncomingDamageEvent` for `LIVING_DAMAGE`) would have added on every event:
 `event.addReductionModifier(DamageContainer.Reduction.ARMOR, (container, reduction) -> TinkererEvents.postLivingArmorAbsorb(event.getEntity(), container.getSource(), container.getNewDamage(), reduction))`.
 `container.getNewDamage()` is the damage that comes to the armour step at that moment. **Note**: the Javadoc of `DamageContainer#addModifier` says that a function does not run when vanilla's reduction is not triggered,
-but the patched `actuallyHurt` calls `setReduction(ARMOR, ...)` unconditionally (also for a source that bypasses armour, with a reduction of 0), so the functions do run for such sources; the poster's `bypasses_armor` test is therefore needed on NeoForge too, and it
-is in the poster. NeoForge also has `ArmorHurtEvent` (the wear of the pieces) and `LivingShieldBlockEvent`; neither changes the amount, so neither is used.
+but the patched `actuallyHurt` calls `setReduction(ARMOR, ...)` unconditionally (also for a source that bypasses armour, with a reduction of 0), so the functions do run for such sources (the
+poster had a `bypasses_armor` test then; since 2026-11-01 every source is posted on purpose, section 3). NeoForge also has `ArmorHurtEvent` (the wear of the pieces) and `LivingShieldBlockEvent`; neither changes the amount, so neither is used.
 
-*Tests*: `TinkererEventsTest` (chain order, a lone listener is clamped like a chain, NaN, bypass source, no damage, bit-for-bit pass-through, and the step: `armorStepGivesBackTheGamesOwnFloatUnlessAListenerChangedTheAmount`,
+*Tests*: `TinkererEventsTest` (chain order, a lone listener is clamped like a chain, NaN, a bypassing source is posted, no damage, bit-for-bit pass-through, and the step: `armorStepGivesBackTheGamesOwnFloatUnlessAListenerChangedTheAmount`,
 `armorStepOfABlowThatIsNotFiniteIsTheGamesOwnValueNotNaN`), `HooksRuntimeChecks.livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow` (a real `hurt` of a real pig: the health after a blow whose
 round trip differs from vanilla's float in the last place is vanilla's exactly, with and without a listener that returns what it is given; an infinite blow kills, it leaves no NaN health and is not posted) and
 `HooksRuntimeChecks.livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff`
-(a pig in 20 armour points and a player: the listener sees the damage after `LIVING_DAMAGE` and vanilla's amount, can leave it alone, halve the blow, push past the blow or below nothing, answer NaN; chains; starvation and magic are not
-posted and not reduced; a bystander is left as vanilla; a pig in a Fortress chestplate is posted after Thaumcraft's ward pass). The group's own checks: section 14.
+(a pig in 20 armour points and a player: the listener sees the damage after `LIVING_DAMAGE` and vanilla's amount, can leave it alone, halve the blow, push past the blow or below nothing, answer NaN; chains; starvation and magic are
+posted with nothing absorbed, stay whole when the listener leaves them alone and lose half to one that takes half; a bystander is left as vanilla; a pig in a Fortress chestplate is posted after Thaumcraft's ward pass). The group's own checks: section 14.
 
 ## 14. Tests of the loader-event part
 
-* JUnit, `KamiGearLogicTest`: the ratio of each piece, 85% for the set of any blow, partial sets, the sum with other armour and its cap at the blow.
+* JUnit, `KamiGearLogicTest`: the ratio of each piece, 85% for the set of any blow, partial sets, the sum with other armour and its cap at the blow, the points of each piece from a
+  literal copy of Forge 1.7.10's loop over `armorInventory` (3/6/8/3 for a player, 3/8/6/3 for any other wearer: `theSlotForgeHandedTheArmourWasItsIndexInTheArmourInventory`), and that
+  15% of `Float.MAX_VALUE` still kills (`aKillStillKillsAWearerOfTheFullSet`).
 * GameTests, `KamiGearRuntimeChecks` (real pieces on mock players, a new player for every hit because the Soul Hearts of the KamiWorld group keep the 1.7.10 invulnerability
   frames of each server player by game tick, and a wait of 65 ticks for the spawn invulnerability of a new player):
   * `gemBootsRaiseTheJumpOnlyWhileWornAndSwitchedOn`: 0.42 against 0.72; piece off, master switch off, plain Ichorcloth boots, Gem Boots on the head, a pig in the boots, a bare player: 0.42; on
     honey (0.21) the 0.3 comes on top (0.51); the jump strength attribute is untouched; the jump key's own path (`setJumping` and a tick) carries the wearer 0.72 up.
-  * `gemBootsLandWithoutFallDamageWhateverTheSwitchesSay`: a landing of 10 blocks costs a bare player 7, the wearer 0 (piece off, master off too), plain boots and Gem Boots on the head 7; a listener registered
+  * `gemBootsLandWithoutFallDamageWhateverTheSwitchesSay`: a landing of 10 blocks costs a bare player 7, the wearer 0 (piece off, master off too), Gem Boots on the head 7 and plain Ichorcloth boots 7 less their 12.75% (a fall bypasses armour, but the Ichorcloth's share applies to it, section 3); a listener registered
     after the boots' sees distance 0.
   * `gemBootsAndAscentBoostLeggingsComposeTheirJumps`: Gem Boots with diamond leggings enchanted Ascent Boost I (1.08) and III (1.80), the boots first as in 1.7.10 (section 3); Ascent Boost
     alone 0.63; sneaking, only the boots (0.72); boots switched off, Ascent Boost alone (1.05); no leggings, the boots alone.
-  * `ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone`, `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone` (with a diamond chestplate, toughness 2, beside Ichorcloth leggings:
-    5.85 of 10, where the same set without the toughness would let 6.25 through),
-    `ichorclothPiecesShowTheOriginalArmourAndNeverWear`: the numbers of section 3 (blows of 1, 10, 40; starvation, magic, fall, drowning; both sets; switches; partial, mixed, iron, wrong slot, bare, a zombie; another
-    listener sees 8.5 and its extra point composes; the pieces keep damage 0 while iron wears; 3/8/6/3 and no toughness in the attributes).
+  * `ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes`, `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone` (with a diamond chestplate, toughness 2, beside Ichorcloth leggings:
+    5.0 of 10, where the same set without the toughness would let 5.4 through),
+    `ichorclothPiecesShowTheOriginalArmourAndNeverWear`: the numbers of section 3 (blows of 1, 10, 40; starvation, magic, fall, drowning, the void and the source of `/kill`, 85% off each; both sets; switches;
+    partial, mixed, iron, wrong slot, bare; a zombie in the set with vanilla armour of 22 points and nothing against magic, a zombie in the chestplate alone armoured as 2 + 8 points; another
+    listener sees 8.5 and its extra point composes; the pieces keep damage 0 while iron wears; 3/6/8/3 and no toughness in the attributes).
 * Not run: the same events on a client (the jump of the local player and the landing sound), and a real flight and landing of a Gem Boots wearer (the landing is driven through `Block.fallOn`, the game's own handler, not through a fall).

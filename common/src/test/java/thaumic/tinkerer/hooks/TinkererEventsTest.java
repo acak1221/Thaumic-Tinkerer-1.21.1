@@ -208,7 +208,9 @@ class TinkererEventsTest {
     }
 
     @Test
-    void armorAbsorbIsNotPostedForArmourBypassingSourcesOrBlowsOfNoDamage() {
+    void armorAbsorbIsPostedForArmourBypassingSourcesButNotForBlowsOfNoDamage() {
+        // Forge 1.7.10's ApplyArmor skipped a plain ItemArmor for an unblockable source and asked every ISpecialArmor piece whatever
+        // the source, so the event is posted for a source of bypasses_armor too (vanilla's formula took nothing of it: absorbed 0)
         int[] calls = { 0 };
         TinkererEvents.LivingArmorAbsorb everything = (victim, source, damage, absorbed) -> {
             calls[0]++;
@@ -216,16 +218,25 @@ class TinkererEventsTest {
         };
         TinkererEvents.LIVING_ARMOR_ABSORB.register(everything);
         try {
-            assertEquals(0F, TinkererEvents.postLivingArmorAbsorb(null, source(true), 10F, 0F), 0F, "starvation, magic, the void: armour does not reduce them");
             assertEquals(0F, TinkererEvents.postLivingArmorAbsorb(null, source(false), 0F, 0F), 0F, "no damage");
             assertEquals(0F, TinkererEvents.postLivingArmorAbsorb(null, source(false), -2F, 0F), 0F, "negative damage");
             assertEquals(0F, TinkererEvents.postLivingArmorAbsorb(null, source(false), Float.NaN, 0F), 0F, "NaN damage");
             assertEquals(0F, TinkererEvents.postLivingArmorAbsorb(null, source(false), Float.POSITIVE_INFINITY, 0F), 0F, "infinite damage");
             assertEquals(0, calls[0], "none of them reached the listener");
             assertEquals(10F, TinkererEvents.postLivingArmorAbsorb(null, source(false), 10F, 0F), 0F, "a plain blow does");
-            assertEquals(1, calls[0]);
+            assertEquals(10F, TinkererEvents.postLivingArmorAbsorb(null, source(true), 10F, 0F), 0F,
+                    "and so does starvation, magic, the void: the listener may take a share the game's armour does not");
+            assertEquals(2, calls[0]);
         } finally {
             TinkererEvents.LIVING_ARMOR_ABSORB.unregister(everything);
+        }
+        TinkererEvents.LivingArmorAbsorb leaveAlone = (victim, source, damage, absorbed) -> absorbed;
+        TinkererEvents.LIVING_ARMOR_ABSORB.register(leaveAlone);
+        try {
+            assertEquals(0F, TinkererEvents.postLivingArmorAbsorb(null, source(true), 10F, 0F), 0F,
+                    "a listener that leaves it alone leaves a bypassing source unreduced");
+        } finally {
+            TinkererEvents.LIVING_ARMOR_ABSORB.unregister(leaveAlone);
         }
     }
 
@@ -285,12 +296,12 @@ class TinkererEventsTest {
                     "an infinite blow stays infinite");
             assertTrue(Float.isNaN(TinkererEvents.damageAfterArmorAbsorb(null, source(false), Float.NaN, Float.NaN)),
                     "a NaN blow is the game's own NaN");
-            assertEquals(10F, TinkererEvents.damageAfterArmorAbsorb(null, source(true), 10F, 10F), 0F,
-                    "a source that bypasses armour: the game's value");
             assertEquals(0F, TinkererEvents.damageAfterArmorAbsorb(null, source(false), 0F, 0F), 0F, "no damage");
             assertEquals(0, calls[0], "none of them was posted");
             assertEquals(0F, TinkererEvents.damageAfterArmorAbsorb(null, source(false), 10F, 4F), 0F, "a plain blow is (the listener takes it all)");
-            assertEquals(1, calls[0]);
+            assertEquals(0F, TinkererEvents.damageAfterArmorAbsorb(null, source(true), 10F, 10F), 0F,
+                    "so is a source that bypasses armour, which the game's step left whole");
+            assertEquals(2, calls[0]);
         } finally {
             TinkererEvents.LIVING_ARMOR_ABSORB.unregister(everything);
         }

@@ -475,8 +475,9 @@ public final class HooksRuntimeChecks {
      * The armour step of a hit on an armoured pig and on a player: the listener sees the damage that comes to the armour (after
      * {@code LIVING_DAMAGE}) and the amount vanilla's formula takes off, may leave it alone (vanilla's own value comes out), replace
      * it, push it past the blow or below nothing (held between 0 and the blow) or answer NaN (ignored); two listeners chain; a
-     * source that bypasses armour (starvation, magic) is not posted and not reduced; a bystander that the listener ignores is
-     * armoured as before.
+     * source that bypasses armour (starvation, magic) is posted with nothing absorbed, is left whole by a listener that changes
+     * nothing and can be reduced by one that takes a share (Forge 1.7.10's {@code ApplyArmor} asked an {@code ISpecialArmor} piece for
+     * every source); a bystander that the listener ignores is armoured as before.
      */
     public static void livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff(GameTestHelper test) {
         floor(test);
@@ -537,12 +538,14 @@ public final class HooksRuntimeChecks {
             mode[0] = 4;
             near(test, lost(pig, blow, 10F), left10, "NaN is ignored");
 
-            // a source that bypasses armour is not posted, and not reduced even by a listener that would take half
-            mode[0] = 1;
+            // a source that bypasses armour is posted with nothing absorbed by the game: left alone it stays whole, a listener that
+            // takes half takes half
+            mode[0] = 0;
             seen.clear();
-            near(test, lost(pig, level.damageSources().starve(), 10F), 10F, "starvation is not reduced by armour");
-            near(test, lost(pig, level.damageSources().magic(), 10F), 10F, "nor is magic");
-            test.assertTrue(seen.isEmpty(), "and the listener was not asked: " + seen.size());
+            near(test, lost(pig, level.damageSources().starve(), 10F), 10F, "starvation is not reduced by the game's armour");
+            test.assertTrue(seen.size() == 1 && (Float) seen.get(0)[2] == 0F, "but the listener was asked, with nothing absorbed: " + seen.size());
+            mode[0] = 1;
+            near(test, lost(pig, level.damageSources().magic(), 10F), 5F, "and a listener that takes half of magic takes half");
 
             // after LIVING_DAMAGE: the armour step gets what the first event left
             mode[0] = 0;
@@ -622,8 +625,9 @@ public final class HooksRuntimeChecks {
                 test.assertTrue(playerSaw.equals(List.of(unchanged)), "and the event was posted for it: " + playerSaw);
                 near(test, lost(replaced, cactus, 10F), 5F, "the listener replaces the share the player's armour takes");
                 test.assertTrue(playerSaw.equals(List.of(unchanged, replaced)), "posted for that player too: " + playerSaw);
-                near(test, lost(bypassed, level.damageSources().starve(), 10F), 10F, "starvation passes through a player's armour");
-                test.assertTrue(playerSaw.size() == 2, "without being posted: " + playerSaw);
+                near(test, lost(bypassed, level.damageSources().starve(), 10F), 5F,
+                        "starvation passes through a player's armour, and the listener that takes half of it takes half");
+                test.assertTrue(playerSaw.equals(List.of(unchanged, replaced, bypassed)), "posted for that player too: " + playerSaw);
             } finally {
                 TinkererEvents.LIVING_ARMOR_ABSORB.unregister(forPlayers);
             }

@@ -22,6 +22,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.Level;
@@ -38,6 +39,7 @@ import thaumic.tinkerer.common.item.kami.ItemPlacementMirror;
 import thaumic.tinkerer.common.item.kami.KamiComponents.PearlTarget;
 import thaumic.tinkerer.common.item.kami.KamiComponents.TalismanStore;
 import thaumic.tinkerer.common.item.kami.armor.IchorAbsorption;
+import thaumic.tinkerer.common.item.kami.armor.KamiArmorMaterials;
 import thaumic.tinkerer.common.item.kami.foci.ItemFocusXPDrain;
 import thaumic.tinkerer.common.item.kami.foci.ShadowBeam;
 import thaumic.tinkerer.common.item.kami.tool.IchorTier;
@@ -226,8 +228,8 @@ class KamiGearLogicTest {
     void everyIchorclothPieceTakesFourAndAQuarterPercentOfTheBlowPerArmourPoint() {
         assertEquals(0.0425, IchorAbsorption.RATIO_PER_POINT, 0.0);
         assertEquals(0.1275, IchorAbsorption.ratio(3), 1.0E-12, "helmet and boots, 3 points");
-        assertEquals(0.34, IchorAbsorption.ratio(8), 1.0E-12, "chestplate, 8 points");
-        assertEquals(0.255, IchorAbsorption.ratio(6), 1.0E-12, "leggings, 6 points");
+        assertEquals(0.255, IchorAbsorption.ratio(6), 1.0E-12, "a player's chestplate, 6 points");
+        assertEquals(0.34, IchorAbsorption.ratio(8), 1.0E-12, "a player's leggings, 8 points");
         double set = IchorAbsorption.ratio(3) + IchorAbsorption.ratio(8) + IchorAbsorption.ratio(6) + IchorAbsorption.ratio(3);
         assertEquals(0.85, set, 1.0E-12, "the four pieces take 85% together");
         assertEquals(0.0, IchorAbsorption.ratio(0), 0.0);
@@ -251,9 +253,48 @@ class KamiGearLogicTest {
     }
 
     @Test
+    void theSlotForgeHandedTheArmourWasItsIndexInTheArmourInventory() {
+        // a literal copy of what Forge 1.7.10 did: ArmorProperties.ApplyArmor and ForgeHooks.getTotalArmorValue loop x over
+        // InventoryPlayer.armorInventory and hand x to getProperties / getArmorDisplay, which read the material's array
+        // {3, 8, 6, 3} (laid out by armour type, ItemArmor.ArmorMaterial.getDamageReductionAmount) at x; ContainerPlayer puts the
+        // piece of armour type t into armorInventory[3 - t] (inventory slot 39 - t)
+        int[] array = { 3, 8, 6, 3 };
+        int[] byType = new int[4];
+        for (int x = 0; x < 4; x++) {
+            int armorType = 3 - x;
+            byType[armorType] = array[x];
+        }
+        ArmorItem.Type[] types = { ArmorItem.Type.HELMET, ArmorItem.Type.CHESTPLATE, ArmorItem.Type.LEGGINGS, ArmorItem.Type.BOOTS };
+        for (int t = 0; t < 4; t++) {
+            assertEquals(t, KamiArmorMaterials.armorType(types[t]));
+            assertEquals(byType[t], KamiArmorMaterials.playerPoints(types[t]), "a player's " + types[t] + ": getProperties' slot");
+            assertEquals(array[t], KamiArmorMaterials.mobPoints(types[t]), "any other wearer's " + types[t] + ": damageReduceAmount");
+        }
+        assertEquals(6, KamiArmorMaterials.playerPoints(ArmorItem.Type.CHESTPLATE), "a player's chestplate read index 2: 6 points, 25.5%");
+        assertEquals(8, KamiArmorMaterials.playerPoints(ArmorItem.Type.LEGGINGS), "and the leggings index 1: 8 points, 34%");
+        int player = 0;
+        int mob = 0;
+        for (ArmorItem.Type type : types) {
+            player += KamiArmorMaterials.playerPoints(type);
+            mob += KamiArmorMaterials.mobPoints(type);
+        }
+        assertEquals(20, player, "the full set has twenty points either way");
+        assertEquals(20, mob);
+    }
+
+    @Test
+    void aKillStillKillsAWearerOfTheFullSet() {
+        // /kill hurts with Float.MAX_VALUE (1.7.10: outOfWorld, 1.21.1: generic_kill); the set takes 85% of it as it did in 1.7.10,
+        // and what is left is still more than any health
+        float left = Float.MAX_VALUE - IchorAbsorption.absorbed(Float.MAX_VALUE, 0.85, 0F);
+        assertTrue(left > 1.0E37F && !Float.isInfinite(left) && !Float.isNaN(left), "15% of the blow goes through: " + left);
+    }
+
+    @Test
     void otherArmourAddsItsOwnShareAndTheSumNeverExceedsTheBlow() {
         // 1.7.10 ApplyArmor added the ratios of every piece of one priority
-        assertEquals(3.4F + 1.6F, IchorAbsorption.absorbed(10F, IchorAbsorption.ratio(8), 1.6F), 1.0E-5F, "an Ichorcloth chestplate and iron armour that takes 1.6");
+        assertEquals(2.55F + 1.6F, IchorAbsorption.absorbed(10F, IchorAbsorption.ratio(6), 1.6F), 1.0E-5F,
+                "a player's Ichorcloth chestplate (6 points) and iron armour that takes 1.6");
         assertEquals(10F, IchorAbsorption.absorbed(10F, 0.85, 3F), 0F, "85% and 30% is not 115% of the blow");
         assertEquals(1.6F, IchorAbsorption.absorbed(10F, 0.0, 1.6F), 0F, "without Ichorcloth the other armour's amount is returned as it is");
     }

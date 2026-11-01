@@ -39,11 +39,11 @@ The full description of the event is in `docs/HOOKS.md` section 14 (it was first
 that comes to the step and the amount vanilla's formula takes off, and **replaces that amount** (held between 0 and the blow). That is the power of
 `ArmorProperties.ApplyArmor` for a priority-0 piece: `IchorAbsorption` returns `damage x (0.0425 x points of the worn pieces)` plus the formula's share of the
 armour that is not Ichorcloth, so the full set takes 85% flat and a mixed set keeps the other armour's worth. Wear costs nothing because the pieces have no durability.
-The armour points of the materials (3/8/6/3, the original's `getArmorDisplay`) stay as the display of the HUD and the tooltip and do not stack with it; the stand-in toughness is removed.
+The armour points of the materials (3/6/8/3, the original's `getArmorDisplay` with the slot index Forge 1.7.10 handed it) stay as the display of the HUD and the tooltip and do not stack with it; the stand-in toughness is removed.
 
 *What the event does not give*: it is not `ISpecialArmor`. There is no per-piece `getProperties`/`damageArmor` call, no priority levels of its own (the one Thaumcraft pass of
 priority 1, the wards, runs before the event by the order of the two mixins), no `AbsorbMax`, and no hook on the wear of other armour. The mixed-set share is the 1.21.1 formula's, not
-the original's 4% a point. A hit that bypasses armour is not posted (the original's `getProperties` had no such look; whether Forge applied it to those hits could not be checked).
+the original's 4% a point. Since 2026-11-01 a hit that bypasses armour is posted too (with nothing absorbed by the game), because Forge 1.7.10's `ApplyArmor` asked the `ISpecialArmor` pieces for every source; the Ichorcloth answers for players only, as Forge asked from the player's damage path only (`docs/deviations/KamiGear.md` section 3).
 On NeoForge the poster is written (2026-10-31): the same armour-step wrapper as on Fabric, a NeoForge `LivingEntityArmorMixin`, and not the reduction modifier
 `LivingIncomingDamageEvent#addReductionModifier(Reduction.ARMOR, ...)` that this request first named, which would lose Thaumcraft's ward share (`docs/HOOKS.md` section 14,
 `docs/deviations/KamiGear.md` section 13); the group's GameTests passed on a NeoForge GameTest server.

@@ -112,13 +112,14 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
   hit gives no knockback and does not wake a sleeper (the sleeper from the 1.21.1 code, not run), and the damage factors of the Enchantments meet two bands of a second blow inside the frames where
   1.7.10 behaved differently, and a sweep of a sword is a hit for each entity it reaches (`Enchantments.md` section 2, `HOOKS.md` section 3).
 * **Armour absorption of Kami armour (`ISpecialArmor`) is ported through `LIVING_ARMOR_ABSORB`** (`KamiGear.md` sections 3 and 13, `HOOKS.md` section 14): every
-  Ichorcloth piece takes `0.0425 × its armour points` of a blow, flat, the set 85%, and the pieces never wear. It was listed as "not written" before the
+  Ichorcloth piece a player wears takes `0.0425 × its armour points` of a blow, flat, the set 85%, and the pieces never wear. It was listed as "not written" before the
   event existed. It is posted on both loaders (on NeoForge by the same wrapper of the armour step as on Fabric, not by a reduction function of NeoForge's damage
-  container, so that Thaumcraft's ward pass keeps its order; the KamiGear GameTests passed on NeoForge, `HOOKS.md` section 14). The caveats, all in `KamiGear.md` section 3:
-  * **UNVERIFIED: the slot index that 1.7.10 gave `getProperties` and `getArmorDisplay`.** The port keeps the intended assignment (chestplate 8, leggings 6);
-    if Forge passed the `armorInventory` index, a chestplate alone took 25.5% and leggings alone 34% (section 6, open point 1).
-  * Damage that bypasses armour (starvation, drowning, magic, falling, the void) is not reduced, and the event is not posted for it; whether 1.7.10 reduced such a
-    hit by 85% could not be checked (section 6, open point 2). Mobs that wear the pieces get the 85% too (section 6, open point 3).
+  container, so that Thaumcraft's ward pass keeps its order; the KamiGear GameTests passed on NeoForge, `HOOKS.md` section 14). As Forge 1.7.10 did it (read in its
+  source, section 6, points 1 to 3, and `KamiGear.md` section 3):
+  * the points are the index Forge handed `getProperties` and `getArmorDisplay`, the slot in `armorInventory`: helmet 3, **chestplate 6, leggings 8**, boots 3 (a
+    chestplate alone 25.5%, leggings alone 34%);
+  * damage that bypasses armour (starvation, drowning, magic, a fall, the void, `/kill`) loses the same 85% for a player, and the event is posted for every source;
+  * a mob in the pieces has vanilla armour only (Forge asked `ISpecialArmor` from the player's damage path only), with the points of vanilla's path (chestplate 8).
   * The armour points and the enchantability of the materials are a display (the HUD and the tooltip) and never stack with the 85%; the stand-in toughness of the
     first port is gone. Thaumcraft's own ward pass (priority 1) runs before the event (`LivingEntityArmorMixin` has priority 900).
 * **Gem Boots and Ascent Boost, Slow Fall, Shockwave**: see the decisions of section 2 (landing rule, order of the listeners).
@@ -204,16 +205,33 @@ record no result of their own server-side tests; Enchantments a statement withou
 
 None of these is a known defect. Each is something the port decided or assumed without being able to check it, or a question for the owner.
 
-1. **The slot index of `ISpecialArmor.getProperties` and `getArmorDisplay` (UNVERIFIED).** The original reads the material's array by armour type (helmet 0,
-   chestplate 1, leggings 2, boots 3: 3/8/6/3). As far as remembered, Forge 1.7.10 passed the index in `armorInventory` (boots 0 ... helmet 3), which would have
-   swapped chestplate and leggings (a chestplate alone 25.5%, leggings alone 34%; the full set, a helmet and boots are the same either way). No Forge 1.7.10
-   source or jar is on this machine. The port keeps the intended assignment; to swap, change `CHESTPLATE` and `LEGGINGS` in `KamiArmorMaterials.create` and the
-   expectations of `KamiGearLogicTest` and the GameTests (`KamiGear.md` section 3).
-2. **Did Forge 1.7.10 reduce armour-bypassing damage by 85%?** The original `getProperties` has no look at the damage source; whether Forge's damage path called
-   `ApplyArmor` for unblockable damage could not be checked. The port does not reduce it. The one place to change it is the `BYPASSES_ARMOR` test in
-   `TinkererEvents.postLivingArmorAbsorb`.
-3. **Did Forge 1.7.10 consult `ISpecialArmor` for mobs?** To the best of the authors' knowledge it did so from the player's damage path (not verified). The port
-   answers for every wearer, so a zombie in the set takes the 85% too.
+1. **The slot index of `ISpecialArmor.getProperties` and `getArmorDisplay`: resolved, ported as 1.7.10 had it.** *Evidence* (Forge branch `1.7.10`, commit
+   `9274e4fe`; Minecraft 1.7.10 from the MCP decompile <https://github.com/Kittycat7J/MCP-1.7.10-Docker/tree/bb5cf03e3571c9e06f7801425f38598a45e1ee49>):
+   `ArmorProperties.ApplyArmor` loops `x` over the inventory it is given and calls `getProperties(entity, stack, source, damage / 25D, x)`
+   (`src/main/java/net/minecraftforge/common/ISpecialArmor.java` lines 101-112), and its caller passes `inventory.armorInventory`
+   (`patches/minecraft/net/minecraft/entity/player/EntityPlayer.java.patch` line 321); `ForgeHooks.getTotalArmorValue` hands `getArmorDisplay` the same `x`
+   (`ForgeHooks.java` lines 190-206; the armour bar of `GuiIngameForge`, line 269); `ArmorMaterial.getDamageReductionAmount(i)` reads the array at `i`, which is laid
+   out by armour type (`net/minecraft/item/ItemArmor.java` lines 61-65 and 212-214), and `ContainerPlayer` puts armour type `t` into `armorInventory[3 - t]`
+   (`inventory/ContainerPlayer.java` lines 33-42). So a player's chestplate read 6 points (25.5%) and the leggings 8 (34%). *Decision*: the original's effective
+   numbers. *Code*: `KamiArmorMaterials.playerPoints` (the points of the materials: HUD, tooltip and absorption) and `mobPoints`; *tests*: JUnit
+   `KamiGearLogicTest.theSlotForgeHandedTheArmourWasItsIndexInTheArmourInventory`, the GameTests `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone`
+   and `ichorclothPiecesShowTheOriginalArmourAndNeverWear` (`KamiGear.md` section 3).
+2. **Armour-bypassing damage: resolved, Forge 1.7.10 reduced it by 85%, and so does the port.** *Evidence*: `ApplyArmor` asks every `ISpecialArmor` piece for
+   every source and skips only a plain `ItemArmor` for an unblockable one (`ISpecialArmor.java` lines 109-118); the player's `damageEntity` calls it for every hit
+   that `attackEntityFrom` lets through (`EntityPlayer.java.patch` lines 310-322), and `DamageSource` shows which sources were unblockable
+   (`net/minecraft/util/DamageSource.java` lines 11-24, 57-58). *Decision*: `TinkererEvents.postLivingArmorAbsorb` posts every source (vanilla's step takes
+   nothing of a bypassing one) and `IchorAbsorption` takes the Ichorcloth share of it for a player, with no share for the other armour. The table of every damage
+   type of the tag `bypasses_armor` (the void and the source of `/kill` included: 15% of `Float.MAX_VALUE` still kills) is in `KamiGear.md` section 3; the seven types
+   that 1.7.10 did not have (cramming, flying into a wall, dragon's breath, freezing, stalagmites, the sonic boom, the world border) are reduced by the same rule, a
+   decision the owner can revert per type in `IchorAbsorption.onLivingArmorAbsorb`. *Tests*: JUnit `TinkererEventsTest` and `KamiGearLogicTest.aKillStillKillsAWearerOfTheFullSet`;
+   GameTests `ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes` (starvation, magic, a fall, drowning, the void, the source of `/kill`) and
+   `livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff`.
+3. **Mobs: resolved, Forge 1.7.10 did not consult `ISpecialArmor` for them, and neither does the port.** *Evidence*: the only caller of `ApplyArmor` in the branch is
+   the `EntityPlayer` patch; the patch of `EntityLivingBase.damageEntity` keeps vanilla's `applyArmorCalculations` (`EntityLivingBase.java.patch` lines 145-152), which
+   reads `damageReduceAmount` (by armour type: chestplate 8, leggings 6) and nothing for an unblockable source (`net/minecraft/entity/EntityLivingBase.java` lines
+   795-822). *Decision*: for a wearer that is not a player `IchorAbsorption` leaves vanilla's armour, worked out with those points. *Test*: the zombies of
+   `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone` (the full set: vanilla armour of 22 points, nothing against magic; the chestplate alone:
+   2 + 8 points).
 4. **Recipes with no research.** The four crucible recipes `INFUSED_POTIONSPOT0..3` and the infusion recipe `INFUSED_INKWELL` have no research entry in 1.7.10
    and none in the port (`PARITY_REPORT.md` section 4), so Thaumcraft never unlocks them. The inkwell is documented (`BasicItems.md` section 6); the four
    potion recipes are documented nowhere else. Whether they are meant to be obtainable is the owner's decision, not a parity defect.

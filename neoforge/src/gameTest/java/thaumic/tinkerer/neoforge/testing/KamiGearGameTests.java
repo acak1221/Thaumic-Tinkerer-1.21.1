@@ -186,8 +186,8 @@ public final class KamiGearGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
-    public void ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone(GameTestHelper test) {
-        KamiGearRuntimeChecks.ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone(test);
+    public void ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes(GameTestHelper test) {
+        KamiGearRuntimeChecks.ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
