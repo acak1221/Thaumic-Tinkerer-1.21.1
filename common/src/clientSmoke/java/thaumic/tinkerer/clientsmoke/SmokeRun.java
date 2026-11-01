@@ -42,7 +42,7 @@ final class SmokeRun {
     /** The singleplayer run: the phases of the client smoke. */
     SmokeRun(Path outDir, Path sourceRoot) {
         this(outDir, sourceRoot, List.of(new ResourcesPhase(), new WorldPhase(), new BlockRowsPhase(), new ItemGridPhase(""),
-                new MenusPhase(""), new RendererPhase(), new HudPhase(), new IntegrationsPhase(), new CreativeTabPhase(),
+                new MenusPhase(""), new RendererPhase(), new CamoPhase(), new HudPhase(), new IntegrationsPhase(), new CreativeTabPhase(),
                 new LanguagePhase("ru_ru"), new ItemGridPhase("ru_ru"), new MenusPhase("ru_ru"), new FinishPhase()));
     }
 

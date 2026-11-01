@@ -28,6 +28,7 @@ import net.minecraft.world.level.material.MapColor;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.camo.CamoDeviceBlock;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorInterface;
 import thaumic.tinkerer.common.content.TileBlocks;
@@ -97,7 +98,7 @@ public class BlockTransvectorInterface extends CamoDeviceBlock implements ITTink
                 "LEL",
                 "BRB",
                 'B',
-                TileBlocks.legacyBlock("blockCosmeticSolid", 6),
+                ItemsTC.stack("arcane_stone"),
                 'E',
                 new ItemStack(Items.ENDER_PEARL),
                 'L',

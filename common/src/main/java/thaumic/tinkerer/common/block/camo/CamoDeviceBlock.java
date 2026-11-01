@@ -30,14 +30,15 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * A device that can be camouflaged: right-click it with a block to make it look like that block, with an empty hand to
  * make it look like itself again (1.7.10: {@code BlockCamo}).
  *
- * <p>How it is drawn: the {@code camo} state property is true while a camouflage is set. Then the block's own model is
- * not rendered ({@link RenderShape#INVISIBLE}) and the block entity renderer of the client draws the camouflage state
- * instead. This works on every loader without model-data APIs; the camouflage is rendered like a block entity, so it
- * gets no ambient occlusion and no tint from its position (see {@code docs/deviations/TileBlocks.md}).</p>
+ * <p>How it is drawn: the {@code camo} state property is true while a camouflage is set. The block is always drawn from its
+ * model in the chunk mesh ({@link RenderShape#MODEL}); its baked model is wrapped by the loader's client glue (Fabric:
+ * {@code FabricCamoModels}, NeoForge: {@code NeoForgeCamoModels}, see {@code CamouflageHooks}), which draws the model of the
+ * camouflage state while {@code camo=true}, with that state's face culling, tint and render type, and the device's own
+ * model otherwise (see {@code docs/deviations/TileBlocks.md}, 2.8).</p>
  *
- * <p>An invisible block must not hide the faces of its neighbours either: while {@code camo=true} the block occludes
- * nothing ({@link #getOcclusionShape}), whatever its {@code noOcclusion()} setting says, so a camouflage that is not a
- * solid cube (glass, ice, leaves) shows the faces behind it and not the void.</p>
+ * <p>The device's own model is not drawn while {@code camo=true}, so it must not hide the faces of its neighbours: while
+ * {@code camo=true} the block occludes nothing ({@link #getOcclusionShape}), whatever its {@code noOcclusion()} setting says,
+ * so a camouflage that is not a solid cube (glass, ice, leaves) shows the faces behind it and not the void.</p>
  */
 public abstract class CamoDeviceBlock extends BaseEntityBlock {
     /** True while the device looks like another block. */
@@ -53,17 +54,18 @@ public abstract class CamoDeviceBlock extends BaseEntityBlock {
         builder.add(CAMO);
     }
 
+    /** Drawn from its (wrapped) model in both looks; {@code BaseEntityBlock} would answer {@link RenderShape#INVISIBLE}. */
     @Override
     protected RenderShape getRenderShape(BlockState state) {
-        return state.getValue(CAMO) ? RenderShape.INVISIBLE : RenderShape.MODEL;
+        return RenderShape.MODEL;
     }
 
     /**
      * The shape the neighbours cull their faces against. A device that is drawn as another block does not own its cell's
      * faces: its own model is not rendered, so a full-cube occlusion shape would only hide the neighbours' faces (the floor
-     * under a camouflaged Golem Connector became a hole to the sky) and the camouflage is drawn by the block entity
-     * renderer, which culls its own faces against the neighbours. The state is part of the shape cache of the game, so the
-     * answer may depend on {@code camo} (and not on the level). Light is another matter: see
+     * under a camouflaged Golem Connector became a hole to the sky), and the camouflage's model culls its own faces against
+     * the neighbours as the camouflage block would. The state is part of the shape cache of the game, so the answer may depend
+     * on {@code camo} (and not on the level, nor on the camouflage). Light is another matter: see
      * {@code BlockGolemConnector#getLightBlock}.
      */
     @Override

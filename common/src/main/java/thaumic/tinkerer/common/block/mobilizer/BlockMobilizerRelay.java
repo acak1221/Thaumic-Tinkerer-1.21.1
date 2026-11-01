@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.tile.TileEntityRelay;
 import thaumic.tinkerer.common.content.TileBlocks;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -84,11 +85,11 @@ public class BlockMobilizerRelay extends BaseEntityBlock implements ITTinkererRe
                 'I',
                 new ItemStack(Items.IRON_INGOT),
                 's',
-                TileBlocks.legacyItem("itemShard", 3),
+                ItemsTC.stack("earth_shard"),
                 'S',
-                TileBlocks.legacyItem("itemShard", 0),
+                ItemsTC.stack("air_shard"),
                 'W',
-                TileBlocks.legacyBlock("blockMagicalLog", 0),
+                ItemsTC.stack("greatwood_log"),
                 'F',
                 new ItemStack(Blocks.GLASS));
     }

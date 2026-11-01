@@ -32,6 +32,7 @@ those of the files there).
 | Fabric helper of the drop capture, Fabric item renderer backend | `fabric/.../fabric/hooks/DropCapture.java`, `fabric/.../fabric/client/FabricItemRenderers.java` |
 | NeoForge posters | `neoforge/src/main/java/thaumic/tinkerer/neoforge/hooks/NeoForgeEventPosters.java` (the event handlers, subscribed by `ThaumicTinkererNeoForge`) and `LastHurtAccess.java`; mixins `neoforge/src/main/java/thaumic/tinkerer/neoforge/mixin/*`, config `neoforge/src/main/resources/thaumictinkerer-neoforge.mixins.json`, listed under `[[mixins]]` of `neoforge/src/main/resources/META-INF/neoforge.mods.toml` (section 9) |
 | May a player break or place here? (section 16) | `common/.../common/hooks/BlockProtection.java`; backends `fabric/.../fabric/hooks/FabricBlockProtection.java` and `neoforge/.../neoforge/hooks/NeoForgeBlockProtection.java`, installed by the loader entries |
+| Camouflage models (client, section 17) | `common/.../common/hooks/CamouflageHooks.java`, `common/.../client/render/camo/CamoModels.java`; glue `fabric/.../fabric/client/FabricCamoModels.java` + mixin `CamoRenderDataMixin`, `neoforge/.../neoforge/client/NeoForgeCamoModels.java` and `CamoModelData.java` + mixin `CamoModelDataMixin` |
 | Runtime tests | `common/src/gameTest/.../testing/HooksRuntimeChecks.java` and `ProtectionRuntimeChecks.java`, Fabric wrappers `fabric/src/gameTest/.../testing/HooksGameTests.java`; NeoForge-only `neoforge/src/gameTest/.../testing/HooksNeoForgeTests.java`, the NeoForge body of the Fabric-native wrapper `HooksNeoForgeChecks.java`; JUnit `common/src/test/.../hooks/` |
 
 ## 1. Overview
@@ -561,7 +562,7 @@ last bullet of each group says what rests on the NeoForge posters there.
 
 ## 11. Fabric build wiring
 
-The ten mixins of `thaumictinkerer.mixins.json` (`fabric/src/main/java/thaumic/tinkerer/fabric/mixin`), and what each posts:
+The eleven mixins of `thaumictinkerer.mixins.json` (`fabric/src/main/java/thaumic/tinkerer/fabric/mixin`), and what each posts:
 
 | Mixin | Target and injector | Posts |
 |---|---|---|
@@ -572,6 +573,7 @@ The ten mixins of `thaumictinkerer.mixins.json` (`fabric/src/main/java/thaumic/t
 | `LivingEntityUseItemMixin` | `LivingEntity.updateUsingItem` at `HEAD`, `@Shadow useItemRemaining` | `USE_ITEM_TICK` (section 7) |
 | `LivingEntityDropsMixin`, `EntityDropCaptureMixin`, `ServerPlayerDropCaptureMixin`, `FoxDropCaptureMixin` | `dropAllDeathLoot` (and the fox's override) wrapped; `Entity.spawnAtLocation(ItemStack, float)` and `ServerPlayer.drop(ItemStack, boolean, boolean)` captured; `@Shadow lastHurtByPlayerTime` | `LIVING_DROPS` (section 8) |
 | `ServerGamePacketListenerFloatingMixin` | makes `ServerGamePacketListenerImpl` implement `FloatingTicks.Access`, `@Shadow aboveGroundTickCount` | `FloatingTicks` (section 9) |
+| `CamoRenderDataMixin` | the add-on's `TileCamo` and `CamoDeviceBlockEntity`: overrides `RenderDataBlockEntity.getRenderData()`, no injector | nothing: the camouflage for the wrapped models (section 17) |
 
 `HooksResourcesTest` checks that the config lists exactly the mixin classes of that package.
 
@@ -863,3 +865,26 @@ this block" for a refused question as for a refused click). Checks: section 12 (
 Parties and Claims 0.33.0 in the multiplayer check (`MULTIPLAYER_VERIFICATION.md`, section h): it hears the break question on both loaders and the
 place question on NeoForge (`BlockEvent.EntityPlaceEvent`) and, since the change above, on Fabric. The devices (Remote Placer, Transvector
 Dislocator, Animation Tablet) ask as their fake player, whom such a mod treats as a stranger also in their owner's claim (same section).
+
+## 17. Camouflage models (`CamouflageHooks`, client)
+
+No event: the loader glue that draws the camouflage blocks (the Ethereal Platform of SimpleBlocks; the Transvector Interface, Dislocator, Remote Placer and
+Golem Connector of TileBlocks) from their baked models in the chunk mesh, written 2026-11-01 in place of the two block entity renderers (`RenderTileCamo`,
+`RenderTileCamoDevice`; `deviations/SimpleBlocks.md` 2.4, `deviations/TileBlocks.md` 2.8).
+
+* **Common.** `CamouflageHooks.Holder` is the camouflage of a block entity (`TileCamo`, `CamoDeviceBlockEntity`); `camouflageOf(blockEntity)` reads it.
+  The block entities call `CamouflageHooks.changed(this)` when they read a camouflage that differs from the one they had: on a client it calls the
+  installed `Listener` and marks the chunk section for a rebuild (`level.sendBlockUpdated`), because a change from one camouflage to another changes no block
+  state. `client/render/camo/CamoModels` holds the rules both loaders apply to the imitated state's quads (face culling of that state, tint, light, smooth
+  lighting) and the list of the five blocks.
+* **Fabric** (`FabricCamoModels.install()`, from `ThaumicTinkererFabricClient`): a `ModelLoadingPlugin` wraps every block-state model of the five blocks after
+  baking in a `ForwardingBakedModel` (not a vanilla adapter) whose `emitBlockQuads` reads `getBlockEntityRenderData(pos)` and emits the imitated state's model
+  through a quad transform. The mixin `CamoRenderDataMixin` (no injector) gives both block entity classes `RenderDataBlockEntity.getRenderData()`, which
+  Fabric API reads on the client thread when it prepares a chunk region. No listener.
+* **NeoForge** (`NeoForgeCamoModels.register(modBus)`, from `ThaumicTinkererNeoForgeClient.register`): `ModelEvent.ModifyBakingResult` wraps the models in a
+  `BakedModelWrapper` (`getModelData(level, pos, state, data)` keeps the chunk region for the block's draw, `getRenderTypes`, `getQuads`,
+  `useAmbientOcclusion`); the mixin `CamoModelDataMixin` (no injector) gives both block entity classes `getModelData()` (`CamoModelData.CAMO`), and the
+  listener is `BlockEntity::requestModelDataUpdate`.
+* **Checks.** JUnit `CamoModelsTest` (the rules); GameTests `theCamouflageIsDrawnFromThePlatformsModel`, `camouflageIsSetAndCleared` and
+  `camouflagedDevicesLeaveTheFacesOfTheirNeighbours` (render shape, update tag, saved data, neighbour culling); the drawing itself only in the client smoke's
+  camouflage phase on both loaders (`docs/CLIENT_VERIFICATION.md`).

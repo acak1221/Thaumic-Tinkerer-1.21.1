@@ -22,7 +22,6 @@ public final class LibResources {
 
     public static final String PREFIX_GUI = PREFIX_MOD + "textures/gui/";
     public static final String PREFIX_MISC = PREFIX_MOD + "textures/misc/";
-    public static final String PREFIX_MODEL = PREFIX_MOD + "textures/models/";
     public static final String PREFIX_ENCHANTS = PREFIX_MOD + "textures/enchant/";
 
     public static final String GUI_ANIMATION_TABLET = PREFIX_GUI + "animation_tablet.png";
@@ -41,8 +40,6 @@ public final class LibResources {
     public static final String MISC_AT_INDENT = PREFIX_MISC + "at_facing_indent.png";
     public static final String MISC_REPAIR = PREFIX_MISC + "repair.png";
     public static final String MISC_REPAIR_OFF = PREFIX_MISC + "repair_off.png";
-
-    public static final String MODEL_RELAY_TEXTURE = PREFIX_MODEL + "relay.png";
 
     public static final String ENCHANT_PROTECTION = PREFIX_ENCHANTS + "protection.png";
     public static final String ENCHANT_FIRE_PROTECTION = PREFIX_ENCHANTS + "fire_protection.png";

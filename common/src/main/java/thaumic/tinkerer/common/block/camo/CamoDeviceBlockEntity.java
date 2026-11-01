@@ -21,16 +21,18 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import thaumic.tinkerer.common.hooks.CamouflageHooks;
 
 /**
  * The block entity of a camouflageable device (1.7.10: {@code TileCamo}, which stored a block and its metadata).
  *
  * <p>1.21.1 has no metadata, so the camouflage is the whole {@link BlockState} that was right-clicked on (saved as a
  * block-state tag). The state is part of both the saved data and the update packet. The block's own {@code CAMO}
- * property mirrors "has a camouflage" so that the device model is hidden while the block entity renderer draws the
- * camouflage (see {@link CamoDeviceBlock}).</p>
+ * property mirrors "has a camouflage", so that the wrapped model of the device draws the camouflage instead of the device
+ * (see {@link CamoDeviceBlock}); a camouflage read on the client that differs from the one before builds the chunk section
+ * again ({@link CamouflageHooks}).</p>
  */
-public abstract class CamoDeviceBlockEntity extends BlockEntity {
+public abstract class CamoDeviceBlockEntity extends BlockEntity implements CamouflageHooks.Holder {
     /** 1.7.10 keys of {@code TileCamo}; the metadata key is gone, {@code camo} now holds a block-state tag. */
     private static final String TAG_CAMO = "camo";
 
@@ -43,6 +45,7 @@ public abstract class CamoDeviceBlockEntity extends BlockEntity {
 
     /** The block the device pretends to be, or null for its own look. */
     @Nullable
+    @Override
     public BlockState getCamo() {
         return camo;
     }
@@ -71,11 +74,14 @@ public abstract class CamoDeviceBlockEntity extends BlockEntity {
 
     /** Reads what {@link #writeCustomData} wrote. */
     protected void readCustomData(CompoundTag tag, HolderLookup.Provider registries) {
+        BlockState before = camo;
         camo = null;
         if (tag.contains(TAG_CAMO, 10)) {
             BlockState read = NbtUtils.readBlockState(registries.lookupOrThrow(Registries.BLOCK), tag.getCompound(TAG_CAMO));
             camo = read.isAir() ? null : read;
         }
+        // block states are interned: a different object is a different camouflage
+        if (camo != before) CamouflageHooks.changed(this);
     }
 
     @Override

@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.entities.ThaumcraftEntities;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.tile.TileGolemConnector;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvector;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorInterface;
@@ -125,7 +126,7 @@ public class ItemConnector extends Item implements ITTinkererRegisterable {
                 'W',
                 new ItemStack(Items.STICK),
                 'S',
-                TileBlocks.legacyItem("itemShard", 4));
+                ItemsTC.stack("order_shard"));
     }
 
     /** {@code onItemUse}: remember a device, or bind the remembered device to the clicked block. */

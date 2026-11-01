@@ -21,9 +21,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.BlockGas;
 import thaumic.tinkerer.common.lib.LibBlockNames;
@@ -42,23 +42,15 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  */
 public class ItemBrightNitor extends Item implements ITTinkererRegisterable {
 
-    /**
-     * The strength of the gas the next {@link #inventoryTick} places: 0 for the item, 1 for the Kami leggings, which
-     * set it for the duration of one call (1.7.10 public static {@code meta}). {@link #setBlock(Level, BlockPos, int)}
-     * takes the strength as an argument and is the better way in.
-     */
-    public static int meta = 0;
-
     public ItemBrightNitor(Properties properties) {
         super(properties.stacksTo(1));
     }
 
-    /** 1.7.10 {@code setBlock(x, y, z, world)} with the strength {@link #meta}. */
-    public static void setBlock(Level level, BlockPos pos) {
-        setBlock(level, pos, meta);
-    }
-
-    /** Places a cell of Nitor Gas of strength {@code gasMeta} (0 weak, 1 strong) where there is air or Nitor Gas. */
+    /**
+     * 1.7.10 {@code setBlock(x, y, z, world)}: places a cell of Nitor Gas of strength {@code gasMeta} (0 weak, 1 strong) where there
+     * is air or Nitor Gas. 1.7.10 read the strength from a public static {@code meta}, which the Kami leggings set around a call of
+     * {@code onUpdate}; the leggings place their strong gas themselves here, so the item places the weak one only.
+     */
     public static void setBlock(Level level, BlockPos pos, int gasMeta) {
         placeGas(level, pos, gasMeta);
     }
@@ -94,21 +86,21 @@ public class ItemBrightNitor extends Item implements ITTinkererRegisterable {
 
     @Override
     public ThaumicTinkererRecipe getRecipeItem() {
-        // itemResource:1, the Nitor
+        // itemResource:1 of 1.7.10, the Nitor
         return new ThaumicTinkererCrucibleRecipe(
                 LibResearch.KEY_BRIGHT_NITOR,
                 new ItemStack(this),
-                ItemApi.getItem("itemResource", 1),
+                ItemsTC.stack("nitor"),
                 new AspectList().add(Aspect.ENERGY, 25).add(Aspect.LIGHT, 25).add(Aspect.AIR, 10).add(Aspect.FIRE, 10));
     }
 
-    /** 1.7.10 {@code onUpdate}: the gas goes into the cell above the holder's feet. */
+    /** 1.7.10 {@code onUpdate}: the weak gas goes into the cell above the holder's feet. */
     @Override
     public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
-        placeNear(level, entity, meta);
+        placeNear(level, entity, 0);
     }
 
-    /** What {@code onUpdate} did, with the strength given instead of read from {@link #meta}. */
+    /** What {@code onUpdate} did, with the strength given instead of read from 1.7.10's static {@code meta}. */
     public static void placeNear(Level level, Entity entity, int gasMeta) {
         int x = Mth.floor(entity.getX());
         int y = Mth.floor(entity.getY()) + 1;

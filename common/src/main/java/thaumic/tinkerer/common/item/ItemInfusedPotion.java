@@ -13,6 +13,7 @@ package thaumic.tinkerer.common.item;
 
 import java.util.List;
 import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
@@ -55,8 +56,12 @@ public class ItemInfusedPotion extends Item implements ITTinkererRegisterable {
 
     private final int variant;
 
+    /**
+     * 1.7.10 extended {@code ItemPotion}, whose {@code hasEffect} is true while {@code getEffects} is not empty: every infused potion
+     * glints, which is the item's default {@code minecraft:enchantment_glint_override} component.
+     */
     public ItemInfusedPotion(int variant, Properties properties) {
-        super(properties.stacksTo(1));
+        super(properties.stacksTo(1).component(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true));
         this.variant = variant;
     }
 
@@ -97,12 +102,6 @@ public class ItemInfusedPotion extends Item implements ITTinkererRegisterable {
         return Component.translatable(getDescriptionId());
     }
 
-    /** 1.7.10 extended {@code ItemPotion}, whose {@code hasEffect} is true while {@code getEffects} is not empty: it glints. */
-    @Override
-    public boolean isFoil(ItemStack stack) {
-        return true;
-    }
-
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.literal(getAspect(stack).getName()));
@@ -132,7 +131,7 @@ public class ItemInfusedPotion extends Item implements ITTinkererRegisterable {
             CriteriaTriggers.CONSUME_ITEM.trigger(serverPlayer, stack);
         }
         if (!level.isClientSide) {
-            entity.addEffect(new MobEffectInstance(ModPotions.holder(variant), 3600));
+            entity.addEffect(new MobEffectInstance(ModPotions.of(ASPECTS[variant]), 3600));
         }
         if (player != null) {
             player.awardStat(Stats.ITEM_USED.get(this));

@@ -72,8 +72,11 @@ of the add-on looking the hoe up by id.
 * The sound `thaumcraft:wand` (the Fume Dissipator, the hoe handler): done, `ThaumcraftSoundIds.WAND` (skipped if it is
   not registered).
 * The Kami leggings `ichorcloth_legs_gem` (the strong Nitor Gas) are the add-on's own item.
-* The warding fence is read through `BlocksTC.state("blockAiry", 4)` (the grid of `legacy_ids.json`); a registry key
-  constant would harden it.
+* The warding fence is read through `BlocksTC.state("blockAiry", 4)` (the grid of `legacy_ids.json`): it is the state
+  `thaumcraft:airy[variant=4]` of a native block, and the API names that state by the 1.7.10 field and metadata only (every other
+  Thaumcraft object of the group is named by its native id since 2026-11-01). **Proposed:** a named accessor
+  `BlocksTC.wardingAura()` (or an enum of the `airy` variants) returning that `BlockState`; the add-on would then drop the legacy
+  name.
 
 ## 6. The warding fence flickers (no request; recorded)
 
@@ -101,7 +104,8 @@ add-on does not need anything else.
 * The camouflage base of the platform (`BlockCamo`, `TileCamo`) and the base of the TileBlocks devices (`CamoDeviceBlock`)
   are two designs for one 1.7.10 class; they could be merged (`docs/deviations/SimpleBlocks.md` 2.4).
 * Other groups can use: `ItemBrightNitor.setBlock(level, pos, strength)` / `placeNear(level, entity, strength)` (the Kami
-  leggings), `NumericAspectHelper` (the soul aspects), `BlockGas.isAirLike(state)` (1.7.10 `isAirBlock` for the gases),
+  leggings), `BlockGas.isAirLike(state)` (1.7.10 `isAirBlock` for the gases; `NumericAspectHelper` is gone, the order of the soul
+  aspects is `ItemMobAspect.ASPECTS`),
   `AspectCropLootManager.getAllLoot()` (recipe viewers; it needs no level). `AspectCropLootManager.getLootForAspect` takes
   a `RandomSource` now (the level's); the static `Random` of the class is gone.
 * New vanilla tag file: `data/minecraft/tags/block/replaceable_by_trees.json` (the three gases, so trees grow through a

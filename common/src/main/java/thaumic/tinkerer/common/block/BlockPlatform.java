@@ -30,9 +30,9 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.EntityCollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.TileCamo;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -123,8 +123,8 @@ public class BlockPlatform extends BlockCamo implements ITTinkererRegisterable {
                 " S ",
                 "G G",
                 'G',
-                ItemApi.getBlock("blockWoodenDevice", 6),
+                ItemsTC.stack("greatwood_planks"),
                 'S',
-                ItemApi.getBlock("blockWoodenDevice", 7));
+                ItemsTC.stack("silverwood_planks"));
     }
 }

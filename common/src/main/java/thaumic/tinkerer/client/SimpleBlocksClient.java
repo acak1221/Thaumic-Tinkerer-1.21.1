@@ -6,7 +6,6 @@
  */
 package thaumic.tinkerer.client;
 
-import dev.architectury.registry.client.rendering.BlockEntityRendererRegistry;
 import dev.architectury.registry.client.rendering.ColorHandlerRegistry;
 import dev.architectury.registry.client.rendering.RenderTypeRegistry;
 import dev.architectury.registry.item.ItemPropertiesRegistry;
@@ -14,7 +13,6 @@ import net.minecraft.client.color.block.BlockColor;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.level.block.Block;
 import thaumcraft.api.aspects.Aspect;
-import thaumic.tinkerer.client.render.tile.RenderTileCamo;
 import thaumic.tinkerer.common.block.BlockInfusedGrain;
 import thaumic.tinkerer.common.block.tile.TileInfusedGrain;
 import thaumic.tinkerer.common.content.SimpleBlocks;
@@ -28,8 +26,8 @@ import thaumic.tinkerer.common.lib.LibMisc;
  * generic) at the age of the metadata, tinted with the colour of the aspect when it was not primal: that is the
  * blockstate file of the crop, the cutout render layer and the colour handler below. {@code RenderGenericSeeds}
  * picked the icon of the seeds by their aspect: that is the {@code thaumictinkerer:aspect_texture} item property and
- * the overrides of the model of the seeds ({@link #aspectTextureValue}). The camouflage of the platform is
- * {@link RenderTileCamo}.</p>
+ * the overrides of the model of the seeds ({@link #aspectTextureValue}). The camouflage of the platform is drawn by its
+ * wrapped baked model, which the loader's client glue installs ({@code thaumic.tinkerer.common.hooks.CamouflageHooks}).</p>
  */
 public final class SimpleBlocksClient {
     /** The item property of the infused seeds: the texture group of their aspect (0..6, 6 for any other), see {@link #aspectTextureValue}. */
@@ -76,8 +74,5 @@ public final class SimpleBlocksClient {
                     Aspect aspect = ItemInfusedSeeds.getAspect(stack);
                     return aspectTextureValue(aspect == null ? 0 : BlockInfusedGrain.getNumberFromAspectForTexture(aspect));
                 });
-
-        // the camouflage of the Ethereal Platform
-        BlockEntityRendererRegistry.register(SimpleBlocks.TILE_CAMO.get(), RenderTileCamo::new);
     }
 }

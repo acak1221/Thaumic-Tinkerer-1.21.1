@@ -5,6 +5,7 @@
   "minVersion": "0.8",
   "mixins": [
     "BlockBehaviourZeroSpeedMixin",
+    "CamoModelDataMixin",
     "InfusedFarmlandSoilMixin",
     "LivingEntityArmorMixin",
     "LivingEntityDamageContainerMixin",

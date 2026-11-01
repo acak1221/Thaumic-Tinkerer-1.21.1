@@ -433,5 +433,5 @@ visible, and only as an animation.
   Potency, Frugal and Treasure (no such enchantments in the table); `LibBlockNames.*_SLAB_FULL` (1.21.1 slabs have `type=double`),
   `LibItemNames.KAMI_RESOURCE` (the metadata item) and `SWORD` (`mob_sword`). The textures stay in the assets. `tt_oracle/provenance.json`, which
   records the hashes of the two `Lib*Names` files, was regenerated with `scripts/porting/tt_oracle.py`; the research and recipe tables of the oracle
-  did not change. (`LibResources.MODEL_RELAY_TEXTURE` stays while `RenderTileRelay` exists; `LibBlockNames.CAMO` is named by no code either, its
-  value is the id of the camouflage block entity, which `SimpleBlocks` spells out; both left for their owners.)
+  did not change. (`LibResources.MODEL_RELAY_TEXTURE` went at the merge with package B, which deleted `RenderTileRelay`; `LibBlockNames.CAMO` is named by no
+  code either, its value is the id of the camouflage block entity, which `SimpleBlocks` spells out; left for its owner.)

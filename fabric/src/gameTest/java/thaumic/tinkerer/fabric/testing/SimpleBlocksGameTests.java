@@ -103,6 +103,11 @@ public final class SimpleBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theCamouflageIsDrawnFromThePlatformsModel(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.theCamouflageIsDrawnFromThePlatformsModel(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(test);
     }
@@ -205,6 +210,11 @@ public final class SimpleBlocksGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theFourEffectsAreBadEffectsWithoutAnyPowerOfTheirOwn(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theFourEffectsAreBadEffectsWithoutAnyPowerOfTheirOwn(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theInfusedPotionsGlintByTheirComponent(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.theInfusedPotionsGlintByTheirComponent(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

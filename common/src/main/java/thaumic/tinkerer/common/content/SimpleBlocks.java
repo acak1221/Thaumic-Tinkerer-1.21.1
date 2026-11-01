@@ -47,7 +47,6 @@ import thaumic.tinkerer.common.block.tile.TileWardedSlab;
 import thaumic.tinkerer.common.core.commands.SetTendencyCommand;
 import thaumic.tinkerer.common.core.helper.AspectCropLootManager;
 import thaumic.tinkerer.common.core.helper.BonemealEventHandler;
-import thaumic.tinkerer.common.core.helper.NumericAspectHelper;
 import thaumic.tinkerer.common.item.InfusedSeedComponents;
 import thaumic.tinkerer.common.item.ItemBlockFire;
 import thaumic.tinkerer.common.item.ItemBrightNitor;
@@ -132,7 +131,6 @@ public final class SimpleBlocks implements ContentGroup {
         PotionEffectHandler.register();
         BonemealEventHandler.register();
         SetTendencyCommand.register();
-        NumericAspectHelper.init();
     }
 
     private static void registerBlocks() {

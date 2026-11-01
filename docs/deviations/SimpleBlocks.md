@@ -34,7 +34,7 @@ the file says what they covered and what is unverified.
 | `ItemInfusedSeeds` with the aspect and the tendencies in the stack NBT (`mainAspect`, `aspectTendencies`) | one item `infused_seeds` with two data components: `thaumictinkerer:infused_aspect` (the tag of the aspect) and `thaumictinkerer:infused_tendencies` (map tag -> amount). The creative tab lists the seeds of the primal aspects as stacks (`TTRegistry.addTabStack`), in the order of `Aspect.getPrimalAspects()` (aer, terra, ignis, aqua, ordo, perditio) as 1.7.10 `getSubItems` did, not the bare item |
 | `LibBlockNames.INFUSED_GRAIN_BLOCK` (`infused_grainBlock`) | the registry path `infused_grain_block`: a capital letter is no valid path in 1.21.1. The registrar uses its own constant `SimpleBlocks.INFUSED_GRAIN_BLOCK`; the constant of the lead is unused (request in the report) |
 | the potion ids from the configuration and the reflective extension of `Potion.potionTypes` | four registered effects `thaumictinkerer:potion_air/fire/earth/water` (the four id options of the configuration are gone) |
-| `NumericAspectHelper.init()` in `preInit` | filled when the class is first used; `init()` stays and is harmless to call twice |
+| `NumericAspectHelper` (the numbers of the 17 soul aspects, filled in `preInit`) | gone (2026-11-01): the order is the list `ItemMobAspect.ASPECTS` (Machines), which names the Mob Aspect items; nothing else read the numbers |
 | `Material.rock` / `Material.wood` and `setHardness(h)` / `setResistance(r)` | `strength(h, r * 0.6)`: the 1.7.10 setter multiplied by 3 and the explosion code divided by 5, 1.21.1 uses the number as it is (10 -> 6.0, 5 -> 3.0). Stone-like blocks have `requiresCorrectToolForDrops()` and are in `thaumictinkerer:mineable/simple_blocks/pickaxe` with no `needs/` tier (any pickaxe, as 1.7.10 rock); the platform is in the axe tag, the infused farmland in the shovel tag |
 | `getDrops` of the blocks | loot tables (`data/thaumictinkerer/loot_table/blocks/*.json`) for the quartz family, the slabs (a double slab drops two), the stairs, the platform and the infused farmland (dirt); the gases, the forcefield, the fires and the crop use `noLootTable()` and code (`getDrops` override) |
 
@@ -53,7 +53,13 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
 * Thaumcraft's paving stones are the items `thaumcraft:paving_stone_travel` and `thaumcraft:paving_stone_warding`
   (1.7.10 `blockCosmeticSolid:2` and `:3`).
 * The arcane, crucible and infusion recipes are the originals through `ThaumicTinkerer*Recipe`; the ingredients that were
-  `ConfigItems.*` are `ItemApi.getItem/getBlock(field, meta)`.
+  `ConfigItems.*` / `ConfigBlocks.*` are Thaumcraft's native items by their 1.21.1 ids (`ItemsTC.stack("air_shard")`, the table
+  `docs/api/LEGACY_IDS.md` of Thaumcraft 4 Reload; until 2026-11-01 the 1.7.10 field and metadata through
+  `ItemApi.getItem/getBlock(field, meta)`, which the API resolves to the same items). So are the crop loot table's Thaumcraft entries
+  (section 2.7). Two places still name a Thaumcraft block state by its 1.7.10 field and metadata, because it is a variant of one native
+  block that the API names no other way: the warding aura `blockAiry:4` (`thaumcraft:airy[variant=4]`, the Paving Slab of Warding) and
+  the Enchanter's totem of another group (`docs/api-requests/SimpleBlocks.md` section 5). The glimmer the slab leaves alone is the native
+  `thaumcraft:arcane_light` (`blockAiry:3`).
 
 ## 2. Per object
 
@@ -138,9 +144,10 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   creative player (both as before), the pop sound is `ITEM_PICKUP`.
 * **Fume Dissipator.** The sound is `ThaumcraftSoundIds.WAND` (skipped if it is not registered). The cube is `x-3 .. x+2` as the 1.7.10 loops were `< xs + 3`. The block position of the player is the floor,
   not a cut.
-* **Hyperenergetic Nitor (decision).** `onUpdate` is `inventoryTick`; the static `meta` of the original (set by the Kami
-  leggings for the duration of one call) is kept, and `ItemBrightNitor.placeNear/setBlock(level, pos, strength)` take the
-  strength as an argument, which is the safer way in for other groups. The gas goes where there is air or the same gas
+* **Hyperenergetic Nitor (decision).** `onUpdate` is `inventoryTick`; `ItemBrightNitor.placeNear/setBlock(level, pos, strength)`
+  take the strength as an argument. The static `meta` of the original (set by the Kami leggings for the duration of one call) was
+  kept at first and is gone since 2026-11-01: nothing set it, because the port's Kami leggings place their strong gas themselves; the
+  item places the weak gas, as it did with `meta` 0. The gas goes where there is air or the same gas
   (`isAir()`; not into another gas, as `Blocks.air` was tested). The cell is `floor(y) + 1`.
 * **Nitor carrier (forced).** `inventory.hasItem` is `getInventory().contains(...)`; the Kami leggings are looked up by id
   (`ichorcloth_legs_gem`) while `enableKami`.
@@ -165,12 +172,28 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   beside it breaks, signs, banners and item frames hang on it, an enderman may teleport onto it, ice melting above it leaves
   water, the fire of lava stops at it. GameTest `thePlatformHoldsBackWaterAndLava`: flowing water and flowing lava in walled
   channels stand next to the platform for 80 ticks and the platform stays.
-* **Camouflage drawn as a block entity (forced).** 1.7.10 asked the camouflaged block for its icons per side. A dynamic
-  model needs a loader API, so the block is invisible while `camouflaged` is true and `RenderTileCamo` draws the imitated
-  state through `BlockRenderDispatcher.renderBatched`, with the lighting and the culling of the neighbourhood. It does not
-  get ambient-occlusion shading from the chunk mesh and an animated block is not animated. The renderer passes its own
-  `RandomSource` (fix: the first version passed the client level's, which the block renderer reseeds for every model, so
-  every frame with a camouflaged platform in view reset the dice of the client's particles and sounds).
+* **Camouflage drawn by the block's model (1.21.1 technique, 2026-11-01; before: a block entity renderer, "forced").** 1.7.10 asked
+  the camouflaged block for its icons per side (`getIcon(world, x, y, z, side)`) and its colour multiplier. The port wraps the baked
+  models of the platform (and of the four camouflageable devices of TileBlocks) with the loaders' model APIs: Fabric
+  (`thaumic.tinkerer.fabric.client.FabricCamoModels`) wraps them after baking (`fabric-model-loading-api-v1`) in a Renderer API
+  model that reads the imitated state from the block entity's render data (`RenderDataBlockEntity`, added to `TileCamo` by
+  `CamoRenderDataMixin`), NeoForge (`thaumic.tinkerer.neoforge.client.NeoForgeCamoModels`) wraps them in `ModelEvent.ModifyBakingResult`
+  in a `BakedModelWrapper` that reads the block entity's `ModelData` (`CamoModelDataMixin`). While `camouflaged` is true the wrapper
+  draws the model of the imitated state **in the chunk mesh**, as the block renderer would draw that state at the platform's place:
+  the faces it culls against its neighbours (`Block.shouldRenderFace` of the imitated state, so glass and ice hide the face to a
+  neighbour of their own kind), its tint at the position (grass, leaves), its render type (cut-out glass and leaves, translucent ice),
+  no smooth lighting and its own light for a state that emits light (glowstone, magma: the renderer folds the drawn state's emission
+  into the light of its faces); otherwise the platform's own model (`client/render/camo/CamoModels`, JUnit `CamoModelsTest`). A change
+  of camouflage changes no block state, so the block entity rebuilds the chunk section on the client when it reads another camouflage
+  (`common/hooks/CamouflageHooks`; on NeoForge also `requestModelDataUpdate`). The block's render shape is `MODEL` in both looks
+  (before: `INVISIBLE` while camouflaged). What this changes for a player, all toward 1.7.10: the camouflage is part of the chunk mesh
+  (no per-frame drawing, smooth lighting from the mesh, the shader packs' terrain path), and **the cracks of a block being broken are
+  drawn on a camouflaged platform** (the block entity renderer drew none, 1.7.10 did). Kept as before: the platform still occludes
+  nothing, so its neighbours draw their faces toward it whatever it imitates; the breaking particles are the platform's own (1.7.10
+  drew the platform's icon too, `getIcon(side, meta)`, though tinted with the camouflage's colour multiplier; the port does not tint
+  them, as before); a platform that says `camouflaged` before its block entity's data arrived draws nothing, as before; animated
+  models of other mods and connected textures were not tried. Seen in the client smoke's camouflage phase on both loaders
+  (`docs/CLIENT_VERIFICATION.md`). The renderer's own `RandomSource` fix of the first version is moot (no renderer).
 * **What can be imitated (the original's one rule).** Blocks whose render shape is `MODEL` and whose collision shape fills the cell, and
   that are no camouflage block themselves: the 1.7.10 test accepted the render types 0, 31 and 39 (plain cube, log, quartz block) and
   refused every `BlockCamo`, the platform and the TileBlocks group's devices (Remote Placer, Golem Connector, Transvector Interface and
@@ -301,7 +324,8 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
 ### 2.7 Aspect crop loot
 
 * The table is the original's entry for entry (the aspect, the stack, the count and the weight). A stack built from a
-  Thaumcraft item uses `ItemApi.getItem(field, meta)` or `ItemsTC.stack(id)`; an item that does not exist is skipped.
+  Thaumcraft item is named by its native id (`ItemsTC.get(id)`; the golem cores and shards of the 1.7.10 metadata loops are lists of
+  native ids, `AspectCropLootManager.GOLEM_CORES` and `SHARDS`); an item that does not exist is skipped.
 * **Ore dictionary (forced).** The substring scans of the ore dictionary (`logWood`, `treeSapling`, `ingotCopper`,
   `slimeball`, `plankWood`, ...) are item tags (`minecraft:logs`, `minecraft:saplings`, `c:ingots/copper`, `c:slime_balls`,
   ...), one entry of weight one for every member of the tag, resolved when the loot is rolled (the tags are not bound while
@@ -322,12 +346,16 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
 ### 2.8 Infused potions and the Imbued effects
 
 * **Effects (forced, decision).** `DummyPotions` are `ImbuedEffect` instances of the `HARMFUL` category (the constructor
-  argument `true` was "bad effect") with colour 0 that do nothing by themselves. The names are the effect keys
-  `effect.thaumictinkerer.potion_air/fire/earth/water` (English "Air Imbued" and so on, as `setPotionName`); the icons are
+  argument `true` was "bad effect") with colour 0; Air, Fire and Earth do nothing by themselves, Water ticks itself (below). The
+  names are the effect keys `effect.thaumictinkerer.potion_air/fire/earth/water` (English "Air Imbued" and so on, as `setPotionName`;
+  the code's copy of those strings, `ModPotions.ENGLISH_NAMES`, which only a test read, is gone); the effects are named by their
+  paths (`ModPotions.AIR` ... `WATER`, `ModPotions.of(aspect)` for a potion), not by the potions' 1.7.10 metadata; the icons are
   copies of the potion item pictures (16 by 16, the effect atlas scales them).
 * **Drinking (decision).** `ItemInfusedPotion` is drunk like a vanilla potion (use animation `DRINK`, 32 ticks), gives the
-  effect for 3600 ticks, leaves a glass bottle and counts as a used item; the effect only on the server. It glints
-  (`isFoil`), as `ItemPotion` did while `getEffects` was not empty. Its description id is the key of its name
+  effect for 3600 ticks, leaves a glass bottle and counts as a used item; the effect only on the server. It glints, as
+  `ItemPotion` did while `getEffects` was not empty: by the item's default component `minecraft:enchantment_glint_override`
+  (2026-11-01; before an `isFoil` override), so a stack can also be told not to (GameTest
+  `theInfusedPotionsGlintByTheirComponent`). Its description id is the key of its name
   (`item.infusedPotion.<Aspect>.name`), so the statistics screen shows the name too.
 * **No recipe makes them (kept as in 1.7.10).** The four crucible recipes are registered under their own names, `INFUSED_POTIONSPOT0..3`
   (`ItemInfusedPotion.getRecipeItem`), which are also their research keys, and no research entry has such a key; the research `INFUSED_POTIONS`
@@ -357,7 +385,12 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   called `blockSparkle(..., 100, 100)` over all 25 cells, which is a dark blue and a hundred counts each). The wall does not
   suffocate (section 2.5).
 * **Water.** Every lava block within two blocks of the player becomes obsidian each tick (all heights of lava; floor of the
-  coordinates, 1.7.10 cut them); the burst of the client twin (size 1.2) by `ThaumcraftFX.burst`.
+  coordinates, 1.7.10 cut them); the burst of the client twin (size 1.2) by `ThaumcraftFX.burst`. Since 2026-11-01 the effect does
+  it from its own tick (`ModPotions.WaterImbuedEffect`: `shouldApplyEffectTickThisTick` every tick, `applyEffectTick` for a player on
+  a server), not from a handler of every player's tick (1.7.10's `PlayerTickEvent`, then Architectury's `PLAYER_POST`). The effect
+  tick runs inside the player's tick, before its end, so the lava turns in the same tick; on the last tick of the effect it still
+  acts (the handler asked `hasEffect` after the tick, when the effect was gone). A mob with the effect quenches nothing, as before
+  (GameTest `aWaterImbuedPlayerTurnsNearbyLavaIntoObsidian`). The registry id is the same, so saved effects load.
 
 ### 2.9 The elemental fires
 
@@ -407,8 +440,9 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
 
 ### 2.10 Numbering of the soul aspects, bone meal handler
 
-* `NumericAspectHelper` is the original's list of 17 aspects (water, man, air, flight, fire, magic, undead, flesh, beast,
-  poison, earth, eldritch, travel, metal, slime, cloth, crop), filled on first use (section 1.1).
+* `NumericAspectHelper` was the original's list of 17 aspects (water, man, air, flight, fire, magic, undead, flesh, beast,
+  poison, earth, eldritch, travel, metal, slime, cloth, crop); the port keeps the order as `ItemMobAspect.ASPECTS` and removed the
+  helper, which only its own `init()` call and a test used (2026-11-01, section 1.1; JUnit `theSeventeenSoulAspectsKeepTheirOriginalOrder`).
 * `BonemealEventHandler` is section 2.6.
 
 ### 2.11 The debug command
@@ -496,8 +530,18 @@ Written without being able to run Gradle or the game; the GameTests were run lat
   and `theGasesMayBeReplacedByTrees`. Runs of 2026-11-01 (one Gradle call: `tinkererTest runTinkererGameTest :neoforge:runGameTest` with the filter `simpleblocksgametests.*,recipeviewersgametests.*`): add-on JUnit 420 tests, 0 failures (`SimpleBlocksLogicTest` and `SimpleBlocksResourcesTest` 19 each); the Fabric GameTest server 57 of 57 passed and the NeoForge one 57 of 57 (the 51 checks of the group and the 6 of the recipe viewers, which read the crop loot table). The renderer's random source is client code that no check reaches; it
   was compiled, not looked at.
 
+* **Modernization, 2026-11-01 (branch `modernize-b`).** The camouflage as wrapped models, the relocation tags, the Water Imbued effect tick,
+  the glint component, the native Thaumcraft ids and the deleted 1.7.10 leftovers (`docs/AUDIT.md`, "Modernization (package B)"). New checks:
+  JUnit `CamoModelsTest`, `theSeventeenSoulAspectsKeepTheirOriginalOrder`; GameTests `theCamouflageIsDrawnFromThePlatformsModel`,
+  `theInfusedPotionsGlintByTheirComponent`, `whatMustNotBeRelocatedStaysWhereItIs`, `theRemotePlacerTakesAnyStoneDevice` and new assertions in
+  `aWaterImbuedPlayerTurnsNearbyLavaIntoObsidian`, `aWardSlabSealsTheTwoCellsAbove`, `camouflageIsSetAndCleared` and
+  `camouflagedDevicesLeaveTheFacesOfTheirNeighbours`. Runs: the 105 GameTests of SimpleBlocks and TileBlocks passed on Fabric and on NeoForge;
+  the full suite afterwards (JUnit 433 tests, 0 failures; Fabric 366 and NeoForge 375 required tests passed); the client smoke's camouflage
+  phase on both loaders (`docs/CLIENT_VERIFICATION.md`).
+
 Not seen in a running game by the engineer of the group (apart from the seed icons above): the look of every model, the crop colours (the tint of the generic crop reads the block entity,
-which must have reached the client before the chunk section is meshed), the camouflage renderer, the particles (the
+which must have reached the client before the chunk section is meshed), the camouflage on a GPU (since 2026-11-01 the platform's
+wrapped model, seen in the client smoke's camouflage phase on a software renderer, section 2.4), the particles (the
 Thaumcraft sparkles, wisps, runes and bursts of the facade have not been looked at on a frame, nor have the vanilla
 stand-ins), the spreading of the gases against the light engine, the Nether tick rates, the speed of the crops, the
 behaviour of the fires over time (the checks drive the tick by hand, so the real rate of the random ticks is unseen), the

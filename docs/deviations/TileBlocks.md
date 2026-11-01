@@ -27,7 +27,7 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 | stack NBT | a data component (the Binder's own typed one, above) |
 | `FakePlayer` of Forge | `TinkererFakePlayer extends ServerPlayer` (the add-on is loader neutral and cannot use the Fabric or NeoForge class); see 2.5 |
 | `ThaumicTinkerer.registry.getFirstBlockFromClass` | `TileBlocks` accessors and the registry paths of `LibBlockNames` |
-| `Item.itemShard:n`, `blockLifter`, `blockMagicalLog`, `blockCosmeticSolid:n`, `itemGolemBell`, `itemResource:10`, `blockStoneDevice` in recipes | `ItemApi.legacyItemIds`/`ItemApi.getItem/getBlock` through `TileBlocks.legacyItem/legacyBlock/anyOfLegacyBlocks`, so the 1.7.10 field and metadata pair is the single source. `blockStoneDevice` without a metadata is the wildcard, as the 1.7.10 crafting manager treated a bare `Block` |
+| `Item.itemShard:n`, `blockLifter`, `blockMagicalLog`, `blockCosmeticSolid:n`, `itemGolemBell`, `itemResource:10`, `blockStoneDevice` in recipes | Thaumcraft's native items by id (`ItemsTC.stack("earth_shard")`, `"levitator"`, `"greatwood_log"`, `"obsidian_tile"`, `"arcane_stone"`, `"golem_bell"`, `"mirrored_glass"`, `"order_shard"`; the table `docs/api/LEGACY_IDS.md` of Thaumcraft 4 Reload). Until 2026-11-01 they were looked up by the 1.7.10 field and metadata (`TileBlocks.legacyItem/legacyBlock/anyOfLegacyBlocks`, gone), which the API resolves to the same items. `blockStoneDevice` without a metadata was the wildcard, as the 1.7.10 crafting manager treated a bare `Block`: it is the explicit list `BlockRPlacer.STONE_DEVICES` of the eleven stone devices that have an item (the infusion pillars have none), compared with the API's legacy table by the GameTest `theRemotePlacerTakesAnyStoneDevice` |
 | `itemGolemCore:100` (the Tablet recipe) | `thaumcraft:golem_core_blank` (`ItemsTC.stack("golem_core_blank")`) |
 | a derived tool requirement: `Material.iron` and `Material.rock` needed a pickaxe for drops | `requiresCorrectToolForDrops()` on the Tablet, Remote Placer, Locomotive, Relay, Interface and Dislocator, and the six blocks are in `thaumictinkerer:mineable/tile_blocks/pickaxe` with no `needs/` tier (any pickaxe, as 1.7.10). The Golem Connector (`Material.wood`) needs nothing and is in the axe tag |
 | hardness and blast resistance | hardness unchanged: Tablet 3 (metal sound), Interface and Dislocator 3; the Remote Placer, Locomotive, Relay and Golem Connector set none and so are instantly breakable. **Resistance is converted**: 1.7.10 `setResistance(r)` stored `r * 3` and `getExplosionResistance` read it back divided by 5, so the effective value is `0.6 * r`, which is what 1.21.1 `strength(hardness, resistance)` takes (the other groups convert the same way): Tablet `setResistance(50)` is 30, Interface and Dislocator `setResistance(10)` is 6. The default step sound of the 1.7.10 blocks that set none was stone, which is the 1.21.1 default |
@@ -81,6 +81,9 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   `getCollisionBorderSize()` to `getPickRadius()`.
 * **Client swing (forced).** The GregTech World Accelerator hook (`MTEWorldAccelerator.getAccelerationForTEUnsafe`, the "xN"
   text it drew) is dropped: it is a GT5-Unofficial class that does not exist in 1.21.1. The client swings one step per tick.
+* **The held item's sway (1.21.1 clock, 2026-11-01).** The renderer swayed the item by the wall clock, as 1.7.10 did
+  (`System.currentTimeMillis()`); it now reads the game time of the level with the partial tick, at 50 ms a tick, so the motion is the
+  same at 20 ticks a second and pauses with the game and follows `/tick`.
 * **Update packet (forced).** A 1.21.1 client ignores a block-entity update with an empty tag, and the original update
   packet carried the item and the two modes only. The packet keeps carrying those; `loadAdditional` reads the swing counters
   only when they are present, so a sync cannot stop a swing that is running on the client.
@@ -201,7 +204,11 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 * **The move condition (decision).** The original condition `isAirBlock(target) || target.isAir && (...)` reduces to "the
   target is air" by operator precedence; the port tests exactly that. The passenger rules are kept: moved when the space
   above the locomotive is empty or the passenger can be placed above the target; bedrock stays; a piston head is not
-  erased.
+  erased. **New (2026-11-01): a block in the convention tag `c:relocation_not_supported` stays as bedrock does** (Fabric API's
+  `ConventionalBlockTags.RELOCATION_NOT_SUPPORTED`, NeoForge's `Tags.Blocks.RELOCATION_NOT_SUPPORTED`; `TileEntityMobilizer.carries`).
+  The tag is empty in the game itself on both loaders (it only refers to the loaders' legacy tags), so nothing of vanilla changes; a
+  mod that marks its blocks as not relocatable is now respected. GameTest `whatMustNotBeRelocatedStaysWhereItIs` (with a lodestone that
+  the GameTest data pack puts into the tag).
 * **The passenger's block entity (forced).** The original moved only vanilla tile entities (class name starting with
   `net.minecraft.tileentity`) or, with AE2, the ones AE2 allowed, by invalidating the object and re-adding it. The port
   moves the block entities whose class is in `net.minecraft.` through their saved data (`saveWithFullMetadata`, then
@@ -226,9 +233,9 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   knows the colours 0 to 7 and rolls the original's four-in-six chance itself: the original type 2 (blue) is 2, and the
   original type 14 (white) is 6. The comparison `zCoord > partnerX` of the original (an obvious typo that picks the colour)
   is kept.
-* **The relay renderer is not registered (kept).** `RenderTileRelay` and `ModelRelay` are ported, but the original also
-  never registered them in its client proxy, and `relay.png` is not among the original's textures. The relay is a block
-  with a model.
+* **The relay renderer is not registered (kept).** The original never registered `RenderTileRelay` and `ModelRelay` in its
+  client proxy, and `relay.png` is not among the original's textures. The relay is a block with a model. The port had ported
+  both classes anyway, unused; they were deleted on 2026-11-01 (dead code), and `LibResources.MODEL_RELAY_TEXTURE` with them.
 * **Research (kept).** The Relay has no research of its own: its recipe is the second page of the
   locomotive's entry, under the key `LEVITATOR_RELAY`, as in 1.7.10.
 * **The multiblock diagram page (decision).** The original builds a diagram of the track in `ResearchHelper.LeviationaryHelp`
@@ -383,10 +390,22 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   command blocks. An earlier revision of the port kept that. The port now drops the trailing `|| block != air` (the evident intention) and
   refuses `destroySpeed < 0` (bedrock, barriers, end portal frames, portals, the light block) and any `GameMasterBlock` (command,
   structure and jigsaw blocks; vanilla's are unbreakable anyway, the clause is for other mods' operator blocks): not a node, not on
-  `ThaumcraftApi.portableHoleBlackList` (which mirrors the block tag `thaumcraft:portable_hole_blacklist`), breakable, no operator block.
+  the portable hole's blacklist, breakable, no operator block.
   Air passes, so a block can still be moved into an empty place. A refused block is not swapped, the entities are moved as before (1.7.10
   moved them whatever the check said). Spawners (hardness 5) and other breakable block entities still move with their data. Run:
   `dislocatorRefusesWhatAPlayerCannotBreak` (replaces `dislocatorChecksLetEveryBlockThrough`, which pinned the old behaviour).
+* **The blacklists are block tags (fix, 2026-11-01).** The portable hole's blacklist is Thaumcraft's block tag
+  `thaumcraft:portable_hole_blacklist` (beds, doors, pistons and their heads, the moving piston, flux goo and gas), read with
+  `state.is(tag)`. Until 2026-11-01 the Dislocator asked the API's list `ThaumcraftApi.portableHoleBlackList`, which only mirrors
+  the tag and is filled by `refreshPortableHoleBlackList()`, which Thaumcraft 4 Reload calls once in its mod initialisation, before
+  any tag is bound: the list was empty, so a Dislocator swapped beds, doors and pistons (one half of a door or bed, the other half
+  left behind). **New:** it also refuses the blocks of the cross-mod convention tag `c:relocation_not_supported` (Fabric API's
+  `ConventionalBlockTags.RELOCATION_NOT_SUPPORTED`, NeoForge's `Tags.Blocks.RELOCATION_NOT_SUPPORTED`; empty in the game itself, so
+  only other mods' blocks are affected). The add-on's own tag `thaumictinkerer:dislocation_blacklist` and the config list
+  `focusOfDislocationBlacklist` are the Focus of Dislocation's (Foci), as in 1.7.10, where the Dislocator did not read the focus's
+  config either; they are not asked here (the config option keeps working for the focus, unchanged). Run:
+  `whatMustNotBeRelocatedStaysWhereItIs` (pistons, a bed, a door and, through the GameTest data pack's tag, a lodestone are refused;
+  a real pulse leaves the lodestone and the other end in place).
 * **The Dislocator asks before it swaps (new, for safety).** 1.7.10 asked nobody. Before a swap a fake player of the Dislocator's own (the
   Remote Placer's profile `[Minecraft]`, standing in the Dislocator) asks `BlockProtection` for **both ends**: the game's rules for each place
   always (the entities there are moved whatever the blocks do), and, when the blocks will be swapped, `mayBreak` for a block that goes and
@@ -427,29 +446,34 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 ### 2.8 Camouflage (the shared base of the Interface, Dislocator, Remote Placer and Golem Connector)
 
-* **Rendering (forced).** 1.7.10 asked the camouflaged block for the icon of each side from inside the device block. In
-  1.21.1 a block cannot answer for another block's model, so while a camouflage is set the device block is
-  `RenderShape.INVISIBLE` (`camo=true`) and a block entity renderer (`RenderTileCamoDevice`) draws the imitated state at the device's position **in the world**
-  (`BlockRenderDispatcher.renderBatched`, as the piston renderer draws a moving block, and as the SimpleBlocks camouflage
-  does). That lights the camouflage from its neighbours (an earlier revision used `renderSingleBlock` with the packed light
-  of the device's own cell, which is dark for the opaque Golem Connector), with ambient occlusion, the tint of the position
-  and the culling of faces against opaque neighbours. Still different from 1.7.10: the chunk mesh's batching, and the
-  chunk-rendering features of other mods do not see the device as the imitated block. **Seen once**, in the client smoke
-  harness (`docs/CLIENT_VERIFICATION.md`, run of 2026-10-30, Mesa software renderer, one frame): with oak planks set as the
-  camouflage, the close-ups `renderer-interface.png`, `renderer-dislocator.png`, `renderer-remote_placer.png` and
-  `renderer-golem_connector.png` each show an oak-planks cube at the device's place, shaded like the floor around it; a
-  one-off variant with glass on the Golem Connector shows a glass cube with the floor visible through it. **Not seen:** on a
-  GPU, in play, other camouflage blocks, the camouflage next to other camouflaged devices or lit by torches. (The first
-  harness run drew nothing for these four close-ups, because the harness set the camouflage only on the Ethereal Platform's
-  block entity: that was a harness fault, fixed in `RendererPhase`, not a defect of the renderer.)
-* **A camouflaged device occludes nothing (fix, found by the first client run).** While `camo=true` the device block is
-  `RenderShape.INVISIBLE`: its own model is not drawn and the camouflage is drawn by the block entity renderer. The Golem
+* **Rendering: the device's model draws the camouflage (1.21.1 technique, 2026-11-01).** 1.7.10 asked the camouflaged block for the
+  icon of each side from inside the device block. Until 2026-11-01 the port made the device `RenderShape.INVISIBLE` while `camo=true`
+  and drew the imitated state with a block entity renderer (`RenderTileCamoDevice`, `BlockRenderDispatcher.renderBatched` every frame,
+  "forced"). Now the device is always drawn from its model, which the loader glue wraps (Fabric `FabricCamoModels`: a Renderer API
+  model after baking that reads the block entity's render data; NeoForge `NeoForgeCamoModels`: a `BakedModelWrapper` in
+  `ModifyBakingResult` that reads its `ModelData`; `docs/HOOKS.md` section 17, the same as the Ethereal Platform's,
+  `SimpleBlocks.md` 2.4). While `camo=true` the wrapper puts the imitated state's model into the chunk mesh as the block renderer
+  would draw that state at the device's place: the faces that state culls against its neighbours, its tint, its render type (cut-out,
+  translucent), its own light when it emits light; otherwise the device's own model. A change of camouflage rebuilds the chunk section
+  on the client (`CamouflageHooks`). Kept as before: a device in the state `camo=true` whose camouflage has not arrived draws nothing; the
+  device occludes nothing while camouflaged (next point); its breaking particles are its own. New for a player: the cracks of a device
+  being broken are drawn on its camouflage (the block entity renderer drew none; 1.7.10 did). **Not changed, recorded:** a device is a full
+  cube for smooth lighting in both looks, so it darkens the floor next to it even when it imitates glass (a real glass block does not;
+  the client smoke's comparison shows exactly that and nothing else, see below); 1.7.10's camouflage blocks were not "normal cubes" and
+  cast no ambient occlusion. **Seen** in the client smoke's camouflage phase (`docs/CLIENT_VERIFICATION.md`, Mesa software renderer):
+  two Interfaces, a Dislocator, a Remote Placer and two Golem Connectors imitating grass (tinted), oak leaves (tinted, cut out), glass
+  (on a Golem Connector: no hole in the floor), ice (translucent), glowstone (on a Golem Connector) and an oak log on its side, first
+  camouflaged as stone and then changed, look like the real blocks in the same places (`camo-devices.png` against `camo-real-blocks.png`). **Not seen:** a GPU, play, the camouflage lit by torches, other mods'
+  connected textures or animated models.
+* **A camouflaged device occludes nothing (fix, found by the first client run).** While `camo=true` the device's own model is
+  not drawn (until 2026-11-01 the block was `RenderShape.INVISIBLE` and a block entity renderer drew the camouflage; now its wrapped
+  model draws the camouflage, see the first point). The Golem
   Connector is opaque (`isOpaqueCube() == true`, kept), and its full-cube occlusion shape made the chunk renderer cull the
   face of the floor under it, so a connector in the state `camo=true` was a hole to the sky (`blocks-tileblocks-03.png`,
   first cell; the hole had exactly the colour of the sky, 179/207/255). The Interface, Dislocator and Remote Placer have
   `noOcclusion()` and never did. `CamoDeviceBlock.getOcclusionShape` now returns the empty shape while `camo=true` (the game
   caches the occlusion shape per block state, so it may depend on the state), so no device culls the faces of its neighbours
-  while it is drawn by the renderer, and a camouflage that is not a solid cube (glass, ice, leaves) shows what is behind it.
+  while it shows a camouflage, and a camouflage that is not a solid cube (glass, ice, leaves) shows what is behind it.
   In its own look the Golem Connector still hides them. It also keeps **blocking light in both states**
   (`BlockGolemConnector.getLightBlock` is the maximum, the one opacity that `isOpaqueCube` gave it in 1.7.10): the default
   would have been derived from the (now empty) occlusion shape and let light through a camouflaged connector. After the fix
@@ -590,11 +614,20 @@ fixed: the relay fix above (a stale partner hung the server thread), and six che
 the relays of neighbouring checks found each other, see "keeps the last relay it finds"). **Still not run:** the Fabric glue
 `TileBlocksFabric` is only exercised through `interfaceForwardsFluids`; the NeoForge capabilities of the Interface
 (`NeoForgeCapabilities`, 2.5) had not run in that round (they have since, on a NeoForge GameTest server, above); the client ran only in the smoke harness (2.8: the
-camouflage renderer, `renderBatched`, drew in it on a software renderer); multiplayer, survival play and any run on a GPU
+camouflage, since 2026-11-01 the devices' wrapped models, drew in it on a software renderer); multiplayer, survival play and any run on a GPU
 have never happened. Every behaviour above that says "as the
 original" is by reading the original code, not by running both; the claims about 1.7.10 engine code (the break-speed rule,
 Forge's call order of `onItemUseFirst`) are from memory of that code, whose engine source is not on disk here.
 
+
+* **Modernization, 2026-11-01 (branch `modernize-b`).** The camouflage as wrapped models, the relocation tags, the Water Imbued effect tick,
+  the glint component, the native Thaumcraft ids and the deleted 1.7.10 leftovers (`docs/AUDIT.md`, "Modernization (package B)"). New checks:
+  JUnit `CamoModelsTest`, `theSeventeenSoulAspectsKeepTheirOriginalOrder`; GameTests `theCamouflageIsDrawnFromThePlatformsModel`,
+  `theInfusedPotionsGlintByTheirComponent`, `whatMustNotBeRelocatedStaysWhereItIs`, `theRemotePlacerTakesAnyStoneDevice` and new assertions in
+  `aWaterImbuedPlayerTurnsNearbyLavaIntoObsidian`, `aWardSlabSealsTheTwoCellsAbove`, `camouflageIsSetAndCleared` and
+  `camouflagedDevicesLeaveTheFacesOfTheirNeighbours`. Runs: the 105 GameTests of SimpleBlocks and TileBlocks passed on Fabric and on NeoForge;
+  the full suite afterwards (JUnit 433 tests, 0 failures; Fabric 366 and NeoForge 375 required tests passed); the client smoke's camouflage
+  phase on both loaders (`docs/CLIENT_VERIFICATION.md`).
 
 ## Research cell of the Remote Placer (lead decision)
 

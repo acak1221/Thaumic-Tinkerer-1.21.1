@@ -272,6 +272,16 @@ public final class TileBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void whatMustNotBeRelocatedStaysWhereItIs(GameTestHelper h) {
+        TileBlocksRuntimeChecks.whatMustNotBeRelocatedStaysWhereItIs(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theRemotePlacerTakesAnyStoneDevice(GameTestHelper h) {
+        TileBlocksRuntimeChecks.theRemotePlacerTakesAnyStoneDevice(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void interfaceForwardsItems(GameTestHelper h) {
         TileBlocksRuntimeChecks.interfaceForwardsItems(h);
     }

@@ -27,9 +27,9 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.BlockInfusedGrain;
 import thaumic.tinkerer.common.block.tile.TileInfusedGrain;
 import thaumic.tinkerer.common.lib.LibBlockNames;
@@ -120,12 +120,12 @@ public class ItemInfusedSeeds extends Item implements ITTinkererRegisterable {
 
     @Override
     public ThaumicTinkererRecipe getRecipeItem() {
-        // itemShard:0..5, the shards of aer, ignis, aqua, terra, ordo and perditio
+        // itemShard:0..5 of 1.7.10, the shards of aer, ignis, aqua, terra, ordo and perditio, for the seeds of these aspects
         Aspect[] primals = { Aspect.AIR, Aspect.FIRE, Aspect.EARTH, Aspect.WATER, Aspect.ORDER, Aspect.ENTROPY };
-        int[] shards = { 0, 1, 3, 2, 4, 5 };
+        String[] shards = { "air_shard", "fire_shard", "earth_shard", "water_shard", "order_shard", "entropy_shard" };
         ThaumicTinkererRecipeMulti recipes = new ThaumicTinkererRecipeMulti();
         for (int i = 0; i < primals.length; i++) {
-            ItemStack shard = ItemApi.getItem("itemShard", shards[i]);
+            ItemStack shard = ItemsTC.stack(shards[i]);
             recipes.addRecipe(new ThaumicTinkererInfusionRecipe(
                     LibResearch.KEY_POTIONS + i,
                     LibResearch.KEY_POTIONS,

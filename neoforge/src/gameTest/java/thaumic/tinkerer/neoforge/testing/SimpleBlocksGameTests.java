@@ -106,6 +106,11 @@ public final class SimpleBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theCamouflageIsDrawnFromThePlatformsModel(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.theCamouflageIsDrawnFromThePlatformsModel(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(test);
     }
@@ -208,6 +213,11 @@ public final class SimpleBlocksGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void theFourEffectsAreBadEffectsWithoutAnyPowerOfTheirOwn(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theFourEffectsAreBadEffectsWithoutAnyPowerOfTheirOwn(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theInfusedPotionsGlintByTheirComponent(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.theInfusedPotionsGlintByTheirComponent(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

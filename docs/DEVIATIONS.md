@@ -101,6 +101,17 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   (`Enchantments.ready()`, through `ModEnchantments.initJump()`), as the original's `preInit` and `init` did: `(0.42 + 0.3) × factor`, 1.08 for Ascent Boost I and
   1.80 for III, pinned by `gemBootsAndAscentBoostLeggingsComposeTheirJumps` (the first wiring had it reversed, 0.93 and 1.35). Shockwave's `LOW` priority of 1.7.10 is
   **not** reproduced against the listeners of other groups; it has no live effect, because the boot tags of Slow Fall and Shockwave exclude the Gem Boots.
+* **1.21.1 techniques instead of 1.7.10 ones (2026-11-01, SimpleBlocks and TileBlocks).** What a player can notice: the camouflage of the
+  Ethereal Platform and the four camouflageable devices is drawn from the blocks' wrapped models in the chunk mesh (Fabric Renderer API /
+  NeoForge model data) instead of by block entity renderers, with the same faces, tint, render type and light as before and smooth lighting
+  from the mesh, and a camouflaged block now shows the cracks while it is broken, as in 1.7.10 (`SimpleBlocks.md` 2.4, `TileBlocks.md` 2.8);
+  the **Transvector Dislocator no longer swaps the blocks of Thaumcraft's portable-hole blacklist** (beds, doors, pistons, flux goo and gas):
+  it asked the API's mirror of that tag, which is empty in Thaumcraft 4 Reload (filled before tags are bound), so it swapped them (a fix,
+  `TileBlocks.md` 2.6); the Dislocator refuses and the Levitational Locomotive leaves behind the blocks of the convention tag
+  `c:relocation_not_supported` (new; the tag is empty in the game itself, so only other mods' blocks are concerned, `TileBlocks.md` 2.3, 2.6).
+  Not noticeable: Water Imbued works from its own effect tick instead of a player-tick handler, the infused potions glint by their item
+  component, the Animation Tablet's item sways by the game clock instead of the wall clock, and Thaumcraft's items are named by their native
+  ids (`SimpleBlocks.md` 1.2, 2.8; `TileBlocks.md` section 1).
 * **Licence split.** The port is CC BY-NC-SA 3.0 (`LICENSE`; `NOTICE.md` says which files are under which licence). It has its own repository
   (this one); the Thaumcraft mod stays MIT. The add-on's public-API additions in the mod (for example `IBauble.equipsOnUse`, `IFocusPouch`, `BaublesApi.getWorn`,
   `ThaumcraftApiHelper` scan and discovery helpers, `WarpEffects`) contain no Thaumic Tinkerer code.
@@ -202,7 +213,8 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
   against the 1.7.10 layouts (the Ichor Pouch was compared with the original code and texture: same hash, same slot coordinates).
 * Particles over time, the Bedrock dimension in use (sky, light, the portal), the Placement Mirror's ghost blocks, the wings layer, the Mending and Ender Rift focus layers on a wand
   (their `_depth` sprites are now filtered out of the block atlas; that the wand renderer still loads them is argued from the code, not seen), break particles of the Mob Display,
-  a Mob Display in a hand, on the ground or in an item frame, the camouflage devices with a camouflage block set (the block rows set none).
+  a Mob Display in a hand, on the ground or in an item frame. (The camouflage blocks with a camouflage set are drawn by the client smoke's
+  camouflage phase since 2026-11-01: six imitated blocks on platforms and on the devices, compared with the real blocks; `CLIENT_VERIFICATION.md`.)
 * **Mob Display scale (settled 2026-11-01):** the Horse's head, the Witch's hat and the Mooshroom's mushrooms reached 4.75, 3.75 and 3 slot pixels above a 16x16 slot
   (measured on the client harness's picture). On the owner's request these three are drawn smaller and lower in a slot only, and now lie inside it on both loaders (pictures
   read); the `EnumMobAspect` scale values stay the original's and the other mobs are unchanged, among them some that reach up to 2 slot pixels past the slot's edge

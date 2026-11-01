@@ -13,17 +13,13 @@ package thaumic.tinkerer.common.content;
 
 import dev.architectury.registry.menu.MenuRegistry;
 import dev.architectury.registry.registries.RegistrySupplier;
-import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftApi;
 import thaumic.tinkerer.client.TileBlocksClient;
 import thaumic.tinkerer.common.block.BlockAnimationTablet;
@@ -64,6 +60,20 @@ public final class TileBlocks implements ContentGroup {
     public static final int INTERFACE_DISTANCE = 4;
     /** {@code LibFeatures.DISLOCATOR_DISTANCE}: how far from a Transvector Dislocator its target may be. */
     public static final int DISLOCATOR_DISTANCE = 16;
+
+    /**
+     * The cross-mod convention tag of the blocks that must not be relocated ({@code c:relocation_not_supported}; Fabric API's
+     * {@code ConventionalBlockTags.RELOCATION_NOT_SUPPORTED}, NeoForge's {@code Tags.Blocks.RELOCATION_NOT_SUPPORTED}): the Transvector
+     * Dislocator does not swap them and the Levitational Locomotive leaves them behind. New in the port (1.7.10 had no such tag).
+     */
+    public static final TagKey<Block> RELOCATION_NOT_SUPPORTED = TagKey.create(Registries.BLOCK,
+            ResourceLocation.fromNamespaceAndPath("c", "relocation_not_supported"));
+    /**
+     * Thaumcraft's portable-hole blacklist, the block tag that {@code ThaumcraftApi.portableHoleBlackList} mirrors ("the authoritative
+     * native list is the block tag"); the Transvector Dislocator does not swap its blocks (1.7.10: {@code portableHoleBlackList}).
+     */
+    public static final TagKey<Block> PORTABLE_HOLE_BLACKLIST = TagKey.create(Registries.BLOCK,
+            ResourceLocation.fromNamespaceAndPath("thaumcraft", "portable_hole_blacklist"));
 
     private static RegistrySupplier<BlockAnimationTablet> animationTablet;
     private static RegistrySupplier<BlockEntityType<TileAnimationTablet>> animationTabletType;
@@ -206,32 +216,6 @@ public final class TileBlocks implements ContentGroup {
 
     public static ItemConnector connectorItem() {
         return connector.get();
-    }
-
-    // ---- helpers of the recipes ---------------------------------------------------------------------------------
-
-    /** The stack of a 1.7.10 {@code ConfigItems} field and metadata; fails loudly (the unit is recorded as a failure). */
-    public static ItemStack legacyItem(String field, int meta) {
-        ItemStack stack = ItemApi.getItem(field, meta);
-        if (stack == null) throw new IllegalStateException("No Thaumcraft item for " + field + ":" + meta);
-        return stack;
-    }
-
-    /** The stack of a 1.7.10 {@code ConfigBlocks} field and metadata. */
-    public static ItemStack legacyBlock(String field, int meta) {
-        ItemStack stack = ItemApi.getBlock(field, meta);
-        if (stack == null) throw new IllegalStateException("No Thaumcraft block for " + field + ":" + meta);
-        return stack;
-    }
-
-    /** 1.7.10 used a block field without a metadata for "any metadata": the ingredient of every item of the family. */
-    public static Ingredient anyOfLegacyBlocks(String field) {
-        List<Item> items = new ArrayList<>();
-        for (ResourceLocation id : ItemApi.legacyItemIds(field, ItemApi.WILDCARD)) {
-            if (BuiltInRegistries.ITEM.containsKey(id)) items.add(BuiltInRegistries.ITEM.get(id));
-        }
-        if (items.isEmpty()) throw new IllegalStateException("No Thaumcraft items for " + field + ":*");
-        return Ingredient.of(items.toArray(new Item[0]));
     }
 
     /**

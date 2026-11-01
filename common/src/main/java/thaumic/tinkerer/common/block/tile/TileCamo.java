@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import thaumcraft.api.TileThaumcraft;
 import thaumic.tinkerer.common.block.BlockCamo;
 import thaumic.tinkerer.common.content.SimpleBlocks;
+import thaumic.tinkerer.common.hooks.CamouflageHooks;
 
 /**
  * The block entity of a camouflageable block: the block state it imitates.
@@ -32,8 +33,11 @@ import thaumic.tinkerer.common.content.SimpleBlocks;
  * carries both and is saved as a block-state tag under {@code camo}. The tile is synchronised with the clients through
  * {@code TileThaumcraft} (custom data in the update tag and packet). A subclass passes its own block entity type and
  * keeps calling {@code super} from {@link #readCustomNBT} and {@link #writeCustomNBT}.</p>
+ *
+ * <p>The client draws the camouflage in the chunk mesh, from the block's wrapped model ({@link CamouflageHooks}): a camouflage
+ * read on the client that differs from the one before builds the chunk section again.</p>
  */
-public class TileCamo extends TileThaumcraft {
+public class TileCamo extends TileThaumcraft implements CamouflageHooks.Holder {
 
     private static final String TAG_CAMO = "camo";
 
@@ -51,6 +55,7 @@ public class TileCamo extends TileThaumcraft {
 
     /** The state the block pretends to be, or null for its own look. */
     @Nullable
+    @Override
     public BlockState getCamo() {
         return camo;
     }
@@ -81,10 +86,13 @@ public class TileCamo extends TileThaumcraft {
     @Override
     public void readCustomNBT(CompoundTag cmp) {
         super.readCustomNBT(cmp);
+        BlockState before = camo;
         camo = null;
         if (cmp.contains(TAG_CAMO, 10)) {
             BlockState read = NbtUtils.readBlockState(BuiltInRegistries.BLOCK.asLookup(), cmp.getCompound(TAG_CAMO));
             camo = read.isAir() ? null : read;
         }
+        // block states are interned: a different object is a different camouflage
+        if (camo != before) CamouflageHooks.changed(this);
     }
 }

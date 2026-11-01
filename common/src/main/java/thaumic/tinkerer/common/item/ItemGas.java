@@ -23,10 +23,10 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.BlockGas;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -87,7 +87,7 @@ public class ItemGas extends Item implements ITTinkererRegisterable {
     @Override
     public ThaumicTinkererRecipe getRecipeItem() {
         // itemEssence:0, the empty phial
-        ItemStack phial = ItemApi.getItem("itemEssence", 0);
+        ItemStack phial = ItemsTC.stack("phial_empty");
         if (shadow) {
             return new ThaumicTinkererCrucibleRecipe(
                     LibResearch.KEY_GASEOUS_SHADOW,
