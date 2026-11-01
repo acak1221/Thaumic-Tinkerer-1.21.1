@@ -396,7 +396,8 @@ is required" for a non-player. The three words are literal English texts, as in 
   `PacketSoulHearts`, the cut-out render type of the gate, the opener of the destinations screen).
 - `models/block/warp_gate.json`, `models/item/warp_gate.json`, `models/block/bedrock_portal.json` (all six faces; the top and
   the bottom are always drawn and a side is culled by an opaque neighbour, which is what 1.7.10's `shouldSideBeRendered` came to;
-  the portal texture is animated, 3 ticks per frame), blockstates, the gate's loot table, the pickaxe tag (an entry with
+  the portal texture is animated, 3 ticks per frame), blockstates, the gate's loot table (with a load condition for each loader on the
+  item `thaumictinkerer:warp_gate`, so that a server with Kami off skips it instead of logging a parse error), the pickaxe tag (an entry with
   `required: false` so that a world with Kami off still loads the tag file), `data/minecraft/tags/block/wither_immune.json` and
   `dragon_immune.json`.
 - Language: no new key is needed (the texts of the screens, the messages, the research text and the block names are in the

@@ -431,10 +431,12 @@ ends with it. No permanent change to any mob. Scope, narrowed to what the 1.7.10
 
 ## 11. Deliberately not carried over
 
-- `GameRegistry.addShapelessRecipe(9 x nugget <- ichorium)` is a data recipe: `data/thaumictinkerer/recipe/ichor_nuggets.json`. It is
-  not conditional on `enableKami`: with the option off `ichorium` does not exist and the game logs **one recipe parse error** at data
-  load (the tag files are optional entries and cause none). A load condition would be loader-specific
-  (`fabric:load_conditions` / `neoforge:conditions`) and could not be tried here.
+- `GameRegistry.addShapelessRecipe(9 x nugget <- ichorium)` is a data recipe: `data/thaumictinkerer/recipe/ichor_nuggets.json`. It
+  carries a load condition for each loader, both naming the item `thaumictinkerer:ichorium`: `fabric:load_conditions` with
+  `fabric:registry_contains` and `neoforge:conditions` with `neoforge:item_exists` (each loader ignores the other's key). With
+  `enableKami` off the item does not exist and the recipe is skipped without an error; before the conditions the game logged one recipe
+  parse error at data load. The Celestial Gateway's loot table (`KamiWorld.md`) has the same two conditions on its own item. The tag
+  files are optional entries and needed none.
 - The item class `ItemKamiBase` is `KamiItemBase`; `ItemKamiResource.getRarity` per damage value is the per-item rarity above.
 - The creative tab entry of the 1.7.10 mod's `ichor wand` is the tab stack above.
 

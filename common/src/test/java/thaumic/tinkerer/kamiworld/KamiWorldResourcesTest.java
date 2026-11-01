@@ -138,6 +138,14 @@ class KamiWorldResourcesTest {
         String name = loot.getAsJsonArray("pools").get(0).getAsJsonObject().getAsJsonArray("entries").get(0).getAsJsonObject()
                 .get("name").getAsString();
         assertEquals(NS + ":warp_gate", name);
+        // With enableKami off the gate's item does not exist: both loaders skip the table instead of logging a parse error.
+        JsonObject fabric = loot.getAsJsonArray("fabric:load_conditions").get(0).getAsJsonObject();
+        assertEquals("fabric:registry_contains", fabric.get("condition").getAsString());
+        assertEquals("minecraft:item", fabric.get("registry").getAsString());
+        assertEquals(NS + ":warp_gate", fabric.getAsJsonArray("values").get(0).getAsString());
+        JsonObject neoForge = loot.getAsJsonArray("neoforge:conditions").get(0).getAsJsonObject();
+        assertEquals("neoforge:item_exists", neoForge.get("type").getAsString());
+        assertEquals(NS + ":warp_gate", neoForge.get("item").getAsString());
         assertFalse(exists("/data/" + NS + "/loot_table/blocks/" + LibBlockNames.PORTAL + ".json"), "the portal drops nothing (no loot table)");
 
         assertTrue(tagValues("/data/" + NS + "/tags/block/mineable/kami/pickaxe.json").contains(NS + ":warp_gate"));

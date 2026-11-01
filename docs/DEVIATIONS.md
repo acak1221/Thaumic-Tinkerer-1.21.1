@@ -230,7 +230,7 @@ None of these is a known defect. Each is something the port decided or assumed w
    **`PORTING_RULES` 1.3** (groups reach each other by registry path) has no exception for the four KamiGear helpers that the gateway uses (`ItemSkyPearl`, `SlotSkyPearl`,
    `ModelSpinningCubes`, `KamiHooks`); and the gateway's map no longer hides a destination at `y == -1` as the original did (`y == -1` is a real height in 1.21.1,
    `KamiWorld.md` section 9).
-9. **The `ichor_nuggets` recipe is not conditional on `enableKami`**: with Kami off the item `ichorium` does not exist and the game logs one recipe parse error at data load. A
-   load condition would be loader specific and could not be tried (`KamiGear.md` section 11).
+9. **The `ichor_nuggets` recipe and the Celestial Gateway's loot table are conditional on their items**: each file carries a load condition for both loaders
+   (`fabric:load_conditions` / `neoforge:conditions`), so with Kami off they are skipped instead of logging a parse error at data load (`KamiGear.md` section 11).
 10. **Two designs of the camouflage base** exist, `BlockCamo` in SimpleBlocks (the Ethereal Platform) and `CamoDeviceBlock` in TileBlocks (the Remote Placer, the Dislocator): the
     lead may merge them (`SimpleBlocks.md` section 2.4); until then the platform's block entity type `thaumictinkerer:camo` is valid for the platform only.

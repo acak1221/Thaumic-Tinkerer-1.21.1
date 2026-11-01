@@ -45,6 +45,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.portal.DimensionTransition;
+import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.ThaumcraftApiHelper;
@@ -190,6 +191,12 @@ public final class KamiWorldRuntimeChecks {
                 "the portal cannot be broken");
         test.assertTrue(KamiWorld.portalBlock().defaultBlockState().getCollisionShape(test.getLevel(), BlockPos.ZERO).isEmpty(),
                 "the portal has no collision box");
+        // The loot table carries load conditions for both loaders (skipped when enableKami is off); with Kami on they pass.
+        test.assertTrue(test.getLevel().getServer().reloadableRegistries().getLootTable(KamiWorld.warpGateBlock().getLootTable())
+                != LootTable.EMPTY, "the gateway's loot table is loaded");
+        List<ItemStack> gateDrops = Block.getDrops(KamiWorld.warpGateBlock().defaultBlockState(), test.getLevel(), BlockPos.ZERO, null);
+        test.assertTrue(gateDrops.size() == 1 && gateDrops.get(0).is(KamiWorld.warpGateBlock().asItem()) && gateDrops.get(0).getCount() == 1,
+                "the gateway drops itself, got " + gateDrops);
 
         ServerLevel bedrock = bedrock(test);
         test.assertTrue(bedrock.getChunkSource().getGenerator() instanceof ChunkGeneratorBedrock, "the dimension uses the generator");
