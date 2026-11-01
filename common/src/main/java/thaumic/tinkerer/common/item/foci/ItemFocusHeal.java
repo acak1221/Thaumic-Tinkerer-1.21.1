@@ -11,9 +11,6 @@
  */
 package thaumic.tinkerer.common.item.foci;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +23,8 @@ import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
+import thaumic.tinkerer.common.hooks.PlayerData;
+import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
@@ -39,25 +38,23 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  *
  * <p>The progress of each player is kept per side, as the dedicated server and the client of 1.7.10 kept it: the client
  * counts for its own sparkles and the server for the healing. (1.7.10 kept one static map by the name of the player, which
- * the integrated server and client of a single-player game shared.)</p>
+ * the integrated server and client of a single-player game shared.) It is the player data {@link #PROGRESS} ({@code PlayerData}):
+ * the client's {@code LocalPlayer} and the server's {@code ServerPlayer} each carry their own, nothing is saved or synced, a
+ * respawn after death keeps it (1.7.10's map by name did) and a logout ends it with the entity (1.7.10 removed the name).</p>
  */
 public class ItemFocusHeal extends ItemModFocus {
     /** The cost of a cast (or of a tick), in centivis. */
     public static final AspectList VIS_USAGE = new AspectList().add(Aspect.EARTH, 45).add(Aspect.WATER, 45);
 
-    /** The ticks the player has been healing, by player (1.7.10 {@code playerHealData}), one map for each side. */
-    private static final Map<UUID, Integer> SERVER_DATA = new ConcurrentHashMap<>();
-    private static final Map<UUID, Integer> CLIENT_DATA = new ConcurrentHashMap<>();
+    /** The ticks the player has been healing (1.7.10 {@code playerHealData}), on each side's player entity. */
+    public static final PlayerData.Key<Integer> PROGRESS = PlayerData.Key.<Integer>builder(LibMisc.id("focus_heal_progress"), () -> 0)
+            .copyOnDeath().build();
 
     /** The sparkles around the healed player are the violet ones of the API ({@code sparkle(x, y, z, 0)}). */
     private static final int SPARKLE_TYPE = FociFx.SPARKLE_VIOLET;
 
     public ItemFocusHeal(Item.Properties properties) {
         super(properties);
-    }
-
-    private static Map<UUID, Integer> data(Level level) {
-        return level.isClientSide ? CLIENT_DATA : SERVER_DATA;
     }
 
     /** The ticks of healing that make one heal: {@code 30 - potency * 10 / 3} (integer division, as in 1.7.10). */
@@ -70,19 +67,9 @@ public class ItemFocusHeal extends ItemModFocus {
         return 1 + potency;
     }
 
-    /** The ticks of healing of the player so far on this side (zero for none). */
-    public static int progressOf(Level level, UUID player) {
-        return data(level).getOrDefault(player, 0);
-    }
-
-    /** A player left the server: forgets his progress there (1.7.10 {@code PlayerTracker.onPlayerLogout}). */
-    public static void forget(UUID player) {
-        SERVER_DATA.remove(player);
-    }
-
-    /** The client left a world: forgets the progress of every player. */
-    public static void forgetClient() {
-        CLIENT_DATA.clear();
+    /** The ticks of healing of this player entity so far (zero for none): the server's or the client's, by the entity. */
+    public static int progressOf(Player player) {
+        return PlayerData.get(player, PROGRESS);
     }
 
     @Override
@@ -92,12 +79,13 @@ public class ItemFocusHeal extends ItemModFocus {
         int potency = WandHelper.getFocusPotency(wandstack);
 
         Level level = player.level();
-        int progress = data(level).merge(player.getUUID(), 1, Integer::sum);
+        int progress = progressOf(player) + 1;
+        PlayerData.set(player, PROGRESS, progress);
 
         FociFx.sparkleAround(level, player, SPARKLE_TYPE);
 
         if (progress >= requiredProgress(potency)) {
-            data(level).put(player.getUUID(), 0);
+            PlayerData.set(player, PROGRESS, 0);
 
             WandHelper.consumeAllVis(wandstack, player, VIS_USAGE, true, false);
             // 1.7.10 healed on both sides; the health of the player is the server's, the client's copy follows it.
@@ -108,7 +96,7 @@ public class ItemFocusHeal extends ItemModFocus {
 
     @Override
     public void onPlayerStoppedUsingFocus(ItemStack wandstack, Level level, Player player, int count) {
-        data(level).put(player.getUUID(), 0);
+        PlayerData.set(player, PROGRESS, 0);
     }
 
     @Override

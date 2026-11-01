@@ -12,7 +12,6 @@ import dev.architectury.registry.menu.MenuRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.Item;
 import thaumic.tinkerer.client.core.handler.GemArmorKeyHandler;
-import thaumic.tinkerer.client.core.handler.kami.KamiArmorClientHandler;
 import thaumic.tinkerer.client.core.handler.kami.ShadowBeamClientHandler;
 import thaumic.tinkerer.client.core.handler.kami.ToolModeHUDHandler;
 import thaumic.tinkerer.client.gui.kami.GuiIchorPouch;
@@ -24,7 +23,6 @@ import thaumic.tinkerer.common.item.kami.foci.ItemFocusXPDrain;
 import thaumic.tinkerer.common.item.kami.tool.ToolHandler;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
-import thaumic.tinkerer.common.network.packet.kami.PacketArmorStatus;
 import thaumic.tinkerer.common.network.packet.kami.PacketShadowBeam;
 import thaumic.tinkerer.common.registry.TTRegistry;
 
@@ -59,8 +57,6 @@ public final class KamiGearClient {
         registerItemColors();
 
         // The receiver registers the payload type on this side (KamiGear.registerNetwork() registers it on a dedicated server only).
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, PacketArmorStatus.TYPE, PacketArmorStatus.CODEC,
-                (packet, context) -> context.queue(() -> KamiArmorClientHandler.onStatus(packet)));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, PacketShadowBeam.TYPE, PacketShadowBeam.CODEC,
                 (packet, context) -> context.queue(() -> ShadowBeamClientHandler.show(packet)));
     }

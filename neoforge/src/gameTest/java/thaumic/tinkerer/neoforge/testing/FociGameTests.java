@@ -71,6 +71,11 @@ public final class FociGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void healAndSmeltProgressBelongToThePlayerEntity(GameTestHelper test) {
+        FociRuntimeChecks.healAndSmeltProgressBelongToThePlayerEntity(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void smeltReadsTheFurnaceRecipesOfTheLevel(GameTestHelper test) {
         FociRuntimeChecks.smeltReadsTheFurnaceRecipesOfTheLevel(test);
     }

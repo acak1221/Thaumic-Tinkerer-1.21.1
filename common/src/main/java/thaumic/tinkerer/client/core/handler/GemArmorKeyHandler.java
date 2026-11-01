@@ -12,7 +12,6 @@
 package thaumic.tinkerer.client.core.handler;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.architectury.event.events.client.ClientPlayerEvent;
 import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.registry.client.keymappings.KeyMappingRegistry;
 import net.minecraft.client.KeyMapping;
@@ -33,14 +32,12 @@ public final class GemArmorKeyHandler {
     public static void register() {
         KeyMappingRegistry.register(SPECIAL_ABILITY);
         ClientTickEvent.CLIENT_POST.register(GemArmorKeyHandler::onClientTick);
-        // A new world starts with the armour on until the server says otherwise.
-        ClientPlayerEvent.CLIENT_PLAYER_QUIT.register(player -> KamiArmorHandler.setClientStatus(true));
     }
 
     private static void onClientTick(Minecraft client) {
         while (SPECIAL_ABILITY.consumeClick()) {
             if (client.player != null && KamiArmorHandler.wearsAwakenedArmor(client.player)) {
-                KamiArmorClientHandler.setStatus(!KamiArmorHandler.clientStatus());
+                KamiArmorClientHandler.setStatus(!KamiArmorHandler.getArmorStatus(client.player));
             }
         }
     }

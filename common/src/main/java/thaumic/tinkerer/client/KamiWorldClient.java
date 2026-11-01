@@ -17,13 +17,12 @@ import thaumic.tinkerer.client.render.tile.kami.RenderTileWarpGate;
 import thaumic.tinkerer.common.block.tile.kami.TileWarpGate;
 import thaumic.tinkerer.common.content.KamiWorld;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
-import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
 
 /**
  * Client registrations of the Kami world, called from {@code KamiWorld.registerClient()}: the screen of the Celestial
  * Gateway and the one that opens when a player sneaks on it, the block entity renderer of the circling cubes, the cut-out
- * render type of the gateway (the frame of its top face is a hole filled by an emissive layer), the Soul Hearts of the HUD
- * and the receiver of their packet.
+ * render type of the gateway (the frame of its top face is a hole filled by an emissive layer) and the Soul Hearts of the HUD
+ * (which read the local player's synced attachment, {@code SoulHeartHandler.HEARTS}).
  */
 public final class KamiWorldClient {
     private KamiWorldClient() {}
@@ -42,7 +41,5 @@ public final class KamiWorldClient {
         });
 
         SoulHeartClientHandler.register();
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, PacketSoulHearts.TYPE, PacketSoulHearts.CODEC,
-                (packet, context) -> context.queue(() -> SoulHeartClientHandler.clientPlayerHP = packet.hearts()));
     }
 }

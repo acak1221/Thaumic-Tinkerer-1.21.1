@@ -11,8 +11,6 @@
  */
 package thaumic.tinkerer.common.content;
 
-import dev.architectury.event.events.common.LifecycleEvent;
-import dev.architectury.event.events.common.PlayerEvent;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.registries.Registries;
@@ -20,6 +18,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
 import thaumic.tinkerer.client.BasicItemsClient;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.BasicItemComponents;
 import thaumic.tinkerer.common.item.ItemCleansingTalisman;
 import thaumic.tinkerer.common.item.ItemInfusedInkwell;
@@ -79,9 +78,8 @@ public final class BasicItems implements ContentGroup {
 
         RECIPE_SERIALIZERS.register();
 
-        // The Talisman of Remedium remembers what it removed last for each wearer; forget a player that leaves.
-        PlayerEvent.PLAYER_QUIT.register(player -> ItemCleansingTalisman.forget(player.getUUID()));
-        LifecycleEvent.SERVER_STOPPED.register(server -> ItemCleansingTalisman.forgetAll());
+        // The Talisman of Remedium remembers what it removed last on its wearer's entity (player data, gone when the player leaves).
+        PlayerData.register(ItemCleansingTalisman.MEMORY);
     }
 
     @Override

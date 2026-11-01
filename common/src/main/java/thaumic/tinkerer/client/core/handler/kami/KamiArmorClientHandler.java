@@ -15,10 +15,12 @@ import dev.architectury.networking.NetworkManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
-import thaumic.tinkerer.common.network.packet.kami.PacketArmorStatus;
 import thaumic.tinkerer.common.network.packet.kami.PacketToggleArmor;
 
-/** The client's side of the awakened armour's switch: the key sets it and tells the server, the server's answer on login sets it. */
+/**
+ * The client's side of the awakened armour's switch: the key sets the local player's copy of the synced attachment
+ * ({@code KamiArmorHandler.ARMOR_ON}) at once and tells the server, whose change comes back as the attachment's sync.
+ */
 public final class KamiArmorClientHandler {
 
     private KamiArmorClientHandler() {}
@@ -28,13 +30,8 @@ public final class KamiArmorClientHandler {
         if (Minecraft.getInstance().screen == null) {
             ToolModeHUDHandler.setTooltip(
                     Component.translatable(status ? "ttmisc.enableAllArmor" : "ttmisc.disableAllArmor"));
-            KamiArmorHandler.setClientStatus(status);
+            if (Minecraft.getInstance().player != null) KamiArmorHandler.setArmorStatus(Minecraft.getInstance().player, status);
             NetworkManager.sendToServer(new PacketToggleArmor(status));
         }
-    }
-
-    /** The server tells the status of this player (1.7.10: {@code PacketToggleArmor} from {@code PlayerTracker}). */
-    public static void onStatus(PacketArmorStatus packet) {
-        KamiArmorHandler.setClientStatus(packet.armorStatus());
     }
 }

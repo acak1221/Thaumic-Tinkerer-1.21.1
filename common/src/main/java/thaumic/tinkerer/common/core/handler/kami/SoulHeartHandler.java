@@ -12,9 +12,8 @@
  */
 package thaumic.tinkerer.common.core.handler.kami;
 
-import dev.architectury.event.events.common.LifecycleEvent;
+import com.mojang.serialization.Codec;
 import dev.architectury.event.events.common.PlayerEvent;
-import dev.architectury.networking.NetworkManager;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +22,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,9 +31,10 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.saveddata.SavedData;
+import org.jetbrains.annotations.Nullable;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
 import thaumic.tinkerer.common.lib.LibMisc;
-import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
 
 /**
  * The Soul Hearts: an extra health pool of up to 20 points (ten hearts) per player, filled one point at a time by the Soul
@@ -41,9 +42,11 @@ import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
  *
  * <p>1.7.10 kept the number in the player's entity data, which a respawn does not copy (so the hearts are lost on death),
  * and spent it in {@code LivingHurtEvent}, before armour: the damage {@code (int) amount} is taken off the pool and the rest
- * (an int) is the damage that goes on. Here the number is saved with the world per player ({@link SoulHeartData}, cleared
- * when a player is re-created by a respawn), and sent to the player's client ({@link PacketSoulHearts}) on every change and on
- * login.</p>
+ * (an int) is the damage that goes on. Here the number is the player data attachment {@link #HEARTS} ({@link PlayerData}): saved
+ * with the player, not copied on death, synced to the player's own client (which draws it), and taken away on the respawn after
+ * the End as well, where 1.7.10 lost its entity data too. Worlds of the earlier port kept it in the world's
+ * {@code thaumictinkerer_soul_hearts.dat} ({@link SoulHeartData}); a player's entry there is moved into the attachment the first
+ * time the player joins ({@link #migrate}), and the file is not written any more.</p>
  *
  * <p><b>The damage hook.</b> {@link TinkererEvents#LIVING_DAMAGE} is the {@code LivingHurtEvent} of the original: it is
  * posted before armour and may set the amount, so {@link #onLivingDamage} applies the exact 1.7.10 rule ({@link
@@ -59,7 +62,6 @@ import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
  * {@code LivingEntityDamageContainerMixin}).</p>
  */
 public final class SoulHeartHandler {
-    private static final String DATA_NAME = LibMisc.MOD_ID + "_soul_hearts";
     /** 1.7.10 {@code MAX_HP}: twenty points, ten hearts. */
     public static final int MAX_HP = 20;
 
@@ -73,17 +75,26 @@ public final class SoulHeartHandler {
     /** The game's own frames run while {@code invulnerableTime} is above this ({@code LivingEntity.hurt}: {@code invulnerableTime > 10.0F}). */
     private static final int GAME_FRAMES_ABOVE = 10;
 
-    /** The frames of the last hit that the pool saw, by player. Server thread only (the event and the player events are). */
-    private static final Map<UUID, Frames> FRAMES = new HashMap<>();
+    /** The pool of a player, in points (half hearts): saved, synced to the owner's client, lost on death (see the class comment). */
+    public static final PlayerData.Key<Integer> HEARTS = PlayerData.Key.<Integer>builder(LibMisc.id("soul_hearts"), () -> 0)
+            .persistent(Codec.intRange(0, MAX_HP)).syncedToOwner(ByteBufCodecs.VAR_INT).build();
+
+    /**
+     * The frames of the last hit that the pool saw ({@link Frames}): on the server player only, never saved, gone with the entity (a
+     * logout, a respawn) as the game's own invulnerability frames are.
+     */
+    private static final PlayerData.Key<Frames> FRAMES = PlayerData.Key.builder(LibMisc.id("soul_heart_frames"), Frames::new).build();
+
+    /** The name of the old save file in the overworld's data folder, and of its migration ({@link PlayerData#migrateOnce}). */
+    public static final String LEGACY_DATA_NAME = LibMisc.MOD_ID + "_soul_hearts";
 
     private SoulHeartHandler() {}
 
     // ---- the pool ------------------------------------------------------------------------------------------------
 
-    /** 1.7.10 {@code addHearts}: one point (half a heart), and the player's client is told. */
+    /** 1.7.10 {@code addHearts}: one point (half a heart); the player's client is told by the attachment's sync. */
     public static void addHearts(Player player) {
         addHP(player, 1);
-        updateClient(player);
     }
 
     /** Adds points up to {@link #MAX_HP}; false when the pool was already full. */
@@ -102,20 +113,22 @@ public final class SoulHeartHandler {
         return overflow(current, hp);
     }
 
+    /**
+     * Sets the pool of a server player (0 to {@link #MAX_HP}; an empty pool is no attachment at all). The client's copy is set by the
+     * sync of the attachment, which sends a change only: setting the value the pool already has sends nothing (1.7.10 sent the pool
+     * after every hit, changed or not; the client saw the same number).
+     */
     public static void setHP(Player player, int hp) {
-        if (player instanceof ServerPlayer server) data(server.server).set(server.getUUID(), hp);
+        if (!(player instanceof ServerPlayer server)) return;
+        int value = Math.max(0, Math.min(MAX_HP, hp));
+        if (value == getHP(server)) return;
+        if (value == 0) PlayerData.remove(server, HEARTS);
+        else PlayerData.set(server, HEARTS, value);
     }
 
-    /** The soul hearts of a player, in points; 0 for a player that is not on a server. */
+    /** The soul hearts of a player, in points: the server's pool, or on a client the copy the server synced to its own player. */
     public static int getHP(Player player) {
-        return player instanceof ServerPlayer server ? data(server.server).get(server.getUUID()) : 0;
-    }
-
-    /** Sends the player's pool to the player's client (1.7.10 {@code updateClient}). */
-    public static void updateClient(Player player) {
-        if (player instanceof ServerPlayer server && server.connection != null) {
-            NetworkManager.sendToPlayer(server, new PacketSoulHearts(getHP(player)));
-        }
+        return PlayerData.get(player, HEARTS);
     }
 
     // ---- the pure rules ------------------------------------------------------------------------------------------
@@ -147,28 +160,35 @@ public final class SoulHeartHandler {
     /**
      * 1.7.10 {@code onPlayerDamage} exactly, for a hook that can set the amount of the hit: the whole points of {@code amount}
      * are taken off the pool (always, whether the player has hearts or not) and the new amount is what is left, an int.
-     * The pool is saved and the player's client told. Call it once per hit, before armour.
+     * The pool is saved with the player and its client told of a change. Call it once per hit, before armour.
      */
     public static float modifyIncomingDamage(ServerPlayer player, float amount) {
         if (amount <= 0F) return amount;
-        int rest = removeHP(player, (int) amount);
-        updateClient(player);
-        return rest;
+        return removeHP(player, (int) amount);
     }
 
     // ---- the events ----------------------------------------------------------------------------------------------
 
+    /**
+     * The player data of the Soul Hearts (from the registrar, whatever {@code kami.forceenabled} says: an unregistered attachment is
+     * dropped when the player loads, PlayerData's class comment).
+     */
+    public static void registerPlayerData() {
+        PlayerData.register(HEARTS, FRAMES);
+    }
+
     /** Registers the events (once, from the registrar). */
     public static void register() {
         TinkererEvents.LIVING_DAMAGE.register(SoulHeartHandler::onLivingDamage);
-        PlayerEvent.PLAYER_JOIN.register(SoulHeartHandler::updateClient);
-        PlayerEvent.PLAYER_CLONE.register((oldPlayer, newPlayer, wonGame) -> {
+        PlayerEvent.PLAYER_JOIN.register(player -> PlayerData.migrateOnce(player, LEGACY_DATA_NAME,
+                joined -> migrate(joined, legacyData(joined.server))));
+        // A respawn is a new entity: after a death the pool is not copied (1.7.10 lost it with the entity data), after the End the loaders
+        // copy every attachment, and 1.7.10 lost the hearts there too, so the pool is taken away here, after the copy. The frames are new
+        // as the game's are.
+        PlayerEvent.PLAYER_RESPAWN.register((newPlayer, conqueredEnd, reason) -> {
             setHP(newPlayer, 0);
-            FRAMES.remove(newPlayer.getUUID());
+            PlayerData.remove(newPlayer, FRAMES);
         });
-        PlayerEvent.PLAYER_RESPAWN.register((newPlayer, conqueredEnd, reason) -> updateClient(newPlayer));
-        PlayerEvent.PLAYER_QUIT.register(player -> FRAMES.remove(player.getUUID()));
-        LifecycleEvent.SERVER_STOPPED.register(server -> FRAMES.clear());
     }
 
     /**
@@ -178,9 +198,9 @@ public final class SoulHeartHandler {
      * The game's own frames (which {@link TinkererEvents#LIVING_DAMAGE} is posted inside of) do not cover a hit that
      * is cancelled, and compare the next hit with what the listener returned instead of with the raw amount, so this
      * keeps the original's numbers: when the hit began them and the strongest raw amount so far, and, apart from the frames, what
-     * the game's own {@code lastHurt} holds because of the amounts handed back to it ({@link #handed}). One record per player,
-     * kept for as long as the player is on the server: {@link #handed} outlives the pool's frames, which can end before the
-     * game's own.
+     * the game's own {@code lastHurt} holds because of the amounts handed back to it ({@link #handed}). One record per player
+     * entity ({@link #FRAMES}), kept for as long as the entity exists: {@link #handed} outlives the pool's frames, which can end
+     * before the game's own.
      */
     private static final class Frames {
         /** The game tick of the hit that began the pool's current frames. Meaningful only after {@link #begin}. */
@@ -234,8 +254,8 @@ public final class SoulHeartHandler {
         if (!(victim instanceof ServerPlayer player)) return amount;
         long now = player.level().getGameTime();
         boolean bypassesCooldown = source.is(DamageTypeTags.BYPASSES_COOLDOWN);
-        Frames frames = FRAMES.get(player.getUUID());
-        boolean inFrames = frames != null && frames.running(now) && !bypassesCooldown;
+        Frames frames = PlayerData.getOrCreate(player, FRAMES);
+        boolean inFrames = frames.running(now) && !bypassesCooldown;
         float event;
         if (inFrames) {
             if (amount <= frames.raw) return 0F; // the original refused it before the event
@@ -243,10 +263,6 @@ public final class SoulHeartHandler {
             frames.raw = amount;
         } else {
             event = amount;
-            if (frames == null) {
-                frames = new Frames();
-                FRAMES.put(player.getUUID(), frames);
-            }
             frames.begin(now, amount);
         }
         float rest = modifyIncomingDamage(player, event);
@@ -259,14 +275,33 @@ public final class SoulHeartHandler {
         return frames.handed;
     }
 
-    // ---- the saved numbers ---------------------------------------------------------------------------------------
+    // ---- the save file of the earlier port (read once per player, never written) -------------------------------------------
 
-    private static SoulHeartData data(MinecraftServer server) {
-        return server.overworld().getDataStorage()
-                .computeIfAbsent(new SavedData.Factory<>(SoulHeartData::new, SoulHeartData::load, null), DATA_NAME);
+    /** How the old save file is read (no data fixer: it never had one). */
+    public static final SavedData.Factory<SoulHeartData> LEGACY_FACTORY = new SavedData.Factory<>(SoulHeartData::new, SoulHeartData::load,
+            null);
+
+    /** The old save file of the overworld, or null when the world has none (it is read from disk once and kept by the data storage). */
+    @Nullable
+    public static SoulHeartData legacyData(MinecraftServer server) {
+        return server.overworld().getDataStorage().get(LEGACY_FACTORY, LEGACY_DATA_NAME);
     }
 
-    /** The soul hearts of every player, by UUID, saved with the world. */
+    /**
+     * Moves the player's pool of the old save file into the attachment, unless the player already has a pool there. The entry is
+     * left in the file, which is never written again; {@link PlayerData#migrateOnce} makes sure it is read once per player.
+     */
+    public static void migrate(ServerPlayer player, @Nullable SoulHeartData legacy) {
+        if (legacy == null) return;
+        int hp = legacy.get(player.getUUID());
+        if (hp > 0 && getHP(player) == 0) setHP(player, hp);
+    }
+
+    /**
+     * The Soul Hearts of every player by UUID, as the earlier port saved them with the world ({@code data/thaumictinkerer_soul_hearts.dat}
+     * of the overworld: {@code {hearts: [{player: <UUID>, hp: <int>}, ...]}}). Read only: nothing sets it dirty, so the game never
+     * writes it again.
+     */
     public static final class SoulHeartData extends SavedData {
         private final Map<UUID, Integer> hearts = new HashMap<>();
 
@@ -280,6 +315,7 @@ public final class SoulHeartHandler {
             return data;
         }
 
+        /** The format the file had; called only if the data were dirty, which they never are. */
         @Override
         public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
             ListTag list = new ListTag();
@@ -295,13 +331,6 @@ public final class SoulHeartHandler {
 
         public int get(UUID player) {
             return hearts.getOrDefault(player, 0);
-        }
-
-        public void set(UUID player, int hp) {
-            int old = get(player);
-            if (hp > 0) hearts.put(player, hp);
-            else hearts.remove(player);
-            if (old != Math.max(0, hp)) setDirty();
         }
     }
 }

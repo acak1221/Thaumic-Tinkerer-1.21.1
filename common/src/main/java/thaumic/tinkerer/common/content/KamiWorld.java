@@ -12,12 +12,9 @@
 package thaumic.tinkerer.common.content;
 
 import com.mojang.serialization.MapCodec;
-import dev.architectury.networking.NetworkManager;
-import dev.architectury.platform.Platform;
 import dev.architectury.registry.menu.MenuRegistry;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.RegistrySupplier;
-import dev.architectury.utils.Env;
 import java.util.List;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
@@ -43,7 +40,6 @@ import thaumic.tinkerer.common.item.kami.ItemBlockWarpGate;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibMisc;
-import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
 import thaumic.tinkerer.common.network.packet.kami.PacketWarpGateButton;
 import thaumic.tinkerer.common.network.packet.kami.PacketWarpGateTeleport;
 import thaumic.tinkerer.common.registry.TTRegistry;
@@ -84,6 +80,8 @@ public final class KamiWorld implements ContentGroup {
         CHUNK_GENERATORS.register();
         FEATURES.register(BedrockOreClustersFeature.NAME, BedrockOreClustersFeature::new);
         FEATURES.register();
+        // The Soul Hearts' player data: always as well, or a server that turns Kami off for a while would drop its players' pools.
+        SoulHeartHandler.registerPlayerData();
 
         if (!ConfigHandler.enableKami) return;
 
@@ -99,13 +97,7 @@ public final class KamiWorld implements ContentGroup {
 
         PacketWarpGateButton.register();
         PacketWarpGateTeleport.register();
-        // The payload the server sends. Architectury registers the type of an S2C payload together with its client receiver
-        // (KamiWorldClient), so only a dedicated server registers it here; on a client both calls end in Fabric's
-        // PayloadTypeRegistry, which throws "Packet type ... is already registered!" for the second one (the integrated
-        // server shares the client's registry).
-        if (Platform.getEnvironment() == Env.SERVER) {
-            NetworkManager.registerS2CPayloadType(PacketSoulHearts.TYPE, PacketSoulHearts.CODEC);
-        }
+        // The Soul Hearts reach the client as the synced player data attachment of SoulHeartHandler (no packet of the add-on's).
 
         SoulHeartHandler.register();
         DimensionalShardDropHandler.register();

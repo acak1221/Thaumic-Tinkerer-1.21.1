@@ -38,6 +38,7 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.helper.ProjectileHelper;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.foci.FociComponents.DislocationData;
 import thaumic.tinkerer.common.item.foci.FociHooks;
 import thaumic.tinkerer.common.item.foci.ItemFocusDeflect;
@@ -347,5 +348,21 @@ class FociLogicTest {
         CompoundTag big = new CompoundTag();
         big.putByteArray("data", new byte[ItemFocusDislocation.MAX_TILE_BYTES + 1]);
         assertTrue(big.sizeInBytes() > ItemFocusDislocation.MAX_TILE_BYTES, "the size of a tag is what the check measures");
+    }
+
+    /**
+     * The progress of Mending and Efreet's Flame is player data of each side's player entity (docs/deviations/Foci.md sections 3 and 4):
+     * never saved or synced, kept through a respawn after death as 1.7.10's maps by name kept it; none at first.
+     */
+    @Test
+    void theFocusProgressIsTheEntitysOwnAndKeptThroughDeath() {
+        PlayerData.Key<Integer> heal = ItemFocusHeal.PROGRESS;
+        assertEquals("thaumictinkerer:focus_heal_progress", heal.id().toString());
+        assertEquals(0, heal.initial());
+        assertTrue(heal.copyOnDeath() && !heal.persistent() && !heal.synced(), heal.toString());
+        PlayerData.Key<ItemFocusSmelt.SmeltData> smelt = ItemFocusSmelt.SMELTING;
+        assertEquals("thaumictinkerer:focus_smelt_progress", smelt.id().toString());
+        assertTrue(smelt.copyOnDeath() && !smelt.persistent() && !smelt.synced(), smelt.toString());
+        assertEquals(0, smelt.initial().progress, "the initial value has no ticks to go: it smelts nothing");
     }
 }

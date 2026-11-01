@@ -58,9 +58,10 @@ import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.helper.ProjectileHelper;
 import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.hooks.FloatingTicks;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.foci.FociComponents;
-import thaumic.tinkerer.common.item.foci.FociHooks;
 import thaumic.tinkerer.common.item.foci.FociComponents.DislocationData;
+import thaumic.tinkerer.common.item.foci.FociHooks;
 import thaumic.tinkerer.common.item.foci.ItemFocusDeflect;
 import thaumic.tinkerer.common.item.foci.ItemFocusDislocation;
 import thaumic.tinkerer.common.item.foci.ItemFocusEnderChest;
@@ -552,25 +553,25 @@ public final class FociRuntimeChecks {
         test.assertTrue(ticks == 30, "thirty ticks without potency");
         for (int i = 1; i < ticks; i++) heal.onUsingFocusTick(wand, player, Integer.MAX_VALUE - i);
         test.assertTrue(player.getHealth() == 10.0F, "nothing is healed before the thirtieth tick");
-        test.assertTrue(ItemFocusHeal.progressOf(level, player.getUUID()) == ticks - 1, "the progress counts");
+        test.assertTrue(ItemFocusHeal.progressOf(player) == ticks - 1, "the progress counts");
         assertNothingSpent(test, wand, before, "mending before the heal");
         heal.onUsingFocusTick(wand, player, Integer.MAX_VALUE - ticks);
         test.assertTrue(player.getHealth() == 11.0F, "one health point at the thirtieth tick: " + player.getHealth());
-        test.assertTrue(ItemFocusHeal.progressOf(level, player.getUUID()) == 0, "the progress starts again");
+        test.assertTrue(ItemFocusHeal.progressOf(player) == 0, "the progress starts again");
         assertSpent(test, wand, player, before, new AspectList().add(Aspect.EARTH, 45).add(Aspect.WATER, 45), 1, "mending");
 
         // Releasing the key forgets the progress.
         for (int i = 0; i < 12; i++) heal.onUsingFocusTick(wand, player, Integer.MAX_VALUE - i);
-        test.assertTrue(ItemFocusHeal.progressOf(level, player.getUUID()) == 12, "twelve ticks into the next heal");
+        test.assertTrue(ItemFocusHeal.progressOf(player) == 12, "twelve ticks into the next heal");
         heal.onPlayerStoppedUsingFocus(wand, level, player, 0);
-        test.assertTrue(ItemFocusHeal.progressOf(level, player.getUUID()) == 0, "released: no progress");
+        test.assertTrue(ItemFocusHeal.progressOf(player) == 0, "released: no progress");
 
         // A healthy player is not healed and nothing counts.
         player.setHealth(player.getMaxHealth());
         AspectList healthy = WandHelper.getAllVis(wand);
         for (int i = 0; i < 40; i++) heal.onUsingFocusTick(wand, player, Integer.MAX_VALUE - i);
         test.assertTrue(player.getHealth() == player.getMaxHealth(), "full health stays");
-        test.assertTrue(ItemFocusHeal.progressOf(level, player.getUUID()) == 0, "no progress at full health");
+        test.assertTrue(ItemFocusHeal.progressOf(player) == 0, "no progress at full health");
         assertNothingSpent(test, wand, healthy, "mending at full health");
 
         // Without vis there is no healing.
@@ -578,7 +579,52 @@ public final class FociRuntimeChecks {
         player.setHealth(10.0F);
         for (int i = 0; i < 40; i++) heal.onUsingFocusTick(empty, player, Integer.MAX_VALUE - i);
         test.assertTrue(player.getHealth() == 10.0F, "no vis, no healing");
-        ItemFocusHeal.forget(player.getUUID());
+        PlayerData.remove(player, ItemFocusHeal.PROGRESS);
+        test.succeed();
+    }
+
+    /**
+     * The progress of Mending and Efreet's Flame is player data of the player entity ({@code ItemFocusHeal.PROGRESS},
+     * {@code ItemFocusSmelt.SMELTING}): two entities of the same player, as the integrated server's {@code ServerPlayer} and the
+     * client's {@code LocalPlayer} of a single-player game are, count apart (the earlier port chose a map by the side; 1.7.10 shared one
+     * map by name between them), a respawn after death keeps it as 1.7.10's map by name kept it, and a logout ends it with the entity
+     * (1.7.10 removed the name at logout).
+     */
+    public static void healAndSmeltProgressBelongToThePlayerEntity(GameTestHelper test) {
+        floor(test);
+        ServerPlayer first = PlayerDataSync.login(test, new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "tt-focus-progress"));
+        ServerPlayer[] now = { first };
+        try {
+            first.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+            // A second entity of the same player that is not in the level, as the client's copy of a single-player game is not.
+            ServerPlayer twin = new ServerPlayer(test.getLevel().getServer(), test.getLevel(), first.getGameProfile(),
+                    net.minecraft.server.level.ClientInformation.createDefault());
+            ItemStack wand = wand(test, LibItemNames.FOCUS_HEAL, true);
+            ItemFocusHeal heal = (ItemFocusHeal) TTRegistry.item(LibItemNames.FOCUS_HEAL);
+            first.setHealth(10.0F);
+            twin.setHealth(10.0F);
+            for (int i = 0; i < 12; i++) heal.onUsingFocusTick(wand, first, Integer.MAX_VALUE - i);
+            test.assertTrue(ItemFocusHeal.progressOf(first) == 12 && ItemFocusHeal.progressOf(twin) == 0,
+                    "the entity that used the focus counted: " + ItemFocusHeal.progressOf(first) + " / " + ItemFocusHeal.progressOf(twin));
+            for (int i = 0; i < 5; i++) heal.onUsingFocusTick(wand, twin, Integer.MAX_VALUE - i);
+            test.assertTrue(ItemFocusHeal.progressOf(twin) == 5 && ItemFocusHeal.progressOf(first) == 12, "and the other entity counts on its own");
+
+            BlockPos block = test.absolutePos(new BlockPos(2, 1, 2));
+            PlayerData.set(first, ItemFocusSmelt.SMELTING, new ItemFocusSmelt.SmeltData(block, 7));
+            test.assertTrue(ItemFocusSmelt.dataOf(twin) == null, "Efreet's Flame too");
+
+            now[0] = PlayerDataSync.respawn(first, false);
+            test.assertTrue(now[0] != first && ItemFocusHeal.progressOf(now[0]) == 12, "a respawn after death keeps the Mending progress: "
+                    + ItemFocusHeal.progressOf(now[0]));
+            ItemFocusSmelt.SmeltData smelting = ItemFocusSmelt.dataOf(now[0]);
+            test.assertTrue(smelting != null && smelting.equalPos(block) && smelting.progress == 7, "and the block of Efreet's Flame");
+
+            now[0] = PlayerDataSync.relog(test, now[0]);
+            test.assertTrue(ItemFocusHeal.progressOf(now[0]) == 0 && ItemFocusSmelt.dataOf(now[0]) == null,
+                    "a logout ends both (nothing is saved)");
+        } finally {
+            PlayerDataSync.logout(test, now[0]);
+        }
         test.succeed();
     }
 
@@ -613,15 +659,15 @@ public final class FociRuntimeChecks {
         AspectList before = WandHelper.getAllVis(wand);
         for (int i = 0; i < 20; i++) smelt.onUsingFocusTick(wand, player, Integer.MAX_VALUE - i);
         test.assertBlockPresent(Blocks.COBBLESTONE, block);
-        test.assertTrue(ItemFocusSmelt.dataOf(level, player.getUUID()) != null
-                && ItemFocusSmelt.dataOf(level, player.getUUID()).progress == 1, "one tick to go");
+        test.assertTrue(ItemFocusSmelt.dataOf(player) != null
+                && ItemFocusSmelt.dataOf(player).progress == 1, "one tick to go");
         assertNothingSpent(test, wand, before, "smelting before the block melts");
 
         smelt.onUsingFocusTick(wand, player, Integer.MAX_VALUE - 20);
         test.assertBlockPresent(Blocks.STONE, block);
         // As in 1.7.10 the block is forgotten and, in the same tick, counted again from twenty.
-        test.assertTrue(ItemFocusSmelt.dataOf(level, player.getUUID()) != null
-                && ItemFocusSmelt.dataOf(level, player.getUUID()).progress == 20, "a new count starts");
+        test.assertTrue(ItemFocusSmelt.dataOf(player) != null
+                && ItemFocusSmelt.dataOf(player).progress == 20, "a new count starts");
         assertSpent(test, wand, player, before, new AspectList().add(Aspect.FIRE, 45).add(Aspect.ENTROPY, 12), 1, "smelting");
 
         // Stone melts into smooth stone in the next twenty ticks, if the player keeps on.
@@ -630,7 +676,7 @@ public final class FociRuntimeChecks {
         smelt.onUsingFocusTick(wand, player, Integer.MAX_VALUE - 40);
         test.assertBlockPresent(Blocks.SMOOTH_STONE, block);
         assertSpent(test, wand, player, before, new AspectList().add(Aspect.FIRE, 45).add(Aspect.ENTROPY, 12), 2, "two smeltings");
-        ItemFocusSmelt.forget(player.getUUID());
+        PlayerData.remove(player, ItemFocusSmelt.SMELTING);
         test.succeed();
     }
 
@@ -661,7 +707,7 @@ public final class FociRuntimeChecks {
         player.setYHeadRot(0.0F);
         for (int i = 0; i < 40; i++) smelt.onUsingFocusTick(empty, player, Integer.MAX_VALUE - i);
         test.assertBlockPresent(Blocks.SAND, block);
-        ItemFocusSmelt.forget(player.getUUID());
+        PlayerData.remove(player, ItemFocusSmelt.SMELTING);
         test.succeed();
     }
 
@@ -1071,7 +1117,7 @@ public final class FociRuntimeChecks {
         test.assertTrue(player.getHealth() == 10.0F, "not yet");
         heal.onUsingFocusTick(mending, player, Integer.MAX_VALUE - ticks);
         test.assertTrue(player.getHealth() == 12.0F, "two health points: " + player.getHealth());
-        ItemFocusHeal.forget(player.getUUID());
+        PlayerData.remove(player, ItemFocusHeal.PROGRESS);
         test.succeed();
     }
 
@@ -1088,7 +1134,7 @@ public final class FociRuntimeChecks {
         test.assertBlockPresent(Blocks.COBBLESTONE, block);
         smelt.onUsingFocusTick(wand, player, Integer.MAX_VALUE - 15);
         test.assertBlockPresent(Blocks.STONE, block);
-        ItemFocusSmelt.forget(player.getUUID());
+        PlayerData.remove(player, ItemFocusSmelt.SMELTING);
         test.succeed();
     }
 
@@ -1108,8 +1154,8 @@ public final class FociRuntimeChecks {
             // The key is let go: the wand's release hook runs, and Mending forgets its progress.
             player.releaseUsingItem();
             test.assertTrue(!player.isUsingItem(), "the use ended");
-            test.assertTrue(ItemFocusHeal.progressOf(test.getLevel(), player.getUUID()) == 0, "releasing the key forgets the progress");
-            ItemFocusHeal.forget(player.getUUID());
+            test.assertTrue(ItemFocusHeal.progressOf(player) == 0, "releasing the key forgets the progress");
+            PlayerData.remove(player, ItemFocusHeal.PROGRESS);
         });
     }
 
@@ -1522,7 +1568,7 @@ public final class FociRuntimeChecks {
             test.assertTrue(asked[0], "Efreet's Flame asked before it changed the block");
             test.assertBlockPresent(Blocks.COBBLESTONE, block);
             assertNothingSpent(test, flame, beforeFlame, "a refused smelting");
-            ItemFocusSmelt.forget(player.getUUID());
+            PlayerData.remove(player, ItemFocusSmelt.SMELTING);
         });
         test.assertTrue(!BlockProtection.isProbing(), "the question is over");
 
@@ -1545,7 +1591,7 @@ public final class FociRuntimeChecks {
         ItemFocusSmelt smelt = (ItemFocusSmelt) TTRegistry.item(LibItemNames.FOCUS_SMELT);
         for (int i = 0; i < 45; i++) smelt.onUsingFocusTick(flame, player, Integer.MAX_VALUE - i);
         test.assertBlockPresent(Blocks.COBBLESTONE, block);
-        ItemFocusSmelt.forget(player.getUUID());
+        PlayerData.remove(player, ItemFocusSmelt.SMELTING);
         test.succeed();
     }
 

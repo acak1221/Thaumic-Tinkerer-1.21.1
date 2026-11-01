@@ -71,8 +71,10 @@ import thaumcraft.api.research.ResearchCategories;
 import thaumcraft.api.wands.WandHelper;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.BasicItemComponents;
 import thaumic.tinkerer.common.item.BasicItemComponents.ShareData;
+import thaumic.tinkerer.common.item.CleansingLogic;
 import thaumic.tinkerer.common.item.ItemCleansingTalisman;
 import thaumic.tinkerer.common.item.ItemInfusedInkwell;
 import thaumic.tinkerer.common.item.ItemShareBook;
@@ -491,7 +493,7 @@ public final class BasicItemsRuntimeChecks {
         ServerPlayer player = player(test, 4.5, 1, 4.5);
         ItemStack talisman = TTRegistry.stack(LibItemNames.CLEANSING_TALISMAN);
         IBauble bauble = (IBauble) talisman.getItem();
-        ItemCleansingTalisman.forget(player.getUUID());
+        ItemCleansingTalisman.forget(player);
         try {
             // The mock player of the helper joins a server whose default game mode is creative, and a creative player never wears
             // an item out (vanilla's ItemStack.hurtAndBreak, 1.7.10's damageItem alike): the talisman still removes the effect,
@@ -504,7 +506,7 @@ public final class BasicItemsRuntimeChecks {
             bauble.onWornTick(free, player);
             test.assertTrue(!player.hasEffect(MobEffects.POISON), "a creative player is cleansed too");
             test.assertTrue(free.getDamageValue() == 0, "but the talisman is not worn out: " + free.getDamageValue());
-            ItemCleansingTalisman.forget(player.getUUID());
+            ItemCleansingTalisman.forget(player);
             player.setGameMode(GameType.SURVIVAL);
 
             // Switched off: nothing happens.
@@ -615,7 +617,7 @@ public final class BasicItemsRuntimeChecks {
             bauble.onWornTick(third, player);
             test.assertTrue(third.isEmpty(), "91 + 10 = 101 points: broken: " + third);
         } finally {
-            ItemCleansingTalisman.forget(player.getUUID());
+            ItemCleansingTalisman.forget(player);
         }
         test.succeed();
     }
@@ -632,7 +634,7 @@ public final class BasicItemsRuntimeChecks {
         ServerPlayer player = player(test, 4.5, 1, 4.5);
         player.setGameMode(GameType.SURVIVAL);
         player.setShiftKeyDown(false);
-        ItemCleansingTalisman.forget(player.getUUID());
+        ItemCleansingTalisman.forget(player);
         ItemStack talisman = TTRegistry.stack(LibItemNames.CLEANSING_TALISMAN);
         ItemCleansingTalisman.setEnabled(talisman, true);
         player.setItemInHand(InteractionHand.MAIN_HAND, talisman);
@@ -666,11 +668,40 @@ public final class BasicItemsRuntimeChecks {
             List<ItemStack> now = BaublesApi.getWorn(player);
             test.assertTrue(now.size() == 1 && now.get(0).getDamageValue() == 2,
                     "two removals, two points of wear on the worn stack: " + now);
-            ItemCleansingTalisman.forget(player.getUUID());
+            ItemCleansingTalisman.forget(player);
         });
     }
 
     // ---- the Talisman of Withhold --------------------------------------------------------------------------------------
+
+    /**
+     * The talisman's memory of what it removed last is player data of the wearer's entity ({@code ItemCleansingTalisman.MEMORY}): a
+     * respawn after death keeps it, as 1.7.10's maps by UUID kept it, and a logout ends it with the entity (the earlier port forgot it at
+     * logout as well). Burning, 1.7.10's effect id -1, is a key of the effect registry that no effect has; the five warp effects that cost
+     * ten points are the keys of Thaumcraft's registered effects.
+     */
+    public static void cleansingTalismanMemoryIsKeptThroughDeathAndEndsWithTheEntity(GameTestHelper test) {
+        test.assertTrue(!net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.containsKey(CleansingLogic.BURNING.location()),
+                "no effect is registered under the key of burning");
+        for (var key : ItemCleansingTalisman.WARP_EFFECTS) {
+            test.assertTrue(net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.containsKey(key.location()), "registered: " + key.location());
+        }
+        ServerPlayer first = PlayerDataSync.login(test, new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "tt-talisman-memory"));
+        ServerPlayer[] now = { first };
+        try {
+            CleansingLogic.State state = PlayerData.getOrCreate(first, ItemCleansingTalisman.MEMORY);
+            CleansingLogic.plan(state, false, List.of(net.minecraft.world.effect.MobEffects.POISON.unwrapKey().orElseThrow()));
+            test.assertTrue(state.lastRemoved != null && state.lastRemoved.equals(net.minecraft.world.effect.MobEffects.POISON.unwrapKey().orElseThrow()),
+                    "the talisman remembers the poison");
+            now[0] = PlayerDataSync.respawn(first, false);
+            test.assertTrue(PlayerData.get(now[0], ItemCleansingTalisman.MEMORY).lastRemoved != null, "a respawn after death keeps the memory");
+            now[0] = PlayerDataSync.relog(test, now[0]);
+            test.assertTrue(PlayerData.get(now[0], ItemCleansingTalisman.MEMORY).lastRemoved == null, "a logout ends it");
+        } finally {
+            PlayerDataSync.logout(test, now[0]);
+        }
+        test.succeed();
+    }
 
     public static void xpTalismanSwitchesOnSneakClickAndKeepsItsPoints(GameTestHelper test) {
         floor(test);

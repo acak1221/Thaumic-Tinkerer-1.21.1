@@ -65,7 +65,6 @@ import thaumic.tinkerer.common.item.kami.wand.CapIchor;
 import thaumic.tinkerer.common.item.kami.wand.RodIchorcloth;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
-import thaumic.tinkerer.common.network.packet.kami.PacketArmorStatus;
 import thaumic.tinkerer.common.network.packet.kami.PacketShadowBeam;
 import thaumic.tinkerer.common.network.packet.kami.PacketToggleArmor;
 import thaumic.tinkerer.common.registry.TTRegistry;
@@ -97,6 +96,9 @@ public final class KamiGear implements ContentGroup {
 
     @Override
     public void register() {
+        // The armour's player data (the master switch, the Robes' flight grant): always, or a server that turns Kami off for a while
+        // would drop them from its players.
+        KamiArmorHandler.registerPlayerData();
         if (!ConfigHandler.enableKami) return;
 
         KamiComponents.register();
@@ -161,11 +163,11 @@ public final class KamiGear implements ContentGroup {
                         KamiArmorHandler.setArmorStatus(player, packet.armorStatus());
                     }
                 }));
-        // The payloads the server sends: Architectury registers the type of an S2C payload with its client receiver
+        // The payload the server sends: Architectury registers the type of an S2C payload with its client receiver
         // (KamiGearClient), so only a dedicated server registers it here; both would make Fabric's registry throw
         // "Packet type ... is already registered!" on a client (the integrated server shares the client's registry).
+        // The master switch reaches the client as the synced player data attachment of KamiArmorHandler (no packet of the add-on's).
         if (Platform.getEnvironment() == Env.SERVER) {
-            NetworkManager.registerS2CPayloadType(PacketArmorStatus.TYPE, PacketArmorStatus.CODEC);
             NetworkManager.registerS2CPayloadType(PacketShadowBeam.TYPE, PacketShadowBeam.CODEC);
         }
     }

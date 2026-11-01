@@ -15,7 +15,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.phys.Vec3;
-import thaumic.tinkerer.client.core.handler.kami.SoulHeartClientHandler;
 import thaumic.tinkerer.client.gui.GuiAnimationTablet;
 import thaumic.tinkerer.client.gui.GuiEnchanting;
 import thaumic.tinkerer.client.gui.GuiRemotePlacer;
@@ -32,6 +31,7 @@ import thaumic.tinkerer.common.block.tile.kami.TileWarpGate;
 import thaumic.tinkerer.common.block.tile.tablet.TileAnimationTablet;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
+import thaumic.tinkerer.common.core.handler.kami.SoulHeartHandler;
 import thaumic.tinkerer.common.item.foci.FociComponents.DislocationData;
 import thaumic.tinkerer.common.item.foci.ItemFocusDislocation;
 import thaumic.tinkerer.common.lib.LibItemNames;
@@ -485,16 +485,17 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
                 .until("the Gem Boots on this client's player", () -> Minecraft.getInstance().player.getItemBySlot(EquipmentSlot.FEET)
                         .is(TTRegistry.item(LibItemNames.ICHOR_BOOTS_GEM)), 20)
                 .until("the armour's state before the key (" + (on ? "off" : "on") + ")", () -> hasted(Minecraft.getInstance()) != on
-                        && KamiArmorHandler.clientStatus() != on, 20)
+                        && KamiArmorHandler.getArmorStatus(Minecraft.getInstance().player) != on, 20)
                 .run("press the Toggle Awakened Armor key", r -> {
-                    statusBefore[0] = KamiArmorHandler.clientStatus();
+                    statusBefore[0] = KamiArmorHandler.getArmorStatus(r.client().player);
                     bound[0] = Input.pressMapping(r.client(), "ttmisc.toggleArmor", TOGGLE_KEY);
                 })
                 .ticks(40)
                 .then("check", check(name, () -> "", check), 30)
                 .run("record", r -> {
                     Minecraft client = r.client();
-                    boolean status = KamiArmorHandler.clientStatus();
+                    // this client's player's copy of the synced attachment KamiArmorHandler.ARMOR_ON (the key's prediction, then the server's sync)
+                    boolean status = KamiArmorHandler.getArmorStatus(client.player);
                     boolean haste = hasted(client);
                     boolean agrees = String.valueOf(status).equals(check[0].get("status")) && String.valueOf(haste).equals(check[0].get("haste"));
                     MultiplayerClient.record(r, PHASE, name, "ichorcloth_boots_gem", check[0].passed() && agrees && status == on, "server "
@@ -520,20 +521,21 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
         String[] aimed = { "" };
         return staged("soul_hearts", stage, before, mark)
                 .run("left click the iron golem", r -> {
-                    hpBefore[0] = SoulHeartClientHandler.clientPlayerHP;
+                    hpBefore[0] = SoulHeartHandler.getHP(r.client().player);
                     aimed[0] = String.valueOf(aimedEntity(r.client()) == null ? "nothing" : aimedEntity(r.client()).getType().toShortString());
                     Input.leftClick(r.client());
                 })
-                .until("this client's Soul Hearts change (PacketSoulHearts)", () -> SoulHeartClientHandler.clientPlayerHP != hpBefore[0], 10)
+                .until("this client's Soul Hearts change (the synced attachment SoulHeartHandler.HEARTS)",
+                        () -> SoulHeartHandler.getHP(Minecraft.getInstance().player) != hpBefore[0], 10)
                 .ticks(10)
                 // the chat (the harness's /ttmp answers) covers the space above the health bar where the Soul Hearts are drawn
                 .run("clear the chat for the picture", r -> r.client().gui.getChat().clearMessages(false))
                 .frames(6)
                 .then("picture", run.shots().shot("lead-soul-hearts", MultiplayerClient.GROUP,
-                        "The lead's HUD after one hit with the Awakened Ichorium Sword in Soul mode on an iron golem: half a Soul Heart above the health bar, drawn from the number the server sent (PacketSoulHearts)"))
+                        "The lead's HUD after one hit with the Awakened Ichorium Sword in Soul mode on an iron golem: half a Soul Heart above the health bar, drawn from the number the server synced (the player data attachment)"))
                 .then("check", check("soul_hearts", () -> "", check), 30)
                 .run("record", r -> {
-                    int mine = SoulHeartClientHandler.clientPlayerHP;
+                    int mine = SoulHeartHandler.getHP(r.client().player);
                     boolean agrees = String.valueOf(mine).equals(check[0].get("hp"));
                     boolean golem = aimed[0].equals("iron_golem") && aimedEntity(r.client()) instanceof IronGolem;
                     MultiplayerClient.record(r, PHASE, "soul_hearts", "ichor_sword_gem", check[0].passed() && agrees && golem, "server "

@@ -21,6 +21,8 @@ public final class ThaumicTinkererFabric implements ModInitializer, IThaumcraftA
     @Override
     public void onInitialize() {
         ThaumicTinkerer.init();
+        // The loader side of PlayerData: Fabric API's data attachments (docs/HOOKS.md, "PlayerData").
+        ThaumicTinkerer.guard("FabricPlayerData.install", thaumic.tinkerer.fabric.hooks.FabricPlayerData::install);
         // The loader side of BlockProtection: Fabric's and Architectury's break and place listeners (docs/HOOKS.md).
         ThaumicTinkerer.guard("FabricBlockProtection.install", FabricBlockProtection::install);
     }

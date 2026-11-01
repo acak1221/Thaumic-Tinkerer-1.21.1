@@ -18,6 +18,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
@@ -34,18 +35,20 @@ import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
 import thaumic.tinkerer.common.item.kami.ItemPlacementMirror;
 import thaumic.tinkerer.common.item.kami.KamiComponents.PearlTarget;
 import thaumic.tinkerer.common.item.kami.KamiComponents.TalismanStore;
 import thaumic.tinkerer.common.item.kami.armor.IchorAbsorption;
+import thaumic.tinkerer.common.item.kami.armor.ItemGemChest;
 import thaumic.tinkerer.common.item.kami.armor.KamiArmorMaterials;
 import thaumic.tinkerer.common.item.kami.foci.ItemFocusXPDrain;
 import thaumic.tinkerer.common.item.kami.foci.ShadowBeam;
 import thaumic.tinkerer.common.item.kami.tool.IchorTier;
 import thaumic.tinkerer.common.item.kami.tool.ToolHandler;
 import thaumic.tinkerer.common.lib.LibItemNames;
-import thaumic.tinkerer.common.network.packet.kami.PacketArmorStatus;
 import thaumic.tinkerer.common.network.packet.kami.PacketShadowBeam;
 import thaumic.tinkerer.common.network.packet.kami.PacketToggleArmor;
 
@@ -402,18 +405,36 @@ class KamiGearLogicTest {
     }
 
     @Test
-    void theArmourSwitchPacketsCarryTheirFlag() {
+    void theArmourSwitchPacketCarriesItsFlag() {
         for (boolean status : new boolean[] { true, false }) {
             RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
             PacketToggleArmor.CODEC.encode(buf, new PacketToggleArmor(status));
             assertEquals(status, PacketToggleArmor.CODEC.decode(buf).armorStatus(), "client to server");
             assertFalse(buf.isReadable());
-
-            PacketArmorStatus.CODEC.encode(buf, new PacketArmorStatus(status));
-            assertEquals(status, PacketArmorStatus.CODEC.decode(buf).armorStatus(), "server to client");
-            assertFalse(buf.isReadable());
         }
         assertEquals("toggle_armor", PacketToggleArmor.TYPE.id().getPath());
-        assertEquals("armor_status", PacketArmorStatus.TYPE.id().getPath());
+    }
+
+    /**
+     * What the game does with the armour's player data (docs/deviations/KamiGear.md section 3): the master switch is on by default, saved,
+     * kept through death and told to its owner's client; the Robes' flight grant lives and dies with the entity. Their codecs carry the value.
+     */
+    @Test
+    void theArmoursPlayerDataIsSavedCopiedAndSyncedAsDecided() {
+        PlayerData.Key<Boolean> on = KamiArmorHandler.ARMOR_ON;
+        assertEquals("thaumictinkerer:kami_armor_on", on.id().toString());
+        assertTrue(on.initial(), "on by default");
+        assertTrue(on.persistent() && on.copyOnDeath() && on.synced(), "saved, kept through death, synced to the owner: " + on);
+        for (boolean value : new boolean[] { true, false }) {
+            assertEquals(value, on.codec().parse(NbtOps.INSTANCE, on.codec().encodeStart(NbtOps.INSTANCE, value).getOrThrow()).getOrThrow());
+            RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+            on.syncCodec().encode(buf, value);
+            assertEquals(value, on.syncCodec().decode(buf));
+            assertFalse(buf.isReadable());
+        }
+        PlayerData.Key<Boolean> granted = ItemGemChest.FLIGHT_GRANTED;
+        assertEquals("thaumictinkerer:robe_flight_granted", granted.id().toString());
+        assertFalse(granted.initial());
+        assertFalse(granted.persistent() || granted.copyOnDeath() || granted.synced(), "the entity's own: " + granted);
     }
 }

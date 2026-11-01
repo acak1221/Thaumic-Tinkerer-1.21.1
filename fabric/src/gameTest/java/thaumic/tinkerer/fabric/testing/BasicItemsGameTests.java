@@ -62,6 +62,11 @@ public final class BasicItemsGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void cleansingTalismanMemoryIsKeptThroughDeathAndEndsWithTheEntity(GameTestHelper test) {
+        BasicItemsRuntimeChecks.cleansingTalismanMemoryIsKeptThroughDeathAndEndsWithTheEntity(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void xpTalismanSwitchesOnSneakClickAndKeepsItsPoints(GameTestHelper test) {
         BasicItemsRuntimeChecks.xpTalismanSwitchesOnSneakClickAndKeepsItsPoints(test);
     }

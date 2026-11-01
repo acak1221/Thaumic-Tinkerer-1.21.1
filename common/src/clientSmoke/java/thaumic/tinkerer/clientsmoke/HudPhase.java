@@ -19,7 +19,7 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.wands.WandCap;
 import thaumcraft.api.wands.WandHelper;
 import thaumcraft.api.wands.WandRod;
-import thaumic.tinkerer.client.core.handler.kami.SoulHeartClientHandler;
+import thaumic.tinkerer.common.core.handler.kami.SoulHeartHandler;
 import thaumic.tinkerer.common.item.foci.ItemFocusDislocation;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.registry.TTRegistry;
@@ -91,16 +91,18 @@ final class HudPhase extends ScriptedPhase {
         // the hearts are drawn only for a player that can be hurt: creative players cannot
         script.then("survival mode", run.onServer(server -> run.serverPlayer().setGameMode(GameType.SURVIVAL)));
         script.until("the client in survival", () -> run.client().gameMode.canHurtPlayer(), 15);
-        script.run("seven soul half-hearts", r -> {
-            SoulHeartClientHandler.clientPlayerHP = 7;
-            r.client().options.hideGui = false;
-        });
+        // the integrated server sets the pool; the client's player gets it by the sync of the attachment (SoulHeartHandler.HEARTS)
+        script.then("seven soul half-hearts on the server", run.onServer(server -> SoulHeartHandler.setHP(run.serverPlayer(), 7)));
+        script.until("the client's player has them (the attachment's sync)", () -> run.client().player != null
+                && SoulHeartHandler.getHP(run.client().player) == 7, 15);
+        script.run("show the HUD", r -> r.client().options.hideGui = false);
         script.frames(10);
-        script.then("picture", run.shots().shot("hud-soul-hearts", "KamiWorld", "the soul hearts (7 half-hearts) next to the health bar, in survival mode; the value is written directly, not received as a packet"), 60);
+        script.then("picture", run.shots().shot("hud-soul-hearts", "KamiWorld", "the soul hearts (7 half-hearts) next to the health bar, in survival mode; set on the integrated server and received by the client as the synced attachment, drawn from the two GUI sprites"), 60);
+        script.then("no hearts on the server", run.onServer(server -> SoulHeartHandler.setHP(run.serverPlayer(), 0)));
+        script.until("the client's player has none again", () -> SoulHeartHandler.getHP(run.client().player) == 0, 15);
         script.run("verdict", r -> {
-            SoulHeartClientHandler.clientPlayerHP = 0;
             r.client().options.hideGui = true;
-            r.report().pass(PHASE, "soul_hearts_hud", "KamiWorld", "hud:soul_hearts", "the overlay drew with 7 half-hearts without an exception; read the picture for the look");
+            r.report().pass(PHASE, "soul_hearts_hud", "KamiWorld", "hud:soul_hearts", "the server's pool of 7 reached the client's player (synced attachment) and back to 0, and the overlay drew without an exception; read the picture for the look");
         });
         script.then("creative mode again", run.onServer(server -> run.serverPlayer().setGameMode(GameType.CREATIVE)));
         return script;

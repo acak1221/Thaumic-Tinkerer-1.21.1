@@ -409,7 +409,7 @@ final class DeviceScenes {
                 if (hp == was && !late(before, 5)) return Outcome.waiting("no Soul Heart yet");
                 values.put("hp", hp);
                 return Outcome.of(hp == was + 1, "a left click with the Awakened Ichorium Sword in Soul mode on the iron golem: the lead's Soul Hearts "
-                        + was + " -> " + hp + " (PacketSoulHearts sent to its client)", values);
+                        + was + " -> " + hp + " (synced to its client as the player data attachment)", values);
             }
             case "shadow_beam" -> {
                 ItemStack wand = player.getInventory().getItem(SLOT_EXTRA);

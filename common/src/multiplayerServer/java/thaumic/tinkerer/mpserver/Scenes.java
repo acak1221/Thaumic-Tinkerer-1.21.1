@@ -45,9 +45,7 @@ import thaumic.tinkerer.common.item.kami.KamiComponents;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.network.packet.PacketConfigSync;
-import thaumic.tinkerer.common.network.packet.kami.PacketArmorStatus;
 import thaumic.tinkerer.common.network.packet.kami.PacketShadowBeam;
-import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
 import thaumic.tinkerer.common.registry.TTRegistry;
 
 /**
@@ -187,9 +185,11 @@ final class Scenes {
         EXPECTED = List.copyOf(expected);
     }
 
-    /** Every server-to-client payload type of the add-on. */
-    static final List<CustomPacketPayload.Type<?>> S2C = List.of(PacketConfigSync.TYPE, PacketSoulHearts.TYPE, PacketArmorStatus.TYPE,
-            PacketShadowBeam.TYPE);
+    /**
+     * Every server-to-client payload type of the add-on. (The Soul Hearts and the Kami armour's switch reach the client as synced player
+     * data attachments, through the loader's own payload, since the modernization of 2026-11-01.)
+     */
+    static final List<CustomPacketPayload.Type<?>> S2C = List.of(PacketConfigSync.TYPE, PacketShadowBeam.TYPE);
 
     private static final Map<String, Map<String, Object>> BASELINES = new HashMap<>();
     private static final Map<String, Long> JOINED_AT = new HashMap<>();

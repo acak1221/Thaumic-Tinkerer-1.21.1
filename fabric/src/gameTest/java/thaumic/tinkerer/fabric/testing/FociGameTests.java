@@ -58,6 +58,11 @@ public final class FociGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void healAndSmeltProgressBelongToThePlayerEntity(GameTestHelper test) {
+        FociRuntimeChecks.healAndSmeltProgressBelongToThePlayerEntity(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void smeltReadsTheFurnaceRecipesOfTheLevel(GameTestHelper test) {
         FociRuntimeChecks.smeltReadsTheFurnaceRecipesOfTheLevel(test);
     }

@@ -15,12 +15,10 @@ package thaumic.tinkerer.common.item;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -49,7 +47,9 @@ import thaumcraft.api.baubles.BaubleType;
 import thaumcraft.api.baubles.IBauble;
 import thaumcraft.api.potions.WarpEffects;
 import thaumcraft.api.research.ResearchPage;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.lib.LibItemNames;
+import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
 import thaumic.tinkerer.common.registry.TTRegistry;
@@ -65,8 +65,9 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * per effect, ten for the five effects that come from warp.
  *
  * <p>The switch is the component {@link BasicItemComponents#CLEANSING_ENABLED} (1.7.10: the tag {@code enabled}). The
- * memory of what was removed last, kept per player, lives in this class (1.7.10: two maps on the item) and is forgotten when
- * the player leaves.</p>
+ * memory of what was removed last (1.7.10: two maps by UUID on the item) is the player data {@link #MEMORY} of the server's player
+ * entity: never saved or synced, kept through a respawn after death as 1.7.10's maps kept it, and gone at logout with the
+ * entity (1.7.10's maps kept a player until the game stopped; the earlier port forgot it at logout as well).</p>
  */
 public class ItemCleansingTalisman extends Item implements IBauble, ITTinkererRegisterable {
     /**
@@ -81,25 +82,22 @@ public class ItemCleansingTalisman extends Item implements IBauble, ITTinkererRe
     /**
      * The effects of warp that wear the talisman ten times as much (1.7.10 {@code Config.potionBlurredID},
      * {@code potionDeathGazeID}, {@code potionInfVisExhaustID}, {@code potionSunScornedID} and {@code potionUnHungerID}),
-     * by the registry id of the effect.
+     * by the registry key of the effect.
      */
-    public static final Set<String> WARP_EFFECTS = Set.of(id(WarpEffects.BLURRED_VISION), id(WarpEffects.DEATH_GAZE),
-            id(WarpEffects.INFECTIOUS_VIS_EXHAUST), id(WarpEffects.SUN_SCORNED), id(WarpEffects.UNNATURAL_HUNGER));
+    public static final Set<ResourceKey<MobEffect>> WARP_EFFECTS = Set.of(WarpEffects.BLURRED_VISION, WarpEffects.DEATH_GAZE,
+            WarpEffects.INFECTIOUS_VIS_EXHAUST, WarpEffects.SUN_SCORNED, WarpEffects.UNNATURAL_HUNGER);
     /**
      * The warp ward: 1.7.10 registered it as a bad effect and the talisman skipped it by class ({@code PotionWarpWard}); the
      * port registers it as beneficial, so this is only a guard that keeps the skip if that ever changes.
      */
-    private static final String WARP_WARD = id(WarpEffects.WARP_WARD);
+    private static final ResourceKey<MobEffect> WARP_WARD = WarpEffects.WARP_WARD;
 
-    /** What the talisman remembers of each wearer (server side only). */
-    private static final Map<UUID, CleansingLogic.State> STATES = new HashMap<>();
+    /** What the talisman remembers of its wearer (see the class comment). */
+    public static final PlayerData.Key<CleansingLogic.State> MEMORY = PlayerData.Key.<CleansingLogic.State>builder(
+            LibMisc.id("cleansing_talisman_memory"), CleansingLogic.State::new).copyOnDeath().build();
 
     public ItemCleansingTalisman(Item.Properties properties) {
         super(properties.durability(MAX_DAMAGE).stacksTo(1).rarity(Rarity.UNCOMMON));
-    }
-
-    private static String id(ResourceKey<MobEffect> key) {
-        return key.location().toString();
     }
 
     public static boolean isEnabled(ItemStack stack) {
@@ -115,13 +113,9 @@ public class ItemCleansingTalisman extends Item implements IBauble, ITTinkererRe
         setEnabled(stack, !isEnabled(stack));
     }
 
-    /** Forgets what was removed last for the player (called when the player leaves and when the server stops). */
-    public static void forget(UUID player) {
-        STATES.remove(player);
-    }
-
-    public static void forgetAll() {
-        STATES.clear();
+    /** Forgets what was removed last for the player (the end of the entity does it by itself; the checks call it). */
+    public static void forget(Player player) {
+        PlayerData.remove(player, MEMORY);
     }
 
     @Override
@@ -209,7 +203,7 @@ public class ItemCleansingTalisman extends Item implements IBauble, ITTinkererRe
         if (!isEnabled(stack) || level.isClientSide || !(wearer instanceof ServerPlayer player)) return;
         if (player.tickCount % 20 != 0) return;
 
-        CleansingLogic.State state = STATES.computeIfAbsent(player.getUUID(), id -> new CleansingLogic.State());
+        CleansingLogic.State state = PlayerData.getOrCreate(player, MEMORY);
 
         // The harmful effects that have a duration of their own; effects without one (infinite, or a flash) are skipped.
         // 1.7.10 walked a HashMap of small potion ids, so the order was the same every time (lowest id first for the vanilla
@@ -217,30 +211,30 @@ public class ItemCleansingTalisman extends Item implements IBauble, ITTinkererRe
         // and would decide which effect is the one removed at a cost. The registry order restores a fixed order.
         List<MobEffectInstance> active = new ArrayList<>(player.getActiveEffects());
         active.sort(Comparator.comparingInt(instance -> BuiltInRegistries.MOB_EFFECT.getId(instance.getEffect().value())));
-        Map<String, Holder<MobEffect>> effects = new LinkedHashMap<>();
+        Map<ResourceKey<MobEffect>, Holder<MobEffect>> effects = new LinkedHashMap<>();
         for (MobEffectInstance instance : active) {
             if (instance.isInfiniteDuration() || instance.getDuration() < 20) continue;
             Holder<MobEffect> effect = instance.getEffect();
-            String id = effect.unwrapKey().map(key -> key.location().toString()).orElse(null);
-            if (id == null || id.equals(WARP_WARD)) continue;
-            if (effect.value().getCategory() == MobEffectCategory.HARMFUL) effects.put(id, effect);
+            ResourceKey<MobEffect> key = effect.unwrapKey().orElse(null);
+            if (key == null || effect.is(WARP_WARD)) continue;
+            if (effect.value().getCategory() == MobEffectCategory.HARMFUL) effects.put(key, effect);
         }
 
         CleansingLogic.Plan plan = CleansingLogic.plan(state, player.isOnFire(), new ArrayList<>(effects.keySet()));
 
-        for (String id : plan.toRemove()) {
-            if (id.equals(CleansingLogic.BURNING)) player.clearFire();
-            else player.removeEffect(effects.get(id));
+        for (ResourceKey<MobEffect> key : plan.toRemove()) {
+            if (key.equals(CleansingLogic.BURNING)) player.clearFire();
+            else player.removeEffect(effects.get(key));
         }
 
-        if (!plan.removed().isEmpty()) {
+        if (plan.removed() != null) {
             int damage = WARP_EFFECTS.contains(plan.removed()) ? 10 : 1;
             stack.hurtAndBreak(damage, (ServerLevel) level, player,
                     broken -> BasicItemSupport.playSound(level, player, SoundEvents.ITEM_BREAK, 0.8F, 0.8F + level.random.nextFloat() * 0.4F));
             // A broken talisman leaves an empty stack in its slot, which the accessory slots treat as free.
         }
 
-        if (!plan.removed().isEmpty() || plan.permanentRemoved()) {
+        if (plan.removed() != null || plan.permanentRemoved()) {
             BasicItemSupport.playThaumcraftSound(level, player, ThaumcraftSoundIds.WAND, 0.3F, 0.1F);
         }
     }

@@ -100,6 +100,16 @@ public final class KamiWorldGameTests implements FabricGameTest {
         KamiWorldRuntimeChecks.soulHeartsAreSavedPerPlayerAndNotShared(test);
     }
 
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void soulHeartsAreLostOnDeathAndOnTheWayBackFromTheEnd(GameTestHelper test) {
+        KamiWorldRuntimeChecks.soulHeartsAreLostOnDeathAndOnTheWayBackFromTheEnd(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void soulHeartsMoveFromTheOldSaveFileOnce(GameTestHelper test) {
+        KamiWorldRuntimeChecks.soulHeartsMoveFromTheOldSaveFileOnce(test);
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400)
     public void shardDropsFollowTheConditionsOfTheOriginal(GameTestHelper test) {
         KamiWorldRuntimeChecks.shardDropsFollowTheConditionsOfTheOriginal(test);

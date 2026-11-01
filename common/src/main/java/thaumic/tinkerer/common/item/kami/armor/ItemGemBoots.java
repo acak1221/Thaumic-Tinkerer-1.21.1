@@ -149,7 +149,8 @@ public class ItemGemBoots extends ItemIchorclothArmorAdv {
      * worn, with the master switch and this piece switched on, rises {@link #JUMP_BONUS} higher than the jump alone. It adds
      * to the vertical motion that {@code jumpFromGround} has applied, as {@code motionY += 0.3} did, so the block's jump
      * factor (honey) and Jump Boost act on the jump only. Runs on both sides: the client's own jump and the server's
-     * ({@code KamiArmorHandler.getArmorStatus} answers with the side's own copy of the flag, synchronised by the packets).
+     * ({@code KamiArmorHandler.getArmorStatus} answers with the side's own copy of the flag: the client's is the synced attachment of its
+     * own player).
      *
      * <p>This listener runs <i>before</i> Ascent Boost's: it is registered by {@code KamiGear.register()} and the Enchantments group
      * registers Ascent Boost's in its ready phase ({@code ModEnchantments.initJump()}), so the 0.3 is added first and the factor

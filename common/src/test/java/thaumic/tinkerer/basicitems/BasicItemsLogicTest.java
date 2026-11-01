@@ -7,6 +7,7 @@ package thaumic.tinkerer.basicitems;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonElement;
@@ -17,11 +18,15 @@ import java.util.Set;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,6 +35,7 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumic.tinkerer.common.core.helper.ExperienceHelper;
 import thaumic.tinkerer.common.core.helper.MiscHelper;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.BasicItemComponents.ShareData;
 import thaumic.tinkerer.common.item.CleansingLogic;
 import thaumic.tinkerer.common.item.ItemCleansingTalisman;
@@ -37,6 +43,7 @@ import thaumic.tinkerer.common.item.ItemInfusedInkwell;
 import thaumic.tinkerer.common.item.ItemRevealingHelm;
 import thaumic.tinkerer.common.item.ItemSpellCloth;
 import thaumic.tinkerer.common.item.ItemXPTalisman;
+import thaumic.tinkerer.common.lib.LibMisc;
 
 /**
  * Test-only code of the port (no 1.7.10 counterpart), CC BY-NC-SA 3.0 like the add-on.
@@ -69,8 +76,8 @@ class BasicItemsLogicTest {
 
     @Test
     void theFiveWarpEffectsThatWearTheTalismanTenTimesAsMuch() {
-        assertEquals(Set.of("thaumcraft:blurred_vision", "thaumcraft:death_gaze", "thaumcraft:infectious_vis_exhaust",
-                "thaumcraft:sun_scorned", "thaumcraft:unnatural_hunger"), ItemCleansingTalisman.WARP_EFFECTS);
+        assertEquals(Set.of(effect("thaumcraft:blurred_vision"), effect("thaumcraft:death_gaze"), effect("thaumcraft:infectious_vis_exhaust"),
+                effect("thaumcraft:sun_scorned"), effect("thaumcraft:unnatural_hunger")), ItemCleansingTalisman.WARP_EFFECTS);
     }
 
     // ---- experience ------------------------------------------------------------------------------------------------
@@ -189,78 +196,96 @@ class BasicItemsLogicTest {
 
     // ---- the Talisman of Remedium ---------------------------------------------------------------------------------
 
+    private static ResourceKey<MobEffect> effect(String id) {
+        return ResourceKey.create(Registries.MOB_EFFECT, ResourceLocation.parse(id));
+    }
+
+    /**
+     * The talisman's memory is player data of the wearer's entity (docs/deviations/BasicItems.md section 3): never saved or synced, kept
+     * through a respawn after death as 1.7.10's maps kept it.
+     */
+    @Test
+    void theTalismansMemoryIsTheWearersEntitysOwnAndKeptThroughDeath() {
+        PlayerData.Key<CleansingLogic.State> memory = ItemCleansingTalisman.MEMORY;
+        assertEquals("thaumictinkerer:cleansing_talisman_memory", memory.id().toString());
+        assertTrue(memory.copyOnDeath() && !memory.persistent() && !memory.synced(), memory.toString());
+        assertNull(memory.initial().lastRemoved, "a new memory has removed nothing");
+        assertNotSame(memory.initial(), memory.initial(), "each player gets a memory of its own");
+        assertEquals(LibMisc.MOD_ID + ":burning", CleansingLogic.BURNING.location().toString(), "burning is the add-on's key");
+    }
+
     @Test
     void aFirstHarmfulEffectIsRemovedAtACost() {
         CleansingLogic.State state = new CleansingLogic.State();
-        CleansingLogic.Plan plan = CleansingLogic.plan(state, false, List.of("minecraft:poison"));
-        assertEquals(Set.of("minecraft:poison"), plan.toRemove());
-        assertEquals("minecraft:poison", plan.removed(), "the removal costs durability");
+        CleansingLogic.Plan plan = CleansingLogic.plan(state, false, List.of(effect("minecraft:poison")));
+        assertEquals(Set.of(effect("minecraft:poison")), plan.toRemove());
+        assertEquals(effect("minecraft:poison"), plan.removed(), "the removal costs durability");
         assertFalse(plan.permanentRemoved());
-        assertEquals("minecraft:poison", state.lastRemoved);
+        assertEquals(effect("minecraft:poison"), state.lastRemoved);
         assertTrue(state.permanent.isEmpty());
     }
 
     @Test
     void onlyOneNewEffectIsRemovedPerPassAndTheOthersWaitTheirTurn() {
         CleansingLogic.State state = new CleansingLogic.State();
-        List<String> harmful = List.of("minecraft:poison", "minecraft:slowness", "minecraft:hunger");
+        List<ResourceKey<MobEffect>> harmful = List.of(effect("minecraft:poison"), effect("minecraft:slowness"), effect("minecraft:hunger"));
         CleansingLogic.Plan first = CleansingLogic.plan(state, false, harmful);
-        assertEquals(Set.of("minecraft:poison"), first.toRemove(), "the first in the list goes first");
-        assertEquals("minecraft:poison", first.removed());
+        assertEquals(Set.of(effect("minecraft:poison")), first.toRemove(), "the first in the list goes first");
+        assertEquals(effect("minecraft:poison"), first.removed());
 
         // The poison is gone; the next pass takes the next effect.
-        CleansingLogic.Plan second = CleansingLogic.plan(state, false, List.of("minecraft:slowness", "minecraft:hunger"));
-        assertEquals(Set.of("minecraft:slowness"), second.toRemove());
-        assertEquals("minecraft:slowness", second.removed());
-        CleansingLogic.Plan third = CleansingLogic.plan(state, false, List.of("minecraft:hunger"));
-        assertEquals("minecraft:hunger", third.removed());
+        CleansingLogic.Plan second = CleansingLogic.plan(state, false, List.of(effect("minecraft:slowness"), effect("minecraft:hunger")));
+        assertEquals(Set.of(effect("minecraft:slowness")), second.toRemove());
+        assertEquals(effect("minecraft:slowness"), second.removed());
+        CleansingLogic.Plan third = CleansingLogic.plan(state, false, List.of(effect("minecraft:hunger")));
+        assertEquals(effect("minecraft:hunger"), third.removed());
         CleansingLogic.Plan fourth = CleansingLogic.plan(state, false, List.of());
-        assertEquals("", fourth.removed(), "nothing to remove costs nothing");
+        assertNull(fourth.removed(), "nothing to remove costs nothing");
         assertTrue(fourth.toRemove().isEmpty());
-        assertEquals("", state.lastRemoved);
+        assertNull(state.lastRemoved);
     }
 
     @Test
     void anEffectThatComesBackRightAfterItsRemovalBecomesPermanentAndIsRemovedForFree() {
         CleansingLogic.State state = new CleansingLogic.State();
-        CleansingLogic.plan(state, false, List.of("minecraft:poison"));
+        CleansingLogic.plan(state, false, List.of(effect("minecraft:poison")));
 
         // The same effect again on the next pass: a beacon, a warp effect that is applied again and again.
-        CleansingLogic.Plan again = CleansingLogic.plan(state, false, List.of("minecraft:poison"));
-        assertEquals(Set.of("minecraft:poison"), again.toRemove(), "it is removed again");
-        assertEquals("", again.removed(), "but for nothing");
-        assertEquals(Set.of("minecraft:poison"), state.permanent);
+        CleansingLogic.Plan again = CleansingLogic.plan(state, false, List.of(effect("minecraft:poison")));
+        assertEquals(Set.of(effect("minecraft:poison")), again.toRemove(), "it is removed again");
+        assertNull(again.removed(), "but for nothing");
+        assertEquals(Set.of(effect("minecraft:poison")), state.permanent);
         assertFalse(again.permanentRemoved());
 
-        CleansingLogic.Plan free = CleansingLogic.plan(state, false, List.of("minecraft:poison"));
-        assertEquals("", free.removed());
-        assertEquals(Set.of("minecraft:poison"), state.permanent, "it stays permanent while it keeps coming");
+        CleansingLogic.Plan free = CleansingLogic.plan(state, false, List.of(effect("minecraft:poison")));
+        assertNull(free.removed());
+        assertEquals(Set.of(effect("minecraft:poison")), state.permanent, "it stays permanent while it keeps coming");
 
         // A different effect meanwhile is still removed at a cost.
-        CleansingLogic.Plan other = CleansingLogic.plan(state, false, List.of("minecraft:poison", "minecraft:weakness"));
-        assertEquals(Set.of("minecraft:poison", "minecraft:weakness"), other.toRemove());
-        assertEquals("minecraft:weakness", other.removed());
+        CleansingLogic.Plan other = CleansingLogic.plan(state, false, List.of(effect("minecraft:poison"), effect("minecraft:weakness")));
+        assertEquals(Set.of(effect("minecraft:poison"), effect("minecraft:weakness")), other.toRemove());
+        assertEquals(effect("minecraft:weakness"), other.removed());
 
         // The effect stops coming: it is forgotten, and the pass says so (it plays the sound).
         CleansingLogic.Plan gone = CleansingLogic.plan(state, false, List.of());
         assertTrue(gone.permanentRemoved(), "the permanent effect is no longer there");
         assertTrue(state.permanent.isEmpty());
         // When it comes again it is a fresh effect with a cost.
-        CleansingLogic.Plan fresh = CleansingLogic.plan(state, false, List.of("minecraft:poison"));
-        assertEquals("minecraft:poison", fresh.removed());
+        CleansingLogic.Plan fresh = CleansingLogic.plan(state, false, List.of(effect("minecraft:poison")));
+        assertEquals(effect("minecraft:poison"), fresh.removed());
     }
 
     @Test
     void burningIsTreatedLikeAnEffectAndGoesBeforeThePotions() {
         CleansingLogic.State state = new CleansingLogic.State();
-        CleansingLogic.Plan plan = CleansingLogic.plan(state, true, List.of("minecraft:poison"));
+        CleansingLogic.Plan plan = CleansingLogic.plan(state, true, List.of(effect("minecraft:poison")));
         assertEquals(Set.of(CleansingLogic.BURNING), plan.toRemove(), "the potion waits");
         assertEquals(CleansingLogic.BURNING, plan.removed());
 
-        CleansingLogic.Plan next = CleansingLogic.plan(state, true, List.of("minecraft:poison"));
-        assertEquals(Set.of(CleansingLogic.BURNING, "minecraft:poison"), next.toRemove(),
+        CleansingLogic.Plan next = CleansingLogic.plan(state, true, List.of(effect("minecraft:poison")));
+        assertEquals(Set.of(CleansingLogic.BURNING, effect("minecraft:poison")), next.toRemove(),
                 "burning is on fire permanently now, the potion takes its turn");
-        assertEquals("minecraft:poison", next.removed());
+        assertEquals(effect("minecraft:poison"), next.removed());
         assertTrue(state.permanent.contains(CleansingLogic.BURNING));
     }
 

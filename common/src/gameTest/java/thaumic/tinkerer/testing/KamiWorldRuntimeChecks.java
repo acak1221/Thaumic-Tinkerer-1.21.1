@@ -67,6 +67,7 @@ import thaumic.tinkerer.common.dim.EnumOreFrequency;
 import thaumic.tinkerer.common.dim.OreClusterGenerator;
 import thaumic.tinkerer.common.dim.TeleporterBedrock;
 import thaumic.tinkerer.common.dim.WorldProviderBedrock;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
 import thaumic.tinkerer.common.item.kami.ItemSkyPearl;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
@@ -74,7 +75,6 @@ import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
-import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
 import thaumic.tinkerer.common.registry.TTRecipes;
 import thaumic.tinkerer.common.registry.TTRegistry;
 
@@ -680,17 +680,7 @@ public final class KamiWorldRuntimeChecks {
 
     /** The packets that the mock player's connection has been sent so far (the mock's channel is an {@code EmbeddedChannel}, which keeps them). */
     private static List<Object> sentPackets(ServerPlayer player) {
-        try {
-            java.lang.reflect.Field connection = net.minecraft.server.network.ServerCommonPacketListenerImpl.class.getDeclaredField("connection");
-            connection.setAccessible(true);
-            java.lang.reflect.Field channel = net.minecraft.network.Connection.class.getDeclaredField("channel");
-            channel.setAccessible(true);
-            io.netty.channel.embedded.EmbeddedChannel embedded = (io.netty.channel.embedded.EmbeddedChannel) channel.get(connection.get(player.connection));
-            embedded.flush(); // the server thread writes without flushing (the real connections are flushed at the end of the tick)
-            return new ArrayList<>(embedded.outboundMessages());
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            throw new IllegalStateException("cannot read the packets of the mock player's connection", e);
-        }
+        return PlayerDataSync.sentPackets(player);
     }
 
     /** How many damage events (the hurt animation and sound) the clients of {@code player} have been told about it. */
@@ -700,26 +690,12 @@ public final class KamiWorldRuntimeChecks {
     }
 
     /**
-     * The pools that the client of {@code player} has been told so far ({@link PacketSoulHearts}, S2C), in the order they were sent.
-     * Architectury sends the payload as its own wrapper of the encoded bytes ({@code NetworkAggregator.BufCustomPacketPayload}), which
-     * the client decodes with the codec of the packet; so does this.
+     * The pools that the client of {@code player} has been told so far, in the order they were sent: the changes of the synced attachment
+     * {@link SoulHeartHandler#HEARTS} (a removal is an empty pool, 0).
      */
     private static List<Integer> soulHeartPacketsOf(ServerPlayer player) {
         List<Integer> told = new ArrayList<>();
-        for (Object packet : sentPackets(player)) {
-            if (!(packet instanceof net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket custom)) continue;
-            net.minecraft.network.protocol.common.custom.CustomPacketPayload payload = custom.payload();
-            if (!payload.type().id().equals(PacketSoulHearts.TYPE.id())) continue;
-            if (payload instanceof PacketSoulHearts hearts) {
-                told.add(hearts.hearts());
-            } else if (payload instanceof dev.architectury.impl.NetworkAggregator.BufCustomPacketPayload wrapped) {
-                net.minecraft.network.RegistryFriendlyByteBuf buf = new net.minecraft.network.RegistryFriendlyByteBuf(
-                        io.netty.buffer.Unpooled.wrappedBuffer(wrapped.payload()), player.registryAccess());
-                told.add(PacketSoulHearts.CODEC.decode(buf).hearts());
-            } else {
-                throw new IllegalStateException("the soul hearts packet is sent as " + payload.getClass().getName());
-            }
-        }
+        for (java.util.Optional<Integer> value : PlayerDataSync.valuesSent(player, SoulHeartHandler.HEARTS)) told.add(value.orElse(0));
         return told;
     }
 
@@ -821,7 +797,8 @@ public final class KamiWorldRuntimeChecks {
             long b = test.getTick();
             java.util.function.BiConsumer<Long, Runnable> at = (offset, body) -> test.runAtTickTime(b + offset, () -> guarded(cleanup, body));
             long events0 = damageEventsOf(player);
-            // the pools the clients are told (PacketSoulHearts), from now on: one after every hit that the pool charged, none for a refused hit
+            // the pools the clients are told (the sync of the attachment), from now on: one after every hit that changed the pool, none for a
+            // refused hit, none for a hit that left it as it was (1.7.10 sent the pool after every event; the client saw the same number)
             int told0 = soulHeartPacketsOf(player).size();
             int otherTold0 = soulHeartPacketsOf(other).size();
             java.util.function.Supplier<List<Integer>> told = () -> {
@@ -832,7 +809,7 @@ public final class KamiWorldRuntimeChecks {
             // b: 4 against a full pool: covered, the first hit of the frames
             test.assertTrue(!player.hurt(generic, 4F) && SoulHeartHandler.getHP(player) == 16 && player.getHealth() == 20F, "b: a covered hit of 4: pool 16, health 20");
             test.assertTrue(damageEventsOf(player) == events0 + 1, "b: and the player is told of it (the hurt animation and sound): " + (damageEventsOf(player) - events0));
-            test.assertTrue(told.get().equals(List.of(16)), "b: and of the pool (1.7.10 updateClient after the event): " + told.get());
+            test.assertTrue(told.get().equals(List.of(16)), "b: and of the pool (1.7.10 updateClient after the event; here the sync of the change): " + told.get());
 
             // another player and a pig are not in these frames
             at.accept(1L, () -> {
@@ -883,32 +860,32 @@ public final class KamiWorldRuntimeChecks {
                 test.assertTrue(player.hurt(generic, 4F), "b+20: the hit with something left is dealt");
                 test.assertTrue(SoulHeartHandler.getHP(player) == 0 && player.getHealth() == 18F, "b+20: the pool is gone and 2 went on: " + player.getHealth());
                 test.assertTrue(player.invulnerableTime == 20, "b+20: the game's frames began: " + player.invulnerableTime);
-                test.assertTrue(told.get().equals(List.of(16, 14, 10, 0)), "b+20: the pool that is left is sent: " + told.get());
+                test.assertTrue(told.get().equals(List.of(16, 14, 10, 2, 0)), "b+20: the pool set to 2 and the pool that is left are sent: " + told.get());
             });
             at.accept(21L, () -> {
                 test.assertTrue(!player.hurt(generic, 4F) && player.getHealth() == 18F && SoulHeartHandler.getHP(player) == 0,
                         "b+21: the repeat is refused (the game would let it by: 4 is more than the 2 it dealt)");
-                test.assertTrue(told.get().equals(List.of(16, 14, 10, 0)), "b+21: nothing is sent: " + told.get());
+                test.assertTrue(told.get().equals(List.of(16, 14, 10, 2, 0)), "b+21: nothing is sent: " + told.get());
             });
             at.accept(22L, () -> {
                 // 6 against the last 4: the event gets 2, the pool is empty, 2 go on; the game has dealt 2 already, so it is handed 4
                 test.assertTrue(player.hurt(generic, 6F), "b+22: a stronger hit is dealt");
                 test.assertTrue(player.getHealth() == 16F, "b+22: the difference of 2 went on (the game was handed 2 already dealt + rest 2): " + player.getHealth());
-                test.assertTrue(told.get().equals(List.of(16, 14, 10, 0, 0)), "b+22: an empty pool is sent too, as the original did after every event: " + told.get());
+                test.assertTrue(told.get().equals(List.of(16, 14, 10, 2, 0)), "b+22: an empty pool that stays empty is not sent again: " + told.get());
             });
             at.accept(23L, () -> {
                 test.assertTrue(!player.hurt(generic, 6F) && player.getHealth() == 16F, "b+23: the same 6 again is refused");
-                test.assertTrue(told.get().equals(List.of(16, 14, 10, 0, 0)), "b+23: nothing is sent: " + told.get());
+                test.assertTrue(told.get().equals(List.of(16, 14, 10, 2, 0)), "b+23: nothing is sent: " + told.get());
             });
             at.accept(30L, () -> {
                 // a new hit with no hearts: the fraction is cut like 1.7.10's (int) 5.9
                 test.assertTrue(player.hurt(generic, 5.9F) && player.getHealth() == 11F, "b+30: 5.9 deals 5: " + player.getHealth());
-                test.assertTrue(told.get().equals(List.of(16, 14, 10, 0, 0, 0)), "b+30: the pool is sent: " + told.get());
+                test.assertTrue(told.get().equals(List.of(16, 14, 10, 2, 0)), "b+30: the pool did not change: nothing is sent: " + told.get());
             });
             at.accept(40L, () -> {
                 // a hit below one point is gone altogether, even with no hearts
                 test.assertTrue(!player.hurt(generic, 0.5F) && player.getHealth() == 11F, "b+40: 0.5 is swallowed: " + player.getHealth());
-                test.assertTrue(told.get().equals(List.of(16, 14, 10, 0, 0, 0, 0)), "b+40: and the pool is sent for it (0 whole points taken): " + told.get());
+                test.assertTrue(told.get().equals(List.of(16, 14, 10, 2, 0)), "b+40: 0 whole points taken: nothing is sent: " + told.get());
                 cleanup.run();
                 test.succeed();
             });
@@ -1089,24 +1066,121 @@ public final class KamiWorldRuntimeChecks {
         finish(test, player);
     }
 
+    /**
+     * The pool is the player's saved, synced attachment ({@code SoulHeartHandler.HEARTS}): it survives a real logout and login through
+     * the player list (the player's file is written at logout and read at login), each player has a pool of its own, an empty pool is
+     * not saved at all, and the server tells a change to the client of the player it belongs to and to no other.
+     */
     public static void soulHeartsAreSavedPerPlayerAndNotShared(GameTestHelper test) {
-        ServerPlayer a = player(test, 1.5, 1, 1.5);
-        ServerPlayer b = player(test, 2.5, 1, 2.5);
-        SoulHeartHandler.setHP(a, 7);
-        SoulHeartHandler.setHP(b, 0);
-        test.assertTrue(SoulHeartHandler.getHP(a) == 7 && SoulHeartHandler.getHP(b) == 0, "one pool per player");
-        MinecraftServer server = test.getLevel().getServer();
-        var data = server.overworld().getDataStorage().computeIfAbsent(
-                new net.minecraft.world.level.saveddata.SavedData.Factory<>(SoulHeartHandler.SoulHeartData::new,
-                        SoulHeartHandler.SoulHeartData::load, null), LibMisc.MOD_ID + "_soul_hearts");
-        CompoundTag saved = data.save(new CompoundTag(), test.getLevel().registryAccess());
-        SoulHeartHandler.SoulHeartData loaded = SoulHeartHandler.SoulHeartData.load(saved, test.getLevel().registryAccess());
-        test.assertTrue(loaded.get(a.getUUID()) == 7, "the pool of a player survives saving");
-        test.assertTrue(loaded.get(b.getUUID()) == 0, "an empty pool is not saved");
-        test.assertTrue(SoulHeartHandler.removeHP(a, 10) == 3, "ten damage against seven hearts leaves three");
-        test.assertTrue(SoulHeartHandler.getHP(a) == 0, "and takes the pool");
-        SoulHeartHandler.setHP(a, 0);
-        finish(test, a, b);
+        test.assertTrue(!PlayerData.backendName().equals("memory"), "the loader's backend of PlayerData is installed: " + PlayerData.backendName());
+        ServerPlayer a = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-soul-a"));
+        ServerPlayer b = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-soul-b"));
+        ServerPlayer[] now = { a, b };
+        Runnable cleanup = () -> {
+            for (ServerPlayer player : now) PlayerDataSync.logout(test, player);
+        };
+        guarded(cleanup, () -> {
+            int toldA = PlayerDataSync.valuesSent(a, SoulHeartHandler.HEARTS).size();
+            int toldB = PlayerDataSync.valuesSent(b, SoulHeartHandler.HEARTS).size();
+            int bAboutA = PlayerDataSync.valuesSent(b, a.getId(), SoulHeartHandler.HEARTS).size();
+            SoulHeartHandler.setHP(a, 7);
+            SoulHeartHandler.setHP(b, 0);
+            test.assertTrue(SoulHeartHandler.getHP(a) == 7 && SoulHeartHandler.getHP(b) == 0, "one pool per player");
+            List<java.util.Optional<Integer>> sentA = PlayerDataSync.valuesSent(a, SoulHeartHandler.HEARTS);
+            test.assertTrue(sentA.subList(toldA, sentA.size()).equals(List.of(java.util.Optional.of(7))), "a's client is told its pool: " + sentA);
+            test.assertTrue(PlayerDataSync.valuesSent(b, SoulHeartHandler.HEARTS).size() == toldB, "b's pool did not change: b's client is told nothing");
+            test.assertTrue(PlayerDataSync.valuesSent(b, a.getId(), SoulHeartHandler.HEARTS).size() == bAboutA, "nor of a's pool");
+            test.assertTrue(PlayerDataSync.saves(a, SoulHeartHandler.HEARTS), "a's pool is in a's saved tag");
+            test.assertTrue(!PlayerDataSync.saves(b, SoulHeartHandler.HEARTS), "an empty pool is not saved");
+
+            now[0] = PlayerDataSync.relog(test, a);
+            now[1] = PlayerDataSync.relog(test, b);
+            test.assertTrue(now[0] != a && now[0].getUUID().equals(a.getUUID()), "a logged in again as a new entity");
+            test.assertTrue(SoulHeartHandler.getHP(now[0]) == 7, "the pool survives the logout and the login: " + SoulHeartHandler.getHP(now[0]));
+            test.assertTrue(SoulHeartHandler.getHP(now[1]) == 0, "b still has none");
+            test.assertTrue(SoulHeartHandler.removeHP(now[0], 10) == 3, "ten damage against seven hearts leaves three");
+            test.assertTrue(SoulHeartHandler.getHP(now[0]) == 0, "and takes the pool");
+            test.assertTrue(!PlayerDataSync.saves(now[0], SoulHeartHandler.HEARTS), "and the empty pool leaves the saved tag");
+        });
+        cleanup.run();
+        test.succeed();
+    }
+
+    /**
+     * 1.7.10 kept the pool in the player's entity data, which the new entity of a respawn did not get: the hearts are lost on death, and
+     * on the way back from the End as well (Forge 1.7.10 copied only the {@code PlayerPersisted} part of the entity data, which the add-on
+     * did not use). Here the attachment is not copied on death, and the loaders' copy of every attachment after the End is undone by the
+     * respawn listener ({@code SoulHeartHandler.register}). The respawns are the player list's own.
+     */
+    public static void soulHeartsAreLostOnDeathAndOnTheWayBackFromTheEnd(GameTestHelper test) {
+        ServerPlayer first = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-soul-death"));
+        ServerPlayer[] now = { first };
+        Runnable cleanup = () -> PlayerDataSync.logout(test, now[0]);
+        guarded(cleanup, () -> {
+            SoulHeartHandler.setHP(first, 9);
+            now[0] = PlayerDataSync.respawn(first, false);
+            test.assertTrue(now[0] != first && SoulHeartHandler.getHP(now[0]) == 0, "a death costs the pool: " + SoulHeartHandler.getHP(now[0]));
+            SoulHeartHandler.setHP(now[0], 11);
+            ServerPlayer beforeTheEnd = now[0];
+            now[0] = PlayerDataSync.respawn(beforeTheEnd, true);
+            test.assertTrue(now[0] != beforeTheEnd && SoulHeartHandler.getHP(now[0]) == 0,
+                    "the way back from the End costs it too, as in 1.7.10: " + SoulHeartHandler.getHP(now[0]));
+            List<java.util.Optional<Integer>> sent = PlayerDataSync.valuesSent(now[0], SoulHeartHandler.HEARTS);
+            test.assertTrue(!sent.isEmpty() && sent.get(sent.size() - 1).isEmpty(),
+                    "and the client is told that the pool is gone (the copy of the End was synced first): " + sent);
+        });
+        cleanup.run();
+        test.succeed();
+    }
+
+    /**
+     * Worlds of the earlier port kept the pools in {@code data/thaumictinkerer_soul_hearts.dat} of the overworld. The file, in the format
+     * the earlier port wrote ({@code {hearts: [{player: <UUID>, hp: <int>}]}}), is written to disk and read back by a data storage, then
+     * put where the overworld's storage keeps it: a player listed there gets the pool when it joins, a player not listed gets none, and
+     * the file is read once per player (a later login keeps the attachment's newer value) and never written (it is not made dirty).
+     */
+    public static void soulHeartsMoveFromTheOldSaveFileOnce(GameTestHelper test) {
+        UUID listed = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        CompoundTag file = new CompoundTag();
+        net.minecraft.nbt.ListTag hearts = new net.minecraft.nbt.ListTag();
+        for (Object[] row : new Object[][] { { listed, 13 }, { UUID.randomUUID(), 4 } }) {
+            CompoundTag entry = new CompoundTag();
+            entry.put("player", net.minecraft.nbt.NbtUtils.createUUID((UUID) row[0]));
+            entry.putInt("hp", (Integer) row[1]);
+            hearts.add(entry);
+        }
+        file.put("hearts", hearts);
+        SoulHeartHandler.SoulHeartData legacy = PlayerDataSync.legacyFile(test, SoulHeartHandler.LEGACY_DATA_NAME, file,
+                SoulHeartHandler.LEGACY_FACTORY);
+        test.assertTrue(legacy.get(listed) == 13, "the old file is read: " + legacy.get(listed));
+        var storage = test.getLevel().getServer().overworld().getDataStorage();
+        storage.set(SoulHeartHandler.LEGACY_DATA_NAME, legacy);
+        ServerPlayer[] players = new ServerPlayer[2];
+        Runnable cleanup = () -> {
+            for (ServerPlayer player : players) if (player != null) PlayerDataSync.logout(test, player);
+            storage.set(SoulHeartHandler.LEGACY_DATA_NAME, new SoulHeartHandler.SoulHeartData());
+        };
+        guarded(cleanup, () -> {
+            players[0] = PlayerDataSync.login(test, new GameProfile(listed, "tt-soul-legacy"));
+            players[1] = PlayerDataSync.login(test, new GameProfile(other, "tt-soul-new"));
+            test.assertTrue(SoulHeartHandler.getHP(players[0]) == 13, "the listed player gets its pool when it joins: " + SoulHeartHandler.getHP(players[0]));
+            test.assertTrue(SoulHeartHandler.getHP(players[1]) == 0, "a player the file does not list gets none");
+            test.assertTrue(PlayerData.get(players[0], PlayerData.MIGRATED).contains(SoulHeartHandler.LEGACY_DATA_NAME)
+                    && PlayerData.get(players[1], PlayerData.MIGRATED).contains(SoulHeartHandler.LEGACY_DATA_NAME), "both are marked as migrated");
+            SoulHeartHandler.removeHP(players[0], 5);
+            players[0] = PlayerDataSync.relog(test, players[0]);
+            test.assertTrue(SoulHeartHandler.getHP(players[0]) == 8, "a second login keeps the newer pool, not the file's 13: " + SoulHeartHandler.getHP(players[0]));
+            SoulHeartHandler.setHP(players[0], 0);
+            players[0] = PlayerDataSync.relog(test, players[0]);
+            test.assertTrue(SoulHeartHandler.getHP(players[0]) == 0, "nor does an emptied pool come back from the file");
+            players[0] = PlayerDataSync.respawn(players[0], false);
+            players[0] = PlayerDataSync.relog(test, players[0]);
+            test.assertTrue(SoulHeartHandler.getHP(players[0]) == 0, "nor after a death and a login (the mark is kept through death)");
+            test.assertTrue(!legacy.isDirty(), "the old file is never made dirty, so it is never written");
+        });
+        cleanup.run();
+        test.succeed();
     }
 
     // ---- the shard drops -------------------------------------------------------------------------------------------

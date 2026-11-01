@@ -8,17 +8,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.util.RandomSource;
 import org.junit.jupiter.api.Test;
 import thaumic.tinkerer.common.core.handler.kami.SoulHeartHandler;
 import thaumic.tinkerer.common.dim.EnumOreFrequency;
 import thaumic.tinkerer.common.dim.OreClusterGenerator;
 import thaumic.tinkerer.common.dim.TeleporterBedrock;
+import thaumic.tinkerer.common.hooks.PlayerData;
 
 /**
  * Test-only code of the port (no 1.7.10 counterpart), CC BY-NC-SA 3.0 like the add-on.
@@ -316,6 +325,49 @@ class KamiWorldLogicTest {
     }
 
     // ---- the Soul Hearts -----------------------------------------------------------------------------------------
+
+    /**
+     * What the game does with the pool (docs/deviations/KamiWorld.md section 5): a player data attachment, saved with the player, told to
+     * its owner's client, not copied on death (1.7.10 lost its entity data there); empty by default; the saved form takes 0 to 20 only.
+     */
+    @Test
+    void thePoolIsPlayerDataThatIsSavedSyncedAndLostOnDeath() {
+        PlayerData.Key<Integer> hearts = SoulHeartHandler.HEARTS;
+        assertEquals("thaumictinkerer:soul_hearts", hearts.id().toString());
+        assertEquals(0, hearts.initial());
+        assertTrue(hearts.persistent() && hearts.synced() && !hearts.copyOnDeath(), hearts.toString());
+        for (int value : new int[] { 1, 7, 20 }) {
+            assertEquals(value, hearts.codec().parse(NbtOps.INSTANCE, hearts.codec().encodeStart(NbtOps.INSTANCE, value).getOrThrow()).getOrThrow());
+            RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+            hearts.syncCodec().encode(buf, value);
+            assertEquals(value, hearts.syncCodec().decode(buf));
+            assertFalse(buf.isReadable());
+        }
+        assertTrue(hearts.codec().parse(NbtOps.INSTANCE, IntTag.valueOf(21)).isError(), "more than twenty points cannot be loaded");
+        assertTrue(hearts.codec().parse(NbtOps.INSTANCE, IntTag.valueOf(-1)).isError(), "nor less than none");
+        assertEquals("thaumictinkerer_soul_hearts", SoulHeartHandler.LEGACY_DATA_NAME, "the earlier port's save file, read once per player");
+    }
+
+    /** The earlier port's save file is read in its own format: {@code {hearts: [{player: <UUID>, hp: <int>}]}}, an empty pool skipped. */
+    @Test
+    void theOldSaveFileIsReadInTheFormatTheEarlierPortWrote() {
+        java.util.UUID a = java.util.UUID.randomUUID();
+        java.util.UUID b = java.util.UUID.randomUUID();
+        CompoundTag file = new CompoundTag();
+        ListTag list = new ListTag();
+        for (Object[] row : new Object[][] { { a, 9 }, { b, 0 } }) {
+            CompoundTag entry = new CompoundTag();
+            entry.put("player", NbtUtils.createUUID((java.util.UUID) row[0]));
+            entry.putInt("hp", (Integer) row[1]);
+            list.add(entry);
+        }
+        file.put("hearts", list);
+        SoulHeartHandler.SoulHeartData data = SoulHeartHandler.SoulHeartData.load(file, RegistryAccess.EMPTY);
+        assertEquals(9, data.get(a));
+        assertEquals(0, data.get(b));
+        assertEquals(0, data.get(java.util.UUID.randomUUID()), "a player the file does not list");
+        assertFalse(data.isDirty(), "loading does not make it dirty: the game never writes it again");
+    }
 
     @Test
     void thePoolFillsByOnePointUpToTwenty() {

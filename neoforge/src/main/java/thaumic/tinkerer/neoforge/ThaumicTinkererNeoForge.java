@@ -23,6 +23,8 @@ public final class ThaumicTinkererNeoForge {
     public ThaumicTinkererNeoForge(IEventBus bus) {
         ThaumicTinkerer.init();
         NeoForgeEventPosters.register(bus);
+        // The loader side of PlayerData: NeoForge's data attachments (docs/HOOKS.md, "PlayerData").
+        ThaumicTinkerer.guard("NeoForgePlayerData.register", () -> thaumic.tinkerer.neoforge.hooks.NeoForgePlayerData.register(bus));
         // The loader side of BlockProtection: NeoForge's BreakEvent and EntityPlaceEvent (docs/HOOKS.md).
         ThaumicTinkerer.guard("NeoForgeBlockProtection.install", NeoForgeBlockProtection::install);
         NeoForgeCapabilities.register(bus);

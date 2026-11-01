@@ -11,10 +11,7 @@
  */
 package thaumic.tinkerer.common.item.foci;
 
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
@@ -37,6 +34,8 @@ import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
+import thaumic.tinkerer.common.hooks.PlayerData;
+import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ThaumicTinkererArcaneRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
@@ -53,7 +52,7 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * at within ten blocks, through grass and fluids ({@code BlockUtils.getTargetBlock(world, player, false)}).</p>
  *
  * <p>The progress of each player is kept per side (see {@link ItemFocusHeal}): the client counts for its particles and
- * sounds and the server for the block.</p>
+ * sounds and the server for the block. It is the player data {@link #SMELTING} of each side's player entity.</p>
  *
  * <p>New: the server asks {@link ItemModFocus#mayBreak} (spawn protection, adventure mode, the protection mods) before it
  * turns the block into another; a refused block stays and nothing is paid.</p>
@@ -69,16 +68,16 @@ public class ItemFocusSmelt extends ItemModFocus {
     /** The red of the beam. */
     private static final int BEAM_COLOR = 0xFF0000;
 
-    /** The block each player is smelting and the ticks that are left, by player (1.7.10 {@code playerData}), one map for each side. */
-    private static final Map<UUID, SmeltData> SERVER_DATA = new ConcurrentHashMap<>();
-    private static final Map<UUID, SmeltData> CLIENT_DATA = new ConcurrentHashMap<>();
+    /**
+     * The block the player is smelting and the ticks that are left (1.7.10 {@code playerData}), on each side's player entity: nothing
+     * saved or synced, kept through a respawn after death as 1.7.10's map by name kept it ({@code ItemFocusHeal}). The initial value is
+     * "none" ({@link SmeltData#NONE}), which no block matches.
+     */
+    public static final PlayerData.Key<SmeltData> SMELTING = PlayerData.Key.<SmeltData>builder(LibMisc.id("focus_smelt_progress"),
+            () -> SmeltData.NONE).copyOnDeath().build();
 
     public ItemFocusSmelt(Item.Properties properties) {
         super(properties);
-    }
-
-    private static Map<UUID, SmeltData> data(Level level) {
-        return level.isClientSide ? CLIENT_DATA : SERVER_DATA;
     }
 
     /** The ticks a block needs to melt: {@code 20 - min(3, potency) * 5}. */
@@ -98,20 +97,11 @@ public class ItemFocusSmelt extends ItemModFocus {
         return result.getItem() instanceof BlockItem ? result : ItemStack.EMPTY;
     }
 
-    /** The block the player smelts on this side, or null. */
+    /** The block this player entity smelts (the server's or the client's, by the entity), or null. */
     @Nullable
-    public static SmeltData dataOf(Level level, UUID player) {
-        return data(level).get(player);
-    }
-
-    /** A player left the server: forgets his block (1.7.10 {@code PlayerTracker.onPlayerLogout}). */
-    public static void forget(UUID player) {
-        SERVER_DATA.remove(player);
-    }
-
-    /** The client left a world: forgets the progress of every player. */
-    public static void forgetClient() {
-        CLIENT_DATA.clear();
+    public static SmeltData dataOf(Player player) {
+        SmeltData data = PlayerData.get(player, SMELTING);
+        return data == SmeltData.NONE ? null : data;
     }
 
     @Override
@@ -134,10 +124,9 @@ public class ItemFocusSmelt extends ItemModFocus {
             ItemStack result = smeltResult(level, state);
 
             if (!result.isEmpty()) {
-                Map<UUID, SmeltData> players = data(level);
                 boolean decremented = false;
 
-                SmeltData data = players.get(player.getUUID());
+                SmeltData data = dataOf(player);
                 if (data != null && data.equalPos(pos)) {
                     data.progress--;
                     decremented = true;
@@ -154,7 +143,7 @@ public class ItemFocusSmelt extends ItemModFocus {
                         // (a sound and a burst on every tick) until the server's block arrived. A block that melts
                         // into another block that melts (stone into smooth stone) would have repeated it for a
                         // whole second, so the client starts afresh too.
-                        players.remove(player.getUUID());
+                        PlayerData.remove(player, SMELTING);
                         decremented = false;
                         if (melted) {
                             // Sound
@@ -175,7 +164,7 @@ public class ItemFocusSmelt extends ItemModFocus {
 
                 if (!decremented) {
                     int potency = WandHelper.getFocusPotency(wandstack);
-                    players.put(player.getUUID(), new SmeltData(pos, startProgress(potency)));
+                    PlayerData.set(player, SMELTING, new SmeltData(pos, startProgress(potency)));
                 } else {
                     // Sound
                     ////////////////////
@@ -240,6 +229,9 @@ public class ItemFocusSmelt extends ItemModFocus {
 
     /** The block a player is smelting and the ticks that are left. */
     public static final class SmeltData {
+        /** No block: the value of a player that smelts nothing ({@link #dataOf} answers null for it, so it is never changed). */
+        static final SmeltData NONE = new SmeltData(BlockPos.ZERO, 0);
+
         public final BlockPos pos;
         public int progress;
 

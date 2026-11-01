@@ -102,6 +102,26 @@ public final class KamiGearGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void robeFlightAfterALoginIsTheRobesAndTheGameModesOnly(GameTestHelper test) {
+        KamiGearRuntimeChecks.robeFlightAfterALoginIsTheRobesAndTheGameModesOnly(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void robeFlightGrantIsNotCopiedOnDeath(GameTestHelper test) {
+        KamiGearRuntimeChecks.robeFlightGrantIsNotCopiedOnDeath(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void kamiArmourSwitchIsSavedKeptThroughDeathAndToldToItsOwner(GameTestHelper test) {
+        KamiGearRuntimeChecks.kamiArmourSwitchIsSavedKeptThroughDeathAndToldToItsOwner(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void kamiArmourSwitchMovesFromTheOldSaveFileOnce(GameTestHelper test) {
+        KamiGearRuntimeChecks.kamiArmourSwitchMovesFromTheOldSaveFileOnce(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void skyPearlKeepsItsDestinationUntilSneakClicked(GameTestHelper test) {
         KamiGearRuntimeChecks.skyPearlKeepsItsDestinationUntilSneakClicked(test);
     }

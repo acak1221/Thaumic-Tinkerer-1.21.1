@@ -11,10 +11,10 @@
  */
 package thaumic.tinkerer.common.content;
 
-import dev.architectury.event.events.common.PlayerEvent;
 import net.minecraft.world.item.Item;
 import thaumic.tinkerer.client.FociClient;
 import thaumic.tinkerer.common.hooks.FloatingTicks;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.foci.FociComponents;
 import thaumic.tinkerer.common.item.foci.FociHooks;
 import thaumic.tinkerer.common.item.foci.ItemFocusDeflect;
@@ -54,11 +54,9 @@ public final class Foci implements ContentGroup {
         TTRegistry.item(LibItemNames.FOCUS_SMELT, () -> new ItemFocusSmelt(new Item.Properties()));
         TTRegistry.item(LibItemNames.FOCUS_TELEKINESIS, () -> new ItemFocusTelekinesis(new Item.Properties()));
 
-        // 1.7.10 PlayerTracker.onPlayerLogout: the progress of the Mending and Efreet's Flame foci is forgotten.
-        PlayerEvent.PLAYER_QUIT.register(player -> {
-            ItemFocusHeal.forget(player.getUUID());
-            ItemFocusSmelt.forget(player.getUUID());
-        });
+        // The progress of the Mending and Efreet's Flame foci is player data of each side's player entity, so 1.7.10's
+        // PlayerTracker.onPlayerLogout (forget it at logout) is the end of the entity.
+        PlayerData.register(ItemFocusHeal.PROGRESS, ItemFocusSmelt.SMELTING);
 
         // 1.7.10 ItemFocusFlight: playerNetServerHandler.floatingTickCount = 0 on every cast (the loader layer's accessor
         // of the connection's flying-kick counter, docs/HOOKS.md section 9).

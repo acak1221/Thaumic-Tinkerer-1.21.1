@@ -111,6 +111,26 @@ public final class KamiGearGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void robeFlightAfterALoginIsTheRobesAndTheGameModesOnly(GameTestHelper test) {
+        KamiGearRuntimeChecks.robeFlightAfterALoginIsTheRobesAndTheGameModesOnly(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void robeFlightGrantIsNotCopiedOnDeath(GameTestHelper test) {
+        KamiGearRuntimeChecks.robeFlightGrantIsNotCopiedOnDeath(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void kamiArmourSwitchIsSavedKeptThroughDeathAndToldToItsOwner(GameTestHelper test) {
+        KamiGearRuntimeChecks.kamiArmourSwitchIsSavedKeptThroughDeathAndToldToItsOwner(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void kamiArmourSwitchMovesFromTheOldSaveFileOnce(GameTestHelper test) {
+        KamiGearRuntimeChecks.kamiArmourSwitchMovesFromTheOldSaveFileOnce(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void skyPearlKeepsItsDestinationUntilSneakClicked(GameTestHelper test) {
         KamiGearRuntimeChecks.skyPearlKeepsItsDestinationUntilSneakClicked(test);
     }

@@ -11,9 +11,6 @@
  */
 package thaumic.tinkerer.common.item.kami.armor;
 
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -36,10 +33,12 @@ import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
 import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
+import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
@@ -51,12 +50,17 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * Robes of the Stratosphere: flight (the wings are drawn by the client, see {@code WingsLayer}) and a passive shield that
  * pushes simple projectiles past the wearer, like the Focus of Distortion.
  *
- * <p>1.7.10 kept a list of the players it had given flight ({@code playersWithFlight}, entries "name:remote"); the server
- * keeps their ids and sets the abilities, which the game sends to the client.</p>
+ * <p>1.7.10 kept a list of the players it had given flight ({@code playersWithFlight}, entries "name:remote"), static and emptied
+ * at logout. Here the grant is the player data {@link #FLIGHT_GRANTED} of the server's player entity: not saved, not synced, not
+ * copied on death, so it ends with the entity as the list's entry ended with the logout. Nothing more needs to be kept: a login and
+ * a respawn give the player the abilities of its game mode ({@code PlayerList.placeNewPlayer} calls {@code loadGameTypes} after
+ * loading the player; the respawn's {@code restoreFrom} sets the game mode again), so a survival player never comes back with a
+ * flight the robe granted before. The server sets the abilities, which the game sends to the client.</p>
  */
 public class ItemGemChest extends ItemIchorclothArmorAdv {
-    /** The players whose flight this armour has granted. */
-    private static final Set<UUID> PLAYERS_WITH_FLIGHT = ConcurrentHashMap.newKeySet();
+    /** Whether this armour granted the player the flight it has (see the class comment: the entity's own, nothing saved or sent). */
+    public static final PlayerData.Key<Boolean> FLIGHT_GRANTED = PlayerData.Key.<Boolean>builder(LibMisc.id("robe_flight_granted"),
+            () -> false).build();
 
     public ItemGemChest(Item.Properties properties) {
         super(ArmorItem.Type.CHESTPLATE, properties);
@@ -78,8 +82,7 @@ public class ItemGemChest extends ItemIchorclothArmorAdv {
     public static void updatePlayerFlyStatus(Player player) {
         if (player.level().isClientSide || !(player instanceof ServerPlayer) || player.isSpectator()) return;
         Abilities abilities = player.getAbilities();
-        UUID id = player.getUUID();
-        if (PLAYERS_WITH_FLIGHT.contains(id)) {
+        if (PlayerData.get(player, FLIGHT_GRANTED)) {
             if (shouldPlayerHaveFlight(player)) {
                 if (!abilities.mayfly) {
                     abilities.mayfly = true;
@@ -92,18 +95,13 @@ public class ItemGemChest extends ItemIchorclothArmorAdv {
                     abilities.invulnerable = false;
                     player.onUpdateAbilities();
                 }
-                PLAYERS_WITH_FLIGHT.remove(id);
+                PlayerData.remove(player, FLIGHT_GRANTED);
             }
         } else if (shouldPlayerHaveFlight(player)) {
-            PLAYERS_WITH_FLIGHT.add(id);
+            PlayerData.set(player, FLIGHT_GRANTED, true);
             abilities.mayfly = true;
             player.onUpdateAbilities();
         }
-    }
-
-    /** A player left the server: the list of the flying forgets it. */
-    public static void forget(Player player) {
-        PLAYERS_WITH_FLIGHT.remove(player.getUUID());
     }
 
     /**

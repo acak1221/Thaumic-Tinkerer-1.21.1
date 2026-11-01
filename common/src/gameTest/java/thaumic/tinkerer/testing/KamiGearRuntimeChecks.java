@@ -19,6 +19,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -26,20 +27,20 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.damagesource.CombatRules;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.animal.Sheep;
 import net.minecraft.world.entity.animal.Pig;
-import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.animal.Sheep;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.projectile.Arrow;
@@ -80,11 +81,12 @@ import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.block.tile.container.kami.ContainerIchorPouch;
 import thaumic.tinkerer.common.block.tile.container.slot.kami.SlotNoPouches;
 import thaumic.tinkerer.common.content.KamiGear;
-import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
+import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
 import thaumic.tinkerer.common.core.helper.BonemealEventHandler;
 import thaumic.tinkerer.common.hooks.BlockProtection;
+import thaumic.tinkerer.common.hooks.PlayerData;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
 import thaumic.tinkerer.common.item.kami.ItemBlockTalisman;
 import thaumic.tinkerer.common.item.kami.ItemIchorPouch;
@@ -828,6 +830,153 @@ public final class KamiGearRuntimeChecks {
             KamiArmorHandler.setArmorStatus(player, true);
             player.setItemSlot(EquipmentSlot.CHEST, ItemStack.EMPTY);
             KamiArmorHandler.onPlayerTick(player);
+        }
+        test.succeed();
+    }
+
+    /**
+     * What a logout does to the flight of the Robes. The audit of 2026-11-01 expected a stale flight here: the earlier port forgot at
+     * logout that the robe had granted it ({@code ItemGemChest.forget}, the 1.7.10 list {@code playersWithFlight} emptied by
+     * {@code PlayerTracker}) while the game saves the flight with the player, so a player coming back to a robe that no longer qualifies
+     * would keep it. It does not happen: {@code PlayerList.placeNewPlayer} loads the player and then gives it the abilities of its game
+     * mode ({@code loadGameTypes}), so a survival player logs in without flight, and the robe grants it again only if it qualifies. The
+     * check pins that (the logout and the login are the player list's own: the quit event, the player's file written and read), for a
+     * robe that no longer qualifies (here {@code modFlight.enabled} was switched off meanwhile), one that does, and a creative player.
+     */
+    public static void robeFlightAfterALoginIsTheRobesAndTheGameModesOnly(GameTestHelper test) {
+        ServerPlayer first = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-robe-flight"));
+        ServerPlayer[] now = { first };
+        boolean flight = ConfigHandler.enableFlight;
+        try {
+            first.setGameMode(GameType.SURVIVAL);
+            ConfigHandler.enableFlight = true;
+            first.setItemSlot(EquipmentSlot.CHEST, TTRegistry.stack(LibItemNames.ICHOR_CHEST_GEM));
+            KamiArmorHandler.onPlayerTick(first);
+            test.assertTrue(first.getAbilities().mayfly && !first.getAbilities().instabuild, "the robe grants a survival player flight");
+            first.getAbilities().flying = true;
+            first.onUpdateAbilities();
+
+            ConfigHandler.enableFlight = false; // while the player is away, the server's config forbids the flight
+            now[0] = PlayerDataSync.relog(test, first);
+            ServerPlayer back = now[0];
+            test.assertTrue(back != first && back.getItemBySlot(EquipmentSlot.CHEST).getItem() instanceof ItemGemChest,
+                    "the player is back, a new entity, in the robe");
+            test.assertTrue(!back.getAbilities().mayfly && !back.getAbilities().flying,
+                    "the login gave the survival player the abilities of its game mode: no flight");
+            KamiArmorHandler.onPlayerTick(back);
+            test.assertTrue(!back.getAbilities().mayfly && !back.getAbilities().flying, "and the robe, which no longer qualifies, grants none");
+
+            ConfigHandler.enableFlight = true;
+            now[0] = PlayerDataSync.relog(test, back);
+            test.assertTrue(!now[0].getAbilities().mayfly, "allowed again: the login itself gives no flight");
+            KamiArmorHandler.onPlayerTick(now[0]);
+            test.assertTrue(now[0].getAbilities().mayfly, "the robe grants it at the first tick");
+
+            now[0].setGameMode(GameType.CREATIVE);
+            ConfigHandler.enableFlight = false;
+            now[0] = PlayerDataSync.relog(test, now[0]);
+            KamiArmorHandler.onPlayerTick(now[0]);
+            test.assertTrue(now[0].getAbilities().mayfly, "a creative player keeps the flight of the game mode (1.7.10: !isCreativeMode)");
+        } finally {
+            ConfigHandler.enableFlight = flight;
+            PlayerDataSync.logout(test, now[0]);
+        }
+        test.succeed();
+    }
+
+    /** The grant is not copied to the entity of a respawn after death, whose flight the game mode resets: the robe grants it anew. */
+    public static void robeFlightGrantIsNotCopiedOnDeath(GameTestHelper test) {
+        ServerPlayer first = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-robe-death"));
+        ServerPlayer[] now = { first };
+        boolean flight = ConfigHandler.enableFlight;
+        try {
+            first.setGameMode(GameType.SURVIVAL);
+            ConfigHandler.enableFlight = true;
+            first.setItemSlot(EquipmentSlot.CHEST, TTRegistry.stack(LibItemNames.ICHOR_CHEST_GEM));
+            KamiArmorHandler.onPlayerTick(first);
+            test.assertTrue(PlayerData.get(first, ItemGemChest.FLIGHT_GRANTED) && first.getAbilities().mayfly, "granted");
+            now[0] = PlayerDataSync.respawn(first, false);
+            test.assertTrue(!PlayerData.get(now[0], ItemGemChest.FLIGHT_GRANTED), "the respawned player has no grant");
+            test.assertTrue(!now[0].getAbilities().mayfly, "and no flight (the game mode reset it)");
+            now[0].setItemSlot(EquipmentSlot.CHEST, TTRegistry.stack(LibItemNames.ICHOR_CHEST_GEM));
+            KamiArmorHandler.onPlayerTick(now[0]);
+            test.assertTrue(now[0].getAbilities().mayfly && PlayerData.get(now[0], ItemGemChest.FLIGHT_GRANTED), "the robe grants it anew");
+        } finally {
+            ConfigHandler.enableFlight = flight;
+            PlayerDataSync.logout(test, now[0]);
+        }
+        test.succeed();
+    }
+
+    /**
+     * The master switch ({@code KamiArmorHandler.ARMOR_ON}) is saved with the player, kept through a death and the way back from the End
+     * (as the earlier port's world file kept it), and every change is told to the player's own client, which needs it for the effects
+     * that run there; the key's prediction sets a copy on the client's player only.
+     */
+    public static void kamiArmourSwitchIsSavedKeptThroughDeathAndToldToItsOwner(GameTestHelper test) {
+        ServerPlayer first = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-armour-switch"));
+        ServerPlayer other = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-armour-other"));
+        ServerPlayer[] now = { first };
+        try {
+            test.assertTrue(KamiArmorHandler.getArmorStatus(first), "on by default");
+            int told = PlayerDataSync.valuesSent(first, KamiArmorHandler.ARMOR_ON).size();
+            int otherTold = PlayerDataSync.valuesSent(other, first.getId(), KamiArmorHandler.ARMOR_ON).size();
+            KamiArmorHandler.setArmorStatus(first, false);
+            List<java.util.Optional<Boolean>> sent = PlayerDataSync.valuesSent(first, KamiArmorHandler.ARMOR_ON);
+            test.assertTrue(sent.subList(told, sent.size()).equals(List.of(java.util.Optional.of(false))), "the owner's client is told 'off': " + sent);
+            test.assertTrue(PlayerDataSync.valuesSent(other, first.getId(), KamiArmorHandler.ARMOR_ON).size() == otherTold, "another client is not");
+            test.assertTrue(KamiArmorHandler.getArmorStatus(other), "and the other player's switch is its own");
+
+            now[0] = PlayerDataSync.relog(test, first);
+            test.assertTrue(!KamiArmorHandler.getArmorStatus(now[0]), "off after a logout and a login");
+            now[0] = PlayerDataSync.respawn(now[0], false);
+            test.assertTrue(!KamiArmorHandler.getArmorStatus(now[0]), "off after a death");
+            now[0] = PlayerDataSync.respawn(now[0], true);
+            test.assertTrue(!KamiArmorHandler.getArmorStatus(now[0]), "off after the way back from the End");
+
+            told = PlayerDataSync.valuesSent(now[0], KamiArmorHandler.ARMOR_ON).size();
+            KamiArmorHandler.setArmorStatus(now[0], true);
+            sent = PlayerDataSync.valuesSent(now[0], KamiArmorHandler.ARMOR_ON);
+            test.assertTrue(sent.subList(told, sent.size()).equals(List.of(java.util.Optional.empty())),
+                    "on again: the client is told (the default, 'on', is no attachment): " + sent);
+            test.assertTrue(!PlayerDataSync.saves(now[0], KamiArmorHandler.ARMOR_ON), "and 'on' is not saved at all");
+        } finally {
+            PlayerDataSync.logout(test, now[0]);
+            PlayerDataSync.logout(test, other);
+        }
+        test.succeed();
+    }
+
+    /**
+     * Worlds of the earlier port kept the players that switched the armour off in {@code data/thaumictinkerer_kami_armor.dat} of the
+     * overworld ({@code {disabled: [<UUID>]}}). The file is written to disk in that format, read back and put where the overworld's storage
+     * keeps it: a listed player joins switched off, another on; a later switch on is not undone by the file at the next login.
+     */
+    public static void kamiArmourSwitchMovesFromTheOldSaveFileOnce(GameTestHelper test) {
+        UUID listed = UUID.randomUUID();
+        CompoundTag file = new CompoundTag();
+        net.minecraft.nbt.ListTag disabled = new net.minecraft.nbt.ListTag();
+        disabled.add(net.minecraft.nbt.NbtUtils.createUUID(listed));
+        disabled.add(net.minecraft.nbt.NbtUtils.createUUID(UUID.randomUUID()));
+        file.put("disabled", disabled);
+        KamiArmorHandler.StatusData legacy = PlayerDataSync.legacyFile(test, KamiArmorHandler.LEGACY_DATA_NAME, file,
+                KamiArmorHandler.LEGACY_FACTORY);
+        test.assertTrue(legacy.disabled(listed), "the old file is read");
+        var storage = test.getLevel().getServer().overworld().getDataStorage();
+        storage.set(KamiArmorHandler.LEGACY_DATA_NAME, legacy);
+        ServerPlayer[] players = new ServerPlayer[2];
+        try {
+            players[0] = PlayerDataSync.login(test, new GameProfile(listed, "tt-armour-legacy"));
+            players[1] = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-armour-new"));
+            test.assertTrue(!KamiArmorHandler.getArmorStatus(players[0]), "the listed player joins with the armour off");
+            test.assertTrue(KamiArmorHandler.getArmorStatus(players[1]), "another player joins with it on");
+            KamiArmorHandler.setArmorStatus(players[0], true);
+            players[0] = PlayerDataSync.relog(test, players[0]);
+            test.assertTrue(KamiArmorHandler.getArmorStatus(players[0]), "switched on since: the file does not switch it off again");
+            test.assertTrue(!legacy.isDirty(), "the old file is never made dirty, so it is never written");
+        } finally {
+            for (ServerPlayer player : players) if (player != null) PlayerDataSync.logout(test, player);
+            storage.set(KamiArmorHandler.LEGACY_DATA_NAME, new KamiArmorHandler.StatusData());
         }
         test.succeed();
     }

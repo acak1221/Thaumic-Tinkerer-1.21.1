@@ -19,7 +19,8 @@ import thaumic.tinkerer.common.lib.LibMisc;
 
 /**
  * The key of the awakened armour tells the server whether the armour is on (client to server). 1.7.10 used one message
- * for both directions; the server's answer to a login is {@link PacketArmorStatus}.
+ * for both directions; the server's side reaches the client as the synced player data attachment
+ * {@code KamiArmorHandler.ARMOR_ON}.
  */
 public record PacketToggleArmor(boolean armorStatus) implements CustomPacketPayload {
     public static final Type<PacketToggleArmor> TYPE = new Type<>(LibMisc.id("toggle_armor"));
