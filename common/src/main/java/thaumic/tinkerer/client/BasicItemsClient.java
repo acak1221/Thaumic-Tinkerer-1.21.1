@@ -8,7 +8,6 @@ package thaumic.tinkerer.client;
 import dev.architectury.registry.client.rendering.ColorHandlerRegistry;
 import dev.architectury.registry.item.ItemPropertiesRegistry;
 import net.minecraft.world.item.Item;
-import thaumic.tinkerer.client.core.handler.ClientTickHandler;
 import thaumic.tinkerer.common.item.ItemCleansingTalisman;
 import thaumic.tinkerer.common.item.ItemSpellCloth;
 import thaumic.tinkerer.common.item.ItemXPTalisman;
@@ -23,9 +22,9 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  *       (1.7.10 {@code getColorFromItemStack});</li>
  *   <li>the model predicate {@code thaumictinkerer:enabled} of the two talismans: the switched-on texture of the Talisman
  *       of Remedium ({@code enabled} tag) and of the Talisman of Withhold (damage value 1), 1.7.10 {@code getIcon} and
- *       {@code getIconFromDamage};</li>
- *   <li>the tick counter ({@link ClientTickHandler}).</li>
+ *       {@code getIconFromDamage}.</li>
  * </ul>
+ * (1.7.10's {@code ClientTickHandler} counted client ticks for nobody; the counter is gone, docs/deviations/BasicItems.md section 8.)
  * The Helmet of Revealing needs nothing here: its worn texture is the layer of its armour material. The overlay of the Focus
  * of Dislocation (1.7.10 {@code HUDHandler}) is drawn by {@code DislocationHUDHandler} of the Foci group.
  */
@@ -45,7 +44,5 @@ public final class BasicItemsClient {
                 (stack, level, entity, seed) -> ItemCleansingTalisman.isEnabled(stack) ? 1.0F : 0.0F);
         ItemPropertiesRegistry.register(TTRegistry.item(LibItemNames.XP_TALISMAN), LibMisc.id(PREDICATE_ENABLED),
                 (stack, level, entity, seed) -> ItemXPTalisman.isAbsorbing(stack) ? 1.0F : 0.0F);
-
-        ClientTickHandler.register();
     }
 }
