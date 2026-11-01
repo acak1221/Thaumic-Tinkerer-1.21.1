@@ -162,9 +162,17 @@ class FociResourcesTest {
         JsonObject tag = json("/data/" + NS + "/tags/block/dislocation_blacklist.json");
         assertFalse(tag.get("replace").getAsBoolean());
         List<String> values = new ArrayList<>();
-        for (JsonElement value : tag.getAsJsonArray("values")) values.add(value.getAsString());
+        JsonObject convention = null;
+        for (JsonElement value : tag.getAsJsonArray("values")) {
+            if (value.isJsonObject()) convention = value.getAsJsonObject();
+            else values.add(value.getAsString());
+        }
         assertTrue(values.contains("minecraft:reinforced_deepslate"), "reinforced deepslate: " + values);
         assertTrue(values.contains("minecraft:budding_amethyst"), "budding amethyst: " + values);
+        // the cross-mod convention for blocks that must not be moved (Fabric ConventionalBlockTags.RELOCATION_NOT_SUPPORTED, NeoForge
+        // Tags.Blocks.RELOCATION_NOT_SUPPORTED), optional so that the tag loads without it
+        assertTrue(convention != null && convention.get("id").getAsString().equals("#c:relocation_not_supported")
+                && !convention.get("required").getAsBoolean(), "the convention tag, not required: " + convention);
     }
 
     @Test

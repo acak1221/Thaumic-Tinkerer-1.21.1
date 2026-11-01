@@ -2,6 +2,10 @@
   "replace": false,
   "values": [
     "minecraft:reinforced_deepslate",
-    "minecraft:budding_amethyst"
+    "minecraft:budding_amethyst",
+    {
+      "id": "#c:relocation_not_supported",
+      "required": false
+    }
   ]
 }
