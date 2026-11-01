@@ -183,6 +183,26 @@ public final class FociGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void dislocationRefusesWhatThePlayerCannotBreak(GameTestHelper test) {
+        FociRuntimeChecks.dislocationRefusesWhatThePlayerCannotBreak(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void dislocationPutsDownOnlyWhatItCouldHaveTaken(GameTestHelper test) {
+        FociRuntimeChecks.dislocationPutsDownOnlyWhatItCouldHaveTaken(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void dislocationMovesASpawnerItTookWithItsMob(GameTestHelper test) {
+        FociRuntimeChecks.dislocationMovesASpawnerItTookWithItsMob(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void dislocationAndEfreetsFlameAskTheProtectionOfTheServer(GameTestHelper test) {
+        FociRuntimeChecks.dislocationAndEfreetsFlameAskTheProtectionOfTheServer(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void registrationHadNoFailures(GameTestHelper test) {
         FociRuntimeChecks.registrationHadNoFailures(test);
     }

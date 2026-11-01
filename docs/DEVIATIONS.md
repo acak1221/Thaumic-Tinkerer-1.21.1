@@ -42,7 +42,19 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
 * **Registry names** are lower-case; the original's mixed-case ids appear only in `LibItemNames`/`LibBlockNames` comments.
 * **Config** is JSON (`config/thaumictinkerer.json`, `ConfigHandler`), not a Forge `.cfg`; the switches and defaults are the original's.
   There is a `/maxresearch` debug command (the original's `/maxresearch` equivalent: 99 of every aspect), only when
-  `enableDebugCommands` is on.
+  `enableDebugCommands` is on. Three options the original wrote are not written any more because nothing in the port reads them
+  (`tooltipIndicators.enabled`: the [TT] prefix is in the language files; `oreDictMetal.enabled`: the recipes use the shared tags whenever they
+  have members; `repairTconTools.enabled`: no Tinkers' Construct); an old file with them still loads. A file that is not valid JSON, or not a JSON
+  object, is **not** overwritten with the defaults: the defaults hold for that run, an error in the log names the file, and the file is left to be fixed.
+* **Config on a server** (new; the original had no sync, every side read its own `.cfg`, so a client with `modFlight.enabled` on could fly with the
+  Focus of Flight on a server that had it off). On join the server sends its values (`ConfigSync`, `PacketConfigSync`): the options a client evaluates as
+  well (`modFlight.enabled`, `focusOfDislocationBlacklist`, `forbiddenDimensions`, `cropsAllowBonemeal.enabled`) are then the server's for the client's own
+  levels wherever the code reads them through the side-aware accessors (`ConfigHandler.flightEnabled(level)` and the others; the Focus of Flight and the Robe
+  of the Stratosphere do); the options that decide what each side registers at start-up
+  (`imbuedFire.enabled`, `shareTome.survival.enabled`, `kami.forceenabled`) cannot change while the game runs, so a client whose own differ leaves the
+  server with a translated message that names them (`thaumictinkerer.config.mismatch`). Client display options (`soulHeart.height`,
+  `placementMirror.blocks.show`) stay the client's. Written; the payload and the comparison are JUnit-tested, the client side (receiving, disconnecting)
+  has not been run with a real client and a dedicated server.
 
 ## 2. Deliberate decisions of the port
 

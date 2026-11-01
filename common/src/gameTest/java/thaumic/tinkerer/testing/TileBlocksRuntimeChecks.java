@@ -4,28 +4,49 @@ import com.mojang.authlib.GameProfile;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.stats.Stat;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Cow;
 import net.minecraft.world.entity.animal.Pig;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.npc.Villager;
+import net.minecraft.world.entity.npc.VillagerProfession;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.ChiseledBookShelfBlockEntity;
+import net.minecraft.world.level.block.entity.HopperBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.blocks.BlocksTC;
 import thaumcraft.api.items.ItemsTC;
@@ -98,6 +119,27 @@ public final class TileBlocksRuntimeChecks {
 
     private static BlockState facing(Block block, Direction facing) {
         return block.defaultBlockState().setValue(PulseDeviceBlock.FACING, facing);
+    }
+
+    /**
+     * Runs {@code action} with the world border moved far away from the test area (and puts it back right after). The action
+     * is synchronous: nothing else ticks while the border is elsewhere, so no other check sees it.
+     */
+    private static void withWorldBorderElsewhere(GameTestHelper test, Runnable action) {
+        WorldBorder border = test.getLevel().getWorldBorder();
+        double centerX = border.getCenterX();
+        double centerZ = border.getCenterZ();
+        double size = border.getSize();
+        BlockPos origin = test.absolutePos(BlockPos.ZERO);
+        border.setCenter(origin.getX() + 1000.5, origin.getZ() + 1000.5);
+        border.setSize(16);
+        try {
+            test.assertTrue(!border.isWithinBounds(origin), "the test area is outside the moved border");
+            action.run();
+        } finally {
+            border.setCenter(centerX, centerZ);
+            border.setSize(size);
+        }
     }
 
     private static int countItems(GameTestHelper test, net.minecraft.world.item.Item item, BlockPos center, double radius) {
@@ -189,11 +231,15 @@ public final class TileBlocksRuntimeChecks {
         iface.setTarget(bound);
         test.assertTrue(bound.equals(iface.getTarget()), "the interface is bound to the chest before it is saved: " + iface.getTarget());
         iface.setCamo(Blocks.OAK_LOG.defaultBlockState());
+        CompoundTag ifaceSaved = iface.saveWithoutMetadata(test.getLevel().registryAccess());
+        test.assertTrue(bound.equals(NbtUtils.readBlockPos(ifaceSaved, "target").orElse(null)),
+                "the binding is saved in the vanilla position format under 'target': " + ifaceSaved);
         TileTransvectorInterface ifaceLoaded = reload(test, iface, TileTransvectorInterface.class);
         test.assertTrue(bound.equals(ifaceLoaded.getTarget()), "the interface's binding: " + ifaceLoaded.getTarget());
         test.assertTrue(ifaceLoaded.getCamo() == Blocks.OAK_LOG.defaultBlockState(), "the interface's camouflage");
         TileTransvectorInterface unbound = reload(test, tile(test, interfacePos, TileTransvectorInterface.class), TileTransvectorInterface.class);
         unbound.setTarget(null);
+        test.assertTrue(!unbound.saveWithoutMetadata(test.getLevel().registryAccess()).contains("target"), "an unbound interface saves no target");
         test.assertTrue(reload(test, unbound, TileTransvectorInterface.class).getTarget() == null, "an unbound interface stays unbound");
         // 1.7.10 used y == -1 for "not bound"; here -1 is a real height, and a binding at that height survives a reload
         // (a detached block entity: with no level it does not look for the block entity it is bound to).
@@ -209,7 +255,12 @@ public final class TileBlocksRuntimeChecks {
         TileGolemConnector connector = tile(test, connectorPos, TileGolemConnector.class);
         UUID golemId = UUID.fromString("00000000-0000-4000-8000-0000000000aa");
         connector.ConnectGolem(golemId);
+        CompoundTag connectorSaved = connector.saveWithoutMetadata(test.getLevel().registryAccess());
+        test.assertTrue(connectorSaved.hasUUID("golem") && golemId.equals(connectorSaved.getUUID("golem")),
+                "the golem's id is saved in the vanilla UUID format under 'golem': " + connectorSaved);
         test.assertTrue(golemId.equals(reload(test, connector, TileGolemConnector.class).golemConnected), "the golem's id");
+        connector.ConnectGolem(null);
+        test.assertTrue(reload(test, connector, TileGolemConnector.class).golemConnected == null, "an unbound connector stays unbound");
 
         // The locomotive and the relay.
         BlockPos mobilizerPos = new BlockPos(1, 1, 3);
@@ -395,6 +446,108 @@ public final class TileBlocksRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The tablet's item cooldowns run out: a fake player is not ticked by the level, and a cooldown it started (an ender
+     * pearl's twenty ticks) used to last for good, so a tablet with pearls threw one and then nothing. Right-click mode, a
+     * stone in front (the pearl breaks on it at once): a second pearl goes once the first one's cooldown is over.
+     */
+    public static void tabletCooldownsRunOut(GameTestHelper test) {
+        floor(test);
+        test.setBlock(new BlockPos(3, 1, 2), Blocks.STONE);
+        BlockPos tabletPos = placeTablet(test, new BlockPos(3, 1, 3), Direction.NORTH, new ItemStack(Items.ENDER_PEARL, 3), false, false);
+        test.succeedWhen(() -> {
+            ItemStack held = tile(test, tabletPos, TileAnimationTablet.class).heldItem;
+            test.assertTrue(held.isEmpty() || held.getCount() <= 1, "two pearls thrown, the second after the cooldown: " + held);
+        });
+    }
+
+    /** A tablet in right-click mode in front of a boat and a minecart does not board them (its fake player rides nothing). */
+    public static void tabletDoesNotBoardVehicles(GameTestHelper test) {
+        floor(test);
+        Entity boat = test.spawn(EntityType.BOAT, new BlockPos(2, 1, 2));
+        Entity cart = test.spawn(EntityType.MINECART, new BlockPos(5, 1, 2));
+        placeTablet(test, new BlockPos(2, 1, 3), Direction.NORTH, new ItemStack(Items.STICK), false, false);
+        placeTablet(test, new BlockPos(5, 1, 3), Direction.NORTH, new ItemStack(Items.STICK), false, false);
+        test.assertTrue(!player(test).startRiding(boat, true), "a fake player refuses even a forced ride");
+        // Past two swings of the tablets (the first hit comes after fifteen ticks, one every thirty after that).
+        test.runAfterDelay(50, () -> {
+            test.assertTrue(boat.getPassengers().isEmpty(), "nobody sits in the boat: " + boat.getPassengers());
+            test.assertTrue(cart.getPassengers().isEmpty(), "nobody sits in the minecart: " + cart.getPassengers());
+            boat.discard();
+            cart.discard();
+            test.succeed();
+        });
+    }
+
+    /**
+     * A tablet in right-click mode in front of a bed does not lie down in it. The night is needed for a player to sleep, and
+     * the time of the test level must not change for the other checks: so the click of a fake player standing where the
+     * tablet's stands, the same {@code useItemOnBlock} the tablet calls, is made during a night of one synchronous call; the
+     * tablet itself then clicks the bed in the day, which must not set its respawn point there either (it is not readable
+     * from here: what is checked for the tablet is that the bed stays free).
+     */
+    public static void tabletDoesNotSleepInABed(GameTestHelper test) {
+        floor(test);
+        BlockPos foot = new BlockPos(3, 1, 2);
+        BlockPos head = foot.north();
+        BlockState bed = Blocks.RED_BED.defaultBlockState().setValue(BedBlock.FACING, Direction.NORTH);
+        test.setBlock(head, bed.setValue(BedBlock.PART, BedPart.HEAD));
+        test.setBlock(foot, bed.setValue(BedBlock.PART, BedPart.FOOT));
+        test.assertBlockPresent(Blocks.RED_BED, head);
+        test.assertBlockPresent(Blocks.RED_BED, foot);
+        BlockPos tabletPos = new BlockPos(3, 1, 3);
+        BlockPos absTablet = test.absolutePos(tabletPos);
+
+        TinkererFakePlayer sleeper = player(test);
+        sleeper.placeAt(absTablet.getX() + 0.5, absTablet.getY() + 0.5, absTablet.getZ() + 0.5, Direction.NORTH.toYRot(), 0F);
+        giveItem(sleeper, new ItemStack(Items.STICK));
+        net.minecraft.server.level.ServerLevel level = test.getLevel();
+        long time = level.getDayTime();
+        level.setDayTime(18000);
+        level.updateSkyBrightness();
+        try {
+            test.assertTrue(level.isNight(), "a night for one call");
+            sleeper.useItemOnBlock(hit(test, foot, Direction.SOUTH));
+            test.assertTrue(sleeper.startSleepInBed(test.absolutePos(head)).left().orElse(null) == Player.BedSleepingProblem.OTHER_PROBLEM,
+                    "the fake player is refused a bed whatever the time");
+        } finally {
+            level.setDayTime(time);
+            level.updateSkyBrightness();
+        }
+        test.assertTrue(!sleeper.isSleeping(), "the fake player did not lie down at night");
+        test.assertTrue(!test.getBlockState(head).getValue(BedBlock.OCCUPIED), "the bed is free");
+        test.assertTrue(sleeper.getRespawnPosition() == null, "and is not its respawn point: " + sleeper.getRespawnPosition());
+
+        placeTablet(test, tabletPos, Direction.NORTH, new ItemStack(Items.STICK), false, false);
+        test.runAfterDelay(50, () -> {
+            test.assertTrue(!test.getBlockState(head).getValue(BedBlock.OCCUPIED) && !test.getBlockState(foot).getValue(BedBlock.OCCUPIED),
+                    "the tablet's clicks left the bed free");
+            test.succeed();
+        });
+    }
+
+    /**
+     * The tablet asks BlockProtection before it breaks: with the test area outside the world border (moved away for a few
+     * ticks of the tablet's own, run by hand) its swing reaches the stone and leaves it; with the border back the same
+     * tablet breaks it.
+     */
+    public static void tabletRespectsTheWorldBorder(GameTestHelper test) {
+        floor(test);
+        BlockPos target = new BlockPos(3, 1, 2);
+        test.setBlock(target, Blocks.STONE);
+        BlockPos tabletPos = placeTablet(test, new BlockPos(3, 1, 3), Direction.NORTH, new ItemStack(Items.IRON_PICKAXE), true, false);
+        TileAnimationTablet tablet = tile(test, tabletPos, TileAnimationTablet.class);
+        withWorldBorderElsewhere(test, () -> {
+            // Forty ticks: the swing hits the stone at the sixteenth, comes back and starts again.
+            for (int i = 0; i < 40; i++) {
+                TileAnimationTablet.serverTick(test.getLevel(), test.absolutePos(tabletPos), test.getBlockState(tabletPos), tablet);
+            }
+            test.assertTrue(!tablet.getIsBreaking(), "outside the border the tablet does not start breaking");
+            test.assertBlockPresent(Blocks.STONE, target);
+        });
+        test.succeedWhen(() -> test.assertBlockPresent(Blocks.AIR, target));
+    }
+
     /** The menus: one device slot and the player's 36, shift-click moves between them, the device range is eight blocks. */
     public static void menusHaveTheirSlots(GameTestHelper test) {
         floor(test);
@@ -507,6 +660,48 @@ public final class TileBlocksRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The fake player counts no statistics, scores nothing on the scoreboard (a statistic objective, the kill count), opens no
+     * horse inventory and leaves a villager it talked to free for real players.
+     */
+    public static void fakePlayerHasNoStatsScoresOrScreens(GameTestHelper test) {
+        floor(test);
+        TinkererFakePlayer fake = player(test);
+        Scoreboard scoreboard = test.getLevel().getServer().getScoreboard();
+        Stat<ResourceLocation> jumps = Stats.CUSTOM.get(Stats.JUMP);
+        Objective jumpObjective = scoreboard.addObjective("tt_fake_jumps", jumps, Component.literal("jumps"),
+                ObjectiveCriteria.RenderType.INTEGER, false, null);
+        Objective killObjective = scoreboard.addObjective("tt_fake_kills", ObjectiveCriteria.KILL_COUNT_ALL, Component.literal("kills"),
+                ObjectiveCriteria.RenderType.INTEGER, false, null);
+        try {
+            fake.awardStat(jumps);
+            fake.awardStat(Stats.ITEM_USED.get(Items.STICK), 5);
+            test.assertTrue(fake.getStats().getValue(jumps) == 0, "no statistic is counted: " + fake.getStats().getValue(jumps));
+            test.assertTrue(scoreboard.getPlayerScoreInfo(fake, jumpObjective) == null, "and the statistic objective has no score for it");
+            net.minecraft.world.entity.monster.Zombie zombie = PlainMobs.spawnWithNoFreeWill(test, EntityType.ZOMBIE, new BlockPos(1, 1, 1));
+            fake.awardKillScore(zombie, 3, test.getLevel().damageSources().generic());
+            test.assertTrue(scoreboard.getPlayerScoreInfo(fake, killObjective) == null, "no kill is counted on the scoreboard");
+            test.assertTrue(fake.getScore() == 0, "and no score: " + fake.getScore());
+            zombie.discard();
+        } finally {
+            scoreboard.removeObjective(jumpObjective);
+            scoreboard.removeObjective(killObjective);
+        }
+
+        net.minecraft.world.entity.animal.horse.Horse horse = test.spawnWithNoFreeWill(EntityType.HORSE, new BlockPos(5, 1, 5));
+        fake.openHorseInventory(horse, new SimpleContainer(2));
+        test.assertTrue(fake.containerMenu == fake.inventoryMenu, "no horse inventory is open: " + fake.containerMenu);
+
+        Villager villager = test.spawnWithNoFreeWill(EntityType.VILLAGER, new BlockPos(3, 1, 5));
+        villager.setVillagerData(villager.getVillagerData().setProfession(VillagerProfession.FARMER).setLevel(1));
+        test.assertTrue(!villager.getOffers().isEmpty(), "a farmer has trades");
+        giveItem(fake, ItemStack.EMPTY);
+        fake.interactWithEntity(villager);
+        test.assertTrue(!villager.isTrading(), "the villager is not left trading with the fake player: " + villager.getTradingPlayer());
+        test.assertTrue(fake.containerMenu == fake.inventoryMenu, "and no trading screen is open");
+        test.succeed();
+    }
+
     // ---- the remote placer ---------------------------------------------------------------------------------------
 
     private static TileRPlacer placePlacer(GameTestHelper test, BlockPos at, Direction facing, int blocks, ItemStack item) {
@@ -556,6 +751,91 @@ public final class TileBlocksRuntimeChecks {
         test.destroyBlock(placerPos);
         test.assertTrue(countItems(test, Items.COBBLESTONE, placerPos, 3) == 5, "the block in the slot is not lost");
         test.succeed();
+    }
+
+    /**
+     * A water bucket in a placer pours into the target when there is a block beyond it (a placer facing north and one facing
+     * down onto the floor), not behind the placer or above it; with nothing beyond the target the bucket stays full. The
+     * water is taken away again before it flows.
+     */
+    public static void remotePlacerPoursABucketIntoItsTarget(GameTestHelper test) {
+        floor(test);
+        BlockPos northPlacer = new BlockPos(3, 1, 4);
+        BlockPos northTarget = new BlockPos(3, 1, 3);
+        test.setBlock(new BlockPos(3, 1, 2), Blocks.STONE);
+        TileRPlacer north = placePlacer(test, northPlacer, Direction.NORTH, 1, new ItemStack(Items.WATER_BUCKET));
+        BlockPos downPlacer = new BlockPos(6, 4, 6);
+        BlockPos downTarget = new BlockPos(6, 2, 6);
+        test.setBlock(new BlockPos(6, 1, 6), Blocks.STONE);
+        TileRPlacer down = placePlacer(test, downPlacer, Direction.DOWN, 2, new ItemStack(Items.WATER_BUCKET));
+        BlockPos openPlacer = new BlockPos(1, 1, 1);
+        BlockPos openTarget = new BlockPos(1, 1, 3);
+        TileRPlacer open = placePlacer(test, openPlacer, Direction.SOUTH, 2, new ItemStack(Items.WATER_BUCKET));
+
+        north.receiveRedstonePulse();
+        down.receiveRedstonePulse();
+        open.receiveRedstonePulse();
+        try {
+            test.assertTrue(isWaterSource(test, northTarget), "the north-facing placer filled its target");
+            test.assertTrue(north.getItem(0).is(Items.BUCKET), "and holds the empty bucket: " + north.getItem(0));
+            for (BlockPos dry : new BlockPos[] { northPlacer.south(), northPlacer.above(), northPlacer.above(2), northTarget.above() }) {
+                test.assertTrue(!test.getBlockState(dry).getFluidState().is(Fluids.WATER), "no water at " + dry + " (behind or above the placer)");
+            }
+            test.assertTrue(isWaterSource(test, downTarget), "the placer facing down filled its target on the floor");
+            test.assertTrue(down.getItem(0).is(Items.BUCKET), "and holds the empty bucket: " + down.getItem(0));
+            for (BlockPos dry : new BlockPos[] { downPlacer.above(), downPlacer.below() }) {
+                test.assertTrue(!test.getBlockState(dry).getFluidState().is(Fluids.WATER), "no water at " + dry + " (behind or in front of the target)");
+            }
+            test.assertBlockPresent(Blocks.AIR, openTarget);
+            test.assertTrue(open.getItem(0).is(Items.WATER_BUCKET), "with nothing beyond its target the bucket stays full: " + open.getItem(0));
+        } finally {
+            for (BlockPos wet : new BlockPos[] { northTarget, downTarget }) test.setBlock(wet, Blocks.AIR);
+        }
+        test.succeed();
+    }
+
+    private static boolean isWaterSource(GameTestHelper test, BlockPos pos) {
+        net.minecraft.world.level.material.FluidState fluid = test.getBlockState(pos).getFluidState();
+        return fluid.is(Fluids.WATER) && fluid.isSource();
+    }
+
+    /**
+     * The placer and the dislocator ask BlockProtection before they act: with the test area outside the world border (for
+     * one synchronous call) a pulse places nothing, swaps nothing and moves no entity; with the border back they work.
+     */
+    public static void placerAndDislocatorRespectTheWorldBorder(GameTestHelper test) {
+        floor(test);
+        TileRPlacer placer = placePlacer(test, new BlockPos(1, 1, 1), Direction.SOUTH, 1, new ItemStack(Items.COBBLESTONE, 3));
+        BlockPos placed = new BlockPos(1, 1, 2);
+        BlockPos dislocatorPos = new BlockPos(3, 1, 3);
+        BlockPos frontPos = new BlockPos(3, 2, 3);
+        BlockPos endPos = new BlockPos(6, 1, 6);
+        test.setBlock(dislocatorPos, facing(TileBlocks.dislocatorBlock(), Direction.UP));
+        TileTransvectorDislocator dislocator = tile(test, dislocatorPos, TileTransvectorDislocator.class);
+        dislocator.setTarget(test.absolutePos(endPos));
+        test.setBlock(frontPos, Blocks.DIAMOND_BLOCK);
+        Pig pig = test.spawnWithNoFreeWill(EntityType.PIG, endPos);
+        Vec3 pigBefore = pig.position();
+
+        withWorldBorderElsewhere(test, () -> {
+            placer.receiveRedstonePulse();
+            dislocator.receiveRedstonePulse();
+        });
+        test.assertBlockPresent(Blocks.AIR, placed);
+        test.assertTrue(placer.getItem(0).getCount() == 3, "outside the border the placer placed nothing: " + placer.getItem(0));
+        test.assertBlockPresent(Blocks.DIAMOND_BLOCK, frontPos);
+        test.assertBlockPresent(Blocks.AIR, endPos);
+        test.assertTrue(pig.position().distanceTo(pigBefore) < 0.01, "and the dislocator moved no entity: " + pig.position());
+
+        placer.receiveRedstonePulse();
+        test.assertBlockPresent(Blocks.COBBLESTONE, placed);
+        // The refused pulse started the dislocator's rest of ten ticks.
+        test.runAfterDelay(15, () -> {
+            dislocator.receiveRedstonePulse();
+            test.assertBlockPresent(Blocks.DIAMOND_BLOCK, endPos);
+            test.assertTrue(pig.position().distanceTo(pigBefore.add(-3, 1, -3)) < 0.01, "with the border back the pig changed places: " + pig.position());
+            test.succeed();
+        });
     }
 
     // ---- the transvector dislocator ---------------------------------------------------------------------------
@@ -617,17 +897,44 @@ public final class TileBlocksRuntimeChecks {
     }
 
     /**
-     * The check of the original lets every block through (bedrock too): kept (docs/deviations/TileBlocks.md). An aura node
-     * is not placed here: its block entity ticks the aura of the world, which is not the subject of this check.
+     * The Dislocator swaps nothing that a player cannot break: unbreakable blocks (bedrock, barriers, end portal frames) and
+     * operator blocks (a command block) are refused, air, ordinary blocks and containers pass (docs/deviations/TileBlocks.md,
+     * 2.6; the 1.7.10 check let every block through). A pulse with bedrock in front swaps nothing; one with air in front
+     * moves the block at the end there. An aura node is not placed here: its block entity ticks the aura of the world, which
+     * is not the subject of this check. (A structure block is not placed either: the GameTest framework uses them.)
      */
-    public static void dislocatorChecksLetEveryBlockThrough(GameTestHelper test) {
-        BlockPos bedrock = new BlockPos(2, 2, 2);
-        test.setBlock(bedrock, Blocks.BEDROCK);
-        test.assertTrue(TileTransvectorDislocator.checkBlock(test.getLevel(), test.absolutePos(bedrock)), "bedrock");
-        test.assertTrue(TileTransvectorDislocator.checkBlock(test.getLevel(), test.absolutePos(new BlockPos(5, 5, 5))), "air");
-        test.setBlock(bedrock, Blocks.DIAMOND_BLOCK);
-        test.assertTrue(TileTransvectorDislocator.checkBlock(test.getLevel(), test.absolutePos(bedrock)), "a diamond block");
-        test.succeed();
+    public static void dislocatorRefusesWhatAPlayerCannotBreak(GameTestHelper test) {
+        floor(test);
+        BlockPos probe = new BlockPos(1, 2, 6);
+        for (Block refused : new Block[] { Blocks.BEDROCK, Blocks.BARRIER, Blocks.END_PORTAL_FRAME, Blocks.COMMAND_BLOCK }) {
+            test.setBlock(probe, refused);
+            test.assertTrue(!TileTransvectorDislocator.checkBlock(test.getLevel(), test.absolutePos(probe)), refused + " is refused");
+        }
+        for (Block passes : new Block[] { Blocks.AIR, Blocks.DIAMOND_BLOCK, Blocks.CHEST, Blocks.OBSIDIAN }) {
+            test.setBlock(probe, passes);
+            test.assertTrue(TileTransvectorDislocator.checkBlock(test.getLevel(), test.absolutePos(probe)), passes + " passes");
+        }
+        test.setBlock(probe, Blocks.AIR);
+
+        BlockPos dislocatorPos = new BlockPos(3, 1, 3);
+        BlockPos frontPos = new BlockPos(3, 2, 3);
+        BlockPos endPos = new BlockPos(6, 2, 6);
+        test.setBlock(dislocatorPos, facing(TileBlocks.dislocatorBlock(), Direction.UP));
+        TileTransvectorDislocator dislocator = tile(test, dislocatorPos, TileTransvectorDislocator.class);
+        dislocator.setTarget(test.absolutePos(endPos));
+        test.setBlock(frontPos, Blocks.BEDROCK);
+        test.setBlock(endPos, Blocks.DIAMOND_BLOCK);
+        dislocator.receiveRedstonePulse();
+        test.assertBlockPresent(Blocks.BEDROCK, frontPos);
+        test.assertBlockPresent(Blocks.DIAMOND_BLOCK, endPos);
+
+        test.setBlock(frontPos, Blocks.AIR);
+        test.runAfterDelay(15, () -> {
+            dislocator.receiveRedstonePulse();
+            test.assertBlockPresent(Blocks.DIAMOND_BLOCK, frontPos);
+            test.assertBlockPresent(Blocks.AIR, endPos);
+            test.succeed();
+        });
     }
 
     // ---- the transvector interface --------------------------------------------------------------------------
@@ -696,6 +1003,121 @@ public final class TileBlocksRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The two item rules a hopper asks besides the slots, {@code canTakeItem} and {@code getMaxStackSize(ItemStack)}, are the
+     * bound block's: a chiseled bookshelf lets a hopper take a book only when the hopper has room for it.
+     */
+    public static void interfaceForwardsTheHopperRules(GameTestHelper test) {
+        floor(test);
+        BlockPos interfacePos = new BlockPos(3, 1, 3);
+        BlockPos shelfPos = new BlockPos(3, 1, 5);
+        test.setBlock(interfacePos, TileBlocks.interfaceBlock());
+        test.setBlock(shelfPos, Blocks.CHISELED_BOOKSHELF);
+        TileTransvectorInterface iface = tile(test, interfacePos, TileTransvectorInterface.class);
+        ChiseledBookShelfBlockEntity shelf = tile(test, shelfPos, ChiseledBookShelfBlockEntity.class);
+        ItemStack book = new ItemStack(Items.BOOK);
+        SimpleContainer roomy = new SimpleContainer(5);
+        SimpleContainer full = new SimpleContainer(5);
+        for (int i = 0; i < 5; i++) full.setItem(i, new ItemStack(Items.DIRT, 64));
+        test.assertTrue(!iface.canTakeItem(roomy, 0, book) && iface.getMaxStackSize(book) == 0, "an unbound interface gives nothing");
+
+        iface.setTarget(test.absolutePos(shelfPos));
+        test.assertTrue(!shelf.canTakeItem(full, 0, book) && shelf.canTakeItem(roomy, 0, book), "the shelf's own rule");
+        test.assertTrue(!iface.canTakeItem(full, 0, book), "a hopper full of dirt may not take the shelf's book through the interface");
+        test.assertTrue(iface.canTakeItem(roomy, 0, book), "a hopper with room may");
+        test.assertTrue(iface.getMaxStackSize(book) == shelf.getMaxStackSize(book), "one book per slot, as the shelf says: " + iface.getMaxStackSize(book));
+        test.succeed();
+    }
+
+    /** The binding of a saved world: {@code device} loads the data of an Interface bound to {@code absTarget}. */
+    private static void bindAsSaved(GameTestHelper test, TileTransvectorInterface device, BlockPos absTarget) {
+        TileTransvectorInterface detached = new TileTransvectorInterface(device.getBlockPos(), device.getBlockState());
+        detached.setTarget(absTarget);
+        device.loadWithComponents(detached.saveWithoutMetadata(test.getLevel().registryAccess()), test.getLevel().registryAccess());
+        test.assertTrue(absTarget.equals(device.getTarget()), "bound as saved: " + device.getTarget());
+    }
+
+    /**
+     * A Dislocator moves an Interface onto the chest it is bound to, so that the Interface is bound to its own place (the
+     * Binder refuses that, the Dislocator could make it). Whatever asks it then, a hopper pushing into it or a player clicking
+     * it (which marks it changed), is answered without asking the Interface again (it used to recurse until the stack
+     * overflowed, a crash of the server), and the binding ends. The saved state is loaded again between the two, as a world
+     * saved with it would be.
+     */
+    public static void interfaceMovedOntoItsOwnTargetEndsTheBinding(GameTestHelper test) {
+        floor(test);
+        BlockPos dislocatorPos = new BlockPos(3, 1, 3);
+        BlockPos interfacePos = new BlockPos(3, 2, 3);
+        BlockPos chestPos = new BlockPos(3, 2, 5);
+        test.setBlock(dislocatorPos, facing(TileBlocks.dislocatorBlock(), Direction.UP));
+        test.setBlock(chestPos, Blocks.CHEST);
+        test.setBlock(interfacePos, TileBlocks.interfaceBlock());
+        tile(test, interfacePos, TileTransvectorInterface.class).setTarget(test.absolutePos(chestPos));
+        TileTransvectorDislocator dislocator = tile(test, dislocatorPos, TileTransvectorDislocator.class);
+        dislocator.setTarget(test.absolutePos(chestPos));
+
+        dislocator.receiveRedstonePulse();
+
+        test.assertBlockPresent(TileBlocks.interfaceBlock(), chestPos);
+        test.assertBlockPresent(Blocks.CHEST, interfacePos);
+        TileTransvectorInterface moved = tile(test, chestPos, TileTransvectorInterface.class);
+        BlockPos self = test.absolutePos(chestPos);
+        test.assertTrue(self.equals(moved.getTarget()), "the dislocated interface is bound to its own place: " + moved.getTarget());
+
+        BlockPos hopperPos = chestPos.above();
+        test.setBlock(hopperPos, Blocks.HOPPER);
+        HopperBlockEntity hopper = tile(test, hopperPos, HopperBlockEntity.class);
+        hopper.setItem(0, new ItemStack(Items.COBBLESTONE, 4));
+        bindAsSaved(test, moved, self);
+        HopperBlockEntity.pushItemsTick(test.getLevel(), test.absolutePos(hopperPos), test.getBlockState(hopperPos), hopper);
+        test.assertTrue(!moved.isBound(), "the hopper's question ended the binding");
+        test.assertTrue(hopper.getItem(0).getCount() == 4, "and nothing went into the interface: " + hopper.getItem(0));
+        test.assertTrue(moved.getContainerSize() == 0 && moved.getTile() == null && moved.bound() == null, "it has nothing to forward to");
+
+        bindAsSaved(test, moved, self);
+        TinkererFakePlayer player = player(test);
+        giveItem(player, ItemStack.EMPTY);
+        test.useBlock(chestPos, player);
+        test.assertTrue(!moved.isBound(), "a player's click ended the binding");
+
+        moved.setTarget(self);
+        test.assertTrue(!moved.isBound(), "and binding it to itself by hand ends at once");
+        test.succeed();
+    }
+
+    /**
+     * Two Interfaces bound to each other (two Interfaces dislocated into each other's targets; the Binder refuses it): a
+     * player's click on one, and the item, essentia and transport questions to the other, are answered without asking back
+     * and forth, and both bindings end.
+     */
+    public static void interfacesBoundToEachOtherEndTheBinding(GameTestHelper test) {
+        floor(test);
+        BlockPos aPos = new BlockPos(2, 1, 3);
+        BlockPos bPos = new BlockPos(5, 1, 3);
+        test.setBlock(aPos, TileBlocks.interfaceBlock());
+        test.setBlock(bPos, TileBlocks.interfaceBlock());
+        TileTransvectorInterface a = tile(test, aPos, TileTransvectorInterface.class);
+        TileTransvectorInterface b = tile(test, bPos, TileTransvectorInterface.class);
+        bindAsSaved(test, a, test.absolutePos(bPos));
+        bindAsSaved(test, b, test.absolutePos(aPos));
+
+        TinkererFakePlayer player = player(test);
+        giveItem(player, ItemStack.EMPTY);
+        test.useBlock(bPos, player);
+        test.assertTrue(!b.isBound(), "the click on b ended b's binding to a");
+
+        bindAsSaved(test, b, test.absolutePos(aPos));
+        test.assertTrue(a.getContainerSize() == 0 && a.isEmpty() && a.getSlotsForFace(Direction.UP).length == 0, "a has no slots");
+        test.assertTrue(!a.isBound(), "and a's binding to b ended");
+        test.assertTrue(b.getAspects().size() == 0 && b.addToContainer(Aspect.FIRE, 3) == 3, "b holds and takes no essentia");
+        test.assertTrue(b.getEssentiaAmount(Direction.UP) == 0 && b.getSuctionAmount(Direction.UP) == 0, "and transports none");
+        test.assertTrue(!b.isBound(), "and b's binding to a ended");
+
+        a.setTarget(test.absolutePos(bPos));
+        test.assertTrue(!a.isBound(), "binding an interface to another by hand ends at once");
+        test.succeed();
+    }
+
     // ---- the binder ------------------------------------------------------------------------------------------
 
     private static UseOnContext useOn(GameTestHelper test, TinkererFakePlayer player, BlockPos relative) {
@@ -720,8 +1142,8 @@ public final class TileBlocksRuntimeChecks {
         test.assertTrue(!ItemConnector.hasTarget(binder), "a chest is no device: nothing is remembered");
 
         TileBlocks.connectorItem().useOn(useOn(test, player, interfacePos));
-        test.assertTrue(ItemConnector.hasTarget(binder) && ItemConnector.getTarget(binder).equals(test.absolutePos(interfacePos)),
-                "the interface is remembered");
+        test.assertTrue(GlobalPos.of(test.getLevel().dimension(), test.absolutePos(interfacePos)).equals(ItemConnector.getTarget(binder)),
+                "the interface is remembered, with its dimension: " + ItemConnector.getTarget(binder));
         TileBlocks.connectorItem().useOn(useOn(test, player, otherInterfacePos));
         test.assertTrue(!iface.isBound(), "an interface cannot be bound to another interface");
 
@@ -744,6 +1166,42 @@ public final class TileBlocksRuntimeChecks {
         TileBlocks.connectorItem().useOn(useOn(test, player, new BlockPos(5, 1, 1)));
         test.assertTrue(test.absolutePos(new BlockPos(5, 1, 1)).equals(far.getTarget()),
                 "four blocks away binds: " + far.getTarget() + ", wanted " + test.absolutePos(new BlockPos(5, 1, 1)));
+        test.succeed();
+    }
+
+    /**
+     * The binder remembers the dimension of the device. A device remembered in another dimension is not present here: the
+     * Interface at the same coordinates of this dimension is not bound to the clicked chest, the binder forgets the device,
+     * and a remembered position far away in another dimension does not load the chunk at those coordinates here (1.7.10,
+     * which kept no dimension, asked this dimension for them).
+     */
+    public static void binderComparesTheDimension(GameTestHelper test) {
+        floor(test);
+        BlockPos interfacePos = new BlockPos(3, 1, 3);
+        BlockPos chestPos = new BlockPos(3, 1, 5);
+        test.setBlock(interfacePos, TileBlocks.interfaceBlock());
+        test.setBlock(chestPos, Blocks.CHEST);
+        TileTransvectorInterface iface = tile(test, interfacePos, TileTransvectorInterface.class);
+        TinkererFakePlayer player = player(test);
+        ItemStack binder = new ItemStack(TileBlocks.connectorItem());
+        giveItem(player, binder);
+        ResourceKey<Level> here = test.getLevel().dimension();
+        ResourceKey<Level> other = here == Level.NETHER ? Level.OVERWORLD : Level.NETHER;
+
+        ItemConnector.setTarget(binder, GlobalPos.of(other, test.absolutePos(interfacePos)));
+        TileBlocks.connectorItem().useOn(useOn(test, player, chestPos));
+        test.assertTrue(!iface.isBound(), "the interface here is not the device remembered in " + other.location());
+        test.assertTrue(!ItemConnector.hasTarget(binder), "the device is not present here: forgotten");
+
+        BlockPos far = test.absolutePos(interfacePos).offset(40_000, 0, 40_000);
+        ChunkPos farChunk = new ChunkPos(far);
+        boolean loadedBefore = test.getLevel().hasChunk(farChunk.x, farChunk.z);
+        ItemConnector.setTarget(binder, GlobalPos.of(other, far));
+        TileBlocks.connectorItem().useOn(useOn(test, player, chestPos));
+        test.assertTrue(!ItemConnector.hasTarget(binder), "forgotten as well");
+        if (!loadedBefore) {
+            test.assertTrue(!test.getLevel().hasChunk(farChunk.x, farChunk.z), "and the chunk at those coordinates here was not loaded");
+        }
         test.succeed();
     }
 

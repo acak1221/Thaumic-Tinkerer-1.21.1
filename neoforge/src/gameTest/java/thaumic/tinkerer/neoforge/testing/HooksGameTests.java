@@ -11,12 +11,14 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import thaumic.tinkerer.testing.HooksRuntimeChecks;
+import thaumic.tinkerer.testing.ProtectionRuntimeChecks;
 
 /**
- * NeoForge wrappers of {@link HooksRuntimeChecks}, generated from the Fabric class
+ * NeoForge wrappers of the checks of {@link HooksRuntimeChecks}, {@link ProtectionRuntimeChecks}, generated from the Fabric class
  * {@code thaumic.tinkerer.fabric.testing.HooksGameTests}: the same tests in the same order, under the same names and with
  * the same timeouts and batches, on the template {@code thaumictinkerer:hooksgametests.empty} (the class name prefixes the
  * template and the test names, which are then those of the Fabric run). Test-only, not distributed.
+ * The Fabric-native wrappers (blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents) call their NeoForge counterparts in {@link HooksNeoForgeChecks}.
  */
 @PrefixGameTestTemplate(true)
 public final class HooksGameTests {
@@ -61,6 +63,11 @@ public final class HooksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void breakSpeedCannotDigOnABlockOfHardnessZeroIsProgressZero(GameTestHelper test) {
+        HooksRuntimeChecks.breakSpeedCannotDigOnABlockOfHardnessZeroIsProgressZero(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void livingJumpIsPostedAfterTheJumpMotionIsApplied(GameTestHelper test) {
         HooksRuntimeChecks.livingJumpIsPostedAfterTheJumpMotionIsApplied(test);
     }
@@ -88,5 +95,26 @@ public final class HooksGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void floatingTicksReadAndResetTheRealCounter(GameTestHelper test) {
         HooksRuntimeChecks.floatingTicksReadAndResetTheRealCounter(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void mayBreakAndMayPlaceFollowTheListeners(GameTestHelper test) {
+        ProtectionRuntimeChecks.mayBreakAndMayPlaceFollowTheListeners(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void spawnProtectionAndAdventureModeRefuse(GameTestHelper test) {
+        ProtectionRuntimeChecks.spawnProtectionAndAdventureModeRefuse(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theAddonsOwnBreakListenersDoNothingWhileAsked(GameTestHelper test) {
+        ProtectionRuntimeChecks.theAddonsOwnBreakListenersDoNothingWhileAsked(test);
+    }
+
+    /** Fabric-native on Fabric (its body uses the Fabric API): the NeoForge counterpart is {@link HooksNeoForgeChecks#blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents}. */
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents(GameTestHelper test) {
+        HooksNeoForgeChecks.blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents(test);
     }
 }

@@ -57,6 +57,11 @@ public final class EnchantmentsGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theEnchanterRefusesWhatItsScreenDoesNotOffer(GameTestHelper test) {
+        EnchantmentsRuntimeChecks.theEnchanterRefusesWhatItsScreenDoesNotOffer(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void withoutSixPillarsTheEnchanterDoesNotStart(GameTestHelper test) {
         EnchantmentsRuntimeChecks.withoutSixPillarsTheEnchanterDoesNotStart(test);
     }
@@ -154,6 +159,11 @@ public final class EnchantmentsGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theTabletsFakePlayerDigsAndHitsWithTheEnchantments(GameTestHelper test) {
         EnchantmentsRuntimeChecks.theTabletsFakePlayerDigsAndHitsWithTheEnchantments(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void aQuestionOfTheProtectionModsIsNoBreakForTunnelOrTheWear(GameTestHelper test) {
+        EnchantmentsRuntimeChecks.aQuestionOfTheProtectionModsIsNoBreakForTunnelOrTheWear(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

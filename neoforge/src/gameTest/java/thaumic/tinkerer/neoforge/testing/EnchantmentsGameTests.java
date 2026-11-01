@@ -66,6 +66,11 @@ public final class EnchantmentsGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theEnchanterRefusesWhatItsScreenDoesNotOffer(GameTestHelper test) {
+        EnchantmentsRuntimeChecks.theEnchanterRefusesWhatItsScreenDoesNotOffer(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void withoutSixPillarsTheEnchanterDoesNotStart(GameTestHelper test) {
         EnchantmentsRuntimeChecks.withoutSixPillarsTheEnchanterDoesNotStart(test);
     }
@@ -163,6 +168,11 @@ public final class EnchantmentsGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void theTabletsFakePlayerDigsAndHitsWithTheEnchantments(GameTestHelper test) {
         EnchantmentsRuntimeChecks.theTabletsFakePlayerDigsAndHitsWithTheEnchantments(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void aQuestionOfTheProtectionModsIsNoBreakForTunnelOrTheWear(GameTestHelper test) {
+        EnchantmentsRuntimeChecks.aQuestionOfTheProtectionModsIsNoBreakForTunnelOrTheWear(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

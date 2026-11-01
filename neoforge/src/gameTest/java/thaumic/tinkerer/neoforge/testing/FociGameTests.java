@@ -196,6 +196,26 @@ public final class FociGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void dislocationRefusesWhatThePlayerCannotBreak(GameTestHelper test) {
+        FociRuntimeChecks.dislocationRefusesWhatThePlayerCannotBreak(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void dislocationPutsDownOnlyWhatItCouldHaveTaken(GameTestHelper test) {
+        FociRuntimeChecks.dislocationPutsDownOnlyWhatItCouldHaveTaken(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void dislocationMovesASpawnerItTookWithItsMob(GameTestHelper test) {
+        FociRuntimeChecks.dislocationMovesASpawnerItTookWithItsMob(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void dislocationAndEfreetsFlameAskTheProtectionOfTheServer(GameTestHelper test) {
+        FociRuntimeChecks.dislocationAndEfreetsFlameAskTheProtectionOfTheServer(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void registrationHadNoFailures(GameTestHelper test) {
         FociRuntimeChecks.registrationHadNoFailures(test);
     }

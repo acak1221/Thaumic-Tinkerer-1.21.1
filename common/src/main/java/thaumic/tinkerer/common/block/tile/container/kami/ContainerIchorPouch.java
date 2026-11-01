@@ -141,7 +141,7 @@ public class ContainerIchorPouch extends AbstractContainerMenu {
         ItemStack copy = stack.copy();
         if (index < SLOTS) {
             if (!moveItemStackTo(stack, SLOTS, slots.size(), true)) return ItemStack.EMPTY;
-        } else if (SlotNoPouches.isPouch(stack) || !moveItemStackTo(stack, 0, SLOTS, false)) {
+        } else if (!SlotNoPouches.mayHold(stack) || !moveItemStackTo(stack, 0, SLOTS, false)) {
             return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
@@ -182,7 +182,7 @@ public class ContainerIchorPouch extends AbstractContainerMenu {
 
         @Override
         public boolean canPlaceItem(int slot, ItemStack stack) {
-            return !SlotNoPouches.isPouch(stack);
+            return SlotNoPouches.mayHold(stack);
         }
 
         @Override

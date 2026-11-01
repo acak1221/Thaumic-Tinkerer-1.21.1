@@ -6,7 +6,7 @@ The 312 GameTests of the add-on run on a NeoForge dedicated GameTest server as w
 (`common/src/gameTest/java/thaumic/tinkerer/testing/*RuntimeChecks.java`), under the same test names, with the same timeouts and batches.
 The NeoForge wrappers are not written by hand: `tools/neoforge_gametests.py` generates them from the Fabric ones, and a JUnit test fails
 when the two drift apart. Two NeoForge-only scenarios (the block capabilities of the Transvector Interface) come on top, so a NeoForge run has
-314 tests.
+314 tests. (Counts of the run recorded below; since 2026-11-01 five more NeoForge-only scenarios exist, see "NeoForge-only scenarios".)
 
 ```bash
 ./gradlew :neoforge:runGameTest                                              # every test
@@ -34,8 +34,9 @@ deleted before every run, so that no result depends on an earlier one. The parit
 | The filter `-PtinkererGameTestFilter=a,b,group*` (an unknown name is an error) | mixin `testing/mixin/TinkererGameTestSelectionMixin.java` | the mixin of the same name in `fabric/src/gameTest` |
 | The report: vanilla's `JUnitLikeTestReporter` plus the stack trace of each failure in the log | `ThaumicTinkererGameTestMod` | Fabric API, `-Dfabric-api.gametest.report-file` |
 | Negotiated channels for mock players (see below) | mixin `testing/mixin/TinkererMockConnectionMixin.java` | not needed |
-| The NeoForge body of a Fabric-native wrapper (see below) | `testing/TileBlocksNeoForgeChecks.java` | the inline body of `TileBlocksGameTests.interfaceForwardsFluids` |
-| NeoForge-only scenarios: hand-written classes `*NeoForgeTests`, listed in `TinkererGameTestCatalogue.NEOFORGE_ONLY` (generated) | `testing/TileBlocksNeoForgeTests.java` | none |
+| The NeoForge body of a Fabric-native wrapper (see below) | `testing/TileBlocksNeoForgeChecks.java`, `testing/HooksNeoForgeChecks.java` | the inline bodies of `TileBlocksGameTests.interfaceForwardsFluids` and `HooksGameTests.blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents` |
+| NeoForge-only scenarios: hand-written classes `*NeoForgeTests`, listed in `TinkererGameTestCatalogue.NEOFORGE_ONLY` (generated) | `testing/TileBlocksNeoForgeTests.java`, `testing/ItemCapabilitiesNeoForgeTests.java`, `testing/HooksNeoForgeTests.java` | none |
+| Spawn protection for the `BlockProtection` checks (the GameTest server has none) | mixin `testing/mixin/TinkererSpawnProtectionMixin.java` | the mixin of the same name in `fabric/src/gameTest` |
 | A run that never started fails the task (the server's `Main` catches a failure to start and exits with 0): no report, or one without a test, is an error | `neoforge/build.gradle`, `runGameTest` | none (`fabric.gradle` has no such check) |
 
 **Test names.** NeoForge names a test `<class in lower case>.<method in lower case>`, the name it has on Fabric, only when the class name
@@ -45,10 +46,12 @@ were called `registrationiscomplete` and two `registrationhadnofailures`, and a 
 So the wrappers keep the prefix and every class has its own copy of the empty structure.
 
 **Fabric-native wrappers.** A Fabric wrapper whose body is one call of a shared check gets the same body on NeoForge. Any other body uses the
-Fabric API or fixtures of its class (today only `TileBlocksGameTests.interfaceForwardsFluids`, which drives the Transvector Interface through
-Fabric's transfer API); its NeoForge wrapper calls the method of the same name of the hand-written class `<Group>NeoForgeChecks`
+Fabric API or fixtures of its class (`TileBlocksGameTests.interfaceForwardsFluids`, which drives the Transvector Interface through
+Fabric's transfer API, and since 2026-11-01 `HooksGameTests.blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents`, which refuses a break from Fabric API's
+`PlayerBlockBreakEvents.BEFORE`); its NeoForge wrapper calls the method of the same name of the hand-written class `<Group>NeoForgeChecks`
 (`TileBlocksNeoForgeChecks.interfaceForwardsFluids`: the same steps through `Capabilities.FluidHandler.BLOCK`, with a four-bucket tank that the
-test mod gives every barrel). The generator refuses a Fabric-native wrapper without such a method, and a method that no wrapper needs. A new
+test mod gives every barrel; `HooksNeoForgeChecks.blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents`: listeners of NeoForge's `BlockEvent.BreakEvent` and
+`EntityPlaceEvent` that cancel). The generator refuses a Fabric-native wrapper without such a method, and a method that no wrapper needs. A new
 check belongs in the shared checks, so that it needs no counterpart.
 
 **NeoForge-only scenarios.** What exists only on NeoForge is tested in hand-written classes whose name ends in `NeoForgeTests` (in the same
@@ -62,6 +65,19 @@ package, with the template and the `@PrefixGameTestTemplate(true)` of the wrappe
   Interface has no handler while unbound; `setTarget` invalidates it (its listener is called) and it then has a handler that fills the tank;
   after the tank is broken the handler it still holds fills nothing, the Interface lets the binding go and the cache has no handler; bound to a
   second tank it fills that one, and after `setTarget(null)` it is invalidated again, has no handler, and the handler it had fills nothing.
+
+Since 2026-11-01 also `ItemCapabilitiesNeoForgeTests` (the item capability of the other devices, "Block capabilities" below) and `HooksNeoForgeTests`:
+
+* `itemcapabilitiesneoforgetests.everyContainerOfTheAddonHasAnItemHandler`: every block entity type of the add-on, made for one of its blocks: a container has
+  an item handler for a side (with `getSlotsForFace` slots for a `WorldlyContainer`) and one without a side (the whole container); the others have none; the nine
+  containers (eight without the Kami group) are found.
+* `itemcapabilitiesneoforgetests.theRestorerKeepsItsSideRules`: through a side an undamaged tool is refused, a damaged one goes in (one), does not come out until
+  mended, and comes out once mended.
+* `itemcapabilitiesneoforgetests.theEnchanterTakesNothingThroughItsSides`: no slot from any of the six sides, nothing in or out there; without a side the whole
+  container, which still takes nothing in.
+* `itemcapabilitiesneoforgetests.theRemotePlacerTakesBlocksOnly`: a stick is refused, ten stone go in, four come out.
+* `hooksneoforgetests.aCancelledHitLeavesNoDamageContainer`: no `DamageContainer` is left on a pig by hits that a `LIVING_DAMAGE` listener or a NeoForge listener
+  cancels, or by a hit that is dealt (`docs/HOOKS.md` section 3).
 
 **Mock players.** NeoForge refuses to send a mod's payload over a connection that has not negotiated its channel (`Payload ... may not be sent to
 the client!`, an exception in the sender), and `GameTestHelper.makeMockServerPlayerInLevel` joins with a bare connection. Thaumcraft and the
@@ -129,6 +145,8 @@ Common code names no loader class any more: the two `Class.forName("thaumic.tink
 |---|---|---|
 | Kami gear client hooks | `ThaumicTinkererFabricClient` calls `KamiGearFabricClient.register()` after `initClient()` | `NeoForgeClientHooks.register` calls `KamiGearNeoForgeClient.register(bus)` from the mod constructor |
 | Transvector Interface | `ThaumicTinkererFabric.onThaumcraftReady()` calls `TileBlocksFabric.register()` through `ThaumicTinkerer.guard` (now public), so a failure is recorded in `ThaumicTinkerer.failures()` | `NeoForgeCapabilities.register` adds the `RegisterCapabilitiesEvent` listener; the registrations run through `ThaumicTinkerer.guard` |
+| Item handlers of the other devices | none needed: Fabric's Transfer API wraps every `Container` block entity | the same `RegisterCapabilitiesEvent` listener (below) |
+| `BlockProtection` backend (`docs/HOOKS.md` section 16) | `ThaumicTinkererFabric.onInitialize()` installs `FabricBlockProtection` through `ThaumicTinkerer.guard` | the mod constructor installs `NeoForgeBlockProtection` through `ThaumicTinkerer.guard` |
 | `ItemRenderers` backend | `FabricItemRenderers.install()`, first thing of the client entrypoint | `NeoForgeItemRenderers.install()`, from the mod constructor |
 
 ### Client (`neoforge/src/main/java/thaumic/tinkerer/neoforge/client/`)
@@ -182,6 +200,15 @@ Transvector Interface's block entity type:
   side). Fabric's Transfer API wraps any `Container` block entity by itself, so items reach the interface there without glue. NeoForge wraps
   only the vanilla containers (`CapabilityHooks`), so without this a modded pipe would not see the interface. A vanilla hopper reaches it either
   way, through the vanilla container path. The wrapper reads the interface on every call and never goes stale.
+* **`Capabilities.ItemHandler.BLOCK` of every other device** (since 2026-11-01; until then only the Interface had one, so a modded pipe on NeoForge could not reach
+  the Restorer, the Funnel, the Enchanter, the Dynamism Tablet, the Remote Placer, the Corporeal Attractor, the Aspect Analyzer or the Celestial Gateway, which
+  Fabric's Transfer API reaches by itself): `NeoForgeCapabilities.containerItems` is registered for every block entity type in the add-on's namespace but the
+  Interface's (taken from the registry, so a new device is covered without a change): a `WorldlyContainer` asked for a side gets `SidedInvWrapper` (its
+  `getSlotsForFace`, `canPlaceItemThroughFace` and `canTakeItemThroughFace` hold), otherwise, and for a plain `Container`, `InvWrapper` (the whole container;
+  `canPlaceItem` still decides what goes in, nothing decides what comes out); a block entity that is no container gets none. That is NeoForge's own convention for
+  its sided vanilla containers (furnace, brewing stand); Fabric's `InventoryStorage.of(container, side)` likewise uses the side rules only for a side (whether
+  Fabric checks anything on extraction without a side was not read). So a mod that asks without a side can take the Enchanter's or the Restorer's tool out on
+  NeoForge. The wrappers read the block entity on every call.
 * **Not registered: energy**, on neither loader (`deviations/TileBlocks.md` 2.5). Essentia goes through the Thaumcraft API interfaces.
 
 ### What was verified, and how (2026-10-31)

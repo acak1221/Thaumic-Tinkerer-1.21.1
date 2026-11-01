@@ -5,7 +5,8 @@
   "minVersion": "0.8",
   "mixins": [
     "TinkererGameTestSelectionMixin",
-    "TinkererMockConnectionMixin"
+    "TinkererMockConnectionMixin",
+    "TinkererSpawnProtectionMixin"
   ],
   "injectors": {
     "defaultRequire": 1

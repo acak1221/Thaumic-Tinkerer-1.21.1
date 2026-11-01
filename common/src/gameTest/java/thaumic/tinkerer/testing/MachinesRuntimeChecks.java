@@ -238,6 +238,55 @@ public final class MachinesRuntimeChecks {
     }
 
     /**
+     * A work cycle saves and syncs the Restorer only when something changed: the damage of the tool (then once) or the flag of
+     * the sparkles. Before, a damaged tool without essentia saved and synced it every ten ticks, and a cycle that changed the
+     * flag sent the block twice. Counted on a Restorer that counts its {@code setChanged} (each sync of a cycle goes with
+     * one), ticked by hand: no timing involved.
+     */
+    public static void theRestorerSavesAndSyncsOnlyWhenSomethingChanged(GameTestHelper test) {
+        floor(test);
+        BlockPos pos = new BlockPos(3, 1, 3);
+        test.setBlock(pos, Machines.REPAIRER.get().defaultBlockState());
+        BlockPos absolute = test.absolutePos(pos);
+        BlockState state = test.getLevel().getBlockState(absolute);
+        int[] changes = { 0 };
+        TileRepairer repairer = new TileRepairer(absolute, state) {
+            @Override
+            public void setChanged() {
+                changes[0]++;
+                super.setChanged();
+            }
+        };
+        test.getLevel().setBlockEntity(repairer);
+        test.assertTrue(test.getLevel().getBlockEntity(absolute) == repairer, "the counting Restorer is in place");
+
+        ItemStack damaged = new ItemStack(Items.DIAMOND_PICKAXE);
+        damaged.setDamageValue(500);
+        repairer.setItem(0, damaged);
+        test.assertTrue(changes[0] == 1, "putting the tool in saves once: " + changes[0]);
+        changes[0] = 0;
+        test.assertTrue(repairer.tookLastTick, "a new Restorer starts with the flag set, as in 1.7.10");
+
+        // ten work cycles without a tube: nothing is mended; only the first one clears the flag
+        for (int tick = 0; tick < 100; tick++) TileRepairer.tick(test.getLevel(), absolute, state, repairer);
+        test.assertTrue(!repairer.tookLastTick && repairer.getItem(0).getDamageValue() == 500, "nothing mended, the flag is clear");
+        test.assertTrue(changes[0] == 1, "one save in ten cycles, for the flag (it was one every cycle): " + changes[0]);
+
+        // a tool that is not repairable, and an empty slot: nothing at all
+        ItemStack cloth = TTRegistry.stack(LibItemNames.SPELL_CLOTH);
+        cloth.setDamageValue(3);
+        repairer.setItem(0, cloth);
+        changes[0] = 0;
+        for (int tick = 0; tick < 100; tick++) TileRepairer.tick(test.getLevel(), absolute, state, repairer);
+        test.assertTrue(changes[0] == 0 && repairer.getItem(0).getDamageValue() == 3, "the cloth: no save, no mending: " + changes[0]);
+        repairer.setItem(0, ItemStack.EMPTY);
+        changes[0] = 0;
+        for (int tick = 0; tick < 100; tick++) TileRepairer.tick(test.getLevel(), absolute, state, repairer);
+        test.assertTrue(changes[0] == 0, "an empty Restorer: no save: " + changes[0]);
+        test.succeed();
+    }
+
+    /**
      * 1.7.10 {@code setNoRepair()}: the Restorer asked {@code Item.isRepairable()} and refused the Spellbinding Cloth. The cloth
      * is in the item tag {@code thaumictinkerer:repairer_blacklist}: a click and a hopper do not put it in, and a cloth put in
      * by other means sets no suction, so no tube gives the Restorer essentia for it.

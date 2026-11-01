@@ -19,6 +19,12 @@ import thaumcraft.api.wands.IFocusPouch;
 /**
  * A slot that refuses focus pouches ({@code !(item instanceof ItemFocusPouch)}): {@link IFocusPouch} is the API form of
  * that class, which Thaumcraft's own pouch and the Bottomless Pouch both implement.
+ *
+ * <p>New in the port: it also refuses what may not go inside a container item ({@code canFitInsideContainerItems()} false:
+ * shulker boxes, and the Bottomless Pouch itself), as a shulker box's own slots do. The pouch refuses to go into a shulker box,
+ * but on Fabric a hopper still puts it into one (vanilla's {@code ShulkerBoxBlockEntity.canPlaceItemThroughFace} asks only "is it
+ * a shulker box"; NeoForge's also asks {@code canFitInsideContainerItems}), so without this rule a pouch of shulker boxes of
+ * pouches could be nested without limit.</p>
  */
 public class SlotNoPouches extends Slot {
     public SlotNoPouches(Container container, int slot, int x, int y) {
@@ -30,9 +36,14 @@ public class SlotNoPouches extends Slot {
         return stack.getItem() instanceof IFocusPouch;
     }
 
+    /** What a cell of the Bottomless Pouch takes: anything but a pouch and what may not go inside a container item. */
+    public static boolean mayHold(ItemStack stack) {
+        return !isPouch(stack) && stack.getItem().canFitInsideContainerItems();
+    }
+
     @Override
     public boolean mayPlace(ItemStack stack) {
-        return !isPouch(stack);
+        return mayHold(stack);
     }
 
     @Override

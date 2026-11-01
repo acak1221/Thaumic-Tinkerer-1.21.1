@@ -82,6 +82,26 @@ public final class TileBlocksGameTests {
         TileBlocksRuntimeChecks.tabletSpillsItsItem(h);
     }
 
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
+    public void tabletCooldownsRunOut(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletCooldownsRunOut(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void tabletDoesNotBoardVehicles(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletDoesNotBoardVehicles(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void tabletDoesNotSleepInABed(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletDoesNotSleepInABed(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
+    public void tabletRespectsTheWorldBorder(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletRespectsTheWorldBorder(h);
+    }
+
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void menusHaveTheirSlots(GameTestHelper h) {
         TileBlocksRuntimeChecks.menusHaveTheirSlots(h);
@@ -103,6 +123,11 @@ public final class TileBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void fakePlayerHasNoStatsScoresOrScreens(GameTestHelper h) {
+        TileBlocksRuntimeChecks.fakePlayerHasNoStatsScoresOrScreens(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void remotePlacerPlacesItsBlock(GameTestHelper h) {
         TileBlocksRuntimeChecks.remotePlacerPlacesItsBlock(h);
     }
@@ -118,6 +143,16 @@ public final class TileBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void remotePlacerPoursABucketIntoItsTarget(GameTestHelper h) {
+        TileBlocksRuntimeChecks.remotePlacerPoursABucketIntoItsTarget(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void placerAndDislocatorRespectTheWorldBorder(GameTestHelper h) {
+        TileBlocksRuntimeChecks.placerAndDislocatorRespectTheWorldBorder(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void dislocatorSwapsBlocksWithTheirContents(GameTestHelper h) {
         TileBlocksRuntimeChecks.dislocatorSwapsBlocksWithTheirContents(h);
     }
@@ -128,8 +163,8 @@ public final class TileBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
-    public void dislocatorChecksLetEveryBlockThrough(GameTestHelper h) {
-        TileBlocksRuntimeChecks.dislocatorChecksLetEveryBlockThrough(h);
+    public void dislocatorRefusesWhatAPlayerCannotBreak(GameTestHelper h) {
+        TileBlocksRuntimeChecks.dislocatorRefusesWhatAPlayerCannotBreak(h);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
@@ -143,8 +178,28 @@ public final class TileBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void interfaceForwardsTheHopperRules(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfaceForwardsTheHopperRules(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void interfaceMovedOntoItsOwnTargetEndsTheBinding(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfaceMovedOntoItsOwnTargetEndsTheBinding(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void interfacesBoundToEachOtherEndTheBinding(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfacesBoundToEachOtherEndTheBinding(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void binderLinksDevices(GameTestHelper h) {
         TileBlocksRuntimeChecks.binderLinksDevices(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void binderComparesTheDimension(GameTestHelper h) {
+        TileBlocksRuntimeChecks.binderComparesTheDimension(h);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

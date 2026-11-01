@@ -5,7 +5,9 @@ around each gap and wrote the loss down (`docs/api-requests/*.md`, `docs/deviati
 the gaps: **real events**, posted from the vanilla code paths themselves, and two small registries. The five groups that needed
 them (Enchantments, KamiWorld, KamiGear, Machines, Foci) **are rewired** to them and their workarounds are deleted; section 10 says
 per group which workaround went, which event replaced it and which check pins it. The posters exist for **Fabric** (Mixin) and, since
-2026-10-31, for **NeoForge** (handlers of NeoForge's events and three mixins of this layer, section 9; a fourth NeoForge mixin, the Infused Farmland's soil rule, is not an event of this layer, `docs/NEOFORGE.md`). On NeoForge the hook GameTests and the GameTests of the
+2026-10-31, for **NeoForge** (handlers of NeoForge's events and three mixins of this layer, section 9, and since 2026-11-01 two more that correct NeoForge's own
+results, sections 3 and 4; another NeoForge mixin, the Infused Farmland's soil rule, is not an event of this layer, `docs/NEOFORGE.md`). The layer also answers
+whether a player may break or place a block (`BlockProtection`, section 16), through each loader's own break and place events. On NeoForge the hook GameTests and the GameTests of the
 five groups that use the events have run and passed on a NeoForge GameTest server, and so has the whole suite since (section 9, "What ran on NeoForge"); a
 NeoForge development client ran the client smoke in a world with them (`docs/CLIENT_VERIFICATION.md`); it draws, it does not play, so the client side of
 the events is not exercised there.
@@ -24,7 +26,8 @@ check runs one, section 12).
 | Fabric posters (Mixin) | `fabric/src/main/java/thaumic/tinkerer/fabric/mixin/*`, config `fabric/src/main/resources/thaumictinkerer.mixins.json`, listed under `"mixins"` of `fabric/src/main/resources/fabric.mod.json` |
 | Fabric helper of the drop capture, Fabric item renderer backend | `fabric/.../fabric/hooks/DropCapture.java`, `fabric/.../fabric/client/FabricItemRenderers.java` |
 | NeoForge posters | `neoforge/src/main/java/thaumic/tinkerer/neoforge/hooks/NeoForgeEventPosters.java` (the event handlers, subscribed by `ThaumicTinkererNeoForge`) and `LastHurtAccess.java`; mixins `neoforge/src/main/java/thaumic/tinkerer/neoforge/mixin/*`, config `neoforge/src/main/resources/thaumictinkerer-neoforge.mixins.json`, listed under `[[mixins]]` of `neoforge/src/main/resources/META-INF/neoforge.mods.toml` (section 9) |
-| Runtime tests | `common/src/gameTest/.../testing/HooksRuntimeChecks.java`, Fabric wrappers `fabric/src/gameTest/.../testing/HooksGameTests.java`; JUnit `common/src/test/.../hooks/` |
+| May a player break or place here? (section 16) | `common/.../common/hooks/BlockProtection.java`; backends `fabric/.../fabric/hooks/FabricBlockProtection.java` and `neoforge/.../neoforge/hooks/NeoForgeBlockProtection.java`, installed by the loader entries |
+| Runtime tests | `common/src/gameTest/.../testing/HooksRuntimeChecks.java` and `ProtectionRuntimeChecks.java`, Fabric wrappers `fabric/src/gameTest/.../testing/HooksGameTests.java`; NeoForge-only `neoforge/src/gameTest/.../testing/HooksNeoForgeTests.java`, the NeoForge body of the Fabric-native wrapper `HooksNeoForgeChecks.java`; JUnit `common/src/test/.../hooks/` |
 
 ## 1. Overview
 
@@ -175,8 +178,15 @@ NeoForge's event is posted before the frames test and filters nothing, hence the
 needs no change of the build, no regenerated Minecraft jar and widens nothing for other mods). Architectury posts its own `EntityEvent.LIVING_HURT` from the same
 NeoForge event at `HIGH`, so it runs before `LIVING_DAMAGE`, as on Fabric (where its injection is the head of `hurt`); a hit it cancels is not posted. The event is
 posted only from `LivingEntity.hurt` (the only caller of `onEntityIncomingDamage` in the patched jar), so the armour stand is not covered there either. Observed
-in the bytecode, not caused by the add-on: on a cancel `hurt` returns without popping the `DamageContainer` it pushed, so every cancelled event leaves one on the
-entity's `damageContainers` stack (a cancelling listener such as the Soul Hearts' adds one per cancelled hit; not measured, not worked around).
+in the bytecode, not caused by the add-on: on a cancel `hurt` returns without popping the `DamageContainer` it pushed (offsets 53 to 88 of the 21.1.259 `hurt`: `push`,
+`onEntityIncomingDamage`, `ireturn`; the frames' refusal and the end of the method do pop), so every cancelled event left one on the entity's `damageContainers` stack
+for good, and the add-on cancels hits (a Soul Hearts hit the pool swallows, any listener that returns zero). **Worked around since 2026-11-01** by the NeoForge mixin
+`LivingEntityDamageContainerMixin`: it remembers the depth of the stack at the head of `hurt` (`@Inject` at `HEAD`, a `@Share`d int) and at every `RETURN` pops
+whatever is above that depth. It does not depend on where NeoForge returns: where NeoForge popped itself (every path but the cancel, or a later NeoForge that pops
+on the cancel too; `neoforge.mods.toml` accepts any NeoForge from 21.1.259 on) there is nothing above the depth and nothing is popped, and a nested `hurt` of the
+same entity restores its own depth only. A `hurt` that throws still leaves its container (as NeoForge does). The NeoForge-only GameTest
+`hooksneoforgetests.aCancelledHitLeavesNoDamageContainer` reads the stack (by reflection) after three hits a `LIVING_DAMAGE` listener cancels, one a NeoForge
+listener of `LivingIncomingDamageEvent` cancels and one that is dealt: empty after each (run status in section 12).
 
 *Fabric*: `LivingEntityHurtMixin`, an `@Inject(cancellable)` at the `INVOKE` of `isSleeping()` with a `@Local(argsOnly)` `LocalFloatRef` of
 the amount (MixinExtras). Every override of `hurt` that reaches `LivingEntity.hurt` through `super` is covered (players: `ServerPlayer.hurt`
@@ -198,7 +208,10 @@ Haste, Mining Fatigue, water, air) and goes into `speed / hardness / 30` (`/ 100
 never null from this poster; the parameter is `@Nullable` for posters that do not know it.
 
 *A listener may* change the speed or say that the player cannot dig the block by returning zero or less: the progress is then zero
-(the block never breaks, the crack does not grow; it is the same on both sides).
+(the block never breaks, the crack does not grow; it is the same on both sides). **Exactly** zero, also on a block of hardness zero (a slime block, TNT, a flower):
+there `speed / hardness / 30` alone is `0 / 0`, a NaN, which both sides took for "not yet" (every comparison with a NaN is false) but which is the wrong number
+for anything else that reads it; since 2026-11-01 each loader's mixin notes in its wrapper of the speed call that the speed is zero (a `@Share`d flag) and a
+`@ModifyReturnValue` of `getDestroyProgress` returns zero then. The check is `breakSpeedCannotDigOnABlockOfHardnessZeroIsProgressZero` (section 12).
 
 *Not posted* for a block that cannot be dug (hardness -1), for the instant breaking of creative mode, or for a block class that
 overrides `getDestroyProgress` without calling `super`. In vanilla 1.21.1 those are `BambooStalkBlock` and `BambooSaplingBlock`: they return
@@ -216,13 +229,17 @@ writes the result back with `setNewSpeed(result)`. **"Cannot dig" is a speed of 
 `BlockBehaviour.getDestroyProgress` calls `Player.getDigSpeed(state, pos)` with the position, which works out tool, Efficiency, Haste, Mining Fatigue, water and
 air and then posts the event; that is the only caller of `getDigSpeed` in the patched jar. `Player.getDestroySpeed(state)` posts the same event with no position
 (`getDigSpeed(state, null)`), nothing in the game calls it, and the Fabric poster does not reach it either, so the handler returns without posting when
-`getPosition()` is empty: the position is never null from this poster either. `LOW`: on Fabric the listeners see the speed that `Player.getDestroySpeed` returned,
+`getPosition()` is empty: the position is never null from this poster either. A new speed of zero on a block of hardness zero would leave `getDigSpeed / hardness` a NaN,
+so the mixin `BlockBehaviourZeroSpeedMixin` (`@WrapOperation` of the call of `Player.getDigSpeed(state, pos)` in `getDestroyProgress`, read in the 21.1.259 bytecode
+at offset 44, and a `@ModifyReturnValue`) makes a dig speed of exactly zero a progress of exactly zero; a negative speed (NeoForge's answer to a cancelled `BreakSpeed`,
+`-1`) is left to NeoForge. `LOW`: on Fabric the listeners see the speed that `Player.getDestroySpeed` returned,
 with other mods' changes of that method in it (Thaumcraft's hover harness, an injection at its `RETURN`); on NeoForge Thaumcraft makes the same change from a
 `BreakSpeed` listener at `NORMAL`, and `LOW` puts the add-on after it whatever the order in which the mods were constructed. The never-ticked fake player is
 covered: `breakSpeedIsPostedForAServerPlayerAndAFakePlayer` and the Enchantments checks of the Animation Tablet passed on NeoForge.
 
 *Fabric*: `BlockBehaviourBreakSpeedMixin`, `@WrapOperation` on the `Player.getDestroySpeed(BlockState)` call inside `getDestroyProgress`, with
-the position from the method's own arguments.
+the position from the method's own arguments; it notes in a `@Share`d flag that the speed after the event is zero, and its `@ModifyReturnValue` of the same method
+returns zero then (the hardness-zero rule above).
 
 ## 5. `LIVING_JUMP`
 
@@ -387,15 +404,16 @@ the Mob Display has not been seen drawn there. Details and what was verified: `d
 and `neoforge/src/main/java` against NeoForge 21.1.259 and Thaumcraft's NeoForge jar from mavenLocal. `ThaumicTinkererNeoForge` calls
 `NeoForgeEventPosters.register(bus)` right after `ThaumicTinkerer.init()`; it subscribes six handlers to `NeoForge.EVENT_BUS` (none of the hooks needs the mod bus)
 and does not receive cancelled events. The mixin config `thaumictinkerer-neoforge.mixins.json` (package `thaumic.tinkerer.neoforge.mixin`, `required: true`,
-`defaultRequire: 1`) lists `LivingEntityArmorMixin`, `LivingEntityLastHurtMixin` and `ServerGamePacketListenerFloatingMixin`; it has no refmap (NeoForge runs on
+`defaultRequire: 1`) lists `LivingEntityArmorMixin`, `LivingEntityLastHurtMixin` and `ServerGamePacketListenerFloatingMixin`, and since 2026-11-01
+`LivingEntityDamageContainerMixin` (section 3) and `BlockBehaviourZeroSpeedMixin` (section 4); it has no refmap (NeoForge runs on
 Mojang names, and the build makes none). All the rules stay in `TinkererEvents`; the posters only map fields. `TinkererApiOnlyTest` lets the neoforge tree import
 `net.neoforged.`, `org.objectweb.`, `org.spongepowered.` and `com.llamalad7.` (the mixins), like the Fabric tree. Per event:
 
 | Event / registry | NeoForge poster (NeoForge event and priority, or mixin) | Where it differs from the Fabric poster | Details |
 |---|---|---|---|
-| `LIVING_DAMAGE` | `onLivingIncomingDamage`: `LivingIncomingDamageEvent`, `NORMAL`. `framesRefuse(entity, source, amount, lastHurt)` first (`lastHurt` through `LastHurtAccess`, added by `LivingEntityLastHurtMixin`), then `postLivingDamage`, `setAmount(result)` or `setCanceled(true)` for zero | none in what is posted. Architectury's `LIVING_HURT` handler of the same event runs at `HIGH`, before it, as its Fabric injection does. NeoForge leaves the container of a cancelled hit on the entity's stack (its own behaviour) | section 3 |
+| `LIVING_DAMAGE` | `onLivingIncomingDamage`: `LivingIncomingDamageEvent`, `NORMAL`. `framesRefuse(entity, source, amount, lastHurt)` first (`lastHurt` through `LastHurtAccess`, added by `LivingEntityLastHurtMixin`), then `postLivingDamage`, `setAmount(result)` or `setCanceled(true)` for zero | none in what is posted. Architectury's `LIVING_HURT` handler of the same event runs at `HIGH`, before it, as its Fabric injection does. NeoForge left the container of a cancelled hit on the entity's stack (its own behaviour); `LivingEntityDamageContainerMixin` takes it away | section 3 |
 | `LIVING_ARMOR_ABSORB` | **a mixin, not a reduction modifier**: `LivingEntityArmorMixin` (`@WrapMethod` on `getDamageAfterArmorAbsorb`, priority 900, the same code as the Fabric mixin) → `TinkererEvents.damageAfterArmorAbsorb`, which keeps the `bypasses_armor` test | what the game makes of the returned amount: NeoForge subtracts `newDamage - result` as the ARMOR reduction of its container, so the damage that goes on is `d - (d - result)`, and an infinite blow gives a NaN damage whatever the step returns (both NeoForge's own arithmetic) | section 14 |
-| `BREAK_SPEED` | `onBreakSpeed`: `PlayerEvent.BreakSpeed`, **`LOW`**, no filter by side, tick or kind of player; `setNewSpeed(postBreakSpeed(...))`, so "cannot dig" is a speed of 0 and **not a cancel** (a cancel is a speed of -1 there) | an event without a position (`Player.getDestroySpeed(state)`, which nothing in the game calls) is not posted, as on Fabric | section 4 |
+| `BREAK_SPEED` | `onBreakSpeed`: `PlayerEvent.BreakSpeed`, **`LOW`**, no filter by side, tick or kind of player; `setNewSpeed(postBreakSpeed(...))`, so "cannot dig" is a speed of 0 and **not a cancel** (a cancel is a speed of -1 there) | an event without a position (`Player.getDestroySpeed(state)`, which nothing in the game calls) is not posted, as on Fabric. A speed of zero is a progress of exactly zero through `BlockBehaviourZeroSpeedMixin` (the Fabric mixin does the same) | section 4 |
 | `LIVING_JUMP` | `onLivingJump`: `LivingEvent.LivingJumpEvent`, `NORMAL` | **also posted** for the hop of slimes and magma cubes and the ridden jump of horses and camels, which NeoForge posts its event for and Fabric does not | section 5 |
 | `LIVING_FALL` | `onLivingFall`: `LivingFallEvent`, `NORMAL`; `setDistance`/`setDamageMultiplier`, or `setCanceled(true)` | none found | section 6 |
 | `USE_ITEM_TICK` | `onUseItemTick`: `LivingEntityUseItemEvent.Tick`, `NORMAL`; `setDuration(postUseItemTick(entity, event.getItem(), event.getDuration()))`. The duration **is** `useItemRemaining` (read) | not posted for an empty stack; NeoForge's own `updateUsingItem` completes a use at `<= 0` (vanilla `== 0`) | section 7 |
@@ -420,8 +438,8 @@ NeoForge's universal and sources jars, `bus` 8.0.5), including a search of the w
 side of every "both sides" event (no NeoForge client entered a world with them; the GameTests run the server only); a real dedicated server with real clients (the FloatingTicks
 checks used mock connections); the order against other mods' handlers of the same events (the priorities were chosen by reading Architectury's and Thaumcraft's
 NeoForge code; Thaumcraft and Architectury are the only other mods in the runs); no mutation check was made on NeoForge; the reduction-modifier variant of `LIVING_ARMOR_ABSORB`
-was not run (that it would lose Thaumcraft's ward share is read, section 14); the container left on the stack by a cancelled `LivingIncomingDamageEvent` was read,
-not measured.
+was not run (that it would lose Thaumcraft's ward share is read, section 14). The container left on the stack by a cancelled `LivingIncomingDamageEvent` was read in the
+bytecode; the mixin that takes it away and its GameTest are in section 3.
 
 **Other loader glue that is not an event of this layer** (the groups' own loader code). Common code names no loader class: each loader entry installs its
 own glue (the former `Class.forName` calls of `KamiGearClient.register()` and `TileBlocks.ready()` are gone). The NeoForge side of the first two items is
@@ -590,7 +608,7 @@ NaN, a source that bypasses armour, no damage, the bit-for-bit pass-through, `ar
 `armorStepOfABlowThatIsNotFiniteIsTheGamesOwnValueNotNaN`), `HooksResourcesTest` (the mixin config lists exactly the
 mixin classes, `fabric.mod.json` lists the config, no class names a mixin class, handler prefix, common code does not import loader code).
 
-GameTest (`HooksGameTests`, 14 methods, run with `-PtinkererGameTestFilter='hooksgametests.*'`), each registering its listeners inside the check, answering only for its own
+GameTest (`HooksGameTests`, 19 methods since 2026-11-01 (14 before), run with `-PtinkererGameTestFilter='hooksgametests.*'`), each registering its listeners inside the check, answering only for its own
 entities and taking them away in a `finally` (or, where a check waits for ticks, in a `guarded` cleanup that also runs when the part before the wait fails, since a failed
 GameTest does not run the callbacks it still has pending):
 
@@ -610,6 +628,13 @@ GameTest does not run the callbacks it still has pending):
 | `livingDropsAreEditedBeforeTheyEnterTheWorld` | a pig killed by the fake player with Looting III: sees pork, level 3, recently hit, the fake player as the attacker, nothing in the world yet; add a diamond / remove the pork / clear / cancel; experience orbs unaffected; a pig killed by plain damage: looting 0, not recently hit, no attacker; a pig that has a bystander spawn an emerald during its death: the list holds its own gold and pork and not the emerald, which is in the world at once; a fox's mouth item (spawned before `super`) is in the list, with a control that it drops with nobody listening; the listener count is back to what it was before; plain again afterwards |
 | `livingDropsCoverAPlayersInventoryButNotADropByHand` | `ServerPlayer.die` offers the inventory and a cleared list drops nothing; a drop by hand is immediate |
 | `floatingTicksReadAndResetTheRealCounter` | the accessor against an independent reflective read of the private field on a real connection, the connection's own `tick()` resetting the same counter, no connection, the fake player's connection |
+| `breakSpeedCannotDigOnABlockOfHardnessZeroIsProgressZero` (added 2026-11-01) | a slime block (hardness zero): without a listener the progress is 1 or more; with a "cannot dig" listener it is exactly `0F` (not NaN), and a real dig start does not break it (section 4) |
+| `mayBreakAndMayPlaceFollowTheListeners` (added 2026-11-01, `ProtectionRuntimeChecks`) | `BlockProtection` through the installed backend: nobody refuses, both true; an Architectury `BlockEvent.BREAK` / `PLACE` listener that cancels makes `mayBreak` / `mayPlace` false, is asked once while `isProbing()` is true, with the block there (break) or the state to be placed (place) and the player; nothing broken or placed; another position allowed; allowed again without the listeners (section 16) |
+| `spawnProtectionAndAdventureModeRefuse` (added 2026-11-01) | under spawn protection (the harness's test mixin `TinkererSpawnProtectionMixin`: the GameTest server has none of its own) both are false and no listener is asked; in adventure mode with an empty hand both are false; survival again, allowed |
+| `theAddonsOwnBreakListenersDoNothingWhileAsked` (added 2026-11-01) | a pickaxe of Tunnel and Disintegrate comes out of a `mayBreak` question unchanged (no direction remembered, no wear): the add-on's own `BlockEvent.BREAK` listeners return at once while probing. Passes only once `ModEnchantmentHandler.onBreakBlock` and `ToolHandler.onBlockBreak` test `BlockProtection.isProbing()` (section 16) |
+| `blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents` (added 2026-11-01; Fabric-native) | Fabric: a `PlayerBlockBreakEvents.BEFORE` listener that refuses makes `mayBreak` false, asked once while probing, nothing broken, another position allowed. NeoForge (`HooksNeoForgeChecks`): a `BlockEvent.BreakEvent` and an `EntityPlaceEvent` listener that cancel make `mayBreak` / `mayPlace` false, while probing; the place event's `getPlacedBlock()` is the state to be placed and its entity the player |
+
+NeoForge-only (`HooksNeoForgeTests`, added 2026-11-01): `aCancelledHitLeavesNoDamageContainer` (section 3).
 
 **Mutation checks** (done by hand once, after the review fixes; the sources were changed, the GameTests run, the sources put back): with `framesRefuse` always false
 `livingDamageIsNotPostedForHitsTheInvulnerabilityFramesRefuse` failed ("neither was posted: [10.0, 8.0, 10.0]"); with the `LIVING_JUMP` injection at `HEAD` instead of `TAIL`
@@ -761,3 +786,40 @@ Each is an idea that came out of the work on the groups; none is written, and no
   where each group registers. A priority would let Shockwave have its `LOW` of 1.7.10 again (`api-requests/Enchantments.md` section 4).
 * **Mixins for the gaps of section 13** (horses and llamas for `LIVING_FALL`, the armour stand for `LIVING_DAMAGE`): written for nobody, because no group needs
   them yet.
+
+## 16. Block protection (`BlockProtection`)
+
+```java
+BlockProtection.mayBreak(ServerPlayer player, ServerLevel level, BlockPos pos, BlockState state)   // may the player break / take away / change it?
+BlockProtection.mayPlace(ServerPlayer player, ServerLevel level, BlockPos pos, BlockState state)   // may the player place this state there?
+BlockProtection.isProbing()                                                                        // true while a backend asks
+```
+
+A question, not an event: the add-on's devices and tools that change blocks without going through the player's own break or place path ask it first and leave the
+block alone when the answer is no (which group calls it where is the groups' part). Two parts:
+
+* **The game's own rules** (`gameAllows`, the same on both loaders): the position is loaded and inside the world border, the player may interact there
+  (`ServerLevel.mayInteract`: a dedicated server's spawn protection) and the game mode does not restrict block actions (`Player.blockActionRestricted`: adventure
+  without a tool that may break the block, spectator). When they refuse, no listener is asked.
+* **The protection mods**, through the loader's own events, posted by the backend the loader entry installs with `BlockProtection.setBackend` (written
+  2026-11-01; without one only the game's rules hold):
+  * *Fabric* (`FabricBlockProtection`, installed by `ThaumicTinkererFabric.onInitialize`): break: Fabric API's `PlayerBlockBreakEvents.BEFORE`, then Architectury's
+    `BlockEvent.BREAK` (on Fabric Architectury posts it from its own mixin in `ServerPlayerGameMode.destroyBlock`, not through Fabric's event, read in
+    `architectury-fabric-13.0.11-sources.jar`), the first refusal decides; `PlayerBlockBreakEvents.CANCELED` is not invoked (it resends the block to the client after a
+    real cancelled break). Place: Architectury's `BlockEvent.PLACE` with the state and the player; Fabric API has no place event.
+  * *NeoForge* (`NeoForgeBlockProtection`, installed by the `ThaumicTinkererNeoForge` constructor): break: `BlockEvent.BreakEvent(level, pos, state, player)` on
+    `NeoForge.EVENT_BUS`, answered by `!isCanceled()`; not `CommonHooks.fireBlockBreak`, which adds its own game-mode and held-item refusals and resends the block to the
+    client on a cancel. Place: `BlockEvent.EntityPlaceEvent` with `BlockSnapshot.create(level.dimension(), level, pos)`, the block below as the block placed against
+    (the default of `EventHooks.onBlockPlace`) and the player. Read in the 21.1.259 bytecode: for a `Player` NeoForge's event takes its placed block from
+    `snapshot.getCurrentState()`, the world, which a real placement has already changed and a question has not; so the posted event is the subclass
+    `NeoForgeBlockProtection.QuestionPlaceEvent`, whose `getPlacedBlock()` and `getState()` are the state to be placed (listeners of `EntityPlaceEvent` get it like
+    NeoForge's own subclass `EntityMultiPlaceEvent`). Architectury's `BREAK` and `PLACE` are asked through these two (Architectury answers them at `HIGH`).
+* **Probing.** While a backend asks, `isProbing()` is true on that thread (a nested question keeps the outer flag). A listener of those events that acts on a real
+  break or placement must return at once then. The add-on has two: `ModEnchantmentHandler.onBreakBlock` (Tunnel remembers the direction, Disintegrate and Flaming
+  Touch wear the tool) and `ToolHandler.onBlockBreak` (the Kami tools' area modes break the blocks around); both are Architectury `BlockEvent.BREAK` listeners and
+  are reached by a question on both loaders (on NeoForge through `BreakEvent`). The add-on has no listener of `PlayerBlockBreakEvents`, of NeoForge's `BreakEvent` or
+  `EntityPlaceEvent`, or of `BlockEvent.PLACE`. The test of the probing guard is `theAddonsOwnBreakListenersDoNothingWhileAsked`.
+
+Other mods' listeners are asked as for a real break or placement; one that has side effects of its own (a log line, a counter) has them for a question too, and one
+that tells a real attempt from a question cannot. Checks: section 12 (`mayBreakAndMayPlaceFollowTheListeners`, `spawnProtectionAndAdventureModeRefuse`,
+`theAddonsOwnBreakListenersDoNothingWhileAsked`, `blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents`). Not verified: a real claim mod on either loader.

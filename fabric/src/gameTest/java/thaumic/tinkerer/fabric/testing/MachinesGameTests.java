@@ -36,6 +36,11 @@ public final class MachinesGameTests implements FabricGameTest {
         MachinesRuntimeChecks.repairerSavesItsToolAndItsState(test);
     }
 
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theRestorerSavesAndSyncsOnlyWhenSomethingChanged(GameTestHelper test) {
+        MachinesRuntimeChecks.theRestorerSavesAndSyncsOnlyWhenSomethingChanged(test);
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
     public void theRestorerNeitherTakesNorMendsTheSpellbindingCloth(GameTestHelper test) {
         MachinesRuntimeChecks.theRestorerNeitherTakesNorMendsTheSpellbindingCloth(test);

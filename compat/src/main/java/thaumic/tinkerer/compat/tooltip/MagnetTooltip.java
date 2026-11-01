@@ -32,7 +32,10 @@ public final class MagnetTooltip extends BlockTooltip<TileMagnet> {
     /** Present (true) for the Corporeal Attractor only. */
     public static final String TAG_MOB = "mob";
     public static final String TAG_ADULT = "adult";
-    /** The entity type id of the soul mould in the slot ("" for a mould that was never set); absent when the slot is empty. */
+    /**
+     * The entity type id of the soul mould in the slot (its component {@code thaumictinkerer:soul_mould_pattern}, sent as text;
+     * "" for a mould that was never set); absent when the slot is empty.
+     */
     public static final String TAG_PATTERN = "pattern";
 
     MagnetTooltip() {

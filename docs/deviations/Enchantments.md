@@ -269,9 +269,15 @@ shown, in one or two rows of eight, as before.
   sounds are `thaumcraft:egidle` (one in five of the effects, at the pillar) and `thaumcraft:wand` when the job is done.
 - **Packets (fix / hardening).** The payloads carry the block position and the enchantment's registry id. The server
   resolves the block entity only if the sender has the menu of exactly that enchanter open (the original trusted any
-  position), refuses an enchantment that is not in the table, refuses to add to a tool that is enchanted already, and `start`
+  position), refuses an enchantment that is not in the table, adds a new enchantment only when the screen would offer it, and `start`
   needs a tool in the slot and clears `currentAspects` (the original kept the vis of a stopped job, so a job could be
   started half paid). Level changes clamp to `[1, max level]` of the registry's data as before.
+- **One rule for the screen and the packet (fix).** `EnchantmentManager.canOffer(player, stack, enchantment, chosen)` is what the
+  screen lists (`offered`) and what the add packet accepts: the tool takes enchantments at all (`takesEnchantments`: not empty, not
+  enchanted already, an enchantability above zero, the test of 1.7.10's `asignEnchantButtons`), the enchantment is in the table,
+  `canApply` and the research. Before, the packet skipped the enchantability, so a modified client could put Unbreaking (whose item
+  tag lists them) on shears, a flint and steel or an elytra, which the screen never offers. GameTest
+  `theEnchanterRefusesWhatItsScreenDoesNotOffer`.
 - **Research gate.** `canEnchantmentBeUsed` is `ThaumcraftApiHelper.isResearchComplete(player, key)` for the table's research,
   on the server when the packet arrives and on the client when the buttons are listed.
 - **Recipe and research** are the original's: the infusion recipe (instability 15, Magic 50, Energy 20, Eldritch 20, Void 20,
@@ -287,9 +293,12 @@ the right of the screen, the level buttons, the six aspect bars drawn with the a
 - **Buttons are rebuilt when something changes** (the tool, the choice, the offered list, `working`), where 1.7.10 rebuilt them
   every tick. The list of offered enchantments depends on the player's research, which is read on the client.
 - **Icons** are the 1.7.10 textures `textures/enchant/*.png`, 32 by 32 (35 files) or 512 by 512 (8 files, the ones of this
-  add-on); the original drew either onto 16 by 16 with the texture coordinates 0 to 1. `EnchantIcons` reads the width from the
-  PNG header and does the same; the sizes are forgotten when the resources reload (F3+T, a resource pack with icons of another
-  size), by a reload listener that `EnchantmentsClient` registers.
+  add-on); the original drew either onto 16 by 16 with the texture coordinates 0 to 1. `EnchantIcons` does the same by telling
+  `GuiGraphics.blit` that the texture is 16 by 16 and drawing all 16 by 16 of it (`blit` divides by the size it is told), so the
+  real size never matters and nothing has to be read or forgotten on a resource reload (an earlier revision read the width from
+  the PNG header and kept a reload listener for it; both are gone). It needs square icons, which all 43 are
+  (`EnchanterPacketsAndIconsTest.everyIconIsSquareSoTheWholeTextureFitsTheButton` checks fourteen of them); a resource pack with a
+  non-square icon would see it squeezed. The drawn button has not been looked at since the change.
 - **Names and tooltips** use the description component of the data (`enchantment.thaumictinkerer.<name>`; the vanilla and
   Thaumcraft enchantments their own) and the 1.7.10 keys `ttmisc.startEnchant`, `ttmisc.baseCost`, `ttmisc.clickToRemove`.
   The level numeral is `enchantment.level.<n>`, which exists up to 10 in the vanilla lang files.
@@ -333,8 +342,16 @@ patches 1 and 2, are not needed). No crosshair, no lag, no attribute, nothing of
   wear per block broken** with Disintegrate or Flaming Touch, taken in `BlockEvent.BREAK` (server), besides the point that breaking
   a block costs a pickaxe anyway. The GameTest `aToolOfDisintegrateRefusesTheOtherBlocksAndWearsDoubleOnItsOwn` measures two points
   for a Disintegrate pickaxe and one for a plain one, through the real first click (`handleBlockBreakAction`).
-- **Tunnel's direction** is remembered at the break (`BlockEvent.BREAK`, the same event as in 1.7.10), in the custom data of the
-  tool; it reaches the client with the item, so the client's prediction has it.
+- **Tunnel's direction** is remembered at the break (`BlockEvent.BREAK`, the same event as in 1.7.10), in the float component
+  `thaumictinkerer:tunnel_direction` of the tool (`EnchantmentComponents`, registered by the group; 1.7.10's tag key
+  `TTEnchantTunnelDir`, which the port first kept in `minecraft:custom_data` through `ItemNBTHelper`); it is synchronised with the
+  client, so the client's prediction has it. A tool that remembered a direction in its custom data before this revision has
+  forgotten it (the old key is neither read nor removed; the next block teaches it again).
+- **A question is not a break (new).** The add-on's foci and devices ask the protection mods whether a block may go
+  (`hooks/BlockProtection`), and the loader backends do that by posting the break event of a real break. While they do
+  (`BlockProtection.isProbing()`), `onBreakBlock` does nothing: no direction for Tunnel and no wear for Disintegrate and Flaming
+  Touch from a block nobody broke. GameTest `aQuestionOfTheProtectionModsIsNoBreakForTunnelOrTheWear` (with a backend of its own
+  that posts Architectury's `BlockEvent.BREAK`, as the Fabric backend does, and with the loader's backend).
 - **Hardness** is read at the block's own position (the original asked `getBlockHardness(world, 0, 0, 0)` for Shatter, which for
   almost every block is the same number; a poster that does not know the position gives `BlockPos.ZERO`, as the original did).
 - **"Wood"** (`Material.wood`) is a block with a wooden sound type (wood, nether wood, cherry wood, bamboo wood, stem) or one of
@@ -358,8 +375,11 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
 ## 11. Values checked against the original on purpose
 
 - Strike counter: a new target (or the first) gives 0; the same target gives `max(counter + 1, 5)`, so 5 from the second blow on
-  (the original wrote `max` where `min` was meant; kept). Keys `TTEnchantLastTarget`, `TTEnchantLastTarget2` (the two halves
-  of the UUID), `TTEnchantSuccessiveStrike` on the weapon, in its custom data.
+  (the original wrote `max` where `min` was meant; kept). The 1.7.10 keys `TTEnchantLastTarget`, `TTEnchantLastTarget2` (the two
+  halves of the UUID) and `TTEnchantSuccessiveStrike` are one component on the weapon, `thaumictinkerer:strike_memory`
+  `{target: UUID, strikes: int >= 0}` (`EnchantmentComponents.StrikeMemory`; absent reads as the UUID 0-0 and 0, as the missing
+  keys did); the port had first kept the keys in `minecraft:custom_data`. A weapon's old counter is forgotten (the next blow starts
+  a new streak).
 - Focused Strikes divides by two *before* adding; the added term uses `max(counter, 5)`.
 - Final Strike's roll is `nextInt(19)`; level 5 wins 5 of 19.
 - Slow Fall: threshold `2.9` as a `double` comparison (`fallDistance >= 2.9`) in the landing rule and in the client's per-tick
@@ -415,6 +435,12 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
   wear (the extra point only for the blocks that are theirs).
 - The JUnit tests of the other enchantment classes (`EnchantmentManagerTest`, `EnchantmentResourcesTest`,
   `EnchanterPacketsAndIconsTest`) test the table, the data and the packets.
+- **Review fixes of 2026-11-01** (the shared `canOffer` of the screen and the add packet, the strike counter and Tunnel's direction
+  as components, the probing guard of the break listener, the icons drawn without their size): the JUnit tests of the group
+  (54, with `everyIconIsSquareSoTheWholeTextureFitsTheButton` in place of the PNG-header tests) passed under Gradle, and the 36
+  Enchantments GameTests (34 and the new `theEnchanterRefusesWhatItsScreenDoesNotOffer` and
+  `aQuestionOfTheProtectionModsIsNoBreakForTunnelOrTheWear`) passed on Fabric and on NeoForge. The screen's icons were not
+  looked at after the change.
 
 ## 13. What the group needs from the loaders
 

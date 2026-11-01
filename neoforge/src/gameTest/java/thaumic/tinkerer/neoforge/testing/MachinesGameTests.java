@@ -45,6 +45,11 @@ public final class MachinesGameTests {
         MachinesRuntimeChecks.repairerSavesItsToolAndItsState(test);
     }
 
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theRestorerSavesAndSyncsOnlyWhenSomethingChanged(GameTestHelper test) {
+        MachinesRuntimeChecks.theRestorerSavesAndSyncsOnlyWhenSomethingChanged(test);
+    }
+
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 100)
     public void theRestorerNeitherTakesNorMendsTheSpellbindingCloth(GameTestHelper test) {
         MachinesRuntimeChecks.theRestorerNeitherTakesNorMendsTheSpellbindingCloth(test);

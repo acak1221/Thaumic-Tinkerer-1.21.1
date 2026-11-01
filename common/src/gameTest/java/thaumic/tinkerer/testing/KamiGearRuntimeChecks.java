@@ -1917,19 +1917,41 @@ public final class KamiGearRuntimeChecks {
         test.succeed();
     }
 
-    /** The Bottomless Pouch stays out of the containers that are items: a shulker box (its slot and its hopper face) and a bundle. */
+    /**
+     * The Bottomless Pouch stays out of the containers that are items: a shulker box's slot and a bundle refuse it. A shulker box's
+     * hopper face asks that only on NeoForge (vanilla, so Fabric, asks only "is it a shulker box"), so the pouch's own cells refuse
+     * shulker boxes in turn, and the nesting stops after one level on either loader.
+     */
     public static void pouchDoesNotGoIntoShulkerBoxesOrBundles(GameTestHelper test) {
         ItemStack pouch = TTRegistry.stack(LibItemNames.ICHOR_POUCH);
         ItemStack stick = new ItemStack(Items.STICK);
+        ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
         test.assertTrue(!pouch.getItem().canFitInsideContainerItems(), "the pouch does not fit inside container items");
         ShulkerBoxSlot slot = new ShulkerBoxSlot(new SimpleContainer(27), 0, 0, 0);
         test.assertTrue(!slot.mayPlace(pouch) && slot.mayPlace(stick), "a shulker box slot refuses the pouch and takes a stick");
-        ShulkerBoxBlockEntity box = new ShulkerBoxBlockEntity(test.absolutePos(BlockPos.ZERO), Blocks.SHULKER_BOX.defaultBlockState());
-        test.assertTrue(!box.canPlaceItemThroughFace(0, pouch, Direction.UP) && box.canPlaceItemThroughFace(0, stick, Direction.UP),
-                "so does its hopper face");
         BundleContents.Mutable bundle = new BundleContents.Mutable(BundleContents.EMPTY);
         test.assertTrue(bundle.tryInsert(pouch.copy()) == 0, "a bundle takes none of it");
         test.assertTrue(bundle.tryInsert(stick.copy()) == 1, "and a stick");
+        ShulkerBoxBlockEntity box = new ShulkerBoxBlockEntity(test.absolutePos(BlockPos.ZERO), Blocks.SHULKER_BOX.defaultBlockState());
+        test.assertTrue(box.canPlaceItemThroughFace(0, stick, Direction.UP), "a hopper puts a stick into a shulker box");
+        test.assertTrue(!SlotNoPouches.mayHold(shulker) && !SlotNoPouches.mayHold(pouch) && SlotNoPouches.mayHold(stick),
+                "the pouch's cells refuse shulker boxes and pouches and take a stick (hopper face for the pouch: "
+                        + box.canPlaceItemThroughFace(0, pouch, Direction.UP) + ")");
+
+        ServerPlayer player = player(test, 3.5, 1, 3.5, 0, 0);
+        player.getInventory().selected = 0;
+        player.getInventory().setItem(0, pouch);
+        player.getInventory().setItem(9, shulker);
+        ContainerIchorPouch menu = new ContainerIchorPouch(1, player.getInventory(), InteractionHand.MAIN_HAND);
+        int shulkerSlot = -1;
+        for (int i = 0; i < menu.slots.size(); i++) {
+            if (menu.slots.get(i).container == player.getInventory() && menu.slots.get(i).getContainerSlot() == 9) shulkerSlot = i;
+        }
+        test.assertTrue(shulkerSlot >= 0, "the shulker box's slot in the menu");
+        test.assertTrue(menu.quickMoveStack(player, shulkerSlot).isEmpty() && player.getInventory().getItem(9).is(Items.SHULKER_BOX),
+                "shift-clicking the shulker box does not move it into the pouch");
+        menu.removed(player);
+        player.discard();
         test.succeed();
     }
 

@@ -332,9 +332,13 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   off hand key) or shift-clicked, and the menu closes when that stack leaves its inventory slot (1.7.10's duplication hole) or when
   something else writes the pouch's contents behind the open menu (the wand's focus selector does; the menu then does not write
   its stale cells over it). Pouches (Thaumcraft's and this one) cannot be put in. The dimensions of `ConfigHandler.forbiddenDimensions` keep it shut.
-- **Not into container items (new, review finding, fixed 2026-11-01).** `canFitInsideContainerItems()` is false, as for a shulker box: a shulker box's
-  slots and its hopper face and a bundle refuse the pouch, so 117 cells cannot be nested inside a box inside a pouch without limit (1.7.10 had
-  neither container). GameTest `pouchDoesNotGoIntoShulkerBoxesOrBundles` (written, not yet run).
+- **Not into container items, and no shulker boxes in it (new, review finding, fixed 2026-11-01).** `canFitInsideContainerItems()` is false, as
+  for a shulker box: a shulker box's slots and a bundle refuse the pouch (1.7.10 had neither container). A shulker box's hopper face asks that
+  only on NeoForge (vanilla's `ShulkerBoxBlockEntity.canPlaceItemThroughFace` asks only "is it a shulker box", so on Fabric a hopper still puts a
+  pouch into a box; found by the first Fabric run of the GameTest), so the pouch's cells refuse, in turn, what may not go inside a container item
+  (`SlotNoPouches.mayHold`: shulker boxes and pouches; 1.7.10 refused pouches only). A pouch of shulker boxes of pouches can therefore not be
+  nested without limit on either loader. GameTest `pouchDoesNotGoIntoShulkerBoxesOrBundles` (the slot, the bundle, the cells, a shift-click of
+  a shulker box into the pouch's menu).
 - It is an `IFocusPouch` (request A2, now API) and a belt `IBauble`, so the wand's focus selector offers the foci in it. The selector
   lists at most the first 128 cells (the pouch has 117).
 - The screen title key `container.thaumictinkerer.ichor_pouch` is new (the screen draws no title, as in 1.7.10).

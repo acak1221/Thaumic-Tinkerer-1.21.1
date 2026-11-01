@@ -65,7 +65,7 @@ JEI; the layout numbers are shared (`ViewerLayout`). EMI: `compat/.../emi/Tinker
 
 ### 2.3 Stacks, comparisons, item lists
 
-- Mob Displays (one item, the mob in the custom data key `type`) and Infused Seeds (one item, the aspect in the component
+- Mob Displays (one item, the mob in the component `thaumictinkerer:mob_display_mob`) and Infused Seeds (one item, the aspect in the component
   `thaumictinkerer:infused_aspect`) are told apart: EMI `setDefaultComparison` on the type / the aspect, JEI subtype
   interpreters on the same data. Without that, EMI and JEI take all Mob Displays (all seeds) for one stack, and the
   recipes of a zombie would list every mob.

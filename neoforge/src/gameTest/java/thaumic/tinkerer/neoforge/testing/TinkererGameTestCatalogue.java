@@ -29,6 +29,8 @@ public final class TinkererGameTestCatalogue {
 
     /** The NeoForge-only scenarios (hand-written, no Fabric wrapper), sorted by name. */
     public static final List<Class<?>> NEOFORGE_ONLY = List.of(
+            HooksNeoForgeTests.class,
+            ItemCapabilitiesNeoForgeTests.class,
             TileBlocksNeoForgeTests.class);
 
     private TinkererGameTestCatalogue() {}

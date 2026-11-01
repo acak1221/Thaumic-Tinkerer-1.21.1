@@ -131,6 +131,26 @@ public final class TileBlocksGameTests implements FabricGameTest {
         TileBlocksRuntimeChecks.tabletSpillsItsItem(h);
     }
 
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    public void tabletCooldownsRunOut(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletCooldownsRunOut(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void tabletDoesNotBoardVehicles(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletDoesNotBoardVehicles(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void tabletDoesNotSleepInABed(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletDoesNotSleepInABed(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    public void tabletRespectsTheWorldBorder(GameTestHelper h) {
+        TileBlocksRuntimeChecks.tabletRespectsTheWorldBorder(h);
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void menusHaveTheirSlots(GameTestHelper h) {
         TileBlocksRuntimeChecks.menusHaveTheirSlots(h);
@@ -152,6 +172,11 @@ public final class TileBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void fakePlayerHasNoStatsScoresOrScreens(GameTestHelper h) {
+        TileBlocksRuntimeChecks.fakePlayerHasNoStatsScoresOrScreens(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void remotePlacerPlacesItsBlock(GameTestHelper h) {
         TileBlocksRuntimeChecks.remotePlacerPlacesItsBlock(h);
     }
@@ -167,6 +192,16 @@ public final class TileBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void remotePlacerPoursABucketIntoItsTarget(GameTestHelper h) {
+        TileBlocksRuntimeChecks.remotePlacerPoursABucketIntoItsTarget(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void placerAndDislocatorRespectTheWorldBorder(GameTestHelper h) {
+        TileBlocksRuntimeChecks.placerAndDislocatorRespectTheWorldBorder(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void dislocatorSwapsBlocksWithTheirContents(GameTestHelper h) {
         TileBlocksRuntimeChecks.dislocatorSwapsBlocksWithTheirContents(h);
     }
@@ -177,8 +212,8 @@ public final class TileBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
-    public void dislocatorChecksLetEveryBlockThrough(GameTestHelper h) {
-        TileBlocksRuntimeChecks.dislocatorChecksLetEveryBlockThrough(h);
+    public void dislocatorRefusesWhatAPlayerCannotBreak(GameTestHelper h) {
+        TileBlocksRuntimeChecks.dislocatorRefusesWhatAPlayerCannotBreak(h);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
@@ -192,8 +227,28 @@ public final class TileBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void interfaceForwardsTheHopperRules(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfaceForwardsTheHopperRules(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void interfaceMovedOntoItsOwnTargetEndsTheBinding(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfaceMovedOntoItsOwnTargetEndsTheBinding(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void interfacesBoundToEachOtherEndTheBinding(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfacesBoundToEachOtherEndTheBinding(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void binderLinksDevices(GameTestHelper h) {
         TileBlocksRuntimeChecks.binderLinksDevices(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void binderComparesTheDimension(GameTestHelper h) {
+        TileBlocksRuntimeChecks.binderComparesTheDimension(h);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

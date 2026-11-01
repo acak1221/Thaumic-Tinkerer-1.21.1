@@ -39,6 +39,16 @@ one default state, not a person on a GPU. Still **not seen**: a particle over ti
 `ThaumcraftClientFX`, which a server test cannot exercise), a sound (the harness has no audio device), the Mending and Ender Rift
 depth layers on a wand (no picture draws those two foci on a wand; see the note on the atlas below) and the feel of a held cast.
 
+Review fixes of 2026-11-01 (sections 4, 5, 8 and 9: what the player cannot break, forged loads and the seal, the protection of the
+server, the add-on's blacklist tag, the level's random numbers): `FociLogicTest` and `FociResourcesTest` (26 tests, among them the new
+`anImpossibleLoadIsWhatNoCastCouldHaveTaken` and `theBlacklistTagOfTheDislocationFocusHoldsWhatNoPistonMoves`) passed under Gradle
+(`tinkererTest`), and the 40 Foci GameTests (the 36 above and four new ones: `dislocationRefusesWhatThePlayerCannotBreak`,
+`dislocationPutsDownOnlyWhatItCouldHaveTaken`, `dislocationMovesASpawnerItTookWithItsMob`,
+`dislocationAndEfreetsFlameAskTheProtectionOfTheServer`) passed on Fabric (`runTinkererGameTest`) and on NeoForge
+(`:neoforge:runGameTest`), filter `focigametests.*,enchantmentsgametests.*`. The new checks were not run against the old code
+(no mutation run), spawn protection and a real claim mod were not tried, and the message `ttmisc.focusDislocation.blacklisted` is
+in `lang-extra/foci.*.json` only until the language files are generated again.
+
 ## 1. Identity
 
 | 1.7.10 | 1.21.1 |
@@ -114,9 +124,15 @@ is **not** overridden to `true` as `ItemModFocus` did (see `docs/API_GAPS.md` 3b
   counting below zero and repeated the sound and the burst on every tick until the server's block arrived, which a chained
   recipe would have made a second-long storm of ignition sounds.
 - **New: protection.** A block inside spawn protection or the world border (`Level.mayInteract`), or in adventure mode
-  (`Player.mayUseItemAt`), is not smelted. 1.7.10 had no check.
+  (`Player.mayUseItemAt`), is not smelted. 1.7.10 had no check. And when the count reaches zero the server asks
+  `ItemModFocus.mayBreak` (`hooks/BlockProtection.mayBreak`: the game's rules again and the protection mods through the loader's
+  break event) before it turns the block into another; a refused block stays, nothing is paid, and the count starts again (so the
+  question is asked once a second while the player holds the beam, not every tick). The client cannot know the answer: it still
+  plays the ignition sound and the 25 wisps of a finished block at the end of its own count. GameTest
+  `dislocationAndEfreetsFlameAskTheProtectionOfTheServer` (section 8).
 - Sounds: `fire.ignite` is `FLINTANDSTEEL_USE`, `fire.fire` is `FIRE_AMBIENT`. Particles are Thaumcraft's own, the calls of 1.7.10 with
-  the same arguments: `ThaumcraftClientFX.wisp(level, x, y, z, rand / 2, 4, true, true, -rand / 10)` (25 at completion, 2 per tick)
+  the same arguments (the random numbers are the level's `level.random`, where 1.7.10 used `Math.random()`):
+  `ThaumcraftClientFX.wisp(level, x, y, z, rand / 2, 4, true, true, -rand / 10)` (25 at completion, 2 per tick)
   and `ThaumcraftClientFX.beam(level, player, centre of the block, 0xFF0000, 2, true, 0F, 1)` on every client tick (the beam lets go
   on its own when the calls stop).
 
@@ -126,7 +142,8 @@ Ported as it is: items (`ItemEntity`) within six blocks of the point five blocks
 centre when sneaking), half a block up, are given the motion towards it at a third of a block per tick (`MiscHelper.setEntityMotionFromVector`),
 paid per tick only when there is something to pull. The sparkle of every pulled item is `ThaumcraftClientFX.sparkle(level, x, y, z, 0)`
 (client of the caster only, as in 1.7.10). The motion is set on both sides, as the client simulates dropped items between the
-server's updates.
+server's updates. The only upgrade is Frugal, as in 1.7.10, whose source says `TODO add range upgrades` there and never added one:
+the gap is kept (the port adds no upgrade the original lacked), and the comment in `ItemFocusTelekinesis` says so.
 
 ## 6. Distortion (`ItemFocusDeflect`, `ProjectileHelper`)
 
@@ -161,7 +178,7 @@ research, as in 1.7.10 (the recipes of those three stay).
 
 | 1.7.10 | 1.21.1 |
 |---|---|
-| stack tag `available`, `blockName`, `blockMeta`, `tileCmp` (and the deprecated `blockID`) | data component `thaumictinkerer:dislocation_picked` `{state, tile}` on the focus stack inside the wand: the whole `BlockState` (metadata no longer exists), the block entity's `saveWithFullMetadata` tag; "available" is the presence of the component. Old tags are not read (fresh worlds only) |
+| stack tag `available`, `blockName`, `blockMeta`, `tileCmp` (and the deprecated `blockID`) | data component `thaumictinkerer:dislocation_picked` `{state, tile, seal}` (the seal is new, see below) on the focus stack inside the wand: the whole `BlockState` (metadata no longer exists), the block entity's `saveWithFullMetadata` tag; "available" is the presence of the component. Old tags are not read (fresh worlds only) |
 | `world.removeTileEntity` before `setBlock(air)`, so that a container drops nothing | `Level.removeBlockEntity` first, then `setBlock(air, 3)`: in 1.21.1 `LevelChunk.setBlockState` calls `onRemove` with the section already holding air, so a container whose block entity is gone finds none and drops nothing (checked in the bytecode) |
 | `TileEntity.createAndLoadEntity` + `setTileEntity` | the block entity the placed block made is loaded in place (`loadWithComponents`) when its type matches, otherwise `BlockEntity.loadStatic` + `setBlockEntity` |
 | mop from the wand's ray | `trace(player, blockInteractionRange(), fluids = true, collidable = false)`: the ray includes fluid **sources** (`ClipContext.Fluid.SOURCE_ONLY`), as the wand's ray does in the repository's 1.12 reference (`ItemWandCasting.onItemRightClick` asks `rayTrace(world, player, true)`). 1.7.10's `rayTraceBlocks(..., true)` stopped only on a source block (`BlockLiquid.canCollideCheck` wants metadata 0, from memory of vanilla 1.7.10), never on flowing water or lava, which would otherwise be picked up as a flowing state and spread again when put down; `canTake` also refuses a flowing `LiquidBlock` for a cast with a hit made by hand. The 1.7.10 original of the wand could not be read in this session, so the range (the player's block interaction range) is the port's reading of it |
@@ -169,8 +186,9 @@ research, as in 1.7.10 (the recipes of those three stay).
 | `canPlayerEdit(x, y, z, side, stack)` | `Player.mayUseItemAt(pos, face, wand)` |
 | spawner (`TileEntityMobSpawner`) costs 100/100/50 | `SpawnerBlockEntity` and, new in 1.21, `TrialSpawnerBlockEntity` |
 | blacklist: `Block.blockRegistry.getNameForObject(block)` equals an entry of `focusOfDislocationBlacklist` | the block's registry id equals an entry (an entry without a namespace is a `minecraft:` block, as the 1.7.10 names were); **new**: an entry `#namespace:tag` names a block tag. `ThaumcraftApi.portableHoleBlackList` is the block tag `#thaumcraft:portable_hole_blacklist` (beds, doors, pistons, flux) |
-| 1.7.10 piston blacklist | `Blocks.MOVING_PISTON`, `Blocks.PISTON_HEAD`; air and anything with a destroy speed of -1 cannot be taken |
-| `burst` ×8 at pickup (`blockX + rand, blockY + rand, blockZ + rand`) and placement (`+ 0.65` on `y`) on the caster's client | the same eight `burst(.., 0.2F)` at the same points, sent by the server (`ThaumcraftFX.burst`) to the players around, so that the server decides and the others see it too; nothing is sent when the cast fails |
+| 1.7.10 piston blacklist | `Blocks.MOVING_PISTON`, `Blocks.PISTON_HEAD`; air, anything with a destroy speed below 0 and the game master blocks (`GameMasterBlock`) cannot be taken (`ItemFocusDislocation.isImpossibleLoad`) |
+| hardness `!= -1` is "can be broken" | **fix**: the casting player's mining progress on the block (`BlockState.getDestroyProgress(player, level, pos)`) must be above zero (`canTake(player, ...)`); see "What the player cannot break" below |
+| `burst` ×8 at pickup (`blockX + rand, blockY + rand, blockZ + rand`) and placement (`+ 0.65` on `y`) on the caster's client | the same eight `burst(.., 0.2F)` at the same points (the random numbers are the server level's), sent by the server (`ThaumcraftFX.burst`) to the players around, so that the server decides and the others see it too; nothing is sent when the cast fails |
 | `getUniqueKey`: block name + hash of a fresh tag (always 0) | block state + hash of the carried block entity, so that two foci that carry different things are not merged by the focus selector |
 
 New safeguards (not in 1.7.10, each from something that 1.21.1 makes possible):
@@ -179,7 +197,49 @@ New safeguards (not in 1.7.10, each from something that 1.21.1 makes possible):
   (1,000,000 bytes of NBT); the player gets the action-bar message `ttmisc.focusDislocation.tooBig` and nothing is paid. The
   load travels with the wand to every client that sees it, and a client refuses a tag above two megabytes, which would
   disconnect the player at every login (a chest of nested shulker boxes can reach that).
-- **Protection.** `Level.mayInteract` (spawn protection, world border) and `mayUseItemAt` are asked for a pickup too.
+- **Protection.** `Level.mayInteract` (spawn protection, world border) and `mayUseItemAt` are asked for a pickup too. And the
+  server asks `ItemModFocus.mayBreak` before it takes a block and `ItemModFocus.mayPlace` before it puts one down (both
+  `hooks/BlockProtection`: the position is loaded and inside the border, spawn protection, adventure and spectator mode, then the
+  protection mods through the loader's own break and place events, whose backends the core group installs). 1.7.10 posted no event,
+  so a claim mod never saw the focus. A refusal pays nothing and leaves the block, or the load in the focus. Because the client
+  predicted the cast (it paid the vis and swung), the server then sends the player's inventory again
+  (`containerMenu.sendAllDataToRemote`), so the wand on the client shows the vis it really has; the same is done when a block is
+  too large to carry (the size cap below), where the client had kept the vis it predicted to spend. The game-rule part is checked by
+  the GameTest `dislocationAndEfreetsFlameAskTheProtectionOfTheServer` in adventure mode; the protection-mod part by the same test
+  with a backend that refuses everything (it also checks that the question is asked while `BlockProtection.isProbing()`); spawn
+  protection is not run (the GameTest server has none), and no real claim mod was tried.
+- **What the player cannot break (fix).** 1.7.10 compared the hardness with -1, which let the focus take Thaumcraft's own warded
+  glass, arcane door and arcane pressure plate: Thaumcraft makes them unbreakable with a mining progress of zero (while its warded
+  stone option is on) and leaves their hardness at 5, 15 and 2. The focus now asks the casting player's progress on the block
+  (above zero; a progress that is not a number, which a dig-speed listener that refuses the block makes of a hardness of zero,
+  counts as none). This also refuses a block that a mod makes unbreakable for this player in the same way. GameTest
+  `dislocationRefusesWhatThePlayerCannotBreak`.
+- **The add-on's own blacklist tag.** `#thaumictinkerer:dislocation_blacklist` (data pack, `replace: false`) holds reinforced
+  deepslate and budding amethyst, which vanilla lets no piston move (reinforced deepslate can be mined, slowly; budding amethyst
+  drops nothing even with Silk Touch, so moving it would hand out what the game keeps in place). Thaumcraft's own tag is not edited.
+  The config blacklist and both tags are one rule (`isBlacklisted`).
+- **A load is checked when it is put down (fix).** The component can be written by hand: a creative player who is no operator can
+  give his stacks any component, a command can too. 1.7.10 trusted the tag, and so did the port, so such a focus put down bedrock, a
+  command block or a spawner of any mob. Now a load is put down only when the focus could have taken it by its state
+  (`canCarry`): an impossible load (`isImpossibleLoad`: air, the moving piston and piston head, a half of a two-part block,
+  flowing fluid, a destroy speed below 0, a `GameMasterBlock`) is dropped from the focus without being placed (it could never be put
+  down anywhere); a load on a blacklist (the config's list or one of the tags, which may have named it after it was taken) stays in
+  the focus, is not placed, and the player gets the action-bar message `ttmisc.focusDislocation.blacklisted`.
+- **Block entity data that only an operator may set (fix).** The data of a block entity whose `onlyOpCanSetNbt()` is true (the
+  spawner and the trial spawner, the command block, signs, lecterns) goes into the placed block only for a player who may use the
+  game master blocks (`canUseGameMasterBlocks`: creative and permission level 2), vanilla's rule for the block entity data of an
+  item (`BlockItem.updateCustomBlockEntityTag`), **or** when the load carries this server's seal (`DislocationSeal`): the server
+  seals what the focus itself takes with an HMAC-SHA256 of the carried state and block entity data under a random key of 32 bytes
+  that the world keeps (`data/thaumictinkerer_dislocation_seal.dat` of the overworld; it never leaves the server), stored in the
+  component as `seal` (hex). Without the seal a survival player who moved a spawner (paying the 100/100/50 of 1.7.10 for it), a
+  sign or a lectern would get an empty spawner, a blank sign or a lectern without its book. A load without a valid seal (written by
+  hand, edited after the take, or taken before this version) is placed with the block entity the block makes itself: the data is
+  lost then. What the seal does not stop: a creative player can copy a sealed load (creative players duplicate stacks), so he can
+  place copies of a spawner that really existed, never a mob of his choosing. The seal is the port's addition to the rule the lead
+  asked for (vanilla's alone); the GameTests `dislocationPutsDownOnlyWhatItCouldHaveTaken` (forged command block, bedrock,
+  structure block, barrier, spawner of zombies, chest, blacklisted glass, by a creative player who is no operator) and
+  `dislocationMovesASpawnerItTookWithItsMob` (a survival player moves a spawner of zombies with them; the same load edited to
+  skeletons under the genuine seal comes out empty) check both parts.
 - **Double chests.** The half of a double chest that is taken is a *single* chest in the focus (1.21.1 chest halves carry their
   connection in the state).
 - **Blocks of two parts are not taken** (`ItemFocusDislocation.isTwoPart`: any state with `DOUBLE_BLOCK_HALF`, which the tall

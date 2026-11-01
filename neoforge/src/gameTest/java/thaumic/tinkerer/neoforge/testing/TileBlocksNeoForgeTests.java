@@ -4,11 +4,20 @@
  */
 package thaumic.tinkerer.neoforge.testing;
 
+import com.mojang.authlib.GameProfile;
+import dev.architectury.registry.menu.MenuRegistry;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -24,12 +33,15 @@ import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
+import thaumic.tinkerer.common.block.tile.tablet.TileAnimationTablet;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorInterface;
 import thaumic.tinkerer.common.content.TileBlocks;
+import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
 
 /**
  * NeoForge-only scenarios of the TileBlocks group: the block capabilities of the Transvector Interface ({@code NeoForgeCapabilities}), which
- * have no Fabric counterpart with the same shape (Fabric's lookups have no cache to invalidate). They are not generated from the Fabric
+ * have no Fabric counterpart with the same shape (Fabric's lookups have no cache to invalidate), and what NeoForge alone asks of the
+ * devices' fake player (its fake-player flag and extended menus). They are not generated from the Fabric
  * wrappers: tools/neoforge_gametests.py lists every {@code *NeoForgeTests} class in {@code TinkererGameTestCatalogue.NEOFORGE_ONLY} and gives it
  * its template {@code thaumictinkerer:<class in lower case>.empty}. Test-only, not distributed.
  */
@@ -130,6 +142,35 @@ public final class TileBlocksNeoForgeTests {
         h.assertTrue(cache.getCapability() == null, "unbound by setTarget(null), the cache has no handler");
         h.assertTrue(again.fill(water.copy(), FluidAction.SIMULATE) == 0, "and the handler it had no longer reaches the tank");
         h.assertTrue(TileBlocksNeoForgeChecks.tankOf(h.getBlockEntity(otherTankPos)).getFluidAmount() == BUCKET, "which kept its one bucket");
+        h.succeed();
+    }
+
+    /**
+     * The add-on's fake player is a fake player to NeoForge ({@code IPlayerExtension.isFakePlayer()}, overridden without
+     * {@code @Override} in the loader-neutral class) and opens no extended menu: neither through
+     * {@code openMenu(MenuProvider, Consumer)} nor {@code openMenu(MenuProvider, BlockPos)} of NeoForge, nor through
+     * Architectury's {@code MenuRegistry.openExtendedMenu}, which the Tablet's and the Remote Placer's screens use. The calls
+     * go through {@code ServerPlayer}/{@code Player} references, so they reach the override by dispatch.
+     */
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void fakePlayerIsAFakePlayerWithoutExtendedMenus(GameTestHelper h) {
+        TinkererFakePlayer fake = new TinkererFakePlayer(h.getLevel(),
+                new GameProfile(UUID.fromString("c0ffee00-0000-4000-8000-000000000002"), "[tt-test]"));
+        Player asPlayer = fake;
+        ServerPlayer asServerPlayer = fake;
+        h.assertTrue(asPlayer.isFakePlayer(), "NeoForge sees a fake player");
+
+        MenuProvider chest = new SimpleMenuProvider((id, inventory, player) -> ChestMenu.threeRows(id, inventory), Component.literal("chest"));
+        h.assertTrue(asServerPlayer.openMenu(chest, buf -> {}).isEmpty(), "openMenu(provider, extra data) opens nothing");
+        h.assertTrue(asServerPlayer.openMenu(chest, BlockPos.ZERO).isEmpty(), "openMenu(provider, pos) opens nothing");
+        h.assertTrue(asServerPlayer.openMenu(chest).isEmpty(), "openMenu(provider) opens nothing");
+        h.assertTrue(fake.containerMenu == fake.inventoryMenu, "no menu is open: " + fake.containerMenu);
+
+        BlockPos tabletPos = new BlockPos(2, 1, 2);
+        h.setBlock(tabletPos, TileBlocks.animationTabletBlock());
+        TileAnimationTablet tablet = h.getBlockEntity(tabletPos);
+        MenuRegistry.openExtendedMenu(fake, tablet);
+        h.assertTrue(fake.containerMenu == fake.inventoryMenu, "Architectury's extended menu (the tablet's) is not open either: " + fake.containerMenu);
         h.succeed();
     }
 

@@ -1,7 +1,7 @@
 # BasicItems: deviations from Thaumic Tinkerer 1.7.10
 
 Group BasicItems: Spellbinding Cloth, Talisman of Remedium, Talisman of Withhold, Tome of Knowledge Sharing, Infused
-Scribing Tools, Helmet of Revealing, the helpers `ExperienceHelper`, `ItemNBTHelper` and `MiscHelper`, and the client
+Scribing Tools, Helmet of Revealing, the helpers `ExperienceHelper` and `MiscHelper` (and once `ItemNBTHelper`, see section 1), and the client
 handler `ClientTickHandler` (the other one of the two, `HUDHandler`, is the Foci group's `DislocationHUDHandler`, see section 8).
 Specification: the 1.7.10 sources of GTNewHorizons/ThaumicTinkerer
 (commit in `NOTICE.md`). Everything not listed here is ported as it was: numbers (35 uses of the cloth, 100 points of the
@@ -25,8 +25,11 @@ A value equal to the default is stored as no component, so a talisman that was s
 same stack as a new one (stacks of the same kind merge). The components are saved and sent like any other
 (`BasicItemComponents`). Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
 
-`ItemNBTHelper` keeps its 1.7.10 function names and stores under the free-form component `minecraft:custom_data` for the
-items that have no component of their own. **One thing could not stay:** `getNBT` handed out the live tag, and 1.21.1's
+`ItemNBTHelper` (the 1.7.10 helper of the stack tag) is leaving the port: the review of 2026-11 found the Enchantments group
+its last user, which moves to typed components, and that fix deletes the helper (the lead's decision; this group does not
+delete it). Its JUnit test was taken out of `BasicItemsLogicTest` so that the test tree compiles without it. Until it is
+deleted it reads as follows: it keeps its 1.7.10 function names and stores under the free-form component
+`minecraft:custom_data` for the items that have no component of their own. **One thing could not stay:** `getNBT` handed out the live tag, and 1.21.1's
 `CustomData` is immutable, so `getNBT` is a copy and every change goes through a setter, `injectNBT` or the new `update`.
 `setCompound` no longer refuses the key `ench` (enchantments are a component).
 
@@ -45,11 +48,19 @@ items that have no component of their own. **One thing could not stay:** `getNBT
   enchanted book carries (`stored_enchantments`, tag `StoredEnchantments` in 1.7.10) are not wiped, in 1.7.10 either.
   An item whose class implements `thaumic.tinkerer.api.INoRemoveEnchant` is refused (no class of the add-on does).
   The rest of the item (name, repair cost, other components) stays, as 1.7.10 removed only the key `ench`.
+- **Curses stay (deviation; 1.7.10 had no curses).** The enchantments in `#minecraft:curse` (Curse of Binding, Curse of
+  Vanishing) are kept, as the grindstone keeps them; everything else is wiped. An item whose only enchantments are curses is
+  not accepted (there would be nothing to wipe, and a use of the cloth would be spent for nothing); 1.7.10 took every enchanted
+  item. Unlike the grindstone the cloth leaves the repair cost alone (1.7.10 did). Without curses the result is exactly what it
+  was (no enchantments component left). GameTest `spellClothKeepsTheCurses` (a sword with Sharpness, Looting and Vanishing
+  comes out with Vanishing only; a helmet with two curses only is refused).
 - **Stacks of enchanted items (choice).** 1.7.10 copied the whole slot (`stack.copy()` with its count) and emptied the slot,
   so a stack of N enchanted items was wiped in one go for one use of the cloth. The 1.21.1 crafting slot takes one item from
   each slot, so the recipe gives one item per cleaning. Enchanted items do not stack in survival, so this only matters for
   stacks made with commands.
 - **Anvil (choice).** `setNoRepair()` has no counterpart: 1.21.1 lets two damaged cloths be combined in an anvil.
+- **Thaumic Restorer.** The other effect of `setNoRepair()`, that the Restorer refused the cloth, is the item tag
+  `thaumictinkerer:repairer_blacklist` of the Machines group, which lists the cloth (`docs/deviations/Machines.md` section 4).
 - **Colour.** `getColorFromItemStack` is an item colour handler (`BasicItemsClient`) with the same formula and
   `Color.HSBtoRGB`; the model is a plain generated model, tinted on layer 0.
 - Crucible recipe, research (`SPELL_CLOTH`, parent hidden `ENCHFABRIC`) and the page text are unchanged; the enchanted fabric
@@ -117,7 +128,8 @@ items that have no component of their own. **One thing could not stay:** `getNBT
   sparkles at the player when a bottle is filled are internals of the mod; the port draws a green dust particle for the orb
   (client) and six happy-villager sparkles at the player (sent by the server). Same moment and place, another look.
 - **Bottle.** `consumeInventoryItem(glass_bottle)` becomes a search of the main inventory, then of the off hand; the
-  Bottle o' Enchanting goes into the inventory or is dropped at the player when it is full.
+  Bottle o' Enchanting goes into the inventory or is dropped at the player when it is full. The random pitch of its sound
+  (`0.1 + Math.random() / 2`) is drawn from the level's random (`level.random`), not from `Math.random()`: the same range.
 - **Click (choice).** The click toggles and bottles, so the talisman answers `equipsOnUse` with false: it is put on in the
   Baubles menu (toggle it first, wear it after, as in 1.7.10).
 - **Tooltip.** The line "XP: n" was not translatable; it is the key `ttmisc.xpTalisman.xp` (`XP: %s`; Russian

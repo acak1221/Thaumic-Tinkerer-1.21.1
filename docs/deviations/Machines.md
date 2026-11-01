@@ -20,22 +20,39 @@ Reading key: **forced** means 1.21.1 cannot do it the old way; **fix** means the
 | `BlockRepairer` metadata 2..5 (facing) | block state `facing` (horizontal); the tube side is the facing, as before |
 | `BlockSummon` | registry path `spawner` (the 1.7.10 name), class name unchanged |
 | `ItemMobAspect` damage 0..16 basic, 21..37 condensed, 42..58 infused (17 aspects in the order of `NumericAspectHelper`; `aspectCount` was 21 with padding) | 51 items `mob_aspect_<tag>`, `mob_aspect_condensed_<tag>`, `mob_aspect_infused_<tag>`; `ItemMobAspect.ASPECTS` keeps the old order; the lang keys are the old ones (`item.mobAspect.condensed.name`, `item.mobAspect.infused.name`, `item.thaumictinkerer.mob_aspect` for the basic form) |
-| `ItemMobDisplay` damage = index of the mob row | one item `mob_display`, the row name in the custom data key `type`; not in the creative tab |
+| `ItemMobDisplay` damage = index of the mob row | one item `mob_display`, the row in the component `thaumictinkerer:mob_display_mob` (section 2); not in the creative tab |
 
 Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
 
 ## 2. Data on stacks (forced)
 
-- **Soul mould.** 1.7.10 stored the legacy entity name (`EntityList.getEntityString`, e.g. `Pig`) in the NBT key `pattern`.
-  The port stores the registry id of the entity type (`minecraft:pig`) in the same key of the custom data. The tooltip
-  names the mob with the entity type's own description; a mould of an entity type that no longer exists shows the id.
-  The pattern is written to the stack the player holds (as `getCurrentEquippedItem` did), not to the stack the item
-  callback receives: in creative mode `Player.interactOn` passes a copy there, which would lose the pattern.
-- **Cursed Spirit's Blade.** The flag `Activated` (int 0/1) is in the custom data. The "active" icon (1.7.10: icon index
-  by the NBT flag) is the item model override on `custom_model_data = 1`, which the blade sets and removes together with
-  the flag.
-- **Infused soul aspects.** `LastX/LastY/LastZ` of the tablet that used the stack last are in the custom data, as before.
-  A stack without custom data matches every tablet, as in 1.7.10 (`lastUsedTabletMatches`).
+The stack tag of 1.7.10 is four typed data components (`MachineComponents`, registered from `Machines.register()`, each with
+a codec for saving and a stream codec for the network). A value equal to the default is stored as no component, so a blank
+mould, a blade switched off again and an unused soul aspect are the same stacks as new ones. None of them uses
+`minecraft:custom_data` (the first version of the port did, with the old key names; stacks it saved are not converted, no
+world of the port was released); the GameTest `theStackDataOfTheMachinesSurvivesSavingAndTheNetwork` saves, loads, sends
+and receives each of them.
+
+| 1.7.10 tag | 1.21.1 component |
+|---|---|
+| soul mould `pattern` (legacy entity name, `EntityList.getEntityString`, e.g. `Pig`) | `thaumictinkerer:soul_mould_pattern`: the registry key of the entity type (`minecraft:pig`) |
+| mob display `type` (row name) | `thaumictinkerer:mob_display_mob`: the row of `EnumMobAspect`, saved as its name (`Wisp`), sent as its index |
+| blade `Activated` (int 0/1) | `thaumictinkerer:blood_sword_activated`: boolean, absent = off |
+| infused soul aspect `LastX`/`LastY`/`LastZ` | `thaumictinkerer:mob_aspect_last_tablet`: a `GlobalPos`, the tablet's position **and dimension** |
+
+- **Soul mould.** The pattern is a key, not a holder: a mould keeps the pattern of an entity type that is not registered (a
+  mod removed) and its tooltip shows the id; the tooltip names a known mob with the entity type's own description. The
+  pattern is written to the stack the player holds (as `getCurrentEquippedItem` did), not to the stack the item callback
+  receives: in creative mode `Player.interactOn` passes a copy there, which would lose the pattern. The Corporeal Attractor,
+  its screen and the Jade tooltip read the component (the tooltip sends the id as text, as before).
+- **Cursed Spirit's Blade.** The "active" icon (1.7.10: icon index by the NBT flag) is the item property
+  `thaumictinkerer:activated` (`MachinesClient`, 1 while the component is set) and the override of `models/item/blood_sword.json`
+  on it; the blade no longer sets `custom_model_data`, which a resource pack or another mod may want for itself.
+- **Infused soul aspects.** A stack without the component matches every tablet, as a stack without a tag did in 1.7.10
+  (`lastUsedTabletMatches`). **Deviation (fix):** 1.7.10 compared the coordinates only, so a set moved to a tablet at the same
+  coordinates in another dimension counted as the same tablet and summoned at once; the port compares the dimension as well,
+  so such a set waits one cycle like any set moved to another tablet. (1.7.10 also compared a stack that had a tag for another
+  reason, a name, with the coordinates 0, 0, 0; the component has no such case.)
 - Block entities save with `saveAdditional` / `loadAdditional` (`HolderLookup.Provider`), keys unchanged: `Items`
   (`ContainerHelper`), `tookLastTick`, `adultCheck`. The Attractor's polarity is not saved by the block entity any more,
   it is the block state.
@@ -68,6 +85,22 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
   match, so the order is irrelevant); the redstone strong power 15 while the tool in the slot is damaged; hopper rules
   (accepts damaged tools, gives back mended ones); the tool is returned by a click on an occupied repairer whether
   mended or not.
+- **What it mends (forced, data).** A damaged item (`isDamageableItem`, damage above 0) that is not in the item tag
+  `thaumictinkerer:repairer_blacklist` (`TileRepairer.BLACKLIST`). 1.7.10 asked `Item.isRepairable()`, which `setNoRepair()`
+  turned off; 1.21.1 has no such flag, so the items that called it are the tag: the Spellbinding Cloth (the Kami foci called it
+  too, but have no durability). A blacklisted item is refused by a click and by a hopper, and one put in by other means sets
+  no suction, so no tube gives essentia for it (as 1.7.10: suction 0); a hopper may take it out. The first version of the port
+  had no such rule and mended the cloth. A pack may add items to the tag (EMI names it "Not Mended by the Thaumic Restorer",
+  `lang-extra/machines.*.json`). GameTest `theRestorerNeitherTakesNorMendsTheSpellbindingCloth`, JUnit
+  `theRestorerBlacklistHoldsTheSpellbindingCloth`.
+- **Saving and syncing (fix of the port).** A work cycle saves the block entity and sends it to the clients only when it
+  mended something (once, with the new damage and the flag) or when the flag of the sparkles changed (1.7.10
+  `markBlockForUpdate` on a change of `tookLastTick`). The first version saved and sent the Restorer every ten ticks while a
+  damaged tool sat in it without essentia, and sent it twice in a cycle that changed the flag. 1.7.10 itself called `markDirty`
+  (a save, no packet) every cycle with a damaged tool; the port does not save a cycle that changed nothing. GameTest
+  `theRestorerSavesAndSyncsOnlyWhenSomethingChanged` counts the saves of a Restorer ticked by hand (one in ten cycles without
+  essentia, for the flag; none for a blacklisted item or an empty slot). The number of block updates sent is not counted
+  (a GameTest cannot see it); every one of them goes with a counted save.
 - **TConstruct tools and the `repairTConTools` option are not ported** (the compat is not in the 1.21.1 build). All tools
   are plain damageable items.
 - **Redstone signal changes (fix).** 1.7.10 never told the neighbours when the signal changed, so a lever-like device
@@ -155,12 +188,27 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
 ## 7. Tablet of Necromancy, soul items, mob display
 
 - **Cycle kept:** the tablet works every 300 ticks of world time unless it is powered by redstone, looks for arcane
-  pedestals holding soul aspects at the height of the tablet in growing squares (radius 1 to 5), tries the triples in the
+  pedestals holding soul aspects at the height of the tablet in growing squares (radius 1 to 5), finds the triple of the
   original order, matches the three aspects as a set against the 30 rows of `EnumMobAspect`, and either consumes the
   three soul aspects (plain or mixed sets) or, for three infused ones, runs only when the world time is a multiple of 1200
   and keeps them, marking them with the tablet; a set that was last marked by another tablet summons nothing but is
-  marked again (the 1.7.10 behaviour, `TileSummon` lines 63 to 128).
-- **Rows by entity type (forced).** Entity classes become entity types (ids in `EnumMobAspect`). 1.7.10's ocelot row
+  marked again (the 1.7.10 behaviour, `TileSummon` lines 63 to 128; "another tablet" includes the dimension now, section 2).
+- **The search (performance fix, same result).** 1.7.10 (and the first version of the port) scanned the square of every
+  radius anew and tried every ordered triple of the pedestals, looking each pedestal up in the world again for every triple
+  (the port also resolved the pedestal block from the registry for each look-up): with a dozen pedestals some 9,000 look-ups a
+  cycle. The port now looks up each position of the square of radius 5 once (121 look-ups, the pedestal block resolved once
+  per cycle), takes the pedestals of each radius from that list in the order 1.7.10 scanned that square (x, then z), skips a
+  radius that adds no pedestal, and tries each unordered triple `i < j < k` once. Since the aspects are compared as a set, the
+  first unordered triple is the first ordered triple of 1.7.10 with its pedestals in the same order: the same mob, the same
+  pedestals used up, the essentia trails in the same order. Checked: the JUnit test
+  `theUnorderedTriplesFindTheFirstOrderedTripleOfTheOriginal` compares both loops on 1,500 random lists;
+  `eachSquareTakenFromTheScanHasTheOrderOfTheOriginalScanOfThatSquare` the order of each square; the GameTest
+  `theTabletPicksTheSameSetAsTheOriginalSearch` compares the tablet with a copy of the old search in the world for 44 layouts
+  (hand-made and seeded random; 31 with a match) and lets each matching cycle summon (the row's mob, exactly those three
+  pedestals used up); `theTabletLooksUpEveryPositionOnceACycle` counts 121 look-ups for twelve pedestals where the old search
+  made 8,925.
+- **Rows by entity type (forced).** Entity classes become entity types (each row holds the `ResourceKey` of its type; the type
+  itself is looked up when needed). 1.7.10's ocelot row
   covers the cat; the horse row covers horse, donkey, mule, skeleton horse and zombie horse; `PigZombie` is the zombified
   piglin; the skeleton row is the plain skeleton and the wither skeleton row the wither skeleton (1.7.10 had one class with
   a type); Thaumcraft's mobs (`thaumcraft:wisp`, `firebat`, `brainy_zombie`, `giant_brainy_zombie`) are recognised by
@@ -234,6 +282,11 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
 - **Blocking (forced).** `itemInUse` / `EnumAction.block` become `UseAnim.BLOCK` with a long use duration; every right
   click raises the blade, as in 1.7.10. A player that uses the blade when a blow comes takes 3 magic damage and the blow is
   cancelled; whoever strikes with the blade takes 2 magic damage.
+- **`/kill` and the void are not blocked (fix).** Damage in `#minecraft:bypasses_invulnerability` (`generic_kill` of `/kill`,
+  `out_of_world` of the void) is neither cancelled nor turned into magic damage. 1.7.10 cancelled `DamageSource.outOfWorld` as
+  well, so a player blocking with the blade survived `/kill` (with 3 points of magic damage) and took 3 instead of 4 from the
+  void. GameTest `aBlockingWielderIsNotSavedFromKillOrTheVoid` (the void through the real `hurt`; `/kill` by the handler's
+  answer only, a real `/kill` of the mock player is not run).
 - **Events.** `LivingAttackEvent` is `EntityEvent.LIVING_HURT` (Architectury; forced: it is the nearest event). 1.7.10
   stopped its own nested damage by skipping the next three events of the whole world (`handleNext = 3`), which also swallowed
   unrelated damage; the port skips exactly the damage the handler itself deals (a flag held while it hurts the wielder).
@@ -274,8 +327,12 @@ Neither the stacks nor the worlds of 1.7.10 are migrated (fresh worlds only).
   **The group needs the poster of `LIVING_DROPS` on every loader**: on Fabric `LivingEntityDropsMixin` with the capture mixins, on NeoForge
   `NeoForgeEventPosters.onLivingDrops` (a handler of `LivingDropsEvent`, `docs/HOOKS.md` section 8, written 2026-10-31). Without it the blade
   would not reap, and a mob it kills would drop its loot. The group's 47 GameTests, the reaping checks and the order against the shards
-  among them, passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9; server side only).
-- **Model.** `blood_sword_0` / `blood_sword_active` with the override described in section 2.
+  among them, passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9; server side only); after the review fixes of
+  2026-11-01 the group's 53 GameTests passed on the Fabric and on the NeoForge GameTest server (with BasicItems, RecipeViewers
+  and Tooltips, filtered run).
+- **Model.** `blood_sword_0` / `blood_sword_active` with the override on the item property `thaumictinkerer:activated`
+  (section 2). The client harness checks that the predicate has a property function and draws the activated variant
+  (`ItemVariants` sets the component); not run since the change.
 - **Enchanting (open, shared files).** The blade is not in `#minecraft:swords`, so the vanilla sword enchantments (Sharpness,
   Smite, Bane of Arthropods, Looting, Knockback, Fire Aspect, Sweeping Edge, Unbreaking, Mending) cannot be put on it, while
   the 1.7.10 `ItemSword` took them. Only the four strike enchantments of the add-on list it. The fix is in two files of
@@ -306,7 +363,9 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
   shared-file requests.
 - Lang: the base translations carry all 1.7.10 texts, and `en_us` already has `item.thaumictinkerer.mob_display`
   ("Unknown Mob"). `lang-extra/machines.<lang>.json` adds that one key for `ru_ru`, `de_de`, `fr_fr`, `ko_kr` and `zh_cn`
-  (the fr, ko and zh texts are the port's own translation of two words and should be checked by a native speaker).
+  (the fr, ko and zh texts are the port's own translation of two words and should be checked by a native speaker), and the
+  name of the item tag `tag.item.thaumictinkerer.repairer_blacklist` for `en_us` and `ru_ru`.
+- `data/thaumictinkerer/tags/item/repairer_blacklist.json` names the Spellbinding Cloth of the BasicItems group by its id.
 
 ## 11. Not done / not ported
 
