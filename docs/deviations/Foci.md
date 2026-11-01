@@ -60,8 +60,8 @@ in `lang-extra/foci.*.json` only until the language files are generated again.
 | `focus.onFocusRightClick(stack, world, player, MovingObjectPosition)` | `onFocusRightClick(wandStack, level, player, hand)`: the API passes no hit, so a focus that needs a block asks `ItemModFocus.trace(player, range, fluids, collidable)` |
 | `wand.consumeAllVis`, `getFocusPotency/Enlarge` on the wand item | `WandHelper` of the API; the cost of a focus is read from `getVisCost(WandHelper.getFocusItem(wand))` |
 | `player.setItemInUse(stack, MAX_VALUE)` of the held foci | `player.startUsingItem(hand)` |
-| `PlayerTracker` clearing `playerHealData`/`playerData` on logout | `PlayerEvent.PLAYER_QUIT` (and `CLIENT_PLAYER_QUIT` for the client's own maps), registered by `Foci.register()`/`FociClient` |
-| `ItemFocusDeflect.DeflectBlacklist` (a list of classes) | a set of entity-type ids, `ProjectileHelper.DEFLECT_BLACKLIST`, and the entity-type tag `thaumictinkerer:deflect_blacklist` (data pack); both are checked |
+| `playerHealData`/`playerData` (static maps by name) and `PlayerTracker` clearing them on logout | transient player data attachments of each side's player entity, `ItemFocusHeal.PROGRESS` and `ItemFocusSmelt.SMELTING` (section 11): they end with the entity at logout |
+| `ItemFocusDeflect.DeflectBlacklist` (a list of classes) | the entity-type tag `thaumictinkerer:deflect_blacklist` (data pack; section 11) |
 | `ThaumicTinkerer.registry.getFirstItemFromClass(ItemFocusFlight.class)` | `TTRegistry.stack(LibItemNames.FOCUS_FLIGHT)` |
 
 The wand's tooltip, the cost list, the upgrade lines and the vis payment (frugal, caps, gear) are the API's. `canApplyUpgrade`
@@ -103,9 +103,9 @@ is **not** overridden to `true` as `ItemModFocus` did (see `docs/API_GAPS.md` 3b
 
 - `p.shouldHeal()` is `Player.isHurt()`. `p.heal(1 + potency)` runs on the server only (1.7.10 ran it on both sides; the client's
   health follows the server's).
-- The progress map `playerHealData`, keyed by the player's *name*, is a map by UUID **per side**. 1.7.10 shared one static map between
-  the integrated server and the client of a single-player game (both counted into it); the dedicated-server behaviour, which a
-  multiplayer player had, is the one kept.
+- The progress map `playerHealData`, keyed by the player's *name*, is player data of the player **entity** (section 11), so each side
+  counts on its own player. 1.7.10 shared one static map between the integrated server and the client of a single-player game (both
+  counted into it); the dedicated-server behaviour, which a multiplayer player had, is the one kept.
 - The sparkle is Thaumcraft's own, `ThaumcraftClientFX.sparkle(level, x, y, z, 0)` (violet) at `x + rand - 0.5`, `y + rand`, `z + rand - 0.5`
   of the caster's client, with `y` counted from the eyes (see Uprising).
 
@@ -152,11 +152,12 @@ the gap is kept (the port adds no upgrade the original lacked), and the comment 
   directly). `ProjectileHelper.isDeflectable` is `Projectile` **minus** `AbstractHurtingProjectile` (fireballs, wither skulls, wind and
   breeze charges), fireworks and fishing bobbers, which were never `IProjectile`. Llama spit and shulker bullets, which did not exist
   in 1.7.10, are shifted like arrows.
-- **The owner** (`ProjectileHelper.getOwner`, 1.7.10 `ownerGetters` by class) is `Projectile.getOwner()`; the registry of owner
-  getters remains for an entity that is not a `Projectile`. The comparison `getOwner(e) == p` is the same.
-- **The blacklist** is a set of entity-type ids plus a tag. It holds the experience bottle (`setupBlackList`), as 1.7.10 did with the
-  class. The Botania and Blood Magic entries are dropped (neither mod exists for 1.21.1); the interface rule (`isInterface()`)
-  has no counterpart and is not needed.
+- **The owner** (1.7.10 `ownerGetters` by class) is `Projectile.getOwner()`; the comparison `owner == p` is the same. (The earlier port
+  kept an empty table of owner getters by class for entities that are not `Projectile`s; the shield only looks at `Projectile`s, and the
+  table is gone, section 11.)
+- **The blacklist** is the entity-type tag `thaumictinkerer:deflect_blacklist` (data pack, `replace: false`), which lists the experience
+  bottle, as 1.7.10's `setupBlackList` put its class on the list; a pack or another mod adds to it. The Botania and Blood Magic entries are
+  dropped (neither mod exists for 1.21.1); the interface rule (`isInterface()`) has no counterpart and is not needed.
 - **The box.** `p.posX - (4 + range)` ... `p.posX + (3 + range)`, with `range` the enlarge upgrade, centred on the player's feet
   (`getY()`; the 1.7.10 `posY` of a player is the eye height on one side and the feet on the other, from memory, not checked against
   the original, and the KamiGear copy uses the feet too). Each projectile is moved along its flight by twice its distance from the
@@ -164,7 +165,7 @@ the gap is kept (the port adds no upgrade the original lacked), and the comment 
 - It runs on both sides (1.7.10 did, with six sparkles on the client: `ThaumcraftClientFX.sparkle(level, x, y, z, 6)`, white, before
   the projectile is moved); the server's position is the one that stays.
 - KamiGear keeps its own copy of this rule in `ItemGemChest.protectFromProjectiles` (arrows and `ThrowableProjectile` only, so
-  Thaumcraft's frost shards and orbs are not shifted); it can call `ProjectileHelper.protectFromProjectiles(player, 0)` instead.
+  Thaumcraft's frost shards and orbs are not shifted), with the same blacklist tag; it can call `ProjectileHelper.protectFromProjectiles(player, 0)` instead.
 
 ## 7. Ender Rift (`ItemFocusEnderChest`)
 
@@ -216,7 +217,10 @@ New safeguards (not in 1.7.10, each from something that 1.21.1 makes possible):
   `dislocationRefusesWhatThePlayerCannotBreak`.
 - **The add-on's own blacklist tag.** `#thaumictinkerer:dislocation_blacklist` (data pack, `replace: false`) holds reinforced
   deepslate and budding amethyst, which vanilla lets no piston move (reinforced deepslate can be mined, slowly; budding amethyst
-  drops nothing even with Silk Touch, so moving it would hand out what the game keeps in place). Thaumcraft's own tag is not edited.
+  drops nothing even with Silk Touch, so moving it would hand out what the game keeps in place), and, since 2026-11-01, the cross-mod
+  convention tag `#c:relocation_not_supported` (optional: `"required": false`; Fabric `ConventionalBlockTags.RELOCATION_NOT_SUPPORTED`,
+  NeoForge `Tags.Blocks.RELOCATION_NOT_SUPPORTED`). **Fix, a new refusal:** a block that another mod marks as not to be moved is refused
+  like the others (vanilla puts nothing in that tag). Thaumcraft's own tag is not edited.
   The config blacklist and both tags are one rule (`isBlacklisted`).
 - **A load is checked when it is put down (fix).** The component can be written by hand: a creative player who is no operator can
   give his stacks any component, a command can too. 1.7.10 trusted the tag, and so did the port, so such a focus put down bedrock, a
@@ -276,3 +280,22 @@ that the casting player hears his own copy once and the others hear the server's
 
 Nothing of the seven foci is left out. Dropped on purpose: the EnderStorage page and branch, the Botania and Blood Magic
 blacklist hooks (`BotaniaFunctions`, `BloodMagic`, `IManaBurst`), and the `canApplyUpgrade` override.
+
+## 11. Modernization of 2026-11-01 (package A)
+
+- **The progress of Mending and Efreet's Flame** (sections 3 and 4) is player data of each side's player entity (`ItemFocusHeal.PROGRESS`,
+  `ItemFocusSmelt.SMELTING`, through the add-on's accessor `common/hooks/PlayerData`, `docs/HOOKS.md` section "PlayerData"): never saved or
+  synced, **copied on death** as 1.7.10's maps by name kept the progress through a respawn, and ended with the entity at logout as
+  `PlayerTracker` removed the name. The client's `LocalPlayer` and the server's `ServerPlayer` are separate entities, also in single player,
+  so the side switch (`level.isClientSide`) and the four listeners that emptied the maps (`PLAYER_QUIT`, `CLIENT_PLAYER_QUIT`) are gone.
+  (On NeoForge a client's own copy is not carried over its respawn, which only matters for the sparkles' count.)
+- **The Distortion blacklist** is the tag only; the static set of ids that `setupBlackList` filled with the bottle (which the tag already
+  lists) and the empty table of owner getters by class are deleted.
+- **`#c:relocation_not_supported`** is part of the Dislocation's blacklist tag (section 8, a fix).
+- **Thaumcraft's ingredients by their native ids.** The foci's recipes name Thaumcraft's items by their native ids (`ItemsTC.stack("focus_pech")`)
+  instead of the 1.7.10 field and metadata (`tc("itemFocusPech", 0)`; `ItemModFocus.tc`/`tcBlock` are deleted); the KamiGear GameTest
+  `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs` pins that each names the same stack.
+- **Checks.** GameTest `healAndSmeltProgressBelongToThePlayerEntity` (two entities of one player count apart, a respawn after death keeps
+  both, a logout ends them); `deflectShiftsForeignProjectilesAndSparesTheOwnAndTheBlacklisted` asks the tag. JUnit: the kinds of the two
+  attachments, the tag files (`FociLogicTest`, `FociResourcesTest`). What ran is in `docs/AUDIT.md`, "Modernization (package A)".
+

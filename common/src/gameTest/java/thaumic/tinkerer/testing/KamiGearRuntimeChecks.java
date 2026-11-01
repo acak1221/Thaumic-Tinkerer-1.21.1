@@ -839,7 +839,7 @@ public final class KamiGearRuntimeChecks {
      * logout that the robe had granted it ({@code ItemGemChest.forget}, the 1.7.10 list {@code playersWithFlight} emptied by
      * {@code PlayerTracker}) while the game saves the flight with the player, so a player coming back to a robe that no longer qualifies
      * would keep it. It does not happen: {@code PlayerList.placeNewPlayer} loads the player and then gives it the abilities of its game
-     * mode ({@code loadGameTypes}), so a survival player logs in without flight, and the robe grants it again only if it qualifies. The
+     * mode ({@code loadGameTypes}), so a survival player logs in unable to fly, and the robe grants it again only if it qualifies. The
      * check pins that (the logout and the login are the player list's own: the quit event, the player's file written and read), for a
      * robe that no longer qualifies (here {@code modFlight.enabled} was switched off meanwhile), one that does, and a creative player.
      */
@@ -861,10 +861,12 @@ public final class KamiGearRuntimeChecks {
             ServerPlayer back = now[0];
             test.assertTrue(back != first && back.getItemBySlot(EquipmentSlot.CHEST).getItem() instanceof ItemGemChest,
                     "the player is back, a new entity, in the robe");
-            test.assertTrue(!back.getAbilities().mayfly && !back.getAbilities().flying,
-                    "the login gave the survival player the abilities of its game mode: no flight");
+            // The permission to fly is the game mode's after the login on both loaders. (NeoForge's patch of setGameModeForPlayer keeps the
+            // flag "flying" itself, and its ServerPlayer.doTick clears it at the player's next own tick because the player may not fly;
+            // a mock player runs no doTick, so that flag is not asserted here.)
+            test.assertTrue(!back.getAbilities().mayfly, "the login gave the survival player the abilities of its game mode: it may not fly");
             KamiArmorHandler.onPlayerTick(back);
-            test.assertTrue(!back.getAbilities().mayfly && !back.getAbilities().flying, "and the robe, which no longer qualifies, grants none");
+            test.assertTrue(!back.getAbilities().mayfly, "and the robe, which no longer qualifies, grants no flight");
 
             ConfigHandler.enableFlight = true;
             now[0] = PlayerDataSync.relog(test, back);
@@ -985,13 +987,13 @@ public final class KamiGearRuntimeChecks {
      * The groups KamiGear, KamiWorld, Foci and BasicItems name Thaumcraft's items by their native ids ({@code ItemsTC.stack("jar_void")})
      * where they named them by the 1.7.10 field and metadata ({@code ItemApi.getBlock("blockJar", 3)}); the ids are the item forms of the
      * API's own table ({@code data/thaumcraft/tc4/legacy_ids.json}). For every pair that was replaced, both name the same stack: the same
-     * item with the same components (the wand without {@code wand_data}, the foci without upgrades), so no recipe or research changed.
+     * item with the same components (the wand without {@code wand_data}, the foci without upgrades), so no recipe or research changed. The
+     * warding paving stone ({@code blockCosmeticSolid:3}) is not replaced: its legacy stack carries the block state {@code variant=3}.
      */
     public static void theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs(GameTestHelper test) {
         String[][] replaced = {
             { "block", "blockChestHungry", "0", "hungry_chest" },
             { "block", "blockCosmeticSolid", "2", "paving_stone_travel" },
-            { "block", "blockCosmeticSolid", "3", "paving_stone_warding" },
             { "block", "blockJar", "0", "jar" },
             { "block", "blockJar", "3", "jar_void" },
             { "block", "blockMetalDevice", "8", "growth_lamp" },
@@ -1032,15 +1034,22 @@ public final class KamiGearRuntimeChecks {
             { "item", "itemWandRod", "2", "wand_rod_silverwood" },
             { "item", "itemZombieBrain", "0", "zombie_brain" },
         };
+        List<String> differ = new ArrayList<>();
         for (String[] pair : replaced) {
             int meta = Integer.parseInt(pair[2]);
             ItemStack legacy = pair[0].equals("block") ? thaumcraft.api.ItemApi.getBlock(pair[1], meta) : thaumcraft.api.ItemApi.getItem(pair[1], meta);
             ItemStack nativeStack = thaumcraft.api.items.ItemsTC.stack(pair[3]);
-            test.assertTrue(legacy != null && !legacy.isEmpty(), pair[1] + ":" + meta + " names a stack");
-            test.assertTrue(ItemStack.isSameItemSameComponents(legacy, nativeStack) && legacy.getCount() == nativeStack.getCount(),
-                    pair[1] + ":" + meta + " is " + pair[3] + ": " + legacy + " " + legacy.getComponentsPatch() + " against " + nativeStack + " "
-                            + nativeStack.getComponentsPatch());
+            if (legacy == null || legacy.isEmpty() || !ItemStack.isSameItemSameComponents(legacy, nativeStack) || legacy.getCount() != nativeStack.getCount()) {
+                differ.add(pair[1] + ":" + meta + " is " + legacy + " " + (legacy == null ? "" : legacy.getComponentsPatch()) + ", not " + nativeStack
+                        + " " + nativeStack.getComponentsPatch());
+            }
         }
+        test.assertTrue(differ.isEmpty(), "the legacy pairs that name another stack than their native id: " + differ);
+        // The one pair kept as it was: the warding paving stone's legacy stack carries its block state, the native stack does not.
+        ItemStack warding = thaumcraft.api.ItemApi.getBlock("blockCosmeticSolid", 3);
+        test.assertTrue(warding != null && warding.has(net.minecraft.core.component.DataComponents.BLOCK_STATE)
+                && !ItemStack.isSameItemSameComponents(warding, thaumcraft.api.items.ItemsTC.stack("paving_stone_warding")),
+                "blockCosmeticSolid:3 differs from the plain native stack (so it stays a legacy pair): " + warding);
         test.succeed();
     }
 

@@ -167,8 +167,9 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   neither mod exists for 1.21.1.
 - **The toggle key** "Toggle Awakened Armor" (category "Thaumic Tinkerer") is bound to **no key**, as `Keyboard.KEY_NONE` in the
   pinned source, although the Thaumonomicon pages still say "Pressing U". The player binds it in the controls screen. It switches the
-  master flag of the player: the client sets its own copy and tells the server (`PacketToggleArmor`), the server saves it with
-  the world (`SavedData`) and tells the client on login (`PacketArmorStatus`); the piece-wise switch is the sneak-click.
+  master flag of the player, the player data attachment `thaumictinkerer:kami_armor_on` (section 15): the client sets its own player's copy
+  and tells the server (`PacketToggleArmor`); the server's switch is saved with the player, kept through death and synced to the player's
+  own client (on every change and at login, respawn and change of dimension); the piece-wise switch is the sneak-click.
 - **Cowl of the Abyssal Depths.** Unchanged, including the 1.7.10 quirks: lava gives unlimited breath and Blindness (the code
   names `Potion.blindness`); the food regeneration ignores both switches.
 - **Boots of the Horizontal Shield.** The jump and the fall are loader events (`LIVING_JUMP`, `LIVING_FALL`, section 13), the two handlers of the
@@ -179,7 +180,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   jump higher (the original asked for a player). The attribute modifier `JUMP_STRENGTH` +0.3 of the first port, which scaled with the jump factor,
   is gone, and so is the zeroing of the fall distance for every wearer on every tick; what stays of the tick is the original's `tickPlayer` line:
   `fallDistance = 0` every tick while the boots are switched on. Both listeners change a result that both sides compute, by the same rule (the side's
-  own copy of the master flag, synchronised by `PacketToggleArmor` and `PacketArmorStatus`; the piece's switch is in the stack), and touch nothing in
+  own copy of the master flag: the client's is the synced attachment of its own player; the piece's switch is in the stack), and touch nothing in
   the world. The step height is still an attribute modifier that the server sets (`STEP_HEIGHT` +0.4, -0.1 while sneaking); the walking boost
   (speed 0.075, a quarter in water, half while sneaking) is added to the **local player's** motion on the client, because a 1.21.1 server cannot push
   a client-driven player. As in the original, the speed boost and the step height while moving ignore the disable switches. "Moving" (1.7.10:
@@ -211,8 +212,9 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   `nitor_gas` with the integer state property `level` = 1 on the player and level 0 on the five cells in front (the 1.7.10 code
   had put the metadata back to 0 before the loop). The gas block removes itself when no carrier is near (SimpleBlocks group).
 - **Robes of the Stratosphere.** Flight is `Abilities.mayfly`, granted and taken away by the server every tick for players the
-  armour has granted it (and only for them: a creative player keeps theirs); the projectile deflection is the Kami copy of the
-  Distortion rule (the Foci group owns the focus). Projectiles that did not move during their last tick (an arrow in a block
+  armour has granted it (and only for them: a creative player keeps theirs; the grant is a transient attachment of the player entity,
+  section 15); the projectile deflection is the Kami copy of the Distortion rule (the Foci group owns the focus), with the focus's
+  blacklist, the entity-type tag `thaumictinkerer:deflect_blacklist` (section 15). Projectiles that did not move during their last tick (an arrow in a block
   keeps its hit vector in 1.21.1, where 1.7.10's had no motion left) are not pushed; a projectile that spawned this tick counts as
   not having moved and is looked at one tick later. The six white sparkles per deflected projectile of the original are sent by
   `ThaumcraftFX.sparkle` (the server twin of the client sparkle: request A8, now in the API). The wings are a render layer
@@ -419,12 +421,14 @@ ends with it. No permanent change to any mob. Scope, narrowed to what the 1.7.10
   the 300 steps of 0.15 blocks, the entity margin 0.3 and the mirror rule are those of 1.7.10; an entity on the way takes the hit and
   the beam goes on, a block reflects it (a Nether portal does not: an `EntityThrowable` only "enters" it). The beam is simulated by `ShadowBeam` (a pure
   function of the world, no entity); the **visuals** are a packet with the path to the players within 64 blocks and black dust particles
-  along it, where 1.7.10 spawned a custom black `FXSparkle` subclass per step (request K3). The hum (`thaumcraft:brain`) is played by
-  the server for everyone near, the shooter included.
+  along it, where 1.7.10 spawned a custom black `FXSparkle` subclass per step (request K3). The hum (`thaumcraft:brain`, the API's
+  registered `ThaumcraftSoundIds.BRAIN`) is played by the server for everyone near, the shooter included.
 - **Experience Drain.** 5 vis (+20% per potency) per tick for 15 experience points (-1 per frugal level, scaled to what fits);
   `getExperienceForLevel` and `getLevelForExperience` use the **1.21.1 experience curve** (7 + 2 per level up to 15, and so on), not the
   1.7.10 one of the original helper (17 per level up to 15, `1.5 L^2 - 29.5 L + 360` up to 30...), because the experience bar of
-  a 1.21.1 player follows the new curve; the cost stays 15 experience *points*.
+  a 1.21.1 player follows the new curve; the cost stays 15 experience *points*. The drain leaves the player its points less the cost, set
+  through `ServerPlayer.setExperienceLevels`/`setExperiencePoints` and the total to what is left, as 1.7.10's `drainPlayerXP` set the three
+  fields (section 15).
   The focus colour runs through the rainbow on the client: the icon is a grey texture, tinted by an item colour handler
   (`KamiGearClient.registerItemColors`, 1.7.10 `getColorFromItemStack`). The tooltips reuse Thaumcraft's own keys `item.Focus.cost2` (foci)
   and `tc.visdiscount` (armour).
@@ -432,8 +436,8 @@ ends with it. No permanent change to any mob. Scope, narrowed to what the 1.7.10
   same dimension for 40 vis each of Aer, Terra and Ordo, through `KamiHooks.warpGateTeleporter` (the gateway belongs to the KamiWorld
   group). The research is registered only while Thaumcraft's mirrors are allowed (`ThaumcraftApi.isMirrorsAllowed()`), as in 1.7.10.
   The two jump sounds and the 20 white sparkles before and after the jump of `TileWarpGate.teleportPlayer` belong to the gateway code
-  that the hook calls: the default hook (`KamiHooks.teleportToWarpGate`, used only while KamiWorld has not replaced it) plays both
-  and sends the sparkles (`ThaumcraftFX.sparkle`); the KamiWorld group's `TileWarpGate.teleportPlayer(ServerPlayer, BlockPos)`, which the KamiWorld registrar
+  that the hook calls: the default hook (used only while KamiWorld has not replaced it, which it always has where the Kami items exist)
+  answers "no destination" (section 15); the KamiWorld group's `TileWarpGate.teleportPlayer(ServerPlayer, BlockPos)`, which the KamiWorld registrar
   gives to that hook, plays the sounds and sends the same 20 + 20 sparkles from the server (`KamiHooks.sparklesAround`; `deviations/KamiWorld.md` section 4). Only the
   gateway's own menu and map path has none, as in 1.7.10 (the request made to that group is answered).
 - **`canApplyUpgrade`.** The original Kami foci answered true for every upgrade; the port keeps the base rule (an upgrade must be
@@ -453,10 +457,12 @@ ends with it. No permanent change to any mob. Scope, narrowed to what the 1.7.10
   `AFTER_TRANSLUCENT_BLOCKS` calls `PlacementMirrorPredictionRenderer.render` with the event's pose stack and the main buffer source (the
   same state as Fabric's `AFTER_TRANSLUCENT`: an identity pose stack, the camera rotation on the model view stack; read in the 21.1.259
   jars). Both compile; neither was looked at in a running client on either loader (`docs/NEOFORGE.md`).
-- **Network.** The two S2C payload types (`armor_status`, `shadow_beam`) are registered by their client receivers
-  (`KamiGearClient`); `KamiGear.registerNetwork()` registers them itself only on a dedicated server (`Platform.getEnvironment() ==
-  Env.SERVER`), because Fabric's payload registry throws when a client registers a type twice. `PacketToggleArmor` is C2S and is
-  registered on both sides.
+- **Network.** The S2C payload type `shadow_beam` is registered by its client receiver (`KamiGearClient`); `KamiGear.registerNetwork()`
+  registers it itself only on a dedicated server (`Platform.getEnvironment() == Env.SERVER`), because Fabric's payload registry throws when a
+  client registers a type twice. `PacketToggleArmor` is C2S and is registered on both sides. The master switch reaches the client as the
+  synced player data attachment (section 15; the payload `armor_status` of the earlier port is gone). The beam's codec is
+  `StreamCodec.composite` of a list of three doubles per point, capped at 96 points on both ends (the record keeps the first 96 of a longer
+  path; the wire format is the earlier one).
 - **Models.** The 33 items have JSON item models (`assets/thaumictinkerer/models/item/<path>.json`); the awakened tools and the ring have the
   override models of their modes/state. Nothing was looked at in a running client.
 
@@ -570,3 +576,56 @@ posted with nothing absorbed, stay whole when the listener leaves them alone and
     partial, mixed, iron, wrong slot, bare; a zombie in the set with vanilla armour of 22 points and nothing against magic, a zombie in the chestplate alone armoured as 2 + 8 points; another
     listener sees 8.5 and its extra point composes; the pieces keep damage 0 while iron wears; 3/6/8/3 and no toughness in the attributes).
 * Not run: the same events on a client (the jump of the local player and the landing sound), and a real flight and landing of a Gem Boots wearer (the landing is driven through `Block.fallOn`, the game's own handler, not through a fall).
+
+## 15. Modernization of 2026-11-01 (package A)
+
+What was a 1.7.10 technique in the earlier port and what it is now. The gameplay is the original's unless a bullet says otherwise.
+
+- **The master switch** (section 3) is the player data attachment `thaumictinkerer:kami_armor_on` (`KamiArmorHandler.ARMOR_ON`, through the
+  add-on's accessor `common/hooks/PlayerData`, `docs/HOOKS.md` section "PlayerData"): on by default (no attachment), saved with the player,
+  **copied on death** and synced to the owner. It survives death because the earlier port's world file kept it through death; in 1.7.10 the
+  flag was in the entity data, which the new entity of a respawn did not get, but the player's own client kept its static copy (in single
+  player the integrated server read that copy too), so what a player saw survived a death and only a dedicated server's own copy did not; the
+  port keeps the one consistent answer. The world file `thaumictinkerer_kami_armor.dat`, the S2C payload `armor_status`
+  (`PacketArmorStatus`), the static client flag and its reset on leaving a world are gone; the key's prediction sets the local player's
+  copy. The type is registered whatever `kami.forceenabled` says (an unregistered attachment is dropped when the player loads).
+- **Existing worlds keep their switches.** When a player joins, being listed in the earlier port's `data/thaumictinkerer_kami_armor.dat`
+  (`{disabled: [<UUID>]}`) switches the attachment off, once per player (the marker `thaumictinkerer:migrated_legacy_data`); the file is never
+  written again (KamiWorld section 11 says the same of the Soul Hearts).
+- **The Robes' flight grant** is a transient attachment of the server's player entity (`thaumictinkerer:robe_flight_granted`: not saved, not
+  synced, not copied on death) instead of the static set `PLAYERS_WITH_FLIGHT` with its logout listener (`ItemGemChest.forget`). **No stale
+  flight to fix:** the audit of 2026-11-01 expected a player who logs out flying (or whose server restarts) to come back with the flight
+  while the in-memory set had forgotten the grant, and keep it for good once the robe no longer qualified; but `PlayerList.placeNewPlayer`
+  calls `ServerPlayer.loadGameTypes` after loading the player, which gives it the abilities of its game mode (survival: `mayfly` false), on
+  both loaders (read in the 1.21.1 and NeoForge 21.1.259 bytecode; NeoForge's patch of `setGameModeForPlayer` keeps the flag `flying`, and its
+  `ServerPlayer.doTick` clears it at the player's next tick because the player may not fly), and the respawn's `restoreFrom` does the same. The
+  GameTest `robeFlightAfterALoginIsTheRobesAndTheGameModesOnly` logs a robe wearer out flying and back in through the player list and observed
+  `mayfly` false at the login on both loaders (`docs/AUDIT.md`, "Modernization (package A)", says where it ran). So the grant needs no saving.
+- **The Robes and the Focus of Distortion share one blacklist, the tag.** The Robes named the experience bottle's class; they ask the
+  entity-type tag `thaumictinkerer:deflect_blacklist` (by its id: the focus is the Foci group's), which lists the bottle, as 1.7.10 asked the
+  focus's list. New: a pack's addition to the tag reaches the Robes too (GameTest `theRobesLeaveWhatTheDeflectBlacklistTagLists`).
+- **The Experience Drain** used the earlier port's own curve, whose level search counted up and never ended for a total beyond the int range
+  (a level set by a command), and wrote the three experience fields. The overflow-safe curve of the BasicItems group's `ExperienceHelper`
+  (used only by its tests, now deleted) moved into `ItemFocusXPDrain`; the drain sets the level and the bar through the server player's own
+  setters (`setExperienceLevels`, `setExperiencePoints`: what `/xp set` uses; they send the bar) and the total to what is left, as 1.7.10 did.
+  `giveExperiencePoints(-n)` was not used: it would lower the death screen's score, which the original did not (GameTest
+  `experienceDrainRemovesExperiencePointsNotLevels`: the total, the score, a total beyond the int range).
+- **Sounds by their registered events.** `KamiHooks.broadcastThaumcraftSound` takes the API's ids (`ThaumcraftSoundIds.WAND`, `BRAIN`) and
+  plays `ThaumcraftSoundIds.event(id)` instead of looking a path up in the sound registry; same sounds.
+- **The default Celestial Recall teleporter** serialised the whole gate to read its lock; KamiWorld replaces it wherever the Kami items exist,
+  so the default answers "no destination" (`ttmisc.noDest`).
+- **Names instead of metadata indexes and field names.** `ItemKamiResource.ICHOR` ... `ENDER_SHARD` are the registry paths (`LibItemNames` has
+  the eight names; `KAMI_RESOURCE_NAMES` keeps the original order). Every Thaumcraft ingredient of the Kami recipes is named by its native id
+  (`ItemsTC.stack("focus_primal")`) instead of its 1.7.10 field and metadata (`KamiResearch.tc("itemFocusPrimal", 0)`; `tc`/`tcBlock` are
+  deleted); the ids are the item forms of the API's own table (`data/thaumcraft/tc4/legacy_ids.json` of the pinned jar). The GameTest
+  `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs` pins, for every replaced pair of the four groups of package A, that both name the same
+  stack (item and components).
+- **Dead code.** The seven `shouldDisplayInTab()` overrides that answered `ConfigHandler.enableKami` (always true where the items exist) are
+  gone. The awakened leggings ask the nitor gas for its `level` property only (the probe tried `level`, `meta`, `variant` and `bright`).
+- **Checks.** GameTests (`KamiGearRuntimeChecks`): `kamiArmourSwitchIsSavedKeptThroughDeathAndToldToItsOwner`,
+  `kamiArmourSwitchMovesFromTheOldSaveFileOnce`, `robeFlightAfterALoginIsTheRobesAndTheGameModesOnly`, `robeFlightGrantIsNotCopiedOnDeath`,
+  `theRobesLeaveWhatTheDeflectBlacklistTagLists`, `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs`, and the extended
+  `experienceDrainRemovesExperiencePointsNotLevels`. JUnit (`KamiGearLogicTest`): the kinds and codecs of the two attachments, the beam codec
+  (wire format, cap, a longer list refused), the overflow-safe curve (moved from `BasicItemsLogicTest`), the resource names.
+  What ran is in `docs/AUDIT.md`, "Modernization (package A)".
+

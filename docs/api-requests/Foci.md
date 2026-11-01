@@ -65,3 +65,14 @@ them (the wand's `IWandable` ray is `blockInteractionRange` with fluids), add-on
 `onFocusRightClick(ItemStack wand, Level level, Player player, InteractionHand hand, @Nullable BlockHitResult hit)` could hand over the
 wand's own hit. The add-on uses `blockInteractionRange()` with fluids for the Dislocation and a fixed ten blocks through fluids and
 grass for Efreet's Flame (the original `BlockUtils.getTargetBlock`).
+
+## 5. Native stacks of the paving stones (F5, P3, 2026-11-01)
+
+The add-on names Thaumcraft's items by their native ids (`ItemsTC.stack("mirrored_glass")`) instead of the 1.7.10 field and metadata. One pair
+cannot be replaced without changing a recipe: `ItemApi.getBlock("blockCosmeticSolid", 3)` (the Distortion focus's warding paving stone) is
+`thaumcraft:paving_stone_warding` **with** the component `minecraft:block_state` `{variant: 3}`, while `ItemsTC.stack("paving_stone_warding")`
+has no component (the KamiGear GameTest `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs` shows it; `blockCosmeticSolid:2`, the travel
+paving stone, carries none and is replaced). Either the native item should not need the state (then the legacy stack could drop it), or the API
+could name the stack: `ItemStack BlocksTC.itemForm(String field, int meta)`, or a named accessor such as `ItemsTC.pavingStone(boolean warding)`
+that returns what the legacy pair returns. Until then the focus keeps `ItemApi.getBlock("blockCosmeticSolid", 3)`. Backed by the mod's
+`legacy_ids.json` row (`item` `thaumcraft:paving_stone_warding`, `state` `{variant: 3}`) and `ItemApi.legacyStack`.

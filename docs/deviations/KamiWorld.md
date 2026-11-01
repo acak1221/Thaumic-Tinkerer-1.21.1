@@ -38,7 +38,7 @@ a GPU, multiplayer. **On NeoForge** (2026-10-31, the posters of `docs/HOOKS.md` 
 | block `portal` (`BlockBedrockPortal`; `getItemBlock()` returned null, so `GameRegistry` registered the default item block, and the block was in the creative tab) | block `thaumictinkerer:bedrock_portal` (`LibBlockNames.PORTAL`) with the default item, a creative tab entry and an item model, no block entity (section 3) |
 | dimension id -19 (`bedrockDimensionID`, config), `WorldProviderBedrock`, `ChunkProviderBedrock` | the dimension `thaumictinkerer:bedrock` (`WorldProviderBedrock.KEY`): `data/thaumictinkerer/dimension/bedrock.json`, `dimension_type/bedrock.json`, `worldgen/biome/bedrock.json`, generator type `thaumictinkerer:bedrock` (`ChunkGeneratorBedrock`, a `DeferredRegister` of `Registries.CHUNK_GENERATOR` in `KamiWorld`); the ore clusters of `populate`: feature type `thaumictinkerer:bedrock_ore_clusters` (`BedrockOreClustersFeature`, `Registries.FEATURE`) with `worldgen/configured_feature/bedrock_ore_clusters.json` and `worldgen/placed_feature/bedrock_ore_clusters.json` |
 | ore dictionary names of `EnumOreFrequency` | the same names, resolved to item tags by `OreDictionaryNames`; "first ore" is the member with the lowest registry id |
-| `PacketSoulHearts`, `PacketWarpGateButton`, `PacketWarpGateTeleport` (`SimpleNetworkWrapper`, ids 142+) | `CustomPacketPayload` records `soul_hearts` (S2C), `warp_gate_button`, `warp_gate_teleport` (C2S) |
+| `PacketSoulHearts`, `PacketWarpGateButton`, `PacketWarpGateTeleport` (`SimpleNetworkWrapper`, ids 142+) | the Soul Hearts: the synced player data attachment `thaumictinkerer:soul_hearts` (section 11; the payload `soul_hearts` of the earlier port is gone); `CustomPacketPayload` records `warp_gate_button`, `warp_gate_teleport` (C2S) |
 | `LibGuiIDs.GUI_ID_WARP_GATE`, `GUI_ID_WARP_GATE_DESTINATIONS` | menu type `warp_gate` (`ContainerWarpGate`); the destinations screen has no container and is opened by the block entity on the client (`TileWarpGate.setDestinationsOpener`) |
 | `GuiWarpGate`, `GuiButtonWG`, `GuiWarpGateDestinations`, `SoulHeartClientHandler`, `RenderTileWarpGate`, `RenderWarpGate` (ISBRH) | the same names under `thaumic.tinkerer.client` (section 8); the ISBRH is a JSON model plus the block entity renderer |
 | `KamiUnlockedCommand` (`CommandBase`) | `thaumic.tinkerer.common.core.commands.KamiUnlockedCommand`, a Brigadier literal registered with `CommandRegistrationEvent` |
@@ -222,14 +222,19 @@ bedrock and the click goes on (a held block is placed against it), as in `onBloc
 
 - **The pool.** Up to 20 points (ten hearts). `addHearts` adds 1 point (the hook of the Awakened Sword's Soul Mode,
   `KamiHooks.soulHeartSink`), `addHP` clamps to 20 and refuses a full pool, `removeHP` returns the overflow, `setHP`/`getHP`.
-  1.7.10 stored the number in the player's entity data, which a respawn does not copy; here it is saved with the world by player
-  UUID (`SoulHeartData`, the server's overworld data storage) and **cleared** when a player is re-created by a respawn
-  (`PLAYER_CLONE`, death or the end poem), so the hearts are still lost on death. It survives logout and dimension changes as before.
-- **The client.** `PacketSoulHearts` after every change, and **on login and respawn** (1.7.10 sent nothing on login, so the bar
-  was empty until the next change; a client also kept the number of the last world, which is cleared on leaving).
+  1.7.10 stored the number in the player's entity data, which a respawn does not copy; here it is the player data attachment
+  `thaumictinkerer:soul_hearts` (`SoulHeartHandler.HEARTS`, section 11): saved with the player, **not copied on death**, and taken
+  away on the respawn after the End as well (`PLAYER_RESPAWN`; both loaders copy every attachment there, and 1.7.10 lost its entity
+  data there too), so the hearts are still lost on death. It survives logout and dimension changes as before. (The earlier port
+  saved it with the world by UUID, `SoulHeartData`; that file is read once per player and never written again, section 11.)
+- **The client.** The attachment is synced to the player's own client and to nobody else: every change, and the whole value on login,
+  respawn and change of dimension, by the loader (1.7.10 sent nothing on login, so the bar was empty until the next change; a client
+  also kept the number of the last world, which cannot happen now: the number belongs to the client's player entity).
 - **The HUD.** `SoulHeartClientHandler`: hearts 9 pixels (half hearts 7) wide, 8 apart, from `width / 2 + 10`, at
-  `height - ConfigHandler.soulHeartHeight` (49: the row above the food bar), 10 higher while the air bubbles are shown, from
-  `textures/gui/soul_hearts.png` (16 by 16: the full heart on the left, the half heart at u 9). Drawn from
+  `height - ConfigHandler.soulHeartHeight` (49: the row above the food bar), 10 higher while the air bubbles are shown, as the GUI
+  sprites `hud/soul_heart_full` and `hud/soul_heart_half` (`textures/gui/sprites/hud/`, 9 by 9 and 7 by 9: the top left of the 1.7.10
+  sheet `soulHearts.png`, now `textures/gui/soul_hearts.png`, pixel for pixel; `GuiGraphics.blitSprite` as vanilla draws its hearts,
+  with blending switched off again after the row). Drawn from
   `ClientGuiEvent.RENDER_HUD` after the vanilla HUD, only where the health bar is drawn (not in creative or spectator, not with the
   HUD hidden). Since the draw is after the vanilla HUD, it lies over the air bubbles when the air row and the soul-heart row
   coincide at the default height; the 10-pixel shift avoids that as in 1.7.10.
@@ -323,8 +328,9 @@ bedrock and the click goes on (a held block is placed against it), as in `onBloc
   - `bypasses_cooldown` sources start new frames every time (the pool's too); empty in vanilla, so **not exercised** by a check.
   - 1.7.10 reduced a falling anvil/block by a quarter for a helmet *before* the frames; here that happens after the event (`HOOKS.md`
     section 3 and the table of section 13, item 7), so such a hit is charged at its full amount.
-  - The pool is charged on the server only; the client learns the number from `PacketSoulHearts`, sent after every hit that is
-    charged (and not for a hit the frames refuse), as 1.7.10 sent it after every event.
+  - The pool is charged on the server only; the client learns the number from the attachment's sync, which sends a **change**: a hit
+    the frames refuse sends nothing, and neither does a hit that leaves the pool as it was (no hearts and a hit of 0 whole points to take,
+    or an empty pool that stays empty). 1.7.10 sent the pool after every event, changed or not; the client saw the same number.
   - **Other listeners of `LIVING_DAMAGE` and the pool's frames.** `ContentGroups.ALL` runs the Enchantments group before this one, so its
     listener (`ModEnchantmentHandler.onEntityDamaged`) is earlier in the chain, as `ModEnchantments.initEnchantments()` was before the
     registration of `SoulHeartHandler` in 1.7.10's `TTCommonProxy` (the order is the same). Two consequences of the pool keeping its own
@@ -393,8 +399,8 @@ is required" for a non-player. The three words are literal English texts, as in 
 ## 8. Client and resources
 
 - Screens `GuiWarpGate`, `GuiWarpGateDestinations`, button `GuiButtonWG`, HUD `SoulHeartClientHandler`, renderer
-  `RenderTileWarpGate`, registration `KamiWorldClient` (called from `KamiWorld.registerClient()`; the S2C receiver of
-  `PacketSoulHearts`, the cut-out render type of the gate, the opener of the destinations screen).
+  `RenderTileWarpGate`, registration `KamiWorldClient` (called from `KamiWorld.registerClient()`; the cut-out render type of the gate,
+  the opener of the destinations screen; the Soul Hearts need no receiver: section 11).
 - `models/block/warp_gate.json`, `models/item/warp_gate.json`, `models/block/bedrock_portal.json` (all six faces; the top and
   the bottom are always drawn and a side is culled by an opaque neighbour, which is what 1.7.10's `shouldSideBeRendered` came to;
   the portal texture is animated, 3 ticks per frame), blockstates, the gate's loot table (with a load condition for each loader on the
@@ -524,3 +530,40 @@ is required" for a non-player. The three words are literal English texts, as in 
     the server sends it, with the right number), the shield, helmet and sleeping cases of section 5 (read from the bytecode of 1.21.1, not run),
     and NeoForge (no poster at the time of that round; the posters were written later and the group's 20 GameTests have since passed on a NeoForge
     GameTest server, header).
+
+## 11. Modernization of 2026-11-01 (package A): player data, the old save file, the map
+
+What was a 1.7.10 technique in the earlier port and what it is now; the gameplay is the original's unless a bullet says otherwise.
+
+- **The pool is a player data attachment** (`thaumictinkerer:soul_hearts`, an `Integer` 1 to 20, absent for an empty pool), through the
+  add-on's loader-neutral accessor `common/hooks/PlayerData` (`docs/HOOKS.md`, section "PlayerData"; Fabric API's Data Attachment API and
+  NeoForge's `AttachmentType`, since Architectury has none): saved with the player (codec `Codec.intRange(0, 20)`), not copied on death,
+  synced to the owner (`ByteBufCodecs.VAR_INT`). The world file `thaumictinkerer_soul_hearts.dat`, the S2C payload `soul_hearts`
+  (`PacketSoulHearts`), its two registrations and the client's static `SoulHeartClientHandler.clientPlayerHP` are gone; the HUD reads the
+  local player's attachment. The attachment type is registered whatever `kami.forceenabled` says, because both loaders drop an unregistered
+  attachment when the player loads: a server that switches Kami off for a while keeps its players' pools.
+- **The frames of section 5** (`SoulHeartHandler.Frames`) are a transient attachment of the server's player entity
+  (`thaumictinkerer:soul_heart_frames`: never saved or synced, not copied on death) instead of a static map by UUID that three listeners
+  emptied (logout, respawn, server stop); the respawn listener still drops them after the End, where Fabric copies every attachment.
+- **Existing worlds keep their pools.** When a player joins, its entry of the earlier port's `data/thaumictinkerer_soul_hearts.dat` (format
+  `{hearts: [{player: <UUID>, hp: <int>}]}`) becomes the attachment, unless the player has a pool there already; a persistent marker
+  (`thaumictinkerer:migrated_legacy_data`, kept through death) records per player that the file was read, so a stale entry never overwrites
+  a newer pool (a player who emptied the pool and logs in again stays at 0). The file is never written again (the data are never made
+  dirty): a player who never comes back keeps its entry there, and the file stays a backup of the last state of the earlier port.
+- **The network** sends a change only (above); the packet count of the client was not gameplay.
+- **The Celestial Gateway's map** draws its lines into the GUI's batch (`RenderType.gui()`, what `GuiGraphics.fill` uses) instead of an
+  immediate `Tesselator` draw with its own `RenderSystem` state; the lines are still under the pearls (the items flush the batch). The tint
+  of its background is `Mth.hsvToRgb` instead of AWT's `Color.HSBtoRGB`: the original hue (`sin(ticks / 150) + 1F / 2F`, which runs from
+  -0.5 to 1.5) is taken modulo 1 as AWT took it, and a channel can differ by one step of 255 (AWT rounded, `Mth` truncates;
+  JUnit `theGatewayMapsTintIsTheOriginalsUpToOneStepPerChannel`).
+- **Names instead of metadata indexes.** The gate's recipe and the shard drops name `LibItemNames.ICHOR`, `ENDER_SHARD` and `NETHER_SHARD`
+  instead of indexing `KAMI_RESOURCE_NAMES`; the gate's recipe names Thaumcraft's travel paving stone by its native id
+  (`ItemsTC.stack("paving_stone_travel")`, the item form of `blockCosmeticSolid:2` in the API's table; KamiGear section 15 has the check).
+- **Checks.** GameTests (`KamiWorldRuntimeChecks`): `soulHeartsAreSavedPerPlayerAndNotShared` (rewritten: a real logout and login through the
+  player list, the pool in the saved tag only when not empty, the change told to the owner's client and to no other),
+  `soulHeartsAreLostOnDeathAndOnTheWayBackFromTheEnd` (the player list's own respawns), `soulHeartsMoveFromTheOldSaveFileOnce` (the old file
+  written to disk in its format and read back by a `DimensionDataStorage`, then the joins), and `soulHeartsKeepTheFramesOfTheOriginal`, whose
+  packet expectations now read the loader's attachment sync (`PlayerDataSync` decodes Fabric's `fabric:attachment_sync_v1` and NeoForge's
+  `neoforge:sync_attachments`). JUnit (`KamiWorldLogicTest`): the attachment's kind and codecs, the old file's format, the map's tint.
+  What ran is in `docs/AUDIT.md`, "Modernization (package A)".
+

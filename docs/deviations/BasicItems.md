@@ -1,8 +1,8 @@
 # BasicItems: deviations from Thaumic Tinkerer 1.7.10
 
 Group BasicItems: Spellbinding Cloth, Talisman of Remedium, Talisman of Withhold, Tome of Knowledge Sharing, Infused
-Scribing Tools, Helmet of Revealing, the helpers `ExperienceHelper` and `MiscHelper` (and once `ItemNBTHelper`, see section 1), and the client
-handler `ClientTickHandler` (the other one of the two, `HUDHandler`, is the Foci group's `DislocationHUDHandler`, see section 8).
+Scribing Tools, Helmet of Revealing, the helper `MiscHelper` (and once `ExperienceHelper`, `ItemNBTHelper` and the client handler
+`ClientTickHandler`, see sections 1, 8, 9 and 11; the other client handler, `HUDHandler`, is the Foci group's `DislocationHUDHandler`, see section 8).
 Specification: the 1.7.10 sources of GTNewHorizons/ThaumicTinkerer
 (commit in `NOTICE.md`). Everything not listed here is ported as it was: numbers (35 uses of the cloth, 100 points of the
 talisman, ten for the warp effects, range 3, 1500 points, cost 10, 800 ink, 500 durability, 5% discount), research keys,
@@ -61,8 +61,9 @@ deleted it reads as follows: it keeps its 1.7.10 function names and stores under
 - **Anvil (choice).** `setNoRepair()` has no counterpart: 1.21.1 lets two damaged cloths be combined in an anvil.
 - **Thaumic Restorer.** The other effect of `setNoRepair()`, that the Restorer refused the cloth, is the item tag
   `thaumictinkerer:repairer_blacklist` of the Machines group, which lists the cloth (`docs/deviations/Machines.md` section 4).
-- **Colour.** `getColorFromItemStack` is an item colour handler (`BasicItemsClient`) with the same formula and
-  `Color.HSBtoRGB`; the model is a plain generated model, tinted on layer 0.
+- **Colour.** `getColorFromItemStack` is an item colour handler (`BasicItemsClient`) with the same formula, through `Mth.hsvToRgb` (the
+  original's AWT `Color.HSBtoRGB` rounded each channel where `Mth` truncates: at most one step of 255 apart, section 11); the model is a
+  plain generated model, tinted on layer 0.
 - Crucible recipe, research (`SPELL_CLOTH`, parent hidden `ENCHFABRIC`) and the page text are unchanged; the enchanted fabric
   ingredient is `thaumcraft:enchanted_fabric` (`itemResource:7`).
 
@@ -98,8 +99,10 @@ deleted it reads as follows: it keeps its 1.7.10 function names and stores under
   slowness goes before poison whichever was applied first.
 - **Creative players.** A creative player is cleansed but the talisman is not worn out: `hurtAndBreak` ignores a player with
   infinite materials, as 1.7.10 `ItemStack.damageItem` ignored creative players. Nothing is done about it on purpose.
-- **Memory per wearer.** 1.7.10 kept two maps on the item instance (every talisman shared them). The port keeps them in a
-  static map keyed by the player's id and forgets a player when he leaves and every player when the server stops.
+- **Memory per wearer.** 1.7.10 kept two maps by UUID on the item instance (every talisman shared them), never emptied while the game
+  ran. The port keeps the memory as player data of the server's player entity (`ItemCleansingTalisman.MEMORY`, section 11): kept
+  through a respawn after death as 1.7.10's maps kept it, gone at logout with the entity (the earlier port's static map was emptied at
+  logout and at server stop too; 1.7.10 kept a player's entry until the game stopped).
 - **Click (choice).** The sneak click toggles, as before. A plain click did nothing in 1.7.10; in the port it puts the
   talisman into the amulet slot (`IBauble.equipsOnUse` is true while not sneaking), like every other bauble of this port.
   The Baubles menu works as always.
@@ -199,11 +202,11 @@ deleted it reads as follows: it keeps its 1.7.10 function names and stores under
   deleted; exactly one overlay exists. The drawn differences between the two (the second line's box is as wide as the
   wider of the two lines in the Foci class, as wide as the first line in 1.7.10) and the missing `dialBottom` position
   are documented in the Foci files (`docs/deviations/Foci.md`, `docs/api-requests/Foci.md`).
-- **ClientTickHandler.** Of its three jobs only the tick counter is left: the swap of the Thaumonomicon page for the
+- **ClientTickHandler is gone (2026-11-01).** Of its three jobs only the tick counter was left: the swap of the Thaumonomicon page for the
   ComputerCraft peripherals research (`GuiResearchPeripheral`, which opened a web address on Enter) is not ported with
   ComputerCraft, and the tick of `ToolModeHUDHandler` is registered by the Kami group itself and must not run twice.
-  `GuiResearchPeripheral` is skipped for the same reason. The counter is read by nobody in the add-on today (the Kami group's
-  `ToolModeHUDHandler` has a counter of its own); it stays as the port of the public 1.7.10 field.
+  `GuiResearchPeripheral` is skipped for the same reason. The counter was read by nobody in the add-on (the Kami group's
+  `ToolModeHUDHandler` has a counter of its own), so the class and its registration were deleted (section 11).
 - **The text of the `PERIPHERALS` page (decision).** The entry still exists, because the Aspectalyzer and the Golem Connector
   are its children in the book (Machines and TileBlocks groups register it). Its page text promised "Pressing ENTER right now
   will take you to" a web page and named an address; nothing handles Enter any more, so
@@ -222,10 +225,11 @@ deleted it reads as follows: it keeps its 1.7.10 function names and stores under
   up (the loop never returned for `Integer.MAX_VALUE`, because the points of a level beyond 21,863 saturate an `int`);
   the points are computed in `long`, a level whose points do not fit gives `Integer.MAX_VALUE`, and `addPlayerXP` /
   `getPlayerXP` saturate at the `int` range instead of wrapping to a negative total (which `Math.max(0, ...)` turned into a
-  wipe). Nothing in the add-on calls the helper today.
-- **`MiscHelper`.** `Vector3` is `Vec3`; the block event is Architectury's `BlockEvent.BREAK` (asked for a `ServerPlayer`
-  only; a break by something else is not vetoed), `server()` is `GameInstance.getServer()`, the stack trace goes to the log.
-  The block metadata argument is the default state of the block.
+  wipe). Nothing in the add-on called the helper but its tests; since 2026-11-01 the class is deleted and its overflow-safe curve is
+  the KamiGear group's Experience Drain's, its only user (`docs/deviations/KamiGear.md` section 15; the tests moved with it).
+- **`MiscHelper`.** `Vector3` is `Vec3`. What is left is what the other groups call: `setEntityMotionFromVector` (the magnets and the
+  Focus of Telekinesis) and `multiplyAspectList` (the Enchanter). The unused `breakBlockWithCheck` (four overloads), `server()`,
+  `pointDistanceSpace` and `printCurrentStackTrace` were deleted on 2026-11-01.
 
 ## 10. Things the original did that the port keeps as they are
 
@@ -234,3 +238,22 @@ deleted it reads as follows: it keeps its 1.7.10 function names and stores under
   "one new effect per pass, permanent when it comes back" rule (section 3).
 - `ItemShareBook.getResearchItem` registers a text page and, with the option on, the recipe page; the entry is a stub that is
   auto-unlocked and round. The helmet and the talisman keep their research positions, parents and pages.
+
+## 11. Modernization of 2026-11-01 (package A)
+
+- **The Talisman of Remedium's memory** (section 3) is player data of the wearer's server entity (`ItemCleansingTalisman.MEMORY`, through
+  the add-on's accessor `common/hooks/PlayerData`, `docs/HOOKS.md` section "PlayerData"): never saved or synced, copied on death, ended with
+  the entity at logout; the static map by UUID and its two listeners (logout, server stop) are gone.
+- **Effects by their registry keys.** The talisman's rule (`CleansingLogic`) and the five warp effects work on `ResourceKey<MobEffect>`
+  instead of their id strings (`effect.is(key)` for the warp ward); burning, 1.7.10's effect id -1, is the key `thaumictinkerer:burning`,
+  under which no effect is registered (GameTest `cleansingTalismanMemoryIsKeptThroughDeathAndEndsWithTheEntity`).
+- **No AWT.** The Spellbinding Cloth's colour is `Mth.hsvToRgb` (section 2).
+- **The Infused Scribing Tools' glint** is the item's default component `ENCHANTMENT_GLINT_OVERRIDE` instead of an `isFoil` override (same
+  look; a stack can now be told otherwise by a command).
+- **Thaumcraft's ingredients by their native ids** (`ItemsTC.stack("enchanted_fabric")` for `itemResource:7` and the others; the KamiGear
+  GameTest `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs` pins that each names the same stack).
+- **Deleted:** `ExperienceHelper` (moved to the Experience Drain), the unused parts of `MiscHelper`, `ClientTickHandler`.
+- **Checks.** GameTests `cleansingTalismanMemoryIsKeptThroughDeathAndEndsWithTheEntity`, `infusedInkwellIsRefilledByEightInkSacs` (the
+  glint), `everyGroupItemKeepsItsDataThroughSaving` (the cloth's colour within one step of AWT's); JUnit `BasicItemsLogicTest` (the rule over
+  effect keys, the memory's kind). What ran is in `docs/AUDIT.md`, "Modernization (package A)".
+

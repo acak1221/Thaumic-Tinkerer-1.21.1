@@ -11,10 +11,12 @@
  */
 package thaumic.tinkerer.common.item.foci;
 
+import java.util.Objects;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
@@ -109,6 +111,8 @@ public class ItemFocusDeflect extends ItemModFocus {
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_FOCUS_DEFLECT, new ItemStack(this), 5,
                 new AspectList().add(Aspect.AIR, 15).add(Aspect.ARMOR, 5).add(Aspect.ORDER, 20),
                 TTRegistry.stack(LibItemNames.FOCUS_FLIGHT), ItemsTC.stack("mirrored_glass"), ItemsTC.stack("mirrored_glass"),
-                ItemsTC.stack("paving_stone_warding"), ItemsTC.stack("order_shard"));
+                // blockCosmeticSolid:3 stays a legacy pair: its stack carries the state variant=3 of cosmetic_solid (minecraft:block_state),
+                // which the native item stack does not (docs/api-requests/Foci.md, "Native stacks of the paving stones")
+                Objects.requireNonNull(ItemApi.getBlock("blockCosmeticSolid", 3), "Thaumcraft block blockCosmeticSolid:3"), ItemsTC.stack("order_shard"));
     }
 }
