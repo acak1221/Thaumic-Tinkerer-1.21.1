@@ -1249,8 +1249,8 @@ public final class KamiWorldRuntimeChecks {
         test.assertTrue(TinkererEvents.hasLivingDropsListeners(), "the group listens to the drops of the dying (LIVING_DROPS)");
         ServerPlayer player = player(test, 1.5, 1, 1.5);
         TinkererFakePlayer fake = new TinkererFakePlayer(end, new GameProfile(UUID.randomUUID(), "[TTKamiTest]"));
-        Item enderShard = TTRegistry.item(LibItemNames.KAMI_RESOURCE_NAMES[7]);
-        Item netherShard = TTRegistry.item(LibItemNames.KAMI_RESOURCE_NAMES[6]);
+        Item enderShard = TTRegistry.item(LibItemNames.ENDER_SHARD);
+        Item netherShard = TTRegistry.item(LibItemNames.NETHER_SHARD);
         java.util.function.DoubleSupplier realDice = DimensionalShardDropHandler.dice;
         List<ItemEntity> everything = new ArrayList<>();
         // The same on the way out and on a failure: the mock player would stay in the world (the harness does not remove players with
@@ -1359,8 +1359,8 @@ public final class KamiWorldRuntimeChecks {
         ServerLevel end = server.getLevel(Level.END);
         test.assertTrue(nether != null && end != null, "the Nether and the End exist");
         ServerPlayer player = player(test, 1.5, 1, 1.5);
-        Item enderShard = TTRegistry.item(LibItemNames.KAMI_RESOURCE_NAMES[7]);
-        Item netherShard = TTRegistry.item(LibItemNames.KAMI_RESOURCE_NAMES[6]);
+        Item enderShard = TTRegistry.item(LibItemNames.ENDER_SHARD);
+        Item netherShard = TTRegistry.item(LibItemNames.NETHER_SHARD);
         try {
             int ender = 0;
             for (int i = 0; i < 6400; i++) ender += count(die(mobAt(EntityType.ENDERMAN, end), end.damageSources().playerAttack(player), false), enderShard);

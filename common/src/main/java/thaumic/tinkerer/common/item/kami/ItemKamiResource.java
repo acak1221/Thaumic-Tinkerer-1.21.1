@@ -32,46 +32,47 @@ import thaumic.tinkerer.common.research.TTResearchItem;
 
 /**
  * The eight metadata values of the 1.7.10 {@code kamiResource} item are eight items now, in the original order
- * ({@link LibItemNames#KAMI_RESOURCE_NAMES}): 0 {@code ichor}, 1 {@code ichor_cloth}, 2 {@code ichorium}, 3
- * {@code ichor_nugget}, 4 {@code ichor_cap}, 5 {@code ichorcloth_rod}, 6 {@code nether_shard}, 7 {@code ender_shard}.
- * The two shards are common, everything else has the Kami rarity.
+ * ({@link LibItemNames#KAMI_RESOURCE_NAMES}): {@code ichor}, {@code ichor_cloth}, {@code ichorium}, {@code ichor_nugget},
+ * {@code ichor_cap}, {@code ichorcloth_rod}, {@code nether_shard}, {@code ender_shard}, named by their registry paths
+ * ({@link #ICHOR} and the others). The two shards are common, everything else has the Kami rarity.
  *
- * <p>The recipes and the research of the whole family belong to the Ichor item (index 0), as the research of the
- * metadata item was one {@code TTResearchItemMulti} in 1.7.10.</p>
+ * <p>The recipes and the research of the whole family belong to the Ichor item, as the research of the metadata item was one
+ * {@code TTResearchItemMulti} in 1.7.10.</p>
  */
 public class ItemKamiResource extends KamiItemBase {
-    public static final int ICHOR = 0;
-    public static final int ICHOR_CLOTH = 1;
-    public static final int ICHORIUM = 2;
-    public static final int ICHOR_NUGGET = 3;
-    public static final int ICHOR_CAP = 4;
-    public static final int ICHORCLOTH_ROD = 5;
-    public static final int NETHER_SHARD = 6;
-    public static final int ENDER_SHARD = 7;
+    public static final String ICHOR = LibItemNames.ICHOR;
+    public static final String ICHOR_CLOTH = LibItemNames.ICHOR_CLOTH;
+    public static final String ICHORIUM = LibItemNames.ICHORIUM;
+    public static final String ICHOR_NUGGET = LibItemNames.ICHOR_NUGGET;
+    public static final String ICHOR_CAP = LibItemNames.ICHOR_CAP;
+    public static final String ICHORCLOTH_ROD = LibItemNames.ICHORCLOTH_ROD;
+    public static final String NETHER_SHARD = LibItemNames.NETHER_SHARD;
+    public static final String ENDER_SHARD = LibItemNames.ENDER_SHARD;
 
-    private final int index;
+    private final String path;
 
-    public ItemKamiResource(int index, Item.Properties properties) {
-        super(properties, index == NETHER_SHARD || index == ENDER_SHARD ? Rarity.COMMON : KAMI_RARITY);
-        this.index = index;
+    public ItemKamiResource(String path, Item.Properties properties) {
+        super(properties, path.equals(NETHER_SHARD) || path.equals(ENDER_SHARD) ? Rarity.COMMON : KAMI_RARITY);
+        this.path = path;
     }
 
-    public int index() {
-        return index;
+    /** The registry path of this resource. */
+    public String path() {
+        return path;
     }
 
-    /** A stack of the resource with that 1.7.10 metadata value; only after registration. */
-    public static ItemStack stack(int meta) {
-        return TTRegistry.stack(LibItemNames.KAMI_RESOURCE_NAMES[meta]);
+    /** A stack of the resource with that registry path; only after registration. */
+    public static ItemStack stack(String path) {
+        return TTRegistry.stack(path);
     }
 
-    public static ItemStack stack(int meta, int count) {
-        return TTRegistry.stack(LibItemNames.KAMI_RESOURCE_NAMES[meta], count);
+    public static ItemStack stack(String path, int count) {
+        return TTRegistry.stack(path, count);
     }
 
     @Override
     public ThaumicTinkererRecipe getRecipeItem() {
-        if (index != ICHOR) return null;
+        if (!path.equals(ICHOR)) return null;
         // 1.7.10 also registered GameRegistry.addShapelessRecipe(9 x nugget <- ichorium): data/thaumictinkerer/recipe/ichor_nuggets.json
         return new ThaumicTinkererRecipeMulti(
                 new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHOR_CLOTH, LibResearch.KEY_ICHOR_CLOTH,

@@ -83,15 +83,17 @@ class KamiGearLogicTest {
 
     @Test
     void theResourceIndicesFollowTheOriginalMetadataOrder() {
-        assertEquals("ichor", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.ICHOR]);
-        assertEquals("ichor_cloth", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.ICHOR_CLOTH]);
-        assertEquals("ichorium", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.ICHORIUM]);
-        assertEquals("ichor_nugget", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.ICHOR_NUGGET]);
-        assertEquals("ichor_cap", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.ICHOR_CAP]);
-        assertEquals("ichorcloth_rod", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.ICHORCLOTH_ROD]);
-        assertEquals("nether_shard", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.NETHER_SHARD]);
-        assertEquals("ender_shard", LibItemNames.KAMI_RESOURCE_NAMES[ItemKamiResource.ENDER_SHARD]);
-        assertEquals(8, LibItemNames.KAMI_RESOURCE_NAMES.length);
+        assertEquals("ichor", ItemKamiResource.ICHOR);
+        assertEquals("ichor_cloth", ItemKamiResource.ICHOR_CLOTH);
+        assertEquals("ichorium", ItemKamiResource.ICHORIUM);
+        assertEquals("ichor_nugget", ItemKamiResource.ICHOR_NUGGET);
+        assertEquals("ichor_cap", ItemKamiResource.ICHOR_CAP);
+        assertEquals("ichorcloth_rod", ItemKamiResource.ICHORCLOTH_ROD);
+        assertEquals("nether_shard", ItemKamiResource.NETHER_SHARD);
+        assertEquals("ender_shard", ItemKamiResource.ENDER_SHARD);
+        assertEquals(List.of(ItemKamiResource.ICHOR, ItemKamiResource.ICHOR_CLOTH, ItemKamiResource.ICHORIUM, ItemKamiResource.ICHOR_NUGGET,
+                ItemKamiResource.ICHOR_CAP, ItemKamiResource.ICHORCLOTH_ROD, ItemKamiResource.NETHER_SHARD, ItemKamiResource.ENDER_SHARD),
+                List.of(LibItemNames.KAMI_RESOURCE_NAMES), "the names in the order of the 1.7.10 metadata");
     }
 
     // ---- the Placement Mirror's square -----------------------------------------------------------------------------

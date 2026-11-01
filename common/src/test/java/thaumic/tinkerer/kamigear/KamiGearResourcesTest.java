@@ -232,19 +232,19 @@ class KamiGearResourcesTest {
         assertEquals("minecraft:crafting_shapeless", recipe.get("type").getAsString());
         JsonArray ingredients = recipe.getAsJsonArray("ingredients");
         assertEquals(1, ingredients.size());
-        assertEquals(NS + ":" + LibItemNames.KAMI_RESOURCE_NAMES[2],
+        assertEquals(NS + ":" + LibItemNames.ICHORIUM,
                 ingredients.get(0).getAsJsonObject().get("item").getAsString());
         JsonObject result = recipe.getAsJsonObject("result");
-        assertEquals(NS + ":" + LibItemNames.KAMI_RESOURCE_NAMES[3], result.get("id").getAsString());
+        assertEquals(NS + ":" + LibItemNames.ICHOR_NUGGET, result.get("id").getAsString());
         assertEquals(9, result.get("count").getAsInt());
         // With enableKami off the ichorium does not exist: both loaders skip the recipe instead of logging a parse error.
         JsonObject fabric = recipe.getAsJsonArray("fabric:load_conditions").get(0).getAsJsonObject();
         assertEquals("fabric:registry_contains", fabric.get("condition").getAsString());
         assertEquals("minecraft:item", fabric.get("registry").getAsString());
-        assertEquals(NS + ":" + LibItemNames.KAMI_RESOURCE_NAMES[2], fabric.getAsJsonArray("values").get(0).getAsString());
+        assertEquals(NS + ":" + LibItemNames.ICHORIUM, fabric.getAsJsonArray("values").get(0).getAsString());
         JsonObject neoForge = recipe.getAsJsonArray("neoforge:conditions").get(0).getAsJsonObject();
         assertEquals("neoforge:item_exists", neoForge.get("type").getAsString());
-        assertEquals(NS + ":" + LibItemNames.KAMI_RESOURCE_NAMES[2], neoForge.get("item").getAsString());
+        assertEquals(NS + ":" + LibItemNames.ICHORIUM, neoForge.get("item").getAsString());
     }
 
     @Test

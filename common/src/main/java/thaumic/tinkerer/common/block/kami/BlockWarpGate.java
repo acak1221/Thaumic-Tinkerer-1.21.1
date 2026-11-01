@@ -147,9 +147,9 @@ public class BlockWarpGate extends BaseEntityBlock implements ITTinkererRegister
                 // ConfigBlocks.blockCosmeticSolid, 2: the paving stone of travel.
                 Objects.requireNonNull(ItemApi.getBlock("blockCosmeticSolid", 2), "Thaumcraft block blockCosmeticSolid:2"),
                 // ItemKamiResource 0 (Ichor), 7 (Ender Shard), the Transvector Dislocator, 6 (Nether Shard).
-                TTRegistry.stack(LibItemNames.KAMI_RESOURCE_NAMES[0]),
-                TTRegistry.stack(LibItemNames.KAMI_RESOURCE_NAMES[7]), TTRegistry.stack(LibBlockNames.DISLOCATOR),
-                TTRegistry.stack(LibItemNames.KAMI_RESOURCE_NAMES[6]), new ItemStack(Items.DIAMOND),
+                TTRegistry.stack(LibItemNames.ICHOR),
+                TTRegistry.stack(LibItemNames.ENDER_SHARD), TTRegistry.stack(LibBlockNames.DISLOCATOR),
+                TTRegistry.stack(LibItemNames.NETHER_SHARD), new ItemStack(Items.DIAMOND),
                 new ItemStack(Items.FEATHER));
     }
 }

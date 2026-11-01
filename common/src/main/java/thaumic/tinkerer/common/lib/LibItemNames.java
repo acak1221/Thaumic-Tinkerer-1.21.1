@@ -69,6 +69,15 @@ public final class LibItemNames {
     /** The eight 1.7.10 metadata values of the Kami resource item are eight items now, in the original order. */
     public static final String[] KAMI_RESOURCE_NAMES = new String[] { "ichor", "ichor_cloth", "ichorium", "ichor_nugget",
             "ichor_cap", "ichorcloth_rod", "nether_shard", "ender_shard" };
+    /** The eight Kami resources by name (1.7.10 metadata 0 to 7 of {@code kamiResource}, the order of {@link #KAMI_RESOURCE_NAMES}). */
+    public static final String ICHOR = "ichor";
+    public static final String ICHOR_CLOTH = "ichor_cloth";
+    public static final String ICHORIUM = "ichorium";
+    public static final String ICHOR_NUGGET = "ichor_nugget";
+    public static final String ICHOR_CAP = "ichor_cap";
+    public static final String ICHORCLOTH_ROD = "ichorcloth_rod";
+    public static final String NETHER_SHARD = "nether_shard";
+    public static final String ENDER_SHARD = "ender_shard";
 
     public static final String INFUSED_POTION = "infused_potion";
     public static final String INFUSED_GRAIN = "infused_grain";

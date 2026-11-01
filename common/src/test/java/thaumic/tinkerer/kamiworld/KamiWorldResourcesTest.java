@@ -294,8 +294,8 @@ class KamiWorldResourcesTest {
     void theShardsPageNamesTheNewTexturePathsInEveryLanguage() {
         assertTrue(exists("/assets/" + NS + "/textures/item/nether_shard.png"));
         assertTrue(exists("/assets/" + NS + "/textures/item/ender_shard.png"));
-        assertEquals(LibItemNames.KAMI_RESOURCE_NAMES[6], "nether_shard");
-        assertEquals(LibItemNames.KAMI_RESOURCE_NAMES[7], "ender_shard");
+        assertEquals("nether_shard", LibItemNames.NETHER_SHARD);
+        assertEquals("ender_shard", LibItemNames.ENDER_SHARD);
         for (String language : LANGUAGES) {
             JsonObject lang = json("/assets/" + NS + "/lang/" + language + ".json");
             String page = lang.get("ttresearch.page.DIMENSION_SHARDS.0").getAsString();

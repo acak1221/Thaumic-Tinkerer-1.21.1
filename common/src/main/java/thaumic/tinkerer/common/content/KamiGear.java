@@ -105,9 +105,8 @@ public final class KamiGear implements ContentGroup {
         KamiArmorMaterials.register();
 
         // Resources: the order of the metadata values.
-        for (int i = 0; i < LibItemNames.KAMI_RESOURCE_NAMES.length; i++) {
-            final int meta = i;
-            TTRegistry.item(LibItemNames.KAMI_RESOURCE_NAMES[i], () -> new ItemKamiResource(meta, new Item.Properties()));
+        for (String path : LibItemNames.KAMI_RESOURCE_NAMES) {
+            TTRegistry.item(path, () -> new ItemKamiResource(path, new Item.Properties()));
         }
 
         // Armour.

@@ -68,10 +68,10 @@ public final class DimensionalShardDropHandler {
             boolean recentlyHit) {
         if (!(source.getEntity() instanceof Player)) return EventResult.pass();
         if (victim instanceof EnderMan && inDimension(victim, Level.END) && roll(victim) <= ENDER_SHARD_CHANCE) {
-            addShard(drops, victim, LibItemNames.KAMI_RESOURCE_NAMES[7]);
+            addShard(drops, victim, LibItemNames.ENDER_SHARD);
         }
         if (victim instanceof ZombifiedPiglin && inDimension(victim, Level.NETHER) && roll(victim) <= NETHER_SHARD_CHANCE) {
-            addShard(drops, victim, LibItemNames.KAMI_RESOURCE_NAMES[6]);
+            addShard(drops, victim, LibItemNames.NETHER_SHARD);
         }
         return EventResult.pass();
     }
