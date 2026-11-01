@@ -2,11 +2,11 @@
 
 ## GameTests on NeoForge
 
-The GameTests of the add-on (354 since the defect audit of 2026-11-01, `AUDIT.md`) run on a NeoForge dedicated GameTest server as well as on Fabric: the same shared checks
+The GameTests of the add-on (356 since the follow-up of the defect audit of 2026-11-01, `AUDIT.md`) run on a NeoForge dedicated GameTest server as well as on Fabric: the same shared checks
 (`common/src/gameTest/java/thaumic/tinkerer/testing/*RuntimeChecks.java`), under the same test names, with the same timeouts and batches.
 The NeoForge wrappers are not written by hand: `tools/neoforge_gametests.py` generates them from the Fabric ones, and a JUnit test fails
 when the two drift apart. Eight NeoForge-only scenarios (the block capabilities, the fake player's NeoForge menus, the damage container) come on top, so a
-NeoForge run has 362 tests (the last full run, 2026-11-01: "All 362 required tests passed"). The table "Last run" below records the
+NeoForge run has 364 tests (the last full run, 2026-11-01: "All 364 required tests passed"). The table "Last run" below records the
 runs of 2026-10-31, when there were 312 + 2.
 
 ```bash
@@ -16,7 +16,7 @@ python3 tools/neoforge_gametests.py                                          # -
 python3 tools/neoforge_gametests.py --write                                  # regenerate them after a change of the Fabric wrappers
 ```
 
-A good run ends with the log line `All 362 required tests passed :)` and `BUILD SUCCESSFUL`, like the Fabric run; a run with failures ends
+A good run ends with the log line `All 364 required tests passed :)` and `BUILD SUCCESSFUL`, like the Fabric run; a run with failures ends
 with `N required tests failed :(`, the list of the failed tests, and the exit code N of the server (so the Gradle task fails). The report is
 `neoforge/build/tinkerer-gametest-results.xml` (JUnit XML, one `testcase` per test); every failure is also logged with its stack trace by the
 logger `ThaumicTinkererGameTest`. The run directory is `neoforge/run-gametest/` (git-ignored); its `world/` and the report of the last run are
@@ -29,7 +29,7 @@ deleted before every run, so that no result depends on an earlier one. The parit
 | Source set `gameTest`: `common/src/gameTest/java` + `neoforge/src/gameTest/java`, resources `common/src/gameTest/resources` (the parity oracle) + `neoforge/src/gameTest/resources` | `neoforge/build.gradle`, section "GameTests on NeoForge" | `thaumicTinkererGameTest` in `fabric.gradle` |
 | Run `gameTest` (task `runGameTest`): a server with `-Xmx3G`, `-Dneoforge.enableGameTest=true`, `-Dneoforge.gameTestServer=true`, `-Dneoforge.enabledGameTestNamespaces=thaumictinkerer`, `-Dthaumictinkerer.gameTestReportFile=<report>`, and `-Dthaumictinkerer.gameTestFilter=<filter>` from `-PtinkererGameTestFilter`. Two mods: `thaumictinkerer` (the `main` source set) and `thaumictinkerer_gametest` (the `gameTest` source set); Thaumcraft is the jar from mavenLocal | `neoforge/build.gradle` | the run `tinkererGameTest` (two classpath groups) |
 | The test mod `thaumictinkerer_gametest` (`@Mod`): registers the wrapper classes on `RegisterGameTestsEvent`, the barrel tank capability on `RegisterCapabilitiesEvent`, and the report | `neoforge/src/gameTest/java/thaumic/tinkerer/neoforge/testing/ThaumicTinkererGameTestMod.java`, `neoforge/src/gameTest/resources/META-INF/neoforge.mods.toml` | `fabric/src/gameTest/resources/fabric.mod.json` (entrypoints `fabric-gametest`) |
-| The wrappers: 13 classes, 354 tests (312 before the audit of 2026-11-01), generated | `neoforge/src/gameTest/java/thaumic/tinkerer/neoforge/testing/*GameTests.java`, the class list `TinkererGameTestCatalogue.java` | `fabric/src/gameTest/java/thaumic/tinkerer/fabric/testing/*GameTests.java` |
+| The wrappers: 13 classes, 356 tests (354 after the audit of 2026-11-01, 312 before it), generated | `neoforge/src/gameTest/java/thaumic/tinkerer/neoforge/testing/*GameTests.java`, the class list `TinkererGameTestCatalogue.java` | `fabric/src/gameTest/java/thaumic/tinkerer/fabric/testing/*GameTests.java` |
 | The templates: an empty 8x8x8 structure of air per class, `thaumictinkerer:<class in lower case>.empty` | `neoforge/src/gameTest/resources/data/thaumictinkerer/structure/*.empty.nbt` (generated) | Fabric API's `fabric-gametest-api-v1:empty` (the same 8x8x8 air) |
 | The flat world preset of the GameTest server, with the dimension `thaumictinkerer:bedrock` the KamiWorld checks need | `neoforge/src/gameTest/resources/data/minecraft/worldgen/world_preset/flat.json` (a byte copy, generated) | `fabric/src/gameTest/resources/data/minecraft/worldgen/world_preset/flat.json` |
 | The filter `-PtinkererGameTestFilter=a,b,group*` (an unknown name is an error) | mixin `testing/mixin/TinkererGameTestSelectionMixin.java` | the mixin of the same name in `fabric/src/gameTest` |
@@ -98,7 +98,7 @@ bodies, the counterparts, the templates and the world preset. The CI runs both, 
 
 The first runs of the add-on on NeoForge at all (2026-10-31, NeoForge 21.1.259, Thaumcraft `0.1.0-alpha.7` from mavenLocal), while the event
 posters, the capabilities and the soil mixin were being written. Runs 1 to 4 started all 312 tests, runs 5 and 6 the 314; each of runs 1 to 5 took
-about 17 s of test time and 45 s in all. **The last full run of that day is run 6: all 314 passed.** After the defect audit of 2026-11-01 (`AUDIT.md`) a full run passed 362 of 362 (354 + 8).
+about 17 s of test time and 45 s in all. **The last full run of that day is run 6: all 314 passed.** After the defect audit of 2026-11-01 (`AUDIT.md`) a full run passed 362 of 362 (354 + 8); after its follow-up (the ore feature and tree mode, two new tests) 364 of 364 (356 + 8).
 
 | Run | Result |
 |---|---|

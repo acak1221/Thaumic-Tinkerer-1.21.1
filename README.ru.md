@@ -87,12 +87,12 @@ python3 tools/neoforge_gametests.py          # совпадают ли обёр�
 
   | Команда | Результат |
   |---|---|
-  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; файлы в `build/test-results/tinkererTest/` дают в сумме 423 теста, 0 сбоев, 0 ошибок, 0 пропущенных |
-  | `./gradlew runTinkererGameTest` | строка лога `All 354 required tests passed :)` и `BUILD SUCCESSFUL`; в `build/tinkerer-gametest-results.xml` 354 элементов `testcase` и ни одного `failure` или `error` |
+  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; файлы в `build/test-results/tinkererTest/` дают в сумме 424 теста, 0 сбоев, 0 ошибок, 0 пропущенных |
+  | `./gradlew runTinkererGameTest` | строка лога `All 356 required tests passed :)` и `BUILD SUCCESSFUL`; в `build/tinkerer-gametest-results.xml` 356 элементов `testcase` и ни одного `failure` или `error` |
   | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` и `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (около 2,3 МБ) |
   | `./gradlew check` | `BUILD SUCCESSFUL` (три набора исходников компилируются, проверка refmap Mixin проходит, `tinkererTest` запускается) |
   | `./gradlew :neoforge:assemble` | `BUILD SUCCESSFUL` и `neoforge/build/libs/ThaumicTinkerer-neoforge-0.1.0-alpha.7.jar` |
-  | `./gradlew :neoforge:runGameTest` | как у `runTinkererGameTest`, плюс восемь тестов только для NeoForge: `All 362 required tests passed :)` и `neoforge/build/tinkerer-gametest-results.xml` с 362 элементами `testcase` без `failure` и `error`; последний запуск (2026-10-31) это показал. Более ранние запуски и их сбои — в `docs/NEOFORGE.md`, «GameTests on NeoForge» |
+  | `./gradlew :neoforge:runGameTest` | как у `runTinkererGameTest`, плюс восемь тестов только для NeoForge: `All 364 required tests passed :)` и `neoforge/build/tinkerer-gametest-results.xml` с 364 элементами `testcase` без `failure` и `error`; последний запуск (2026-11-01) это показал. Более ранние запуски и их сбои — в `docs/NEOFORGE.md`, «GameTests on NeoForge» |
   | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` и 80 снимков в `build/tinkerer-client-smoke/`; на NeoForge (`--neoforge`, результаты в `neoforge/build/tinkerer-client-smoke/`) 730. На Fabric PASS был 725–728 в шести запусках (три проверки блоков огня зависят от случайных пикселей), FAIL 0 и NOT_RUN 1 не менялись. `tools/client-smoke.sh -- -PwithEmi -PwithJade` добавляет проверки EMI и Jade (737 PASS, 88 снимков), `-- -PwithJei` — проверки JEI (730 PASS, 82 снимка) |
 * Релизные jar (`mod_version` в `gradle.properties`): для Fabric — `build/libs/ThaumicTinkerer-fabric-<версия>.jar` (`remapThaumicTinkererJar`, его
   собирает `assemble` корневого проекта); он переотображён для продакшена, несёт `LICENSE` в `META-INF/` и содержит refmap Mixin. Чтобы играть с ним,

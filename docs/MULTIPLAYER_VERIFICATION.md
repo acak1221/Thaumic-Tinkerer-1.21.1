@@ -168,6 +168,9 @@ What the lines say, the same on both loaders unless noted:
   logs two data-load errors at start on both loaders: "Parsing error loading recipe thaumictinkerer:ichor_nuggets" (documented in
   `deviations/KamiGear.md` section 11 as the one expected error) and "Couldn't parse element ... thaumictinkerer:blocks/warp_gate - Unknown registry key
   ... thaumictinkerer:warp_gate" (the Celestial Gateway's loot table; not documented). Both are skipped entries; nothing else of the run depends on them.
+  **Fixed afterwards (2026-11-01, on `main`):** both files now carry a load condition for each loader on their item (`fabric:load_conditions` with
+  `fabric:registry_contains`, `neoforge:conditions` with `neoforge:item_exists`; `deviations/KamiGear.md` section 11). In the next run of both loaders the
+  Kami-off server's log (`server-kami-off-latest.log`) has neither error; with Kami on the recipe and the gate's drop are still checked by the GameTests.
 * **Problems of the harness, found by the first runs and fixed:** a new Animation Tablet is in left-click mode, so the scenario switches it to right
   click; the mismatch client may leave before a client tick sees its level, so its join is taken from `CLIENT_PLAYER_JOIN`; Architectury 13.0.11
   posts no `ClientSystemMessageEvent` on NeoForge, so the `/ttmp` answers are heard through `ClientChatEvent` too (`NEOFORGE.md`); NeoForge's

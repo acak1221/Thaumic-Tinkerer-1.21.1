@@ -65,6 +65,7 @@ the game's own seed changes nothing (the same cells), so it is not a defect and 
 | NeoForge GameTests (`:neoforge:runGameTest`) | All 362 required tests passed (314 before) |
 | Client smoke, Fabric / NeoForge | 728 / 731 PASS, 0 FAIL, 1 NOT_RUN |
 | Client smoke, Fabric with EMI + Jade / with JEI | 737 / 732 PASS, 0 FAIL, 1 NOT_RUN |
+| `main` after merging `kami-followups` and `multiplayer`, with the Kami-off load conditions (one run of each) | JUnit 424 tests, 0 failures; Fabric: All 356 required tests passed; NeoForge: All 364 required tests passed; client smoke Fabric 726 / NeoForge 730 PASS, 0 FAIL, 1 NOT_RUN (the fewer PASS are fire blocks' `up=true` states, which vary from run to run, `CLIENT_VERIFICATION.md`); multiplayer 67 PASS, 0 FAIL on each loader, and the Kami-off server logs no data-load error |
 | Follow-up (worktree of `kami-followups`, `check runTinkererGameTest :neoforge:runGameTest`, one run) | JUnit 424 tests, 0 failures; Fabric: All 356 required tests passed; NeoForge: All 364 required tests passed. The client smoke runs were not repeated |
 
 ## Not verified

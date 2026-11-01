@@ -84,12 +84,12 @@ python3 tools/neoforge_gametests.py          # are the NeoForge GameTest wrapper
 
   | Command | Result |
   |---|---|
-  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; the files in `build/test-results/tinkererTest/` add up to 423 tests, 0 failures, 0 errors, 0 skipped |
-  | `./gradlew runTinkererGameTest` | the log line `All 354 required tests passed :)` and `BUILD SUCCESSFUL`; `build/tinkerer-gametest-results.xml` has 354 `testcase` elements and no `failure` or `error` |
+  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; the files in `build/test-results/tinkererTest/` add up to 424 tests, 0 failures, 0 errors, 0 skipped |
+  | `./gradlew runTinkererGameTest` | the log line `All 356 required tests passed :)` and `BUILD SUCCESSFUL`; `build/tinkerer-gametest-results.xml` has 356 `testcase` elements and no `failure` or `error` |
   | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` and `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (about 2.3 MB) |
   | `./gradlew check` | `BUILD SUCCESSFUL` (the three source sets compile, the Mixin refmap check passes, `tinkererTest` runs) |
   | `./gradlew :neoforge:assemble` | `BUILD SUCCESSFUL` and `neoforge/build/libs/ThaumicTinkerer-neoforge-0.1.0-alpha.7.jar` |
-  | `./gradlew :neoforge:runGameTest` | like `runTinkererGameTest`, with the eight NeoForge-only tests on top: `All 362 required tests passed :)`, and `neoforge/build/tinkerer-gametest-results.xml` with 362 `testcase` elements and no `failure` or `error`; the last run (2026-10-31) reached it. The earlier runs and their failures are in `docs/NEOFORGE.md`, "GameTests on NeoForge" |
+  | `./gradlew :neoforge:runGameTest` | like `runTinkererGameTest`, with the eight NeoForge-only tests on top: `All 364 required tests passed :)`, and `neoforge/build/tinkerer-gametest-results.xml` with 364 `testcase` elements and no `failure` or `error`; the last run (2026-11-01) reached it. The earlier runs and their failures are in `docs/NEOFORGE.md`, "GameTests on NeoForge" |
   | `tools/multiplayer-smoke.sh` | `multiplayer: passed on fabric` and `BUILD SUCCESSFUL`; `build/tinkerer-multiplayer/summary.txt` lists the seven reports (two servers, five clients), each `harness COMPLETED`, and ends with `no problems`; the same with `--neoforge` (results in `neoforge/build/tinkerer-multiplayer/`). The exit code is non-zero for any FAIL, HARNESS_ERROR or NOT_RUN |
   | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` and 80 screenshots in `build/tinkerer-client-smoke/`; on NeoForge (`--neoforge`, results in `neoforge/build/tinkerer-client-smoke/`) 730. On Fabric PASS was 725 to 728 in six runs (three fire-block checks depend on random pixels), FAIL 0 and NOT_RUN 1 did not move. `tools/client-smoke.sh -- -PwithEmi -PwithJade` adds the EMI and Jade checks (737 PASS, 88 screenshots), `-- -PwithJei` the JEI ones (730 PASS, 82 screenshots) |
 * The release jars (`mod_version` in `gradle.properties`): for Fabric `build/libs/ThaumicTinkerer-fabric-<version>.jar` (`remapThaumicTinkererJar`, which
