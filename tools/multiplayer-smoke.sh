@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
 # Runs the multiplayer check of Thaumic Tinkerer (docs/MULTIPLAYER_VERIFICATION.md): a real dedicated server with the add-on and its
-# server test mod, and three real clients (two at the same time, then a third whose config differs), each in its own JVM, all started
-# and stopped by ONE Gradle task, under Xvfb with Mesa software rendering.
+# server test mod and five real clients (two at the same time, then two whose config differs, then one on a second server with Kami
+# off), each in its own JVM, all started and stopped by ONE Gradle task, under Xvfb with Mesa software rendering.
 #
 #   tools/multiplayer-smoke.sh [--fabric|--neoforge] [-l GRADLE_LOG] [-t CLIENT_TIMEOUT_SECONDS] [-p PORT] [-- EXTRA_GRADLE_ARGS...]
 #
 # --fabric (the default) runs runTinkererMultiplayer of the root project; results in build/tinkerer-multiplayer/, run directories
-# run-tinkerer-mp-{server,lead,peer,mismatch}/. --neoforge runs :neoforge:runMultiplayer; results in neoforge/build/tinkerer-multiplayer/,
-# run directories neoforge/run-mp-{server,lead,peer,mismatch}/. The results are server-report.json, {lead,peer,mismatch}/report.json
-# (with screenshots/), summary.txt, the console output, latest.log and command line of every JVM, and gradle.log (a copy).
+# run-tinkerer-mp-{server,lead,peer,mismatch,mismatch-kami,kami-on}/. --neoforge runs :neoforge:runMultiplayer; results in neoforge/build/tinkerer-multiplayer/,
+# run directories neoforge/run-mp-{server,lead,peer,mismatch,mismatch-kami,kami-on}/. The results are server-report.json,
+# server-kami-off-report.json, <client>/report.json (with screenshots/), summary.txt, the console output, latest.log and command line of
+# every JVM, and gradle.log (a copy).
 # The exit code is 0 only when every harness completed and no check is FAIL, HARNESS_ERROR or NOT_RUN (the Gradle task checks it).
 #
 # GRADLE_CMD replaces ./gradlew, as for tools/client-smoke.sh: a command line that is given the Gradle arguments last; its output is

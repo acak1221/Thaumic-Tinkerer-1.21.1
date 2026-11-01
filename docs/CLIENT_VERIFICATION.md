@@ -157,6 +157,9 @@ Runs of 2026-10-31, all after the harness was split into the shared tree and the
 | NeoForge | EMI, Jade | 739 | 0 | 0 | 1 | 52 | 88 |
 | NeoForge | JEI | 735 | 0 | 0 | 1 | 50 | 82 |
 
+After the multiplayer mode was added (2026-11-01; `ClientSmoke` picks the mode, `SmokeRun` takes its phases as a list): Fabric 727 PASS, NeoForge 730 PASS,
+0 FAIL, 0 HARNESS_ERROR, 1 NOT_RUN, 80 pictures each (the fire blocks' `up=true` states account for the one PASS fewer, see below).
+
 The `NOT_RUN` is the Kami tool-mode tooltip (`HudPhase`) on every run. The last Fabric run before the split had 726 PASS, 0 FAIL, 1 NOT_RUN, 56 INFO, 80 pictures;
 the split changed no check: its run without the optional mods (made twice, the second after the whole test suite at the end of the work, both with the
 numbers above) differs from that one only in `fire_order up=true` and `fire_chaos up=true`, both drawn this time. The Fabric runs with the optional mods

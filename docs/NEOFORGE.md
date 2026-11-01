@@ -262,7 +262,9 @@ differed from Fabric:
 * **The registry sync's message** for a client without Kami on a server with Kami: NeoForge's "The server send registries with unknown keys: ..." with the
   50 keys (`neoforge.network.registries.sync.server-with-unknown-keys`), where Fabric says "Received 50 registry entries that are unknown to this client".
 
-MP_NEOFORGE
+The run of 2026-11-01 (`BUILD SUCCESSFUL in 3m 46s`): all seven reports `COMPLETED`, 67 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN (server 25, second server 6,
+lead 20, second player 8 and one INFO, the three mismatch clients 3, 2 and 3), the same scenarios and verdicts as on Fabric; six pictures, none blank.
+**NeoForge defects found: none.** The first NeoForge run failed on the harness only (the two points above), and was repeated after they were fixed.
 
 ## Client smoke on NeoForge
 

@@ -13,7 +13,7 @@ It is a development tool, like the client smoke (`CLIENT_VERIFICATION.md`), and 
 
 ```bash
 # Gradle is started as ./gradlew in the project root; GRADLE_CMD replaces it, as for tools/client-smoke.sh
-tools/multiplayer-smoke.sh                 # Fabric (the default): about 3 minutes after the first compile
+tools/multiplayer-smoke.sh                 # Fabric (the default): 4 to 6 minutes after the first compile
 tools/multiplayer-smoke.sh --neoforge      # the same on NeoForge
 tools/multiplayer-smoke.sh -l /path/gradle.log -t 1200 -p 25591   # Gradle log, client watchdog (s), server port
 GRADLE_CMD='<wrapper> {LOG}' tools/multiplayer-smoke.sh            # a wrapper that serialises Gradle and writes the log itself
@@ -113,7 +113,78 @@ staff with the Focus of Uprising.
 
 ## Results
 
-RESULTS
+The final runs (2026-11-01), each started as `GRADLE_CMD='<wrapper> {LOG}' tools/multiplayer-smoke.sh [--neoforge]` (the wrapper serialises
+Gradle on the machine and is not part of the repository). Both ended `BUILD SUCCESSFUL`, exit 0, and `summary.txt` "no problems":
+
+| Report | Fabric | NeoForge |
+|---|---|---|
+| `server-report.json` | COMPLETED, 25 PASS | COMPLETED, 25 PASS |
+| `server-kami-off-report.json` | COMPLETED, 6 PASS | COMPLETED, 6 PASS |
+| `lead/report.json` | COMPLETED, 20 PASS | COMPLETED, 20 PASS |
+| `peer/report.json` | COMPLETED, 8 PASS, 1 INFO | COMPLETED, 8 PASS, 1 INFO |
+| `mismatch` / `mismatch-kami` / `kami-on` | COMPLETED, 3 / 2 / 3 PASS | COMPLETED, 3 / 2 / 3 PASS |
+| all seven reports | **67 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN** | **67 PASS, 0 FAIL, 0 HARNESS_ERROR, 0 NOT_RUN** |
+| the Gradle task | 5 min 31 s (a new Gradle daemon) | 3 min 46 s |
+| pictures | 6, none blank | 6, none blank |
+
+What the lines say, the same on both loaders unless noted:
+
+* **a. Config sync.** Both clients got `PacketConfigSync`; with their own file at flight on and an empty blacklist, `flightEnabled(client level)` was
+  false and `dislocationBlacklist(client level)` was `[minecraft:gold_block]`, and both were back to the file's values after leaving
+  (`fromServer()=null`). The Focus of Uprising cast into the sky moved the lead at most 0.078 block/tick (standing still; a cast gives 0.667) and
+  paid nothing on either side; the Focus of Dislocation on the server-blacklisted gold block took nothing and paid nothing, and the client's wand
+  showed 25000 of every primal the whole time. Payload census: 7 of 7 client-to-server types on both clients, 4 of 4 server-to-client types for
+  every client that joined the first server (1 of 1, `config_sync`, on the second).
+* **b. Mismatch.** `TTMismatch` (imbuedFire off) got into the game and left 1.2 s (Fabric) and 0.8 s (NeoForge) later; its screen "Connection Lost" showed
+  `thaumictinkerer.config.mismatch`, rendered "This server's Thaumic Tinkerer config differs from yours ...: general/imbuedFire.enabled
+  (server: true, yours: false). Set them in config/thaumictinkerer.json as the server has them, restart the game and join again."
+  (`mismatch-disconnected.png`). `TTKamiOn` on the second server: the same message with `kami/kami.forceenabled (server: false, yours: true)`.
+  `TTMismatchKami` (Kami off, the server on) never got into the game: the loader's registry sync refused it first, Fabric with "Received 50 registry
+  entries that are unknown to this client ... thaumictinkerer", NeoForge with "The server send registries with unknown keys: ..." and the 50 keys
+  (`neoforge.network.registries.sync.server-with-unknown-keys`).
+* **c. Spawn protection.** `isUnderSpawnProtection` for the lead: true at (6, -59, 6) and x = 16, false at (30, -59, 6) and x = 17. Inside: the
+  Dislocation took nothing (vis 25000 everywhere on both sides) and could not put its load down (6, -59, 7 stayed air, the focus kept the stone);
+  the mirror clicked on a wall inside placed nothing; the sneaking pickaxe click left the bedrock as it was (the server saw the player sneaking).
+  Outside: the stone was taken (Perditio and Ordo 25000 -> 24550, Terra -> 24910, the same on the client) and put back on its cobblestone; the mirror
+  placed all 25; the bedrock became `thaumictinkerer:bedrock_portal`. On the edge: 15 stone outside the radius, 0 of the 10 inside, 15 taken from the
+  stack (64 -> 49). Pickaxe damage 0 throughout; every client view agreed with the server's.
+* **d. Menu round trip.** The Enchanter's screen opened from the server's menu packet, the sword went in by two container clicks, the first
+  offered button was `minecraft:sharpness`; the server's Enchanter held the diamond sword with `[minecraft:sharpness]` at level 1 and the client's
+  block entity showed it before the screen closed (`lead-enchanter.png`).
+* **e. Second player.** The tablet changed in the second player's own client from `item=minecraft:air leftClick=true` to
+  `item=minecraft:iron_pickaxe leftClick=false` 51.0 s (Fabric) and 57.3 s (NeoForge) after it said it was ready (the lead's thirteen
+  scenarios came first), and the server's state was the same (`peer-tablet.png`: the second player sees the lead and the pickaxe on the tablet).
+
+### What it found
+
+* **Defects of the add-on's code: none.** Every scenario passed on both loaders once the harness itself worked. In particular the Focus of
+  Dislocation, the Placement Mirror and the Awakened Ichorium Pickaxe respect a real dedicated server's spawn protection, including a mirror square
+  that crosses the edge, and the client's copy of the wand, the blocks and the stacks always agreed with the server.
+* **A wrong statement in the documents, corrected.** `DEVIATIONS.md` section 1 said that a client whose `kami.forceenabled` differs leaves with the
+  add-on's message. That holds only when the client has Kami and the server does not; a client **without** Kami on a server with it lacks 50 registry
+  entries and is refused by the loader's registry sync, in the configuration phase, before the add-on's payload can arrive, with the loader's message.
+  The client is refused either way; only the message differs. The section now says so.
+* **For the owner of the Kami group (not changed here; the Kami data belongs to that group):** the second server, with `kami.forceenabled=false`,
+  logs two data-load errors at start on both loaders: "Parsing error loading recipe thaumictinkerer:ichor_nuggets" (documented in
+  `deviations/KamiGear.md` section 11 as the one expected error) and "Couldn't parse element ... thaumictinkerer:blocks/warp_gate - Unknown registry key
+  ... thaumictinkerer:warp_gate" (the Celestial Gateway's loot table; not documented). Both are skipped entries; nothing else of the run depends on them.
+* **Problems of the harness, found by the first runs and fixed:** a new Animation Tablet is in left-click mode, so the scenario switches it to right
+  click; the mismatch client may leave before a client tick sees its level, so its join is taken from `CLIENT_PLAYER_JOIN`; Architectury 13.0.11
+  posts no `ClientSystemMessageEvent` on NeoForge, so the `/ttmp` answers are heard through `ClientChatEvent` too (`NEOFORGE.md`); NeoForge's
+  `canPlayerReceive` needs a channel on both sides, so the census expects the Kami payloads only on a server with Kami. The first Fabric run also needed
+  a lead that waited forever for a peer that had already given up (killed by hand); the stage now answers `WAIT` and the peer's precondition is right.
+* **Seen on the way:** a dedicated server needs an operator in `ops.json` for spawn protection to exist at all (vanilla returns false while the list is
+  empty); the run lists one who never joins. Every server also logs vanilla's "No key layers in MapLike[{}]" for the empty `generator-settings` of
+  the flat world (the default layers are used).
+
+**The rest after the change** (the same tree, 2026-11-01): `check runTinkererGameTest :neoforge:runGameTest assemble :neoforge:assemble` ended
+`BUILD SUCCESSFUL`: JUnit 423 tests, 0 failures; Fabric "All 354 required tests passed"; NeoForge "All 362 required tests passed". The
+singleplayer client smoke, whose `SmokeRun` and `ClientSmoke` gained the mode switch: Fabric 727 PASS, NeoForge 730 PASS, 0 FAIL, 1 NOT_RUN, 80
+pictures each (the one PASS fewer than the last recorded runs is a fire block's `up=true` state, `CLIENT_VERIFICATION.md`). The jars in
+`build/libs` and `neoforge/build/libs` hold no `mpserver`, `clientsmoke`, `multiplayer` or GameTest entry.
+
+Earlier runs while the harness was written (Fabric 1 to 3, NeoForge 1) failed or were stopped for the harness problems above only; Fabric run 3, the
+first complete one, had 63 PASS and 0 FAIL (before the two Dislocation placement scenarios existed).
 
 ## Wiring
 
@@ -149,6 +220,11 @@ RESULTS
 * **Spawn protection only.** The protection that is checked is vanilla's spawn protection of a dedicated server; no protection mod (claims) is
   installed, so the loader-event half of `BlockProtection` is still covered only by the GameTests' test backend. The Remote Placer, the
   Transvector Dislocator and the Animation Tablet's fake player, which ask the same `BlockProtection`, are not used in this check.
+* **What the client shows, not how it feels.** The client's copy of blocks, stacks, vis and block entities is compared with the server's after each
+  action. A cast that the server refuses can still make the client swing and play the wand's sound (the client cannot know the spawn protection);
+  nothing looks at that. Thaumcraft's `WandHelper.consumeAllVis` never changes a stack on a client, so no predicted vis payment can show either
+  (the lead records every vis value its wand showed in the 40 ticks after a Dislocation cast: always the server's).
+* **One run per loader for the numbers below.** Timing (how long the second player waited, how fast the clients started) differs between runs.
 * **One flat world, peaceful, noon.** No other dimension (the Bedrock portal is made but not entered), no mobs, no weather.
 * **No GPU, no sound.** As for the client smoke: Mesa llvmpipe under Xvfb.
 * **Two loaders, not mixed.** A Fabric client on a Fabric server and a NeoForge client on a NeoForge server; a client of one loader cannot join
