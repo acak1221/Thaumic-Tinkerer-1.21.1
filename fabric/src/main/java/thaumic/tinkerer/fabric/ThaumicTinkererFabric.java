@@ -30,5 +30,8 @@ public final class ThaumicTinkererFabric implements ModInitializer, IThaumcraftA
         ThaumicTinkerer.onThaumcraftReady();
         // The loader glue of the Transvector Interface's fluids (FluidStorage.SIDED), once the block entity type exists.
         ThaumicTinkerer.guard("TileBlocksFabric.register", TileBlocksFabric::register);
+        // Its energy (Team Reborn Energy's EnergyStorage.SIDED), only when that optional mod is installed: without it the class that
+        // names its API is never loaded.
+        if (TileBlocksFabric.teamRebornEnergyLoaded()) ThaumicTinkerer.guard("TileBlocksFabricEnergy.register", TileBlocksFabricEnergy::register);
     }
 }

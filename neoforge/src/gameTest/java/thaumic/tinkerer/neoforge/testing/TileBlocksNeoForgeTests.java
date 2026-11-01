@@ -25,6 +25,7 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -37,9 +38,11 @@ import thaumic.tinkerer.common.block.tile.tablet.TileAnimationTablet;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorInterface;
 import thaumic.tinkerer.common.content.TileBlocks;
 import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
+import thaumic.tinkerer.testing.TestEnergyCell;
 
 /**
- * NeoForge-only scenarios of the TileBlocks group: the block capabilities of the Transvector Interface ({@code NeoForgeCapabilities}), which
+ * NeoForge-only scenarios of the TileBlocks group: the block capabilities of the Transvector Interface ({@code NeoForgeCapabilities}: items,
+ * and the cache invalidation of its fluid and energy capabilities), which
  * have no Fabric counterpart with the same shape (Fabric's lookups have no cache to invalidate), and what NeoForge alone asks of the
  * devices' fake player (its fake-player flag and extended menus). They are not generated from the Fabric
  * wrappers: tools/neoforge_gametests.py lists every {@code *NeoForgeTests} class in {@code TinkererGameTestCatalogue.NEOFORGE_ONLY} and gives it
@@ -142,6 +145,60 @@ public final class TileBlocksNeoForgeTests {
         h.assertTrue(cache.getCapability() == null, "unbound by setTarget(null), the cache has no handler");
         h.assertTrue(again.fill(water.copy(), FluidAction.SIMULATE) == 0, "and the handler it had no longer reaches the tank");
         h.assertTrue(TileBlocksNeoForgeChecks.tankOf(h.getBlockEntity(otherTankPos)).getFluidAmount() == BUCKET, "which kept its one bucket");
+        h.succeed();
+    }
+
+    /**
+     * The same for the energy capability: a {@code BlockCapabilityCache} of {@code Capabilities.EnergyStorage.BLOCK} at the Interface has no
+     * storage while it is unbound, one that fills the bound energy cell once it is bound (the binding listener invalidates the Interface's
+     * capabilities); after the cell is broken the storage it still holds moves nothing, the Interface lets the binding go and the cache is
+     * told; bound to another cell and then unbound by {@code setTarget(null)}, it has none again and what it had no longer reaches the cell.
+     */
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void interfaceEnergyCapabilityCacheFollowsTheBinding(GameTestHelper h) {
+        BlockPos ifacePos = new BlockPos(2, 1, 2);
+        BlockPos cellPos = new BlockPos(4, 1, 2);
+        BlockPos otherCellPos = new BlockPos(2, 1, 4);
+        h.setBlock(ifacePos, TileBlocks.interfaceBlock());
+        h.setBlock(cellPos, TestEnergyCell.block());
+        h.setBlock(otherCellPos, TestEnergyCell.block());
+        TileTransvectorInterface device = h.getBlockEntity(ifacePos);
+        TestEnergyCell.Cell cell = h.getBlockEntity(cellPos);
+        TestEnergyCell.Cell otherCell = h.getBlockEntity(otherCellPos);
+        AtomicInteger invalidations = new AtomicInteger();
+        BlockCapabilityCache<IEnergyStorage, Direction> cache = BlockCapabilityCache.create(Capabilities.EnergyStorage.BLOCK, h.getLevel(),
+                h.absolutePos(ifacePos), Direction.NORTH, () -> true, invalidations::incrementAndGet);
+
+        h.assertTrue(cache.getCapability() == null, "unbound, the cache has no energy storage");
+
+        int before = invalidations.get();
+        device.setTarget(h.absolutePos(cellPos));
+        h.assertTrue(invalidations.get() > before, "binding invalidated the capabilities of the interface");
+        IEnergyStorage storage = cache.getCapability();
+        h.assertTrue(storage != null, "bound, the cache has an energy storage");
+        int in = storage.receiveEnergy(300, false);
+        h.assertTrue(in == 300 && cell.amount() == 300, "300 went through the cached storage into the cell: " + in + ", " + cell.amount());
+        h.assertTrue(storage.getEnergyStored() == 300 && storage.getMaxEnergyStored() == TestEnergyCell.CAPACITY && storage.canReceive()
+                && storage.canExtract(), "and it reads the cell: " + storage.getEnergyStored() + " of " + storage.getMaxEnergyStored());
+
+        h.setBlock(cellPos, Blocks.AIR);
+        IEnergyStorage stale = cache.getCapability();
+        int lost = stale == null ? 0 : stale.receiveEnergy(100, false);
+        h.assertTrue(lost == 0, "the cell is broken: what the cache held no longer reaches it: " + lost);
+        h.assertTrue(cell.amount() == 300, "the broken cell got nothing more: " + cell.amount());
+        h.assertTrue(!device.isBound(), "the interface let the binding to the broken cell go");
+        h.assertTrue(cache.getCapability() == null, "and the cache was told: no energy storage");
+
+        device.setTarget(h.absolutePos(otherCellPos));
+        IEnergyStorage again = cache.getCapability();
+        h.assertTrue(again != null && again.receiveEnergy(100, false) == 100 && otherCell.amount() == 100, "bound to another cell, the cache fills it");
+        before = invalidations.get();
+        device.setTarget(null);
+        h.assertTrue(invalidations.get() > before, "unbinding invalidated the capabilities of the interface");
+        h.assertTrue(cache.getCapability() == null, "unbound by setTarget(null), the cache has no energy storage");
+        h.assertTrue(again.receiveEnergy(100, true) == 0 && again.extractEnergy(100, true) == 0 && again.getEnergyStored() == 0
+                && !again.canReceive(), "and the storage it had no longer reaches the cell");
+        h.assertTrue(otherCell.amount() == 100, "which kept its 100: " + otherCell.amount());
         h.succeed();
     }
 

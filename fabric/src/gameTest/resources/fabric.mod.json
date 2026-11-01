@@ -5,6 +5,9 @@
   "name": "Thaumic Tinkerer GameTest harness",
   "environment": "server",
   "entrypoints": {
+    "main": [
+      "thaumic.tinkerer.fabric.testing.TinkererGameTestSetup"
+    ],
     "fabric-gametest": [
       "thaumic.tinkerer.fabric.testing.CoreGameTests",
       "thaumic.tinkerer.fabric.testing.SimpleBlocksGameTests",

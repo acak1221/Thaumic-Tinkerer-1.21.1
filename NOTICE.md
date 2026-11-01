@@ -30,6 +30,9 @@ Which files are under which licence:
   unchanged from the Thaumcraft repository; `gradlew` and `gradlew.bat` carry the Apache-2.0 notice of Gradle.
 - `LICENSE-MIT` is a byte copy of the licence file of the Thaumcraft 4 Reload repository, so its second line still names the original Thaumcraft 4.2.3.5
   (c) Azanor, as it does there. The MIT files listed above contain no Thaumcraft code; the line is inherited, it is not a statement about them.
+- **Team Reborn Energy** (`teamreborn:energy`, by Team Reborn and modmuss50, **MIT**, <https://github.com/TechReborn/Energy>), the Fabric energy API: an
+  optional dependency of the Fabric add-on. The build compiles against it (and the Fabric GameTest run loads it) from `maven.fabricmc.net`; this repository and
+  the add-on jars contain none of it.
 - The add-on jars (Fabric and NeoForge) are separate downloads; the Thaumcraft jars contain none of them, and this repository contains no Thaumcraft 4 jar, no
   Thaumcraft assets and no Thaumcraft 4 source.
 - Publishing the port does not establish rights in Thaumcraft 4 (Azanor), which Thaumic Tinkerer is a derivative work

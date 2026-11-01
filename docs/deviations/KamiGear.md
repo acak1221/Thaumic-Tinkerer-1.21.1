@@ -278,7 +278,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   tick (`ToolHandler.afterTick`), and only when the target took the hit (`ItemIchorSwordAdv.soulHitLanded`: its hurt animation started and its
   attacker is the wielder, which `LivingEntity.hurt` records only for a hit it takes): an armour stand, an invulnerable mob, a creative player,
   a player that the server's PvP rule protects, and a click whose blow never came give none; a hit that a shield blocks still counts (the
-  game counts it as taken). GameTest `soulModeGivesAHeartOnlyForAHitThatLands` (passed on the Fabric and the NeoForge GameTest server, 2026-11-01; the hits are `hurt` calls of the check, not a client's attack packets).
+  game counts it as taken). GameTest `soulModeGivesAHeartOnlyForAHitThatLands` (passed on the Fabric and the NeoForge GameTest server, 2026-11-01; the hits are `hurt` calls of the check, not a client's attack packets); since the energy round of 2026-11-01 its stand-in for the global Soul Heart hook records only its own players and hands anyone else's heart to the real hook: in that round's NeoForge runs it ran in the same ticks as KamiWorld's `soulHeartsAbsorbDamageBeforeHealth` and took that check's heart, and both failed, twice in a row).
 
 ## 5. Black Hole Ring
 

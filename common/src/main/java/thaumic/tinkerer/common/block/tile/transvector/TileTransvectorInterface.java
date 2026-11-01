@@ -40,9 +40,10 @@ import thaumic.tinkerer.common.content.TileBlocks;
  *       jars and the infusion altar of Thaumcraft ask of any block entity.</li>
  * </ul>
  *
- * <p><b>Not forwarded: fluids and energy</b> (1.7.10 {@code IFluidHandler}, CoFH RF and IC2 EU). 1.21.1 has no fluid or
- * energy interface that common code can implement; they are loader capabilities (Fabric Transfer API, NeoForge
- * capabilities). {@link #getTile()} is the single place a loader module needs to forward them from.</p>
+ * <p><b>Fluids and energy are forwarded by the loader modules</b> (1.7.10 {@code IFluidHandler} and CoFH RF). 1.21.1 has no fluid
+ * or energy interface that common code can implement; they are loader capabilities (Fabric: the Transfer API, and Team Reborn
+ * Energy when that optional mod is installed; NeoForge: capabilities), which ask {@link #bound()} for the block to forward to,
+ * side for side. IC2's EU and its energy net have no 1.21.1 counterpart.</p>
  *
  * <p><b>Never itself, never another Interface</b> (new in the port). Every forwarding path goes through {@link #bound()},
  * which answers null for the Interface itself and for another Interface, and on the server {@link #getTile()} ends such a

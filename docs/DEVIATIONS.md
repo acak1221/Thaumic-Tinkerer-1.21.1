@@ -127,12 +127,10 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
 
 * **Other mods' integrations**: Forge Multipart parts (candle and Nitor parts), EnderStorage page of the Ender Rift focus, Botania,
   Blood Magic, AE2 (`IMovableTile`, passenger handling), Tinkers' Construct repair, GregTech accelerator text, EnderIO planter,
-  Electro-Magic Tools hoe.
+  Electro-Magic Tools hoe, IC2 EU of the Transvector Interface (its RF is forwarded as each loader's energy, `TileBlocks.md` section 2.5).
 * **Computer peripherals** (ComputerCraft / OpenComputers) of the Animation Tablet, Transvector Interface, Golem Connector, Aspectalyzer and
   the attractors. The method tables exist as plain Java; nothing registers them. The `peripherals` research category exists and is empty. The ComputerCraft turtle
   tool of the Fume Dissipator (`FumeTool`, `FumePeripheral`) is not ported either (`SimpleBlocks.md` section 3).
-* **Energy through the Transvector Interface** (RF and EU in 1.7.10) is written for **neither** loader; fluids through it are forwarded on both (Fabric
-  `TileBlocksFabric`, run in the GameTests; NeoForge `NeoForgeCapabilities`, which also offers the Interface's items as a capability, run in the NeoForge GameTests; `TileBlocks.md` sections 2.5 and 3, `api-requests/TileBlocks.md` section 6, `NEOFORGE.md`).
 * **The Kami foci's `canApplyUpgrade` override** (the original answered true for every upgrade) is dropped; the base rule applies (`Foci.md` section 10, `KamiGear.md` section 9).
 * **Gregtech hazard protection and the Thaumic Boots mod** (`IHazardProtector`, `IBoots`) for the Ichorcloth armour: neither mod exists for 1.21.1 (`KamiGear.md` section 3).
 * **Golem API** (Golem Connector data): API request A11/A12 is deferred; the Golem Connector block exists without golem data.
@@ -151,7 +149,7 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
   infinite blow, whatever the add-on returns. **Loader glue that is not an event** (`HOOKS.md` section 9, "Other loader glue"): the NeoForge side of the `ItemRenderers`
   backend (the Mob Display), of the Kami gear's wings layer and ghost blocks and of the Transvector Interface's fluids (and items) is written (`NEOFORGE.md`, "Client glue
   and block capabilities on NeoForge": compiled, the TileBlocks GameTests pass on both loaders, the Mob Display drawn in the NeoForge client smoke; the wings and ghost blocks not seen on either loader);
-  energy forwarding, the flammability hook of the elemental fires and the special effects of the Bedrock dimension are written for neither loader. The one failure
+  the flammability hook of the elemental fires and the special effects of the Bedrock dimension are written for neither loader (the Interface's energy is written for both since 2026-11-01). The one failure
   of the first full NeoForge runs, `simpleblocksgametests.acropneedsfarmland` (wheat stood on the Infused Farmland, because NeoForge lets crops stand on any
   `FarmBlock`), is fixed by that soil mixin (`NEOFORGE.md`, "Last run").
 

@@ -69,7 +69,7 @@ public abstract class TileTransvector extends CamoDeviceBlockEntity {
 
     /**
      * What a loader module must also do when a binding begins, moves or ends (new in the port). NeoForge: invalidate the
-     * capabilities at the device's position, because the Interface's fluid capability exists only while it is bound and
+     * capabilities at the device's position, because the Interface's fluid and energy capabilities exist only while it is bound and
      * NeoForge's capability caches must be told (docs/NEOFORGE.md). Runs after the change, on the side that made it.
      */
     public static void setBindingListener(Consumer<TileTransvector> listener) {

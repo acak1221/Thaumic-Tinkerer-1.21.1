@@ -28,7 +28,7 @@ deleted before every run, so that no result depends on an earlier one. The parit
 |---|---|---|
 | Source set `gameTest`: `common/src/gameTest/java` + `neoforge/src/gameTest/java`, resources `common/src/gameTest/resources` (the parity oracle) + `neoforge/src/gameTest/resources` | `neoforge/build.gradle`, section "GameTests on NeoForge" | `thaumicTinkererGameTest` in `fabric.gradle` |
 | Run `gameTest` (task `runGameTest`): a server with `-Xmx3G`, `-Dneoforge.enableGameTest=true`, `-Dneoforge.gameTestServer=true`, `-Dneoforge.enabledGameTestNamespaces=thaumictinkerer`, `-Dthaumictinkerer.gameTestReportFile=<report>`, and `-Dthaumictinkerer.gameTestFilter=<filter>` from `-PtinkererGameTestFilter`. Two mods: `thaumictinkerer` (the `main` source set) and `thaumictinkerer_gametest` (the `gameTest` source set); Thaumcraft is the jar from mavenLocal | `neoforge/build.gradle` | the run `tinkererGameTest` (two classpath groups) |
-| The test mod `thaumictinkerer_gametest` (`@Mod`): registers the wrapper classes on `RegisterGameTestsEvent`, the barrel tank capability on `RegisterCapabilitiesEvent`, and the report | `neoforge/src/gameTest/java/thaumic/tinkerer/neoforge/testing/ThaumicTinkererGameTestMod.java`, `neoforge/src/gameTest/resources/META-INF/neoforge.mods.toml` | `fabric/src/gameTest/resources/fabric.mod.json` (entrypoints `fabric-gametest`) |
+| The test mod `thaumictinkerer_gametest` (`@Mod`): registers the wrapper classes on `RegisterGameTestsEvent`, the energy cell's block and block entity type on `RegisterEvent`, the barrel tank and energy cell capabilities on `RegisterCapabilitiesEvent`, and the report | `neoforge/src/gameTest/java/thaumic/tinkerer/neoforge/testing/ThaumicTinkererGameTestMod.java`, `neoforge/src/gameTest/resources/META-INF/neoforge.mods.toml` | `fabric/src/gameTest/resources/fabric.mod.json` (entrypoints `fabric-gametest`, and `main` for the energy cell) |
 | The wrappers: 13 classes, 356 tests (354 after the audit of 2026-11-01, 312 before it), generated | `neoforge/src/gameTest/java/thaumic/tinkerer/neoforge/testing/*GameTests.java`, the class list `TinkererGameTestCatalogue.java` | `fabric/src/gameTest/java/thaumic/tinkerer/fabric/testing/*GameTests.java` |
 | The templates: an empty 8x8x8 structure of air per class, `thaumictinkerer:<class in lower case>.empty` | `neoforge/src/gameTest/resources/data/thaumictinkerer/structure/*.empty.nbt` (generated) | Fabric API's `fabric-gametest-api-v1:empty` (the same 8x8x8 air) |
 | The flat world preset of the GameTest server, with the dimension `thaumictinkerer:bedrock` the KamiWorld checks need | `neoforge/src/gameTest/resources/data/minecraft/worldgen/world_preset/flat.json` (a byte copy, generated) | `fabric/src/gameTest/resources/data/minecraft/worldgen/world_preset/flat.json` |
@@ -52,8 +52,11 @@ Fabric's transfer API, and since 2026-11-01 `HooksGameTests.blockProtectionAsksT
 `PlayerBlockBreakEvents.BEFORE`); its NeoForge wrapper calls the method of the same name of the hand-written class `<Group>NeoForgeChecks`
 (`TileBlocksNeoForgeChecks.interfaceForwardsFluids`: the same steps through `Capabilities.FluidHandler.BLOCK`, with a four-bucket tank that the
 test mod gives every barrel; `HooksNeoForgeChecks.blockProtectionAsksTheLoadersOwnBreakAndPlaceEvents`: listeners of NeoForge's `BlockEvent.BreakEvent` and
-`EntityPlaceEvent` that cancel). The generator refuses a Fabric-native wrapper without such a method, and a method that no wrapper needs. A new
-check belongs in the shared checks, so that it needs no counterpart.
+`EntityPlaceEvent` that cancel). The two energy checks of the Interface (`interfaceForwardsEnergy`, `interfaceMovesNoEnergyThroughABrokenBinding`,
+since 2026-11-01) are shared checks that take the loader's energy API as an argument (`EnergyProbe`), so their wrappers are Fabric-native too: Fabric hands
+in Team Reborn Energy, `TileBlocksNeoForgeChecks` hands in `Capabilities.EnergyStorage.BLOCK`, both with the energy cell of `TestEnergyCell` that each harness
+registers (Fabric: the harness's `main` entrypoint `TinkererGameTestSetup`; NeoForge: `RegisterEvent` in the test mod). The generator refuses a Fabric-native
+wrapper without such a method, and a method that no wrapper needs. A new check belongs in the shared checks, so that it needs no counterpart.
 
 **NeoForge-only scenarios.** What exists only on NeoForge is tested in hand-written classes whose name ends in `NeoForgeTests` (in the same
 package, with the template and the `@PrefixGameTestTemplate(true)` of the wrappers; the generator lists them in
@@ -210,7 +213,14 @@ Transvector Interface's block entity type:
   its sided vanilla containers (furnace, brewing stand); Fabric's `InventoryStorage.of(container, side)` likewise uses the side rules only for a side (whether
   Fabric checks anything on extraction without a side was not read). So a mod that asks without a side can take the Enchanter's or the Restorer's tool out on
   NeoForge. The wrappers read the block entity on every call.
-* **Not registered: energy**, on neither loader (`deviations/TileBlocks.md` 2.5). Essentia goes through the Thaumcraft API interfaces.
+* **`Capabilities.EnergyStorage.BLOCK`** (since 2026-11-01; 1.7.10: CoFH RF): the same shape as the fluids. None while the interface is unbound,
+  bound into an unloaded chunk, bound to itself or to another interface (`TileTransvectorInterface.bound()`), or while the bound block has no energy
+  storage for that side; otherwise a storage that asks the bound block's storage again on every call (an empty one while there is none), and the same
+  invalidation when the binding changes. The amounts are the bound storage's (no conversion). Fabric forwards energy through Team Reborn Energy, an
+  optional mod there (`fabric/.../TileBlocksFabricEnergy.java`, `deviations/TileBlocks.md` 2.5). Checked by the shared GameTests `interfaceForwardsEnergy`
+  and `interfaceMovesNoEnergyThroughABrokenBinding` (NeoForge bodies in `TileBlocksNeoForgeChecks`, with the GameTest energy cell of
+  `common/src/gameTest/.../TestEnergyCell.java`, registered by the test mod) and the NeoForge-only
+  `tileblocksneoforgetests.interfaceEnergyCapabilityCacheFollowsTheBinding`. Essentia goes through the Thaumcraft API interfaces.
 
 ### What was verified, and how (2026-10-31)
 

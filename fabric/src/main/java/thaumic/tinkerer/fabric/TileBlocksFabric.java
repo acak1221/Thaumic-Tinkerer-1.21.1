@@ -7,6 +7,7 @@ package thaumic.tinkerer.fabric;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage;
 import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -25,14 +26,17 @@ import thaumic.tinkerer.common.content.TileBlocks;
  * {@code WorldlyContainer}, which the Transfer API wraps itself, and essentia through the Thaumcraft interfaces, so only
  * fluids need this class.</p>
  *
- * <p><b>Not here: energy.</b> The 1.7.10 interface also forwarded RF and EU. The Fabric energy API (Team Reborn Energy) is
- * not a dependency of this add-on, so power is not forwarded; see docs/deviations/TileBlocks.md, 2.5.</p>
+ * <p><b>Energy</b> (1.7.10: CoFH RF) is forwarded by {@link TileBlocksFabricEnergy}, through Team Reborn Energy, an optional mod:
+ * {@code ThaumicTinkererFabric} calls it only when {@link #teamRebornEnergyLoaded()}, so that no class of that mod is loaded
+ * without it (this class names none). See docs/deviations/TileBlocks.md, 2.5.</p>
  *
  * <p>{@code ThaumicTinkererFabric.onThaumcraftReady()} calls {@link #register()} once the shared phase ran, so nothing has
  * to be listed in {@code fabric.mod.json}. The NeoForge counterpart is {@code NeoForgeCapabilities} (the fluid capability
  * and, because NeoForge does not wrap a {@code WorldlyContainer} by itself, the item capability).</p>
  */
 public final class TileBlocksFabric {
+    /** The mod id of Team Reborn Energy (the Fabric energy API), an optional dependency of the add-on. */
+    public static final String TEAM_REBORN_ENERGY = "team_reborn_energy";
     private static boolean registered;
 
     private TileBlocksFabric() {}
@@ -42,6 +46,11 @@ public final class TileBlocksFabric {
         if (registered) return;
         registered = true;
         FluidStorage.SIDED.registerForBlockEntity(TileBlocksFabric::boundStorage, TileBlocks.interfaceType());
+    }
+
+    /** Is Team Reborn Energy installed, so that {@link TileBlocksFabricEnergy} may be loaded? */
+    public static boolean teamRebornEnergyLoaded() {
+        return FabricLoader.getInstance().isModLoaded(TEAM_REBORN_ENERGY);
     }
 
     /**
