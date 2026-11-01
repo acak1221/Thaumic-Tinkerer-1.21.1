@@ -539,4 +539,53 @@ public final class ParityRuntimeChecks {
                 "changing the amount of an object tag in the oracle must fail the comparison, got " + tags.failures.size() + " differences");
         test.succeed();
     }
+
+    /**
+     * The four crucible recipes {@code INFUSED_POTIONSPOT0..3} (1.7.10 {@code ItemInfusedPotion.getRecipeItem}: the recipe's name is its
+     * research key) and the infusion recipe {@code INFUSED_INKWELL} ({@code ItemInfusedInkwell}, whose {@code getResearchItem} is null)
+     * are registered under research keys that no research entry defines. Thaumcraft 4.2.3.5 gated both kinds of recipe on the player's
+     * completed research ({@code ThaumcraftCraftingManager.findMatchingCrucibleRecipe} and {@code InfusionRecipe.matches}), and its
+     * {@code ResearchManager.isResearchComplete} answers false for a key that is no research (read in the bytecode of its jar), so in
+     * 1.7.10 nobody could make them; the potions' research page showed the four recipes all the same. The port keeps that
+     * (docs/DEVIATIONS.md section 6, point 4): the recipes carry those keys, no research has them, and a player who has completed every
+     * research, {@code INFUSED_POTIONS} among them, can neither complete such a key nor pass the gate, while the recipes themselves match
+     * their own catalyst, aspects and components and another recipe of the add-on passes with the same player.
+     */
+    public static void recipesUnderAResearchKeyNoEntryDefinesStayLocked(GameTestHelper test) {
+        @SuppressWarnings("removal")
+        net.minecraft.server.level.ServerPlayer player = test.makeMockServerPlayerInLevel();
+        for (ResearchItem research : ResearchCategories.allResearch()) thaumcraft.api.ThaumcraftApiHelper.completeResearch(player, research.key);
+        test.assertTrue(thaumcraft.api.ThaumcraftApiHelper.isResearchComplete(player, LibResearch.KEY_POTIONS),
+                "the player has completed " + LibResearch.KEY_POTIONS + ", whose page shows the four potion recipes");
+
+        List<String> locked = new ArrayList<>();
+        for (int i = 0; i < 4; i++) locked.add(LibResearch.KEY_POTIONS + "POT" + i);
+        locked.add(LibResearch.KEY_INFUSED_INKWELL);
+        for (String key : locked) {
+            test.assertTrue(ResearchCategories.getResearch(key) == null, "no research entry has the key " + key);
+            test.assertTrue(!thaumcraft.api.ThaumcraftApiHelper.completeResearch(player, key), key + " cannot be completed");
+            test.assertTrue(!thaumcraft.api.ThaumcraftApiHelper.isResearchComplete(player, key), "and is not complete: " + key);
+        }
+        for (int i = 0; i < 4; i++) {
+            String key = LibResearch.KEY_POTIONS + "POT" + i;
+            CrucibleRecipe recipe = TTRecipes.get(key, CrucibleRecipe.class);
+            test.assertTrue(recipe != null && key.equals(recipe.key), "the crucible recipe " + key + " is gated on the key " + key);
+            ItemStack catalyst = recipe.catalyst instanceof ItemStack stack ? stack : ItemStack.EMPTY;
+            test.assertTrue(recipe.matches(recipe.aspects.copy(), catalyst),
+                    "its catalyst and aspects match: only the research gate keeps it from the crucible (" + key + ")");
+        }
+
+        InfusionRecipe inkwell = TTRecipes.get(LibResearch.KEY_INFUSED_INKWELL, InfusionRecipe.class);
+        test.assertTrue(inkwell != null && LibResearch.KEY_INFUSED_INKWELL.equals(inkwell.getResearch()),
+                "the inkwell's infusion is gated on the key " + LibResearch.KEY_INFUSED_INKWELL);
+        test.assertTrue(!inkwell.matches(new ArrayList<>(List.of(inkwell.getComponents())), inkwell.getRecipeInput().copy(), test.getLevel(), player),
+                "a player with every research cannot infuse the inkwell");
+        InfusionRecipe seeds = TTRecipes.get(LibResearch.KEY_POTIONS + 0, InfusionRecipe.class);
+        test.assertTrue(seeds != null && LibResearch.KEY_POTIONS.equals(seeds.getResearch()), "control: the seeds' infusion is gated on "
+                + LibResearch.KEY_POTIONS);
+        test.assertTrue(seeds.matches(new ArrayList<>(List.of(seeds.getComponents())), seeds.getRecipeInput().copy(), test.getLevel(), player),
+                "and the same player infuses the seeds from the same kind of sample stacks");
+        player.discard();
+        test.succeed();
+    }
 }

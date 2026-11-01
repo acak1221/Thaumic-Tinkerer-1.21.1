@@ -163,7 +163,8 @@ deleted it reads as follows: it keeps its 1.7.10 function names and stores under
 
 - 800 ink as durability (nominal figure; the 1.7.10 one-point shift of section 3 is not compensated here), `IScribeTools` (the research table takes any such item), one stack, shining like an enchanted
   item (`isFoil`), no research entry, not in the creative tab, name "(NYI)": the item is unfinished in 1.7.10 too and its
-  infusion recipe stays under a research key that does not exist, so it is only for the commands.
+  infusion recipe stays under a research key that does not exist, so it is only for the commands (as in 1.7.10, where Thaumcraft 4.2.3.5
+  refused a key that is no research: `docs/DEVIATIONS.md` section 6, point 4; GameTest `recipesUnderAResearchKeyNoEntryDefinesStayLocked`).
 - **Refill recipe.** `data/thaumictinkerer/recipe/infused_inkwell0.json`: eight ink sacs (`dye:0`) around tools of any wear
   give a full set (the center was `new ItemStack(this, 1, 32767)`).
 - **Look (choice).** 1.7.10 drew the Thaumcraft icon (`ConfigItems.itemInkwell.getIconFromDamage`); the port uses the

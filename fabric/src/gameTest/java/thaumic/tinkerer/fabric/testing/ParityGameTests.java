@@ -41,4 +41,9 @@ public final class ParityGameTests implements FabricGameTest {
     public void aChangedOracleValueFailsAgainstTheLiveRegistries(GameTestHelper test) {
         ParityRuntimeChecks.aChangedOracleValueFailsAgainstTheLiveRegistries(test);
     }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void recipesUnderAResearchKeyNoEntryDefinesStayLocked(GameTestHelper test) {
+        ParityRuntimeChecks.recipesUnderAResearchKeyNoEntryDefinesStayLocked(test);
+    }
 }

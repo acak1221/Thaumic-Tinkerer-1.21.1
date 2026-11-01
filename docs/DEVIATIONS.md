@@ -232,9 +232,19 @@ None of these is a known defect. Each is something the port decided or assumed w
    795-822). *Decision*: for a wearer that is not a player `IchorAbsorption` leaves vanilla's armour, worked out with those points. *Test*: the zombies of
    `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone` (the full set: vanilla armour of 22 points, nothing against magic; the chestplate alone:
    2 + 8 points).
-4. **Recipes with no research.** The four crucible recipes `INFUSED_POTIONSPOT0..3` and the infusion recipe `INFUSED_INKWELL` have no research entry in 1.7.10
-   and none in the port (`PARITY_REPORT.md` section 4), so Thaumcraft never unlocks them. The inkwell is documented (`BasicItems.md` section 6); the four
-   potion recipes are documented nowhere else. Whether they are meant to be obtainable is the owner's decision, not a parity defect.
+4. **Recipes with no research: resolved, they stay locked as in 1.7.10.** *Evidence*: the four crucible recipes `INFUSED_POTIONSPOT0..3` are registered with
+   their name as research key (`ItemInfusedPotion.getRecipeItem` and `ThaumicTinkererCrucibleRecipe.registerRecipe` of the pinned source) and the infusion recipe
+   `INFUSED_INKWELL` under its own name (`ItemInfusedInkwell`, whose `getResearchItem` is null); no research has these keys. Thaumcraft 1.7.10-4.2.3.5 (its jar,
+   disassembled with `javap`) checks the key against the player's research before it matches a crucible recipe
+   (`ThaumcraftCraftingManager.findMatchingCrucibleRecipe`, offset 70) or an infusion recipe (`InfusionRecipe.matches`, through
+   `ThaumcraftApiHelper.isResearchComplete`), and `ResearchManager.isResearchComplete(player, key)` returns false at once for a key that does not start with
+   `@` and is no registered research (offsets 0-17). So nobody could make the four potions or the inkwell in 1.7.10 (the potions' research page showed the
+   recipes all the same). *Decision*: the original's behaviour; Thaumcraft 4 Reload refuses the same way (`CrucibleCrafting.find` and `TileInfusionMatrix` ask
+   the player's knowledge, and its API cannot complete an unknown key). To make the potions obtainable, the owner would register the four recipes under the
+   research key `INFUSED_POTIONS` (one argument in `ItemInfusedPotion.getRecipeItem`; the parity oracle would then list a documented difference). *Test*: GameTest
+   `recipesUnderAResearchKeyNoEntryDefinesStayLocked` (a player with every research cannot complete the keys or pass the gate; the recipes match their own
+   catalyst, aspects and components; another infusion of the add-on passes with the same player). `SimpleBlocks.md` section 2.8, `BasicItems.md` section 6,
+   `PARITY_REPORT.md` section 4.
 5. **The 1.7.10 side of the invulnerability-frames bands** (`HOOKS.md` section 3, `Enchantments.md` sections 2 and 12): taken from `HOOKS.md` and recalled from
    `EntityLivingBase.attackEntityFrom`, not read in the Minecraft 1.7.10 source (not on this machine). The same holds for every statement about Forge's
    `LivingHurtEvent` in `HOOKS.md` section 3 (its place after the frames and after a player's sword block, that a cancel only skipped `damageEntity`, that

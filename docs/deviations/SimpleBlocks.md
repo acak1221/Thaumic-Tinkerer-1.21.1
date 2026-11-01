@@ -316,6 +316,12 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   effect for 3600 ticks, leaves a glass bottle and counts as a used item; the effect only on the server. It glints
   (`isFoil`), as `ItemPotion` did while `getEffects` was not empty. Its description id is the key of its name
   (`item.infusedPotion.<Aspect>.name`), so the statistics screen shows the name too.
+* **No recipe makes them (kept as in 1.7.10).** The four crucible recipes are registered under their own names, `INFUSED_POTIONSPOT0..3`
+  (`ItemInfusedPotion.getRecipeItem`), which are also their research keys, and no research entry has such a key; the research `INFUSED_POTIONS`
+  only shows them on its pages. Thaumcraft 4.2.3.5 refused a crucible recipe whose key the player had not completed, and a key that is no research
+  is never complete (`ResearchManager.isResearchComplete`, read in its bytecode); Thaumcraft 4 Reload refuses it the same way (`CrucibleCrafting.find`),
+  and its API cannot complete an unknown key. So the potions came from the creative tab and commands only, then and now (`docs/DEVIATIONS.md` section 6,
+  point 4, which says how to change it; GameTest `recipesUnderAResearchKeyNoEntryDefinesStayLocked`).
 * **The hit (forced).** `LivingAttackEvent` is Architectury `EntityEvent.LIVING_HURT`, the closest event; whether it fires
   before the invulnerability checks, as the attack event did, depends on the loader and is unverified. The attacker is the
   direct source of the damage if it is a player.
