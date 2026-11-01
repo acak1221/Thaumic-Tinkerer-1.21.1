@@ -81,8 +81,8 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   one of the 12 documented differences of `PARITY_REPORT.md` section 3).
 * **The multiblock diagram of the Levitational Locomotive** is the fourth page of its research. The original builds it
   (`ResearchHelper.LeviationaryHelp`) but no research of the original uses it, so the 1.7.10 entry has three pages; the port shows it now that
-  Thaumcraft 4 Reload draws `COMPOUND_CRAFTING` pages as TC4 did (a Thaumcraft without that drawing skips the page; the pinned Thaumcraft,
-  main 299724f, draws its own construct pages but not an add-on's, so the page is registered but not shown there). One documented difference
+  Thaumcraft 4 Reload draws an add-on's `COMPOUND_CRAFTING` page (main since 10739c4, the pinned commit; an older Thaumcraft skips the page).
+  One documented difference
   of the parity check (`TileBlocks.md` 2.3).
 * **Slow Fall's landing rule** (settled 2026-11-01, section 6, point 6). The original lowered the fall distance at the start of every tick of the fall, down
   to a floor of 2.9; the loader event comes once, at the landing, so the port **replays those ticks** along the fall and gives the distance the original's rule
