@@ -588,7 +588,6 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
         int[] mark = { 0 };
         Vec3[] start = { null };
         boolean[] shift = { false };
-        String refused = Component.translatable("ttmisc.noTeleport").getString();
         return staged(name, stage, before, mark)
                 .until("the destinations screen (the gate's own client tick, the player sneaking above it)",
                         () -> Minecraft.getInstance().screen instanceof GuiWarpGateDestinations, 20)
@@ -631,6 +630,8 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
                     Vec3 server = new Vec3(Double.parseDouble(check[0].get("x")), Double.parseDouble(check[0].get("y")), Double.parseDouble(check[0].get("z")));
                     boolean agrees = at.distanceTo(server) < 0.5;
                     List<String> messages = link.since(mark[0]);
+                    // translated now: the scripts are built before the client has loaded its languages
+                    String refused = Component.translatable("ttmisc.noTeleport").getString();
                     boolean refusedSeen = messages.contains(refused);
                     boolean ok = check[0].passed() && agrees && shift[0] && (expectMoved || refusedSeen);
                     MultiplayerClient.record(r, PHASE, name, "warp_gate", ok, "server " + check[0].status() + ": " + check[0].text() + "; client: shift held"
@@ -679,13 +680,19 @@ final class MultiplayerLeadPhase extends MultiplayerActor {
         ServerLink.Reply[] check = { null };
         View[] before = { null };
         int[] mark = { 0 };
-        String command = "oclaims claim 96 -32 127 -17";
+        // One chunk per command: OPAC 0.33.0 takes an area of 2 x 1 chunks for one chunk (ClaimsClaimCommands: an area is "more than 1
+        // chunk" only when its middle differs from its first corner, and the middle of 6..7 is 6) and claims only its middle.
+        String first = "oclaims claim 96 -32 111 -17";
+        String second = "oclaims claim 112 -32 127 -17";
         return staged("a_claim", stage, before, mark)
-                .run("type OPAC's claim command", r -> r.client().getConnection().sendCommand(command))
+                .run("type OPAC's claim command for the first chunk", r -> r.client().getConnection().sendCommand(first))
+                .ticks(20)
+                .run("and for the second", r -> r.client().getConnection().sendCommand(second))
                 .ticks(40)
                 .then("check", check("a_claim", () -> "", check), 40)
                 .run("record", r -> MultiplayerClient.record(r, PHASE, "a_claim", "openpartiesandclaims", check[0].passed(), "server "
-                        + check[0].status() + ": " + check[0].text() + "; client: typed /" + command + "; OPAC answered " + link.since(mark[0])));
+                        + check[0].status() + ": " + check[0].text() + "; client: typed /" + first + " and /" + second + "; OPAC answered "
+                        + link.since(mark[0])));
     }
 
     /** At the end: the lead stays until the second player, who works in its claim, has left. */

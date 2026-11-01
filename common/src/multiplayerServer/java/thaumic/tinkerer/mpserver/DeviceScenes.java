@@ -148,6 +148,7 @@ final class DeviceScenes {
                     ItemStack sword = new ItemStack(TTRegistry.item(LibItemNames.ICHOR_SWORD_GEM));
                     sword.set(KamiComponents.TOOL_MODE.get(), 2);
                     setHotbar(player, SLOT_EXTRA, sword);
+                    cow(player.serverLevel());
                 }, "slot", true));
         // Shadowbeam: a staff with the focus, the use key held while the lead looks up into the sky.
         stages.put("shadow_beam", new Stage("shadow_beam", BEAM_SPOT, BEAM_SPOT.add(0, 31.62, -20), null, null, SLOT_EXTRA, false,
@@ -205,6 +206,23 @@ final class DeviceScenes {
         device.setTarget(end);
     }
 
+    /**
+     * The cow of the Soul Hearts, made when the scenario is staged (one made while the world was being built, before its chunk's
+     * entities were loaded, was not there when the lead came): it does not move and survives every hit.
+     */
+    static void cow(ServerLevel level) {
+        if (!level.getEntitiesOfClass(Cow.class, new net.minecraft.world.phys.AABB(COW_AT.subtract(2, 1, 2), COW_AT.add(2, 3, 2))).isEmpty()) return;
+        Cow cow = EntityType.COW.create(level);
+        if (cow == null) throw new IllegalStateException("no cow");
+        cow.setNoAi(true);
+        cow.setSilent(true);
+        cow.setPersistenceRequired();
+        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
+        cow.setHealth(1000F);
+        cow.moveTo(COW_AT.x, COW_AT.y, COW_AT.z, 180F, 0F);
+        if (!level.addFreshEntity(cow)) throw new IllegalStateException("the cow was not added at " + COW_AT);
+    }
+
     static void build(ServerLevel level, ServerReport report) {
         // f. The devices. The inside placer is loaded by the harness (its screen cannot be opened inside the radius); the outside one
         // is empty until the lead fills it through its screen.
@@ -248,17 +266,6 @@ final class DeviceScenes {
             for (Aspect primal : Aspect.getPrimalAspects()) WandHelper.addRealVis(wand, primal, WandHelper.getMaxVis(wand), true);
             table.setItem(TileEnchanter.SLOT_WAND, wand);
         }
-
-        // The cow of the Soul Hearts: it does not move and survives every hit.
-        Cow cow = EntityType.COW.create(level);
-        if (cow == null) throw new IllegalStateException("no cow");
-        cow.setNoAi(true);
-        cow.setSilent(true);
-        cow.setPersistenceRequired();
-        cow.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000.0);
-        cow.setHealth(1000F);
-        cow.moveTo(COW_AT.x, COW_AT.y, COW_AT.z, 180F, 0F);
-        level.addFreshEntity(cow);
 
         // Two Celestial Gateways; gate A holds a Sky Pearl attuned to gate B.
         Scenes.put(level, GATE_A, TTRegistry.block(LibBlockNames.WARP_GATE).defaultBlockState());

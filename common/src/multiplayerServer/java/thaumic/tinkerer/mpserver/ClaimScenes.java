@@ -54,7 +54,8 @@ final class ClaimScenes {
     static final int CLAIM_Z0 = -32;
     static final int CLAIM_X1 = 127;
     static final int CLAIM_Z1 = -17;
-    static final String CLAIM_COMMAND = "oclaims claim " + CLAIM_X0 + " " + CLAIM_Z0 + " " + CLAIM_X1 + " " + CLAIM_Z1;
+    /** What the lead types, one chunk per command (OPAC 0.33.0 claims only the middle chunk of a 2 x 1 area). */
+    static final String CLAIM_COMMAND = "oclaims claim 96 -32 111 -17 and /oclaims claim 112 -32 127 -17";
     static final String OPAC = "openpartiesandclaims";
 
     // The second player's hotbar.
