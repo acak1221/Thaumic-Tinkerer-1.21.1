@@ -35,14 +35,20 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  *
  * <p>The checks: a camouflaged cell must be seen ({@code camo_visible}, the share of its cube's pixels that differ from the empty stage,
  * as in {@link BlockRowsPhase}) and must look like the real block ({@code camo_like_real}: at most {@link #LIKE_REAL} of the pixels of its
- * cube differ by more than a small amount from the picture of the real block; what may differ is the floor around the cube, which a real
- * opaque block shades and a camouflage block, which occludes nothing, does not). A cleared camouflage must show the block's own model
- * again. The columns (a real block under a camouflaged platform) are for the eye: the numbers are recorded, not judged.</p>
+ * silhouette where the real block shows something differ by more than a small amount from the picture of the real block,
+ * {@link Visibility#unlikeOnSilhouette}; the floor around the cube, which a real block shades by smooth lighting and a platform does not,
+ * is left out). A cleared camouflage must show the block's own model again. The columns (a real block under a camouflaged platform) are for the eye: the numbers are recorded, not judged.</p>
  */
 final class CamoPhase extends ScriptedPhase {
     private static final String PHASE = "camouflage";
-    /** The largest share of differing pixels of a camouflaged cube against the real block that still passes. */
-    static final double LIKE_REAL = 0.15;
+    /**
+     * The largest share of the pixels of a camouflaged cube's silhouette that may differ from the real block. What differs where the
+     * drawing is right is the floor seen through the transparent pixels of the cube (the holes of the leaves, the glass): a real block with
+     * a full collision shape darkens the floor next to it by smooth lighting (glass does not), a platform (no collision shape without an
+     * entity) never does, a device (a full cube) always does, whatever it imitates. The first run on Fabric measured 15 % for the
+     * platform's leaves and 0 % to 0.6 % for the rest.
+     */
+    static final double LIKE_REAL = 0.25;
 
     /** What the six cells imitate: a tint (grass, leaves), cut-out (glass, leaves), translucent (ice), light (glowstone), a state (the log on its side). */
     private static final List<BlockState> CAMOS = List.of(Blocks.GRASS_BLOCK.defaultBlockState(),
@@ -122,7 +128,7 @@ final class CamoPhase extends ScriptedPhase {
             ServerLevel level = server.overworld();
             Stage.clear(server, level);
             build.build(level);
-            if (!name.equals(EMPTY)) labels(server, level);
+            if (!name.equals(EMPTY)) labels(server, level, name.equals(COLUMNS_REAL) ? 1 : 0);
             Stage.camera(run.serverPlayer(), CAMOS.size(), 0);
         }));
         script.until("the camera", () -> run.client().player.getZ() > Stage.Z + 3, 20);
@@ -137,8 +143,9 @@ final class CamoPhase extends ScriptedPhase {
         return script;
     }
 
-    private static void labels(MinecraftServer server, ServerLevel level) {
-        for (int i = 0; i < CAMOS.size(); i++) Stage.label(server, cell(level, i), label(CAMOS.get(i)), i % 2);
+    /** A name tag over each of the six cells, {@code above} blocks higher (over the top of a column). */
+    private static void labels(MinecraftServer server, ServerLevel level, int above) {
+        for (int i = 0; i < CAMOS.size(); i++) Stage.label(server, cell(level, i).above(above), label(CAMOS.get(i)), i % 2);
     }
 
     /** Every cell has the camouflage {@code expected(i)} on the client (null: none). */
@@ -170,7 +177,7 @@ final class CamoPhase extends ScriptedPhase {
                 Stage.place(level, cells[i], blocks.block(i).defaultBlockState());
                 setCamo(level, cells[i], FIRST);
             }
-            labels(server, level);
+            labels(server, level, 0);
             Stage.camera(run.serverPlayer(), CAMOS.size(), 0);
         }));
         script.until("the client has the stone camouflage", () -> clientHas(run, cells, i -> FIRST), 20);
@@ -191,9 +198,12 @@ final class CamoPhase extends ScriptedPhase {
         for (int i = 0; i < cells.length; i++) {
             String target = "camouflage:" + name + "/" + label(CAMOS.get(i));
             double seen = Visibility.changed(dir.resolve(name + ".png"), dir.resolve(EMPTY + ".png"), camera[0], cells[i]);
-            double unlike = Visibility.changed(dir.resolve(name + ".png"), dir.resolve(REAL + ".png"), camera[0], cells[i]);
-            String detail = "cell " + i + " of " + what + ": " + percent(seen) + " of its cube's pixels differ from the empty stage, "
-                    + percent(unlike) + " from the real block";
+            double box = Visibility.changed(dir.resolve(name + ".png"), dir.resolve(REAL + ".png"), camera[0], cells[i]);
+            double unlike = Visibility.unlikeOnSilhouette(dir.resolve(name + ".png"), dir.resolve(REAL + ".png"), dir.resolve(EMPTY + ".png"),
+                    camera[0], cells[i]);
+            String detail = "cell " + i + " of " + what + ": " + percent(seen) + " of its cube's box differ from the empty stage; "
+                    + percent(unlike) + " of the real block's silhouette differ from the real block (" + percent(box)
+                    + " of the box, the floor around it included)";
             if (seen >= Visibility.SEEN) run.report().pass(PHASE, "camo_visible", group, target, detail);
             else run.report().fail(PHASE, "camo_not_visible", group, target, detail + " (the camouflage is not drawn)");
             if (unlike >= 0 && unlike <= LIKE_REAL) run.report().pass(PHASE, "camo_like_real", group, target, detail);
@@ -217,7 +227,7 @@ final class CamoPhase extends ScriptedPhase {
                 Stage.place(level, cells[i], TTRegistry.block(LibBlockNames.PLATFORM).defaultBlockState());
                 setCamo(level, cells[i], CAMOS.get(i));
             }
-            labels(server, level);
+            labels(server, level, 0);
             Stage.camera(run.serverPlayer(), CAMOS.size(), 0);
         }));
         script.until("the client has the camouflage", () -> clientHas(run, cells, CAMOS::get), 20);
@@ -258,7 +268,7 @@ final class CamoPhase extends ScriptedPhase {
                 Stage.place(level, cells[i], TTRegistry.block(LibBlockNames.PLATFORM).defaultBlockState());
                 setCamo(level, cells[i], CAMOS.get(i));
             }
-            labels(server, level);
+            labels(server, level, 1);
             Stage.camera(run.serverPlayer(), CAMOS.size(), 0);
         }));
         script.until("the client has the camouflage", () -> clientHas(run, cells, CAMOS::get), 20);
