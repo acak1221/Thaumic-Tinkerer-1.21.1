@@ -435,8 +435,8 @@ Mojang names, and the build makes none). All the rules stay in `TinkererEvents`;
 
 What sections 3 to 8 and 14 say about NeoForge's own code was read with `javap` in the 21.1.259 jars of the Gradle cache (Loom's Mojang-named merged Minecraft jar,
 NeoForge's universal and sources jars, `bus` 8.0.5), including a search of the whole patched jar for the callers of each hook. **Not verified on NeoForge**: the client
-side of every "both sides" event (no NeoForge client entered a world with them; the GameTests run the server only); a real dedicated server with real clients (the FloatingTicks
-checks used mock connections); the order against other mods' handlers of the same events (the priorities were chosen by reading Architectury's and Thaumcraft's
+side of every "both sides" event (no NeoForge client entered a world with them; the GameTests run the server only); a real dedicated server with real clients beyond the scenarios of the multiplayer check (`MULTIPLAYER_VERIFICATION.md`: it runs on a NeoForge
+dedicated server too, but does not exercise the FloatingTicks; those checks used mock connections); the order against other mods' handlers of the same events (the priorities were chosen by reading Architectury's and Thaumcraft's
 NeoForge code; Thaumcraft and Architectury are the only other mods in the runs); no mutation check was made on NeoForge; the reduction-modifier variant of `LIVING_ARMOR_ABSORB`
 was not run (that it would lose Thaumcraft's ward share is read, section 14). The container left on the stack by a cancelled `LivingIncomingDamageEvent` was read in the
 bytecode; the mixin that takes it away and its GameTest are in section 3.

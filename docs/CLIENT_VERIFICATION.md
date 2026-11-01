@@ -10,6 +10,9 @@ and writes a report. The same harness runs on **both loaders**, Fabric and NeoFo
 What it produces is **evidence of what a software renderer drew and what the game's own lookups answered**. It is not an
 acceptance by a person looking at the game on a GPU; the list of what it cannot show is at the end and is part of the document.
 
+The same harness also has a **multiplayer mode**: real clients that join a real dedicated server, play scripted scenarios through their
+real connection and are checked against the server (`MULTIPLAYER_VERIFICATION.md`, `tools/multiplayer-smoke.sh`).
+
 ## Running it
 
 ```bash
@@ -244,8 +247,11 @@ package-private and see each other without imports, so the move changed one `pac
   driver-specific bug cannot appear. The frames are slow, so nothing about frame-rate or time-based motion is learned.
 * **No sound output.** OpenAL fails to open a device; sounds are checked only as files (`sounds.json`, `.ogg`), never heard.
 * **No input devices.** Nothing is clicked, dragged, typed or scrolled: screens are opened and drawn, their buttons are not pressed, slots are not clicked, keys are not
-  bound and pressed (the sneak key is set programmatically to open the warp gate screen). The scroll, drag and click handling of the screens is untested.
-* **No multiplayer.** One integrated server, one client in the same process; packets are real but in-memory. A dedicated server, a second client or a desync is not covered.
+  bound and pressed (the sneak key is set programmatically to open the warp gate screen). The scroll, drag and click handling of the screens is untested here; the
+  multiplayer check (`MULTIPLAYER_VERIFICATION.md`) presses the use, attack, sneak and hotbar keys through the game's own key handling and clicks slots and two screen
+  buttons (the Enchanter's, the Animation Tablet's) with synthetic mouse clicks, still without a mouse or a keyboard.
+* **No multiplayer.** One integrated server, one client in the same process; packets are real but in-memory. A dedicated server, a second client and a desync
+  are the subject of the **multiplayer check** (`MULTIPLAYER_VERIFICATION.md`), which runs this same harness in its multiplayer mode against a real dedicated server.
 * **One setting.** 1280x720, GUI scale 2, view distance 8, English (the Russian pictures are a repeat after a language switch), one flat peaceful world at noon, the default
   field of view. Other GUI scales, resolutions, languages (the de/fr/ko/zh files are not compared), resource packs and other mods are not seen; EMI, JEI and Jade are
   seen only in their own runs (above), never EMI and JEI together, and their hover tooltips are not (no input).

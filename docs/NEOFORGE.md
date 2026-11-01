@@ -243,8 +243,26 @@ only when there is no handler). The whole suite was not run then.
 
 * The wings on a player and the ghost blocks in a world (`KamiGearNeoForgeClient`): the client smoke does not put on the robes or use the Looking Glass, on
   either loader.
-* A GPU, a dedicated server with a real client, other mods' pipes and tanks (the item capabilities of the devices were tested through
-  `level.getCapability` and its handlers, not with another mod's pipe).
+* A GPU, other mods' pipes and tanks (the item capabilities of the devices were tested through `level.getCapability` and its handlers, not with
+  another mod's pipe). A dedicated NeoForge server with real clients is now covered by the multiplayer check (`MULTIPLAYER_VERIFICATION.md`), for its
+  scenarios only.
+
+## Multiplayer on NeoForge
+
+`tools/multiplayer-smoke.sh --neoforge` (`:neoforge:runMultiplayer`, `MULTIPLAYER_VERIFICATION.md`): a NeoForge dedicated server with the add-on and the
+test mod `thaumictinkerer_mpserver` (`@Mod(dist = Dist.DEDICATED_SERVER)`, source set `multiplayerServer`), and the same five clients as on Fabric. What
+differed from Fabric:
+
+* **Architectury 13.0.11 posts no `ClientSystemMessageEvent` on NeoForge.** Its NeoForge side maps `ClientChatReceivedEvent` (whose `System` subclass is
+  the system message) to `ClientChatEvent.RECEIVED` only (read in `architectury-neoforge-13.0.11.jar`, `EventHandlerImplClient`); on Fabric the system
+  message is a `ClientSystemMessageEvent`. The add-on itself listens to neither; the harness's `/ttmp` answers are heard through both.
+* **`NetworkManager.canPlayerReceive` needs both sides on NeoForge.** On the second server (Kami off) the three Kami payloads are not registered on the
+  server, and NeoForge then answers false for a client that has them; Fabric answers from the client's announcement alone. The census expects only
+  `config_sync` there.
+* **The registry sync's message** for a client without Kami on a server with Kami: NeoForge's "The server send registries with unknown keys: ..." with the
+  50 keys (`neoforge.network.registries.sync.server-with-unknown-keys`), where Fabric says "Received 50 registry entries that are unknown to this client".
+
+MP_NEOFORGE
 
 ## Client smoke on NeoForge
 

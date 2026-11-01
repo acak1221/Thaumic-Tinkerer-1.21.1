@@ -57,7 +57,14 @@ were removed; NeoForge no longer keeps a damage container per cancelled hit; "ca
 ## Not verified
 
 - The new tests were not run against the code before the fixes; that each would have caught its bug is reasoned, not seen.
-- Spawn protection on a real dedicated server (a GameTest server has none; adventure mode and the world border stand in), a real
-  protection mod, third-party pipes, a real client receiving the config payload, a GPU, multiplayer with real clients.
+- A real protection mod (claims), third-party pipes, a GPU. Spawn protection on a real dedicated server, a real client receiving the
+  config payload and multiplayer with real clients were not verified when this audit was made; they are now, by the multiplayer check
+  (`MULTIPLAYER_VERIFICATION.md`, next section). Still not seen with real clients: the Remote Placer, the Transvector Dislocator and the
+  Animation Tablet's fake player under spawn protection (they ask the same `BlockProtection.gameAllows`, whose spawn-protection answer
+  the check confirms for the tools that use it), and any latency or packet loss (loopback only).
+
+## Verified later: the multiplayer check
+
+MULTIPLAYER_ROWS
 - Not fixed on purpose: the Bedrock dimension's ore generation stays a hand-written decoration (documented, low value); tree mode of the
   Ichorium Axe asks the game's rules but no protection mod (documented in `KamiGear.md` §4).

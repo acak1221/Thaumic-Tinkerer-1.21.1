@@ -1,6 +1,7 @@
 package thaumic.tinkerer.clientsmoke;
 
 import dev.architectury.event.CompoundEventResult;
+import dev.architectury.event.events.client.ClientChatEvent;
 import dev.architectury.event.events.client.ClientSystemMessageEvent;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +34,8 @@ final class ServerLink {
     }
 
     private final Map<Integer, Reply> replies = new ConcurrentHashMap<>();
+    /** The ids of the replies already taken (a message may be heard by both events). */
+    private final java.util.Set<Integer> seen = ConcurrentHashMap.newKeySet();
     private final List<String> received = Collections.synchronizedList(new ArrayList<>());
     private int next = 1;
     private boolean installed;
@@ -40,15 +43,27 @@ final class ServerLink {
     void install() {
         if (installed) return;
         installed = true;
+        // Architectury 13.0.11 posts a system message as ClientSystemMessageEvent on Fabric, but on NeoForge only as ClientChatEvent
+        // (from ClientChatReceivedEvent, whose System subclass is the system message): both are heard, a reply counts once.
         ClientSystemMessageEvent.RECEIVED.register(message -> {
-            String text = message.getString();
-            if (received.size() < 400) received.add(text);
-            if (text.startsWith("[ttmp] ")) {
-                Reply reply = parse(text);
-                if (reply != null) replies.put(reply.id(), reply);
-            }
+            heard(message.getString());
             return CompoundEventResult.pass();
         });
+        ClientChatEvent.RECEIVED.register((type, message) -> {
+            heard(message.getString());
+            return CompoundEventResult.pass();
+        });
+    }
+
+    private void heard(String text) {
+        if (!text.startsWith("[ttmp] ")) {
+            if (received.size() < 400) received.add(text);
+            return;
+        }
+        Reply reply = parse(text);
+        if (reply == null || !seen.add(reply.id())) return;
+        if (received.size() < 400) received.add(text);
+        replies.put(reply.id(), reply);
     }
 
     /** The system messages received so far (the first 400), for the report. */

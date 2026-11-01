@@ -281,11 +281,14 @@ final class Scenes {
         report.check("join_" + role, "real_connection_and_config_sync", socket && receives && !op,
                 name + " joined over " + player.connection.getRemoteAddress() + "; the client registered the config payload ("
                         + PacketConfigSync.TYPE.id() + "): " + receives + "; operator: " + op);
-        // The add-on's server-to-client payloads: this player's client (a JVM of its own) registered a receiver for each.
+        // The add-on's server-to-client payloads: this player's client (a JVM of its own) registered a receiver for each. The Kami ones
+        // exist only while kami.forceenabled is on (KamiGear and KamiWorld register nothing otherwise), and NeoForge counts a channel
+        // only when both sides have it; so on the second server (Kami off) only the config payload is expected.
+        List<CustomPacketPayload.Type<?>> expected = ConfigHandler.enableKami ? S2C : List.of(PacketConfigSync.TYPE);
         List<String> missing = new ArrayList<>();
-        for (CustomPacketPayload.Type<?> type : S2C) if (!NetworkManager.canPlayerReceive(player, type)) missing.add(type.id().toString());
-        report.check("join_" + role, "client_receives_every_addon_payload", missing.isEmpty(), S2C.size()
-                + " server-to-client payload types of the add-on; " + name + "'s client does not receive " + missing);
+        for (CustomPacketPayload.Type<?> type : expected) if (!NetworkManager.canPlayerReceive(player, type)) missing.add(type.id().toString());
+        report.check("join_" + role, "client_receives_every_addon_payload", missing.isEmpty(), expected.size()
+                + " server-to-client payload types of the add-on on this server; " + name + "'s client does not receive " + missing);
         if (role.startsWith("mismatch") || role.equals("kami_on")) return;
 
         player.setGameMode(GameType.SURVIVAL);

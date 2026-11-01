@@ -54,8 +54,12 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   of the Stratosphere do); the options that decide what each side registers at start-up
   (`imbuedFire.enabled`, `shareTome.survival.enabled`, `kami.forceenabled`) cannot change while the game runs, so a client whose own differ leaves the
   server with a translated message that names them (`thaumictinkerer.config.mismatch`). Client display options (`soulHeart.height`,
-  `placementMirror.blocks.show`) stay the client's. Written; the payload and the comparison are JUnit-tested, the client side (receiving, disconnecting)
-  has not been run with a real client and a dedicated server.
+  `placementMirror.blocks.show`) stay the client's. The payload and the comparison are JUnit-tested, and the client side was run with real clients on a
+  real dedicated server on both loaders (`MULTIPLAYER_VERIFICATION.md`): the synced values hold on the client and are cleared when it leaves, and a client with
+  `imbuedFire.enabled=false` leaves with the translated message. For `kami.forceenabled` **the direction matters**: a client that has Kami **off** while the
+  server has it on lacks 50 registry entries of the server, and the loader's registry sync refuses it in the configuration phase, before the game starts and so
+  before the add-on's payload can arrive, with the loader's own message (Fabric: "Received 50 registry entries that are unknown to this client ... thaumictinkerer";
+  NeoForge: "The server send registries with unknown keys: ..." with the 50 keys); the add-on's message appears when the client has Kami **on** and the server off.
 
 ## 2. Deliberate decisions of the port
 
@@ -182,7 +186,10 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
   a Mob Display in a hand, on the ground or in an item frame, the camouflage devices with a camouflage block set (the block rows set none).
 * **Mob Display scale:** the Horse's head, the Witch's hat and the Mooshroom's mushrooms still overflow a 16x16 slot by up to about 2 slot pixels. The scale values are the original's;
   changing them is a decision for the owner.
-* The network behaviour of the packets between a real client and a real server.
+* The network behaviour of the packets between a real client and a real server, beyond the scenarios of the multiplayer check (`MULTIPLAYER_VERIFICATION.md`:
+  the config payload, `PacketEnchanterAddEnchant`, `PacketTabletButton`, the block-entity updates of the Enchanter and the Animation Tablet, and the
+  registration of every payload of the add-on on both sides). The other packets (the Remote Placer's buttons, the Enchanter's start, the Kami armour
+  toggles, the Celestial Gateway, Soul Hearts, the shadow beam) are registered on both sides but were not sent.
 * The client's copy of the events the groups listen to (`Enchantments.md` section 12): a server cannot show it, and the client harness does not exercise them.
 * On **NeoForge**: the client side of every event (the client smoke draws, it does not play), the Kami wings and ghost blocks, a
   dedicated server with real clients, other mods, EMI, JEI and Jade among them, and other mods' pipes and tanks at the Interface (`NEOFORGE.md`, `HOOKS.md` section 9).
