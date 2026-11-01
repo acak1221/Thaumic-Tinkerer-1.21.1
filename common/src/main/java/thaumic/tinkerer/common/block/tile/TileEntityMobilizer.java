@@ -29,7 +29,9 @@ import thaumic.tinkerer.common.content.TileBlocks;
 /**
  * The Levitational Locomotive: linked to a pair of relays it slides along the beam between them, one block every five
  * seconds, carrying the block on top of it, and turns round when something is in its way (1.7.10
- * {@code TileEntityMobilizer}; the timing and the order of the steps are the original's).
+ * {@code TileEntityMobilizer}; the timing and the order of the steps are the original's). New in the port: a block in the
+ * convention tag {@code c:relocation_not_supported} ({@link TileBlocks#RELOCATION_NOT_SUPPORTED}) is left behind, as bedrock is
+ * ({@link #carries}).
  */
 public class TileEntityMobilizer extends BlockEntity {
 
@@ -146,15 +148,13 @@ public class TileEntityMobilizer extends BlockEntity {
 
         // Prevent the passenger from popping off. Not sent to clients.
         level.setBlock(target, Blocks.STONE.defaultBlockState(), 0);
-        // Move non-TE blocks
-        if (level.isEmptyBlock(above) || canPlaceAt(level, passengerState, targetAbove)) {
+        // Move non-TE blocks (what the locomotive does not carry stays where it is)
+        if ((level.isEmptyBlock(above) || canPlaceAt(level, passengerState, targetAbove)) && carries(passengerState)) {
             if (passenger == null) {
-                if (!passengerState.is(Blocks.BEDROCK)) {
-                    level.setBlock(targetAbove, passengerState, Block.UPDATE_ALL);
-                    // 1.7.10 "piston_head" is the arm block, Blocks.PISTON_HEAD: it is copied and left where it was.
-                    if (!passengerState.isAir() && !passengerState.is(Blocks.PISTON_HEAD)) {
-                        level.setBlock(above, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
-                    }
+                level.setBlock(targetAbove, passengerState, Block.UPDATE_ALL);
+                // 1.7.10 "piston_head" is the arm block, Blocks.PISTON_HEAD: it is copied and left where it was.
+                if (!passengerState.isAir() && !passengerState.is(Blocks.PISTON_HEAD)) {
+                    level.setBlock(above, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
                 }
             } else if (isVanillaBlockEntity(passenger)) {
                 // 1.7.10 moved the tile entities of the vanilla package; the add-on moves modded ones only through AE2.
@@ -170,6 +170,15 @@ public class TileEntityMobilizer extends BlockEntity {
         }
         this.dead = true;
         level.updateNeighborsAt(oldPos, Blocks.AIR);
+    }
+
+    /**
+     * Whether the locomotive takes the block on top of it along: not bedrock (1.7.10, which left it behind), and, new, not a block
+     * that the cross-mod convention tag {@code c:relocation_not_supported} marks as not relocatable. A block entity is carried only
+     * when it is one of the game's own ({@link #isVanillaBlockEntity}, 1.7.10's rule), which is asked after this.
+     */
+    public static boolean carries(BlockState passenger) {
+        return !passenger.is(Blocks.BEDROCK) && !passenger.is(TileBlocks.RELOCATION_NOT_SUPPORTED);
     }
 
     /** The original's {@code canPlaceBlockAt}: the space is free (replaceable) and the block can stand there. */

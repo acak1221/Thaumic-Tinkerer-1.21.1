@@ -45,7 +45,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * <li>Air: whoever the player hits is flung about for a second (a random velocity every five ticks);</li>
  * <li>Fire: whoever the player hits is set on fire (six seconds, renewed every five ticks) for five minutes;</li>
  * <li>Earth: a hit raises a wall of five by five forcefield blocks half way between the player and the victim;</li>
- * <li>Water: every lava block within two blocks of the player becomes obsidian.</li>
+ * <li>Water: every lava block within two blocks of the player becomes obsidian ({@link #quenchLava}, called by the effect's own
+ * tick, {@link ModPotions.WaterImbuedEffect}; 1.7.10 asked every player's tick for the effect).</li>
  * </ul>
  *
  * <p>1.7.10 had a client twin ({@code PotionEffectHandlerClient}) that drew the particles on the client's own picture
@@ -77,7 +78,6 @@ public final class PotionEffectHandler {
         registered = true;
         EntityEvent.LIVING_HURT.register(PotionEffectHandler::onLivingHurt);
         TickEvent.SERVER_POST.register(PotionEffectHandler::onTickServer);
-        TickEvent.PLAYER_POST.register(PotionEffectHandler::onPlayerTick);
         LifecycleEvent.SERVER_STOPPED.register(server -> clear());
     }
 
@@ -143,9 +143,8 @@ public final class PotionEffectHandler {
 
     // ---- water ----------------------------------------------------------------------------------------------
 
-    private static void onPlayerTick(Player player) {
-        if (player.level().isClientSide || !(player.level() instanceof ServerLevel world)) return;
-        if (!player.hasEffect(ModPotions.water())) return;
+    /** 1.7.10 {@code onPlayerTick} for a Water Imbued player on the server: the lava within two blocks becomes obsidian. */
+    public static void quenchLava(Player player, ServerLevel world) {
         for (int x = Mth.floor(player.getX() - 2); x < player.getX() + 2; x++) {
             for (int y = Mth.floor(player.getY() - 2); y < player.getY() + 2; y++) {
                 for (int z = Mth.floor(player.getZ() - 2); z < player.getZ() + 2; z++) {

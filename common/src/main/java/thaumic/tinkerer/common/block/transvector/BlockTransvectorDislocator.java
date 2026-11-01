@@ -28,6 +28,7 @@ import net.minecraft.world.level.material.MapColor;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.camo.PulseDeviceBlock;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorDislocator;
 import thaumic.tinkerer.common.content.TileBlocks;
@@ -101,7 +102,7 @@ public class BlockTransvectorDislocator extends PulseDeviceBlock implements ITTi
                 " I ",
                 " C ",
                 'M',
-                TileBlocks.legacyItem("itemResource", 10),
+                ItemsTC.stack("mirrored_glass"),
                 'I',
                 new ItemStack(TileBlocks.interfaceBlock()),
                 'C',

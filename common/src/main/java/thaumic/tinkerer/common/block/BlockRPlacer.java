@@ -13,6 +13,7 @@ package thaumic.tinkerer.common.block;
 
 import com.mojang.serialization.MapCodec;
 import dev.architectury.registry.menu.MenuRegistry;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Containers;
@@ -20,6 +21,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Blocks;
@@ -29,6 +31,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.IWandable;
 import thaumcraft.api.wands.WandHelper;
@@ -124,6 +127,20 @@ public class BlockRPlacer extends PulseDeviceBlock implements IWandable, ITTinke
                         ResearchHelper.arcaneRecipePage(LibResearch.KEY_REMOTE_PLACER));
     }
 
+    /**
+     * The items of Thaumcraft's stone devices: the 1.7.10 ingredient {@code ConfigBlocks.blockStoneDevice} without a metadata (every
+     * metadata of the family) is the native item of each of its variants that has one (the infusion pillars have none); the
+     * GameTest {@code theRemotePlacerTakesAnyStoneDevice} compares the list with the API's legacy table.
+     */
+    public static final List<String> STONE_DEVICES = List.of("alchemy_furnace", "arcane_pedestal", "infusion_matrix", "wand_pedestal",
+            "wand_pedestal_focus", "node_stabilizer", "advanced_node_stabilizer", "node_transducer", "arcane_spa", "focal_manipulator",
+            "flux_scrubber");
+
+    /** Any of {@link #STONE_DEVICES}. */
+    public static Ingredient anyStoneDevice() {
+        return Ingredient.of(STONE_DEVICES.stream().map(ItemsTC::require).toArray(Item[]::new));
+    }
+
     @Override
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(
@@ -136,7 +153,7 @@ public class BlockRPlacer extends PulseDeviceBlock implements IWandable, ITTinke
                 "sss",
                 's',
                 // ConfigBlocks.blockStoneDevice without a metadata: any stone device.
-                TileBlocks.anyOfLegacyBlocks("blockStoneDevice"),
+                anyStoneDevice(),
                 'e',
                 new ItemStack(Items.ENDER_PEARL),
                 'd',

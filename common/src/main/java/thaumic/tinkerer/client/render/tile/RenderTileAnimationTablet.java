@@ -77,8 +77,11 @@ public class RenderTileAnimationTablet implements BlockEntityRenderer<TileAnimat
         else renderOverlay(tile, pose, buffer, overlayRight, 1, 1, RIGHT_HEIGHT, partialTicks);
         renderIndents(pose, buffer, rotation + 90F);
 
+        // 1.7.10 swayed the item by the wall clock (System.currentTimeMillis()); the game's clock in milliseconds at 20 ticks a second
+        // gives the same motion, which pauses with the game and follows /tick
+        double millis = animationMillis(tile, partialTicks);
         pose.mulPose(Axis.YP.rotationDegrees(rotation));
-        pose.translate(0.1, 0.2 + Math.cos(System.currentTimeMillis() / 600D) / 18F, 0.5);
+        pose.translate(0.1, 0.2 + Math.cos(millis / 600D) / 18F, 0.5);
         float[] translations = TRANSLATIONS[meta - 2];
         pose.translate(translations[0], translations[1], translations[2]);
         pose.scale(0.8F, 0.8F, 0.8F);
@@ -87,9 +90,15 @@ public class RenderTileAnimationTablet implements BlockEntityRenderer<TileAnimat
         pose.mulPose(Axis.ZP.rotationDegrees(swingProgress));
         pose.translate(-0.5F, 0F, -0.5F);
         pose.translate(-swingProgress / 250F, swingProgress / 1000F, 0F);
-        pose.mulPose(Axis.of(new Vector3f(1F, 0F, 1F).normalize()).rotationDegrees((float) Math.cos(System.currentTimeMillis() / 400F) * 5F));
+        pose.mulPose(Axis.of(new Vector3f(1F, 0F, 1F).normalize()).rotationDegrees((float) Math.cos(millis / 400D) * 5F));
         renderItem(tile, pose, buffer, packedLight, packedOverlay);
         pose.popPose();
+    }
+
+    /** The game time of the tablet's level, in milliseconds of 20 ticks a second (50 ms per tick), with the partial tick. */
+    static double animationMillis(TileAnimationTablet tablet, float partialTicks) {
+        long gameTime = tablet.getLevel() == null ? 0L : tablet.getLevel().getGameTime();
+        return (gameTime + (double) partialTicks) * 50D;
     }
 
     /**

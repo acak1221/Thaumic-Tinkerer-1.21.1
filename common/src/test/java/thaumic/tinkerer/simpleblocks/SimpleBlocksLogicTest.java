@@ -40,16 +40,16 @@ import thaumic.tinkerer.common.block.BlockGas;
 import thaumic.tinkerer.common.block.BlockInfusedGrain;
 import thaumic.tinkerer.common.block.fire.FireRules;
 import thaumic.tinkerer.common.core.helper.AspectCropLootManager;
-import thaumic.tinkerer.common.core.helper.NumericAspectHelper;
 import thaumic.tinkerer.common.item.InfusedSeedComponents;
 import thaumic.tinkerer.common.item.ItemInfusedGrain;
 import thaumic.tinkerer.common.item.ItemInfusedPotion;
+import thaumic.tinkerer.common.item.ItemMobAspect;
 import thaumic.tinkerer.common.potion.ModPotions;
 
 /**
  * Test-only code of the port (no 1.7.10 counterpart), CC BY-NC-SA 3.0 like the add-on.
  *
- * <p>The plain rules of the SimpleBlocks group that need no running game: the numbering of the soul aspects, the
+ * <p>The plain rules of the SimpleBlocks group that need no running game: the order of the soul aspects, the
  * texture groups and variants of the infused crops, the conversion of the seed components, the weighted loot of a
  * crop, and the state rules of the elemental fires. Everything that needs a world, a registry that is filled or the
  * block tags (the flammability of planks, the growth of a crop, the gases) is in the GameTest checks
@@ -64,28 +64,20 @@ class SimpleBlocksLogicTest {
         Bootstrap.bootStrap();
     }
 
-    // ---- NumericAspectHelper -----------------------------------------------------------------------------------
+    // ---- the numbering of the soul aspects (1.7.10 NumericAspectHelper) --------------------------------------------
 
     private static final Aspect[] SOUL_ORDER = { Aspect.WATER, Aspect.MAN, Aspect.AIR, Aspect.FLIGHT, Aspect.FIRE, Aspect.MAGIC,
             Aspect.UNDEAD, Aspect.FLESH, Aspect.BEAST, Aspect.POISON, Aspect.EARTH, Aspect.ELDRITCH, Aspect.TRAVEL, Aspect.METAL,
             Aspect.SLIME, Aspect.CLOTH, Aspect.CROP };
 
+    /**
+     * 1.7.10 {@code NumericAspectHelper} numbered the seventeen soul aspects (the metadata of the Mob Aspect item); the port keeps the
+     * order as the list of the Mob Aspects' aspects, which names their items. The helper itself is gone.
+     */
     @Test
-    void theSeventeenSoulAspectsKeepTheirOriginalNumbers() {
-        assertEquals(17, NumericAspectHelper.values.size());
-        for (int i = 0; i < SOUL_ORDER.length; i++) {
-            assertEquals(i, NumericAspectHelper.getNumber(SOUL_ORDER[i]), SOUL_ORDER[i].getTag());
-            assertSame(SOUL_ORDER[i], NumericAspectHelper.getAspect(i));
-        }
-    }
-
-    @Test
-    void anAspectWithoutASoulHasNoNumberAndInitTwiceDoesNotDoubleTheList() {
-        assertEquals(-1, NumericAspectHelper.getNumber(Aspect.VOID));
-        NumericAspectHelper.init();
-        NumericAspectHelper.init();
-        assertEquals(17, NumericAspectHelper.values.size());
-        assertEquals(16, NumericAspectHelper.getNumber(Aspect.CROP));
+    void theSeventeenSoulAspectsKeepTheirOriginalOrder() {
+        assertEquals(List.of(SOUL_ORDER), ItemMobAspect.ASPECTS);
+        assertEquals(-1, ItemMobAspect.ASPECTS.indexOf(Aspect.VOID), "an aspect without a soul has no place");
     }
 
     // ---- the crops and their items -----------------------------------------------------------------------------
@@ -120,7 +112,7 @@ class SimpleBlocksLogicTest {
     @Test
     void thePotionVariantsAndTheirEffectsAreInTheSameOrder() {
         assertEquals(List.of("potion_air", "potion_fire", "potion_earth", "potion_water"), List.of(ModPotions.PATHS));
-        assertEquals(List.of("Air Imbued", "Fire Imbued", "Earth Imbued", "Water Imbued"), List.of(ModPotions.ENGLISH_NAMES));
+        assertEquals(List.of(ModPotions.AIR, ModPotions.FIRE, ModPotions.EARTH, ModPotions.WATER), List.of(ModPotions.PATHS));
         assertSame(Aspect.AIR, ItemInfusedPotion.ASPECTS[0]);
         assertSame(Aspect.FIRE, ItemInfusedPotion.ASPECTS[1]);
         assertSame(Aspect.EARTH, ItemInfusedPotion.ASPECTS[2]);

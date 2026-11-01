@@ -709,6 +709,48 @@ public final class SimpleBlocksRuntimeChecks {
     }
 
     /**
+     * The camouflage is drawn by the platform's wrapped model in the chunk mesh (SimpleBlocks.md, 2.4): the block is drawn from its model
+     * in both looks; the camouflage the model reads is what the update tag gives a client ({@code CamouflageHooks.camouflageOf}, the
+     * render data on Fabric and the model data on NeoForge); and the data of a world saved before keeps loading (the format is the
+     * same: a block-state tag under {@code camo}). The drawing itself is the client smoke's camouflage phase.
+     */
+    public static void theCamouflageIsDrawnFromThePlatformsModel(GameTestHelper test) {
+        floor(test);
+        BlockPos rel = new BlockPos(3, 1, 3);
+        test.setBlock(rel, SimpleBlocks.PLATFORM.get());
+        TileCamo tile = tile(test, rel, TileCamo.class);
+        test.assertTrue(stateAt(test, rel).getRenderShape() == net.minecraft.world.level.block.RenderShape.MODEL, "its own look is its model");
+        BlockState grass = Blocks.GRASS_BLOCK.defaultBlockState();
+        tile.setCamo(grass);
+        test.assertTrue(stateAt(test, rel).getValue(BlockCamo.CAMOUFLAGED), "camouflaged");
+        test.assertTrue(stateAt(test, rel).getRenderShape() == net.minecraft.world.level.block.RenderShape.MODEL,
+                "camouflaged it is still drawn from its (wrapped) model, which shows the camouflage");
+        test.assertTrue(thaumic.tinkerer.common.hooks.CamouflageHooks.camouflageOf(tile) == grass, "what the client's model reads");
+
+        // a client's copy of the block entity, filled from the update tag
+        net.minecraft.core.HolderLookup.Provider registries = test.getLevel().registryAccess();
+        TileCamo client = new TileCamo(test.absolutePos(rel), stateAt(test, rel));
+        client.loadWithComponents(tile.getUpdateTag(registries), registries);
+        test.assertTrue(client.getCamo() == grass, "the update tag carries the camouflage: " + client.getCamo());
+        tile.setCamo(Blocks.GLASS.defaultBlockState());
+        client.loadWithComponents(tile.getUpdateTag(registries), registries);
+        test.assertTrue(client.getCamo() == Blocks.GLASS.defaultBlockState(), "and a change of camouflage: " + client.getCamo());
+
+        // the data of a platform saved by an earlier version of the port
+        try {
+            CompoundTag old = net.minecraft.nbt.TagParser.parseTag(
+                    "{id:\"thaumictinkerer:camo\",camo:{Name:\"minecraft:oak_log\",Properties:{axis:\"x\"}}}");
+            TileCamo loaded = new TileCamo(test.absolutePos(rel), stateAt(test, rel));
+            loaded.loadWithComponents(old, registries);
+            test.assertTrue(loaded.getCamo() == Blocks.OAK_LOG.defaultBlockState().setValue(net.minecraft.world.level.block.RotatedPillarBlock.AXIS,
+                    Direction.Axis.X), "a saved camouflage loads with its state: " + loaded.getCamo());
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            throw new IllegalStateException(e);
+        }
+        test.succeed();
+    }
+
+    /**
      * The Ethereal Platform ({@code BlockCamo}, SimpleBlocks) and the camouflageable devices ({@code CamoDeviceBlock} with
      * {@code CamoRules}, TileBlocks) keep two bases (docs/DEVIATIONS.md section 6, point 10), but they imitate by the one rule of the
      * original's {@code BlockCamo.onBlockActivated}: for every block item of the game and every face clicked, the two give the same
@@ -837,6 +879,13 @@ public final class SimpleBlocksRuntimeChecks {
         test.setBlock(rel.above(2), Blocks.STONE);
         for (int i = 0; i < 100; i++) TileWardedSlab.serverTick(level, abs, level.getBlockState(abs), tile);
         test.assertTrue(stateAt(test, rel.above()) == aura && stateAt(test, rel.above(2)).is(Blocks.STONE), "stone stays, the free cell is sealed again");
+
+        // a glimmer of light (blockAiry:3 of 1.7.10, Thaumcraft's arcane_light) is not replaced either
+        Block glimmer = BlocksTC.get("arcane_light");
+        test.assertTrue(glimmer != null && BlocksTC.state("blockAiry", 3).is(glimmer), "the glimmer is blockAiry:3");
+        test.setBlock(rel.above(2), glimmer);
+        for (int i = 0; i < 100; i++) TileWardedSlab.serverTick(level, abs, level.getBlockState(abs), tile);
+        test.assertTrue(stateAt(test, rel.above(2)).is(glimmer), "the glimmer stays: " + stateAt(test, rel.above(2)));
         test.succeed();
     }
 
@@ -1356,10 +1405,27 @@ public final class SimpleBlocksRuntimeChecks {
 
     public static void theFourEffectsAreBadEffectsWithoutAnyPowerOfTheirOwn(GameTestHelper test) {
         for (int i = 0; i < 4; i++) {
-            net.minecraft.world.effect.MobEffect effect = ModPotions.holder(i).value();
+            net.minecraft.world.effect.MobEffect effect = ModPotions.holder(ModPotions.PATHS[i]).value();
             test.assertTrue(effect.getCategory() == MobEffectCategory.HARMFUL, ModPotions.PATHS[i] + " is harmful");
             test.assertTrue(effect.getColor() == 0, ModPotions.PATHS[i] + " has colour zero");
             test.assertTrue(effect.getDescriptionId().equals("effect." + LibMisc.MOD_ID + "." + ModPotions.PATHS[i]), "name key " + effect.getDescriptionId());
+        }
+        test.succeed();
+    }
+
+    /**
+     * Every infused potion glints, as the 1.7.10 {@code ItemPotion} with effects did: by the default component
+     * {@code minecraft:enchantment_glint_override} of the item (no override of {@code isFoil}), so a stack may also be told not to.
+     */
+    public static void theInfusedPotionsGlintByTheirComponent(GameTestHelper test) {
+        for (int i = 0; i < 4; i++) {
+            ItemStack potion = new ItemStack(BuiltInRegistries.ITEM.get(LibMisc.id(ItemInfusedPotion.path(i))));
+            test.assertTrue(Boolean.TRUE.equals(potion.get(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE)),
+                    ItemInfusedPotion.path(i) + " has the glint component");
+            test.assertTrue(potion.hasFoil(), ItemInfusedPotion.path(i) + " glints");
+            potion.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, false);
+            test.assertTrue(!potion.hasFoil(), "a stack told not to glint does not");
+            test.assertTrue(ModPotions.of(ItemInfusedPotion.ASPECTS[i]) == ModPotions.holder(ModPotions.PATHS[i]), "the potion's effect " + i);
         }
         test.succeed();
     }
@@ -1372,7 +1438,7 @@ public final class SimpleBlocksRuntimeChecks {
             ItemStack potion = new ItemStack(BuiltInRegistries.ITEM.get(LibMisc.id(ItemInfusedPotion.path(i))));
             player.setItemInHand(InteractionHand.MAIN_HAND, potion);
             ItemStack returned = potion.getItem().finishUsingItem(potion, level, player);
-            MobEffectInstance effect = player.getEffect(ModPotions.holder(i));
+            MobEffectInstance effect = player.getEffect(ModPotions.holder(ModPotions.PATHS[i]));
             test.assertTrue(effect != null && effect.getDuration() == 3600, "effect " + i + " for 3600 ticks: " + effect);
             test.assertTrue(returned.is(Items.GLASS_BOTTLE), "an empty bottle is left: " + returned);
         }
@@ -1473,10 +1539,10 @@ public final class SimpleBlocksRuntimeChecks {
     }
 
     /**
-     * The handler hooks the tick of the player ({@code TickEvent.PLAYER_POST}). The mock player of the GameTest framework
-     * is put into the player list but its connection is not in the server's list of connections, so nothing ticks it
-     * ({@code ServerPlayer.doTick}, which runs {@code Player.tick}, is called by the packet listener's tick): the check
-     * ticks the player itself, as the listener of a real connection would, once per iteration.
+     * The effect works from its own tick ({@code ModPotions.WaterImbuedEffect}; 1.7.10 used the player tick), which runs in the
+     * player's tick. The mock player of the GameTest framework is put into the player list but its connection is not in the
+     * server's list of connections, so nothing ticks it ({@code ServerPlayer.doTick}, which runs {@code Player.tick}, is called by
+     * the packet listener's tick): the check ticks the player itself, as the listener of a real connection would, once per iteration.
      */
     public static void aWaterImbuedPlayerTurnsNearbyLavaIntoObsidian(GameTestHelper test) {
         floor(test);
@@ -1490,11 +1556,20 @@ public final class SimpleBlocksRuntimeChecks {
         player.doTick();
         test.assertTrue(stateAt(test, near).is(Blocks.OBSIDIAN), "lava two cells away is obsidian: " + stateAt(test, near));
         test.assertTrue(stateAt(test, far).is(Blocks.LAVA), "lava far away is lava");
-        // the effect is the condition: without it the handler leaves lava alone
+        // the effect is the condition: without it the lava stays
         player.removeEffect(ModPotions.water());
         test.setBlock(near, Blocks.LAVA);
         player.doTick();
         test.assertTrue(stateAt(test, near).is(Blocks.LAVA), "a player without the effect leaves the lava alone: " + stateAt(test, near));
+        // the effect ticks itself; only a player quenches lava, as only the player tick of 1.7.10 did
+        test.assertTrue(ModPotions.water().value() instanceof ModPotions.WaterImbuedEffect, "the effect does the work");
+        net.minecraft.world.entity.animal.Pig pig = test.spawnWithNoFreeWill(EntityType.PIG, new BlockPos(6, 1, 3));
+        pig.addEffect(new MobEffectInstance(ModPotions.water(), 400));
+        BlockPos byThePig = new BlockPos(6, 1, 5);
+        test.setBlock(byThePig, Blocks.LAVA);
+        pig.tick();
+        test.assertTrue(stateAt(test, byThePig).is(Blocks.LAVA), "a water imbued pig leaves the lava alone: " + stateAt(test, byThePig));
+        pig.discard();
         finish(test, player);
     }
 

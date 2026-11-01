@@ -17,6 +17,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -65,16 +66,18 @@ public class TileWardedSlab extends BlockEntity {
     }
 
     /**
-     * Puts {@code blockAiry:4} (the warding aura) into the cell unless it holds {@code blockAiry:3} already or cannot
-     * be replaced. A cell that holds the aura already is left alone (1.7.10 replaced it with itself).
+     * Puts {@code blockAiry:4} (the warding aura, {@code thaumcraft:airy[variant=4]}) into the cell unless it holds
+     * {@code blockAiry:3} (the glimmer of light, {@code thaumcraft:arcane_light}) already or cannot be replaced. A cell that holds
+     * the aura already is left alone (1.7.10 replaced it with itself). The aura is a variant of Thaumcraft's {@code airy} block,
+     * which the API names by the 1.7.10 field and metadata only (docs/api-requests/SimpleBlocks.md).
      */
     private static void seal(Level level, BlockPos target) {
         BlockState aura = BlocksTC.state("blockAiry", 4);
-        BlockState glimmer = BlocksTC.state("blockAiry", 3);
+        Block glimmer = BlocksTC.get("arcane_light");
         if (aura == null) return;
         BlockState there = level.getBlockState(target);
         if (there == aura) return;
-        if (glimmer != null && there == glimmer) return;
+        if (glimmer != null && there.is(glimmer)) return;
         if (there.canBeReplaced()) {
             level.setBlock(target, aura, 3);
         }

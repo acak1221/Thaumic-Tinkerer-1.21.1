@@ -1,6 +1,7 @@
 package thaumic.tinkerer.testing;
 
 import com.mojang.authlib.GameProfile;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -978,6 +979,63 @@ public final class TileBlocksRuntimeChecks {
         });
     }
 
+    /**
+     * What must not be relocated stays where it is (TileBlocks.md, 2.6 and 2.3): the Dislocator refuses the blocks of Thaumcraft's
+     * portable-hole blacklist (read from its block tag; the API's mirror list {@code portableHoleBlackList} is filled once at start-up,
+     * before any tag is bound) and the blocks of the convention tag {@code c:relocation_not_supported}, and the Levitational Locomotive
+     * leaves the latter behind, as it leaves bedrock. The convention tag is empty in the game itself on both loaders (its members come
+     * from other mods); the GameTest data pack puts the lodestone into it ({@code common/src/gameTest/resources/data/c/tags}).
+     */
+    public static void whatMustNotBeRelocatedStaysWhereItIs(GameTestHelper test) {
+        floor(test);
+        BlockState lodestone = Blocks.LODESTONE.defaultBlockState();
+        test.assertTrue(lodestone.is(TileBlocks.RELOCATION_NOT_SUPPORTED), "the test data puts the lodestone into c:relocation_not_supported");
+        test.assertTrue(Blocks.PISTON.defaultBlockState().is(TileBlocks.PORTABLE_HOLE_BLACKLIST)
+                && Blocks.RED_BED.defaultBlockState().is(TileBlocks.PORTABLE_HOLE_BLACKLIST), "Thaumcraft's tag holds pistons and beds");
+        BlockPos probe = new BlockPos(1, 2, 6);
+        for (Block refused : new Block[] { Blocks.PISTON, Blocks.STICKY_PISTON, Blocks.RED_BED, Blocks.OAK_DOOR, Blocks.LODESTONE }) {
+            test.setBlock(probe, refused);
+            test.assertTrue(!TileTransvectorDislocator.checkBlock(test.getLevel(), test.absolutePos(probe)), refused + " is not swapped");
+        }
+        test.setBlock(probe, Blocks.STONE);
+        test.assertTrue(TileTransvectorDislocator.checkBlock(test.getLevel(), test.absolutePos(probe)), "stone is swapped");
+        test.setBlock(probe, Blocks.AIR);
+
+        // a real pulse: the lodestone in front of the Dislocator and the diamond block at its end stay
+        BlockPos dislocatorPos = new BlockPos(3, 1, 3);
+        BlockPos frontPos = new BlockPos(3, 2, 3);
+        BlockPos endPos = new BlockPos(6, 2, 6);
+        test.setBlock(dislocatorPos, facing(TileBlocks.dislocatorBlock(), Direction.UP));
+        TileTransvectorDislocator dislocator = tile(test, dislocatorPos, TileTransvectorDislocator.class);
+        dislocator.setTarget(test.absolutePos(endPos));
+        test.setBlock(frontPos, Blocks.LODESTONE);
+        test.setBlock(endPos, Blocks.DIAMOND_BLOCK);
+        dislocator.receiveRedstonePulse();
+        test.assertBlockPresent(Blocks.LODESTONE, frontPos);
+        test.assertBlockPresent(Blocks.DIAMOND_BLOCK, endPos);
+
+        // the locomotive's rule for the block on top of it
+        test.assertTrue(!TileEntityMobilizer.carries(lodestone), "the locomotive leaves a lodestone behind");
+        test.assertTrue(!TileEntityMobilizer.carries(Blocks.BEDROCK.defaultBlockState()), "and bedrock, as in 1.7.10");
+        test.assertTrue(TileEntityMobilizer.carries(Blocks.CHEST.defaultBlockState()) && TileEntityMobilizer.carries(Blocks.STONE.defaultBlockState())
+                && TileEntityMobilizer.carries(Blocks.PISTON.defaultBlockState()), "and carries a chest, stone and a piston (the portable-hole list is the Dislocator's only)");
+        test.succeed();
+    }
+
+    /**
+     * The Remote Placer's recipe takes any of Thaumcraft's stone devices, as {@code ConfigBlocks.blockStoneDevice} without a metadata
+     * did; the list of native items is the API's legacy table for the field ({@code ItemApi.legacyItemIds}, every metadata).
+     */
+    public static void theRemotePlacerTakesAnyStoneDevice(GameTestHelper test) {
+        List<ResourceLocation> legacy = thaumcraft.api.ItemApi.legacyItemIds("blockStoneDevice", thaumcraft.api.ItemApi.WILDCARD);
+        List<ResourceLocation> named = BlockRPlacer.STONE_DEVICES.stream().map(path -> ResourceLocation.fromNamespaceAndPath("thaumcraft", path)).toList();
+        test.assertTrue(named.equals(legacy), "the stone devices by name are the legacy table's: " + named + " / " + legacy);
+        net.minecraft.world.item.crafting.Ingredient any = BlockRPlacer.anyStoneDevice();
+        for (String path : BlockRPlacer.STONE_DEVICES) test.assertTrue(any.test(ItemsTC.stack(path)), "the recipe takes " + path);
+        test.assertTrue(!any.test(new ItemStack(Items.STONE)), "and nothing else");
+        test.succeed();
+    }
+
     // ---- the transvector interface --------------------------------------------------------------------------
 
     /** The interface stands in for the bound chest: slots, items and the face rules. */
@@ -1452,7 +1510,8 @@ public final class TileBlocksRuntimeChecks {
         test.assertTrue(iface.getCamo() == Blocks.GLASS.defaultBlockState(), "glass is the camouflage: " + iface.getCamo());
         BlockState state = test.getBlockState(pos);
         test.assertTrue(state.getValue(CamoDeviceBlock.CAMO), "the block state shows a camouflage");
-        test.assertTrue(state.getRenderShape() == net.minecraft.world.level.block.RenderShape.INVISIBLE, "the device's own model is hidden");
+        test.assertTrue(state.getRenderShape() == net.minecraft.world.level.block.RenderShape.MODEL,
+                "the device is drawn from its (wrapped) model, which shows the camouflage in the chunk mesh");
         test.assertTrue(iface.getUpdateTag(test.getLevel().registryAccess()).contains("camo"), "the clients are told");
 
         giveItem(player, new ItemStack(Items.CHEST));
@@ -1467,11 +1526,12 @@ public final class TileBlocksRuntimeChecks {
 
     /**
      * The face culling that the chunk renderer does around a camouflaged device. While a camouflage is set the device's own
-     * model is not drawn (the block entity renderer draws the camouflage), so the device must not hide the faces of its
-     * neighbours: the floor under a camouflaged Golem Connector was culled and left a hole to the sky in the first client
-     * run (docs/deviations/TileBlocks.md, 2.8). In its own look the connector is an opaque cube and does hide them. The
+     * model is not drawn (its wrapped model draws the camouflage, culled as the camouflage would be), so the device must not hide
+     * the faces of its neighbours: the floor under a camouflaged Golem Connector was culled and left a hole to the sky in the first
+     * client run (docs/deviations/TileBlocks.md, 2.8). In its own look the connector is an opaque cube and does hide them. The
      * connector blocks light in both states, as {@code isOpaqueCube() == true} did in 1.7.10. Uses the same
-     * {@code Block.shouldRenderFace} as the chunk renderer, on the real floor; what is not tested here is the drawing itself.
+     * {@code Block.shouldRenderFace} as the chunk renderer, on the real floor; what is not tested here is the drawing itself (the
+     * client smoke's camouflage phase, docs/CLIENT_VERIFICATION.md).
      */
     public static void camouflagedDevicesLeaveTheFacesOfTheirNeighbours(GameTestHelper test) {
         floor(test);
@@ -1494,7 +1554,8 @@ public final class TileBlocksRuntimeChecks {
             tile.setCamo(Blocks.GLASS.defaultBlockState());
             BlockState camouflaged = test.getBlockState(pos);
             test.assertTrue(camouflaged.getValue(CamoDeviceBlock.CAMO), name + " is camouflaged");
-            test.assertTrue(camouflaged.getRenderShape() == net.minecraft.world.level.block.RenderShape.INVISIBLE, name + ": the model is hidden");
+            test.assertTrue(camouflaged.getRenderShape() == net.minecraft.world.level.block.RenderShape.MODEL,
+                    name + ": drawn from its wrapped model, which shows the camouflage");
             test.assertTrue(camouflaged.getOcclusionShape(test.getLevel(), abs).isEmpty(), name + " camouflaged occludes nothing: it draws nothing itself");
             test.assertTrue(!camouflaged.isSolidRender(test.getLevel(), abs), name + " camouflaged is no solid render");
             for (Direction face : Direction.values()) {

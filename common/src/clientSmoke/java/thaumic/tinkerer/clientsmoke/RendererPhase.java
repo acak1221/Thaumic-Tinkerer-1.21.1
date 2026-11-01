@@ -23,13 +23,12 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.aspects.IEssentiaContainerItem;
 import thaumcraft.api.blocks.BlocksTC;
-import thaumic.tinkerer.common.block.camo.CamoDeviceBlockEntity;
-import thaumic.tinkerer.common.block.tile.TileCamo;
 import thaumic.tinkerer.clientsmoke.TinkererContent.Entry;
 
 /**
  * Close-ups of every block entity that has a renderer, in a state that makes the renderer draw something: the item the
- * device holds, the camouflage block, the wand in the enchanter. Test-only code of the port (no 1.7.10 counterpart); CC BY-NC-SA
+ * device holds, the wand in the enchanter. (The camouflage blocks have no renderer: their models draw the camouflage, see
+ * {@link CamoPhase}.) Test-only code of the port (no 1.7.10 counterpart); CC BY-NC-SA
  * 3.0 like the add-on, not distributed.
  *
  * <p>An exception in a block-entity renderer ends the whole game in a crash report, so each renderer is called once on its own
@@ -53,12 +52,7 @@ final class RendererPhase extends ScriptedPhase {
             },
             // the funnel accepts jars of essentia only (TileFunnel.isFilledJar); hold() skips that check, so a gold ingot would be
             // drawn by the generic item model and not by the jar path the renderer exists for
-            "funnel", (level, tile) -> hold(tile, 0, filledJar()),
-            "camo", (level, tile) -> camouflage(tile),
-            "interface", (level, tile) -> camouflage(tile),
-            "dislocator", (level, tile) -> camouflage(tile),
-            "remote_placer", (level, tile) -> camouflage(tile),
-            "golem_connector", (level, tile) -> camouflage(tile));
+            "funnel", (level, tile) -> hold(tile, 0, filledJar()));
 
     @Override
     public String name() {
@@ -89,7 +83,7 @@ final class RendererPhase extends ScriptedPhase {
         String name = "renderer-" + type.path();
         Script script = new Script(name);
         BlockPos[] pos = { null };
-        BlockState state = camouflaged(block.defaultBlockState());
+        BlockState state = block.defaultBlockState();
         script.then("set the stage", run.onServer(server -> {
             ServerLevel level = server.overworld();
             Stage.clear(server, level);
@@ -132,16 +126,6 @@ final class RendererPhase extends ScriptedPhase {
         return script;
     }
 
-    /** A device with a camouflage property is shown with it on, so that the renderer has something to draw. */
-    private static BlockState camouflaged(BlockState state) {
-        for (var property : state.getProperties()) {
-            if ((property.getName().equals("camo") || property.getName().equals("camouflaged")) && property instanceof net.minecraft.world.level.block.state.properties.BooleanProperty flag) {
-                return state.setValue(flag, true);
-            }
-        }
-        return state;
-    }
-
     /** A Thaumcraft jar holding five points of ignis, the stack the funnel really takes. */
     private static ItemStack filledJar() {
         ItemStack jar = new ItemStack(BlocksTC.jar().asItem());
@@ -151,22 +135,5 @@ final class RendererPhase extends ScriptedPhase {
 
     private static void hold(BlockEntity tile, int slot, ItemStack stack) {
         if (tile instanceof Container container && slot < container.getContainerSize()) container.setItem(slot, stack);
-    }
-
-    /**
-     * Sets the camouflage on the block entity of either camouflage family: the Ethereal Platform's {@code TileCamo} (SimpleBlocks)
-     * and the {@code CamoDeviceBlockEntity} of the Interface, Dislocator, Remote Placer and Golem Connector (TileBlocks). A tile of
-     * neither kind is a harness error: {@link #camouflaged} has already forced {@code camo=true} on the block, which hides its
-     * model, so a close-up without a camouflage would show nothing and the check would pass without having looked at anything.
-     */
-    private static void camouflage(BlockEntity tile) {
-        BlockState planks = Blocks.OAK_PLANKS.defaultBlockState();
-        if (tile instanceof TileCamo camo) {
-            camo.setCamo(planks);
-        } else if (tile instanceof CamoDeviceBlockEntity device) {
-            device.setCamo(planks);
-        } else {
-            throw new IllegalStateException("no camouflage can be set on " + tile + ": the close-up would show an invisible block");
-        }
     }
 }

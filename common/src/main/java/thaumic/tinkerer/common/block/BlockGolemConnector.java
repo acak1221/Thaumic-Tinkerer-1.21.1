@@ -35,6 +35,7 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchCategories;
 import thaumcraft.api.research.ResearchPage;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.camo.CamoDeviceBlock;
 import thaumic.tinkerer.common.block.tile.TileGolemConnector;
 import thaumic.tinkerer.common.content.TileBlocks;
@@ -51,8 +52,8 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * {@link TileGolemConnector} for what of the 1.7.10 block works here.
  *
  * <p>Opaque means two things here. The cube hides the faces of its neighbours while it is drawn as itself; while it is
- * camouflaged it does not ({@link CamoDeviceBlock#getOcclusionShape}), because it is then drawn by the block entity
- * renderer and may look like glass. And it blocks light in both states, as {@code isOpaqueCube() == true} did
+ * camouflaged it does not ({@link CamoDeviceBlock#getOcclusionShape}), because its model then draws the camouflage, which
+ * may look like glass. And it blocks light in both states, as {@code isOpaqueCube() == true} did
  * ({@link #getLightBlock}).</p>
  */
 public class BlockGolemConnector extends CamoDeviceBlock implements ITTinkererRegisterable {
@@ -145,11 +146,11 @@ public class BlockGolemConnector extends CamoDeviceBlock implements ITTinkererRe
                 "sIs",
                 "WFW",
                 'I',
-                TileBlocks.legacyItem("itemGolemBell", 0),
+                ItemsTC.stack("golem_bell"),
                 's',
                 new ItemStack(Items.ENDER_PEARL),
                 'W',
-                TileBlocks.legacyBlock("blockMagicalLog", 0),
+                ItemsTC.stack("greatwood_log"),
                 'F',
                 new ItemStack(Blocks.REDSTONE_BLOCK));
     }

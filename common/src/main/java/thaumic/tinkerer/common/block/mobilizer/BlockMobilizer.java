@@ -25,10 +25,10 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.block.tile.TileEntityMobilizer;
 import thaumic.tinkerer.common.content.TileBlocks;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -102,10 +102,10 @@ public class BlockMobilizer extends BaseEntityBlock implements ITTinkererRegiste
                 new ItemStack(this),
                 4,
                 new AspectList().add(Aspect.MOTION, 15).add(Aspect.ORDER, 20).add(Aspect.MAGIC, 15),
-                TileBlocks.legacyBlock("blockLifter", 0),
+                ItemsTC.stack("levitator"),
                 new ItemStack(Items.IRON_INGOT),
                 new ItemStack(Items.FEATHER),
                 new ItemStack(Items.IRON_INGOT),
-                TileBlocks.legacyBlock("blockCosmeticSolid", 1));
+                ItemsTC.stack("obsidian_tile"));
     }
 }

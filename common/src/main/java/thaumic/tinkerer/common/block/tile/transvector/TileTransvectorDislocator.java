@@ -28,7 +28,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.blocks.BlocksTC;
 import thaumic.tinkerer.common.block.camo.PulseDeviceBlock;
 import thaumic.tinkerer.common.block.camo.RedstonePulseReceiver;
@@ -127,10 +126,11 @@ public class TileTransvectorDislocator extends TileTransvector implements Redsto
     }
 
     /**
-     * {@code checkBlock}: may this block be swapped? Not an aura node, not on the portable hole's blacklist, and breakable
-     * by a player: not unbreakable ({@code destroySpeed < 0}: bedrock, barriers, end portal frames, portals) and not a block
-     * that only an operator handles ({@link GameMasterBlock}: command, structure and jigsaw blocks). Air passes, so a block
-     * can be moved into an empty place.
+     * {@code checkBlock}: may this block be swapped? Not an aura node, not on the portable hole's blacklist (Thaumcraft's block tag
+     * {@code thaumcraft:portable_hole_blacklist}), not marked as not relocatable by the cross-mod convention
+     * ({@code c:relocation_not_supported}, new), and breakable by a player: not unbreakable ({@code destroySpeed < 0}: bedrock,
+     * barriers, end portal frames, portals) and not a block that only an operator handles ({@link GameMasterBlock}: command,
+     * structure and jigsaw blocks). Air passes, so a block can be moved into an empty place.
      *
      * <p>The 1.7.10 expression was {@code (not a node && not blacklisted && hardness != -1) || block != air}: the trailing
      * {@code ||} made it true for every block, so the original swapped nodes, bedrock and the blacklist too. The port drops
@@ -139,7 +139,8 @@ public class TileTransvectorDislocator extends TileTransvector implements Redsto
      */
     public static boolean checkBlock(Level level, BlockPos coords) {
         BlockState state = level.getBlockState(coords);
-        return !state.is(BlocksTC.auraNode()) && !ThaumcraftApi.portableHoleBlackList.contains(state.getBlock())
+        return !state.is(BlocksTC.auraNode()) && !state.is(TileBlocks.PORTABLE_HOLE_BLACKLIST)
+                && !state.is(TileBlocks.RELOCATION_NOT_SUPPORTED)
                 && state.getDestroySpeed(level, coords) >= 0F && !(state.getBlock() instanceof GameMasterBlock);
     }
 

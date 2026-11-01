@@ -21,6 +21,7 @@ public final class ThaumicTinkererNeoForgeClient {
 
     public static void register(IEventBus bus) {
         NeoForgeClientHooks.register(bus);
+        NeoForgeCamoModels.register(bus);
         bus.addListener(ThaumicTinkererNeoForgeClient::onRegisterClientExtensions);
     }
 

@@ -17,7 +17,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
-import thaumcraft.api.ItemApi;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
@@ -58,7 +58,7 @@ public class BlockFireAir extends BlockFireBase {
         return new ThaumicTinkererCrucibleRecipe(
                 LibResearch.KEY_FIRE_AER,
                 new ItemStack(this),
-                ItemApi.getItem("itemShard", 0),
+                ItemsTC.stack("air_shard"),
                 new AspectList().add(Aspect.FIRE, 5).add(Aspect.MAGIC, 5).add(Aspect.AIR, 5));
     }
 

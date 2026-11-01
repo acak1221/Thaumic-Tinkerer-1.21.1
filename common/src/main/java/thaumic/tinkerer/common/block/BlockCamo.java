@@ -44,11 +44,11 @@ import thaumic.tinkerer.common.block.tile.TileCamo;
  * A block that can be camouflaged: a right click with a block makes it look like that block, a right click with an
  * empty hand makes it look like itself again.
  *
- * <p>How it is drawn: the {@link #CAMOUFLAGED} block-state property is true while a camouflage is set. Then the block's
- * own model is not drawn ({@link RenderShape#INVISIBLE}) and the block entity renderer of the client
- * ({@code thaumic.tinkerer.client.render.tile.RenderTileCamo}) draws the camouflaged state in its place. 1.7.10 asked the
- * camouflaged block for its icons; 1.21.1 has no such thing, and a dynamic model needs a loader-specific API, so
- * the camouflage is drawn like a block entity (no animated models, see docs/deviations/SimpleBlocks.md).</p>
+ * <p>How it is drawn: the {@link #CAMOUFLAGED} block-state property is true while a camouflage is set. The block is always
+ * drawn from its model in the chunk mesh ({@link RenderShape#MODEL}); its baked model is wrapped by the loader's client glue
+ * (Fabric: {@code FabricCamoModels}, NeoForge: {@code NeoForgeCamoModels}, see {@code CamouflageHooks}), which draws the model of
+ * the imitated state while {@link #CAMOUFLAGED} is true, with that state's culling, tint and render type, and the block's own
+ * model otherwise. 1.7.10 asked the camouflaged block for its icons (docs/deviations/SimpleBlocks.md, 2.4).</p>
  *
  * <p>A subclass that has its own block entity extends {@link TileCamo} for it and lists its blockstate files'
  * {@code camouflaged=false/true} variants; {@link #isValidCamo} is the 1.7.10 render type test (types 0, 31 and 39:
@@ -68,12 +68,13 @@ public abstract class BlockCamo extends BaseEntityBlock {
         builder.add(CAMOUFLAGED);
     }
 
+    /** Drawn from its (wrapped) model in both looks; {@code BaseEntityBlock} would answer {@link RenderShape#INVISIBLE}. */
     @Override
     protected RenderShape getRenderShape(BlockState state) {
-        return state.getValue(CAMOUFLAGED) ? RenderShape.INVISIBLE : RenderShape.MODEL;
+        return RenderShape.MODEL;
     }
 
-    /** The block is a solid cube drawn from its model, whatever it imitates is drawn on top of it by the renderer. */
+    /** No path leads through the block, whatever it imitates. */
     @Override
     protected boolean isPathfindable(BlockState state, net.minecraft.world.level.pathfinder.PathComputationType type) {
         return false;

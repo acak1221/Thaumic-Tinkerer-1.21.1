@@ -185,6 +185,16 @@ public final class TileBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void whatMustNotBeRelocatedStaysWhereItIs(GameTestHelper h) {
+        TileBlocksRuntimeChecks.whatMustNotBeRelocatedStaysWhereItIs(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theRemotePlacerTakesAnyStoneDevice(GameTestHelper h) {
+        TileBlocksRuntimeChecks.theRemotePlacerTakesAnyStoneDevice(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void interfaceForwardsItems(GameTestHelper h) {
         TileBlocksRuntimeChecks.interfaceForwardsItems(h);
     }

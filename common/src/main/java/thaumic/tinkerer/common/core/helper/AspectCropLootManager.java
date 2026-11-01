@@ -32,7 +32,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.aspects.IEssentiaContainerItem;
@@ -168,6 +167,21 @@ public class AspectCropLootManager {
         return TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.parse(id));
     }
 
+    /** The golem cores of 1.7.10 metadata 0 to 11 (fill, empty, gather, harvest, guard, decanting, alchemy, chop, use, butcher, sorting, fishing). */
+    static final List<String> GOLEM_CORES = List.of("golem_core_fill", "golem_core_empty", "golem_core_gather", "golem_core_harvest",
+            "golem_core_guard", "golem_core_liquid", "golem_core_essentia", "golem_core_lumber", "golem_core_use", "golem_core_butcher",
+            "golem_core_sorting", "golem_core_fishing");
+    /** The shards of 1.7.10 metadata 0 to 6 (the six primals and the balanced shard). */
+    static final List<String> SHARDS = List.of("air_shard", "fire_shard", "water_shard", "earth_shard", "order_shard", "entropy_shard",
+            "balance_shard");
+
+    /** A stack of the Thaumcraft item of that native path, or null when it is not registered (the entry is then left out). */
+    @Nullable
+    private static ItemStack tc(String path) {
+        Item item = ItemsTC.get(path);
+        return item == null ? null : new ItemStack(item);
+    }
+
     @Nullable
     private static Item item(String id) {
         return BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(id)).orElse(null);
@@ -189,7 +203,7 @@ public class AspectCropLootManager {
         addAspectLoot(Aspect.ELDRITCH, new ItemStack(Items.ENDER_PEARL, 4), 10);
         addAspectLoot(Aspect.ELDRITCH, new ItemStack(Items.ENDER_EYE, 4), 5);
         // "bucketEnder": a bucket of ender from EnderIO, no counterpart
-        addAspectLoot(Aspect.ELDRITCH, ItemApi.getItem("itemResource", 17)); // void seed
+        addAspectLoot(Aspect.ELDRITCH, tc("void_seed")); // itemResource:17
 
         addAspectLoot(Aspect.TREE, ItemTags.LOGS, 1); // "logWood"
 
@@ -204,16 +218,16 @@ public class AspectCropLootManager {
         addAspectLoot(Aspect.MIND, new ItemStack(Items.PAPER, 64), 15);
         addAspectLoot(Aspect.MIND, new ItemStack(Items.BOOK, 32), 10);
         addAspectLoot(Aspect.MIND, new ItemStack(Items.BOOKSHELF, 16), 5);
-        addAspectLoot(Aspect.MIND, stackOf(ItemApi.getItem("itemResource", 9), 4), 5); // knowledge fragment
+        addAspectLoot(Aspect.MIND, stackOf(tc("knowledge_fragment"), 4), 5); // itemResource:9
 
-        addAspectLoot(Aspect.FLESH, stackOf(ItemApi.getItem("itemResource", 5), 16), 1); // zombie brain (the defunct metadata 5)
+        addAspectLoot(Aspect.FLESH, stackOf(tc("zombie_brain"), 16), 1); // itemResource:5, the defunct metadata of the zombie brain
 
         addAspectLoot(Aspect.UNDEAD, new ItemStack(Items.ROTTEN_FLESH, 32));
         addAspectLoot(Aspect.UNDEAD, new ItemStack(Items.BONE, 24));
 
         Item darkQuartz = item(LibMisc.MOD_ID + ":" + LibBlockNames.DARK_QUARTZ);
         if (darkQuartz != null) addAspectLoot(Aspect.CRAFT, new ItemStack(darkQuartz, 32));
-        addAspectLoot(Aspect.CRAFT, stackOf(ItemApi.getBlock("blockStoneDevice", 0), 16)); // alchemical furnace
+        addAspectLoot(Aspect.CRAFT, stackOf(tc("alchemy_furnace"), 16)); // blockStoneDevice:0
         addAspectLoot(Aspect.CRAFT, new ItemStack(Items.CRAFTING_TABLE, 4));
 
         addAspectLoot(Aspect.HUNGER, new ItemStack(Items.NETHER_WART, 16));
@@ -228,8 +242,9 @@ public class AspectCropLootManager {
         addAspectLoot(Aspect.PLANT, new Item[] { Items.SHORT_GRASS, Items.TALL_GRASS, Items.FERN, Items.LARGE_FERN }, 1);
         addAspectLoot(Aspect.PLANT, ItemTags.SAPLINGS, 1);
 
-        for (int i = 0; i < 12; i++) {
-            addAspectLoot(Aspect.MAN, ItemApi.getItem("itemGolemCore", i));
+        // itemGolemCore:0..11
+        for (String core : GOLEM_CORES) {
+            addAspectLoot(Aspect.MAN, tc(core));
         }
 
         addAspectLoot(Aspect.ARMOR, new ItemStack(Items.DIAMOND_BOOTS));
@@ -237,11 +252,11 @@ public class AspectCropLootManager {
         addAspectLoot(Aspect.ARMOR, new ItemStack(Items.DIAMOND_CHESTPLATE));
         addAspectLoot(Aspect.ARMOR, new ItemStack(Items.DIAMOND_HELMET));
 
-        addAspectLoot(Aspect.MINE, ItemApi.getItem("itemPickThaumium", 0));
-        addAspectLoot(Aspect.HARVEST, ItemApi.getItem("itemHoeThaumium", 0));
-        addAspectLoot(Aspect.WEAPON, ItemApi.getItem("itemSwordThaumium", 0));
-        addAspectLoot(Aspect.TOOL, ItemApi.getItem("itemShovelThaumium", 0));
-        addAspectLoot(Aspect.TOOL, ItemApi.getItem("itemAxeThaumium", 0));
+        addAspectLoot(Aspect.MINE, tc("thaumium_pickaxe"));
+        addAspectLoot(Aspect.HARVEST, tc("thaumium_hoe"));
+        addAspectLoot(Aspect.WEAPON, tc("thaumium_sword"));
+        addAspectLoot(Aspect.TOOL, tc("thaumium_shovel"));
+        addAspectLoot(Aspect.TOOL, tc("thaumium_axe"));
 
         addAspectLoot(Aspect.SLIME, tag("c:slime_balls"), 4); // "slime"
 
@@ -249,7 +264,7 @@ public class AspectCropLootManager {
         addAspectLoot(Aspect.GREED, new ItemStack(Items.EMERALD, 2));
 
         addAspectLoot(Aspect.LIGHT, new ItemStack(Items.GLOWSTONE_DUST, 16), 5);
-        addAspectLoot(Aspect.LIGHT, stackOf(ItemApi.getItem("itemResource", 1), 4)); // nitor
+        addAspectLoot(Aspect.LIGHT, stackOf(tc("nitor"), 4)); // itemResource:1
         Item brightNitor = item(LibMisc.MOD_ID + ":" + LibItemNames.BRIGHT_NTIOR);
         if (brightNitor != null) addAspectLoot(Aspect.LIGHT, new ItemStack(brightNitor));
 
@@ -276,12 +291,13 @@ public class AspectCropLootManager {
         }
 
         addAspectLoot(Aspect.EXCHANGE, tag("c:ingots/copper"), 4); // "ingotCopper"
-        addAspectLoot(Aspect.EXCHANGE, stackOf(ItemApi.getBlock("blockCustomOre", 0), 4)); // cinnabar ore
+        addAspectLoot(Aspect.EXCHANGE, stackOf(tc("cinnabar_ore"), 4)); // blockCustomOre:0
 
-        addAspectLoot(Aspect.ENERGY, stackOf(ItemApi.getItem("itemResource", 0), 12)); // alumentum
+        addAspectLoot(Aspect.ENERGY, stackOf(tc("alumentum"), 12)); // itemResource:0
 
-        for (int i = 0; i <= 6; i++) {
-            addAspectLoot(Aspect.MAGIC, ItemApi.getItem("itemShard", i));
+        // itemShard:0..6
+        for (String shard : SHARDS) {
+            addAspectLoot(Aspect.MAGIC, tc(shard));
         }
 
         addAspectLoot(Aspect.HEAL, new ItemStack(Items.GOLDEN_APPLE));
@@ -305,18 +321,18 @@ public class AspectCropLootManager {
         addAspectLoot(Aspect.VOID, new ItemStack(Items.BOWL, 4)); // "bowl" (count 4)
         addAspectLoot(Aspect.VOID, stackOf(ItemsTC.stack("void_ingot"), 2)); // "ingotVoid" (count 2)
 
-        addAspectLoot(Aspect.POISON, stackOf(ItemApi.getItem("itemResource", 3), 16)); // quicksilver
+        addAspectLoot(Aspect.POISON, stackOf(tc("quick_silver"), 16)); // itemResource:3
         addAspectLoot(Aspect.POISON, new ItemStack(Items.SPIDER_EYE, 8));
 
         addAspectLoot(Aspect.LIFE, new ItemStack(Items.EGG, 8));
 
         addAspectLoot(Aspect.TRAP, new ItemStack(Items.COBWEB, 4));
         addAspectLoot(Aspect.TRAP, ItemTags.WOODEN_TRAPDOORS, 1); // "trapdoorWood"
-        addAspectLoot(Aspect.TRAP, stackOf(ItemApi.getItem("itemResource", 6), 16)); // amber
+        addAspectLoot(Aspect.TRAP, stackOf(tc("amber_gem"), 16)); // itemResource:6
 
-        addAspectLoot(Aspect.TRAVEL, stackOf(ItemApi.getBlock("blockCosmeticSolid", 2), 4)); // paving stone of travel
+        addAspectLoot(Aspect.TRAVEL, stackOf(tc("paving_stone_travel"), 4)); // blockCosmeticSolid:2
 
-        addAspectLoot(Aspect.TAINT, stackOf(ItemApi.getItem("itemResource", 11), 4));
+        addAspectLoot(Aspect.TAINT, stackOf(tc("tainted_goo"), 4)); // itemResource:11
 
         addAspectLoot(Aspect.CRYSTAL, new ItemStack(Items.DIAMOND, 1));
         addAspectLoot(Aspect.CRYSTAL, new ItemStack(Items.QUARTZ, 8));
