@@ -43,8 +43,7 @@ public final class Foci implements ContentGroup {
     @Override
     public void register() {
         FociComponents.register();
-        // 1.7.10 TTCommonProxy: ItemFocusDeflect.setupBlackList().
-        ItemFocusDeflect.setupBlackList();
+        // 1.7.10 TTCommonProxy: ItemFocusDeflect.setupBlackList(); the blacklist is the entity-type tag thaumictinkerer:deflect_blacklist.
 
         TTRegistry.item(LibItemNames.FOCUS_DEFLECT, () -> new ItemFocusDeflect(new Item.Properties()));
         TTRegistry.item(LibItemNames.FOCUS_DISLOCATION, () -> new ItemFocusDislocation(new Item.Properties()));

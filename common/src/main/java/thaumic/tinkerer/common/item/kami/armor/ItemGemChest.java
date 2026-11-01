@@ -11,15 +11,17 @@
  */
 package thaumic.tinkerer.common.item.kami.armor;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;
-import net.minecraft.world.entity.projectile.ThrownExperienceBottle;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -40,9 +42,9 @@ import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -61,6 +63,9 @@ public class ItemGemChest extends ItemIchorclothArmorAdv {
     /** Whether this armour granted the player the flight it has (see the class comment: the entity's own, nothing saved or sent). */
     public static final PlayerData.Key<Boolean> FLIGHT_GRANTED = PlayerData.Key.<Boolean>builder(LibMisc.id("robe_flight_granted"),
             () -> false).build();
+
+    /** The blacklist of the Focus of Distortion, which the Robes share (1.7.10 asked {@code ItemFocusDeflect}'s list). */
+    private static final TagKey<EntityType<?>> DEFLECT_BLACKLIST = TagKey.create(Registries.ENTITY_TYPE, LibMisc.id("deflect_blacklist"));
 
     public ItemGemChest(Item.Properties properties) {
         super(ArmorItem.Type.CHESTPLATE, properties);
@@ -108,7 +113,9 @@ public class ItemGemChest extends ItemIchorclothArmorAdv {
      * 1.7.10 {@code ItemFocusDeflect.protectFromProjectiles(player, null)} (the Distortion focus belongs to the Foci
      * group; this is the Kami copy of the same rule): every arrow and thrown object within 4 blocks (3 above and to the
      * east/south) that was not shot by the player is moved along its flight by twice its distance from the player, which
-     * carries it past. The experience bottle is exempt, as in the original blacklist; so is a projectile that is stuck.
+     * carries it past. What the focus's blacklist holds is exempt, as in the original: the entity-type tag
+     * {@code thaumictinkerer:deflect_blacklist} (named by its id: the focus is the Foci group's), which lists the experience bottle;
+     * so is a projectile that is stuck.
      */
     public static void protectFromProjectiles(Player player, int range) {
         Level level = player.level();
@@ -116,7 +123,7 @@ public class ItemGemChest extends ItemIchorclothArmorAdv {
                 player.getX() + (3 + range), player.getY() + (3 + range), player.getZ() + (3 + range));
         for (Projectile projectile : level.getEntitiesOfClass(Projectile.class, box)) {
             if (!(projectile instanceof AbstractArrow || projectile instanceof ThrowableProjectile)) continue;
-            if (projectile instanceof ThrownExperienceBottle || projectile.getOwner() == player) continue;
+            if (projectile.getType().is(DEFLECT_BLACKLIST) || projectile.getOwner() == player) continue;
             Vec3 motion = projectile.getDeltaMovement();
             if (motion.lengthSqr() < 1.0E-7 || isStuck(projectile)) continue;
             double distance = projectile.position().distanceTo(player.position());

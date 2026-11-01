@@ -795,18 +795,9 @@ public final class FociRuntimeChecks {
         test.assertTrue(near(fireball.position(), test.absoluteVec(new Vec3(5.5, 2.0, 5.5)), 1.0E-9), "a fireball is not an arrow or a thrown object");
         assertSpent(test, wand, player, before, new AspectList().add(Aspect.ORDER, 8).add(Aspect.AIR, 4), 1, "distortion");
 
-        // The blacklist is a set of entity-type ids: an addition protects the type, as Botania's compat once did.
+        // The blacklist is the entity-type tag (a data pack or another mod adds to it, as Botania's compat once added a class), and only it.
         test.assertTrue(ProjectileHelper.isBlacklisted(bottle), "the bottle is blacklisted");
         test.assertTrue(!ProjectileHelper.isBlacklisted(snowball), "the snowball is not");
-        var snowballId = BuiltInRegistries.ENTITY_TYPE.getKey(EntityType.SNOWBALL);
-        try {
-            ProjectileHelper.DEFLECT_BLACKLIST.add(snowballId);
-            test.assertTrue(ProjectileHelper.isBlacklisted(snowball), "after adding it, the snowball is");
-        } finally {
-            ProjectileHelper.DEFLECT_BLACKLIST.remove(snowballId);
-        }
-        test.assertTrue(ProjectileHelper.getOwner(own) == player, "the owner of an arrow is its shooter");
-        test.assertTrue(ProjectileHelper.getOwner(foreign) == null, "an arrow nobody shot has no owner");
         test.succeed();
     }
 

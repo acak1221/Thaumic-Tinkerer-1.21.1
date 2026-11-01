@@ -45,11 +45,6 @@ public class ItemFocusDeflect extends ItemModFocus {
         super(properties);
     }
 
-    /** 1.7.10 {@code setupBlackList}: the experience bottle is on the blacklist of entity-type ids. */
-    public static void setupBlackList() {
-        ProjectileHelper.setupBlackList();
-    }
-
     /**
      * 1.7.10 {@code protectFromProjectiles(player, stack)}: the wand's enlarge upgrade widens the box by one block per level;
      * without a wand (the Kami chestplate called it with {@code null}) the box has its base size.

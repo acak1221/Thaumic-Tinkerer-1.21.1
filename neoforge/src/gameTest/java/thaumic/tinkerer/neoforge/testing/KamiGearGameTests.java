@@ -181,6 +181,11 @@ public final class KamiGearGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theRobesLeaveWhatTheDeflectBlacklistTagLists(GameTestHelper test) {
+        KamiGearRuntimeChecks.theRobesLeaveWhatTheDeflectBlacklistTagLists(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void awakenedPickaxeGathersTheDropsOfTheClickedBlockToo(GameTestHelper test) {
         KamiGearRuntimeChecks.awakenedPickaxeGathersTheDropsOfTheClickedBlockToo(test);
     }

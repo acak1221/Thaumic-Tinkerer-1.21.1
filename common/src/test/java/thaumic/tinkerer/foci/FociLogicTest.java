@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.mojang.serialization.JsonOps;
 import io.netty.buffer.Unpooled;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Predicate;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
@@ -149,14 +148,17 @@ class FociLogicTest {
         assertEquals(Vec3.ZERO, ProjectileHelper.shieldShift(Vec3.ZERO, 5.0), "a projectile at rest does not move");
     }
 
+    /** 1.7.10 {@code setupBlackList} put the experience bottle on the blacklist; the blacklist is the tag, which lists it and nothing else. */
     @Test
-    void theExperienceBottleIsTheOnlyEntryOfTheBlacklistToStartWith() {
-        ProjectileHelper.DEFLECT_BLACKLIST.clear();
-        ItemFocusDeflect.setupBlackList();
-        assertEquals(Set.of(ResourceLocation.withDefaultNamespace("experience_bottle")), ProjectileHelper.DEFLECT_BLACKLIST);
-        ItemFocusDeflect.setupBlackList();
-        assertEquals(1, ProjectileHelper.DEFLECT_BLACKLIST.size(), "twice is the same");
-        ProjectileHelper.DEFLECT_BLACKLIST.clear();
+    void theExperienceBottleIsTheOnlyEntryOfTheBlacklistToStartWith() throws java.io.IOException {
+        assertEquals("thaumictinkerer:deflect_blacklist", ProjectileHelper.DEFLECT_BLACKLIST_TAG.location().toString());
+        try (var in = FociLogicTest.class.getResourceAsStream("/data/thaumictinkerer/tags/entity_type/deflect_blacklist.json")) {
+            var tag = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            assertFalse(tag.get("replace").getAsBoolean(), "a pack adds to it");
+            assertEquals(List.of("minecraft:experience_bottle"), tag.getAsJsonArray("values").asList().stream()
+                    .map(com.google.gson.JsonElement::getAsString).toList());
+        }
     }
 
     // ---- the Dislocation -------------------------------------------------------------------------------------------

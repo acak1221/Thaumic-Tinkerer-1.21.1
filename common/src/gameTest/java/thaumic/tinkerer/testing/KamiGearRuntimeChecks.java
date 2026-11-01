@@ -1759,6 +1759,33 @@ public final class KamiGearRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The Robes share the blacklist of the Focus of Distortion (1.7.10 called {@code ItemFocusDeflect.protectFromProjectiles}): what the
+     * entity-type tag {@code thaumictinkerer:deflect_blacklist} lists (the experience bottle) is left alone, another thrown object is
+     * carried past the wearer. (The earlier port named the bottle's class here, so an addition to the tag did not reach the Robes.)
+     */
+    public static void theRobesLeaveWhatTheDeflectBlacklistTagLists(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test, 3.5, 1, 3.5, 0, 0);
+        net.minecraft.world.entity.projectile.ThrownExperienceBottle bottle = test.spawn(EntityType.EXPERIENCE_BOTTLE, new BlockPos(5, 2, 3));
+        net.minecraft.world.entity.projectile.Snowball snowball = test.spawn(EntityType.SNOWBALL, new BlockPos(5, 2, 5));
+        test.assertTrue(bottle.getType().is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ENTITY_TYPE,
+                LibMisc.id("deflect_blacklist"))), "the bottle is in the tag");
+        for (net.minecraft.world.entity.projectile.Projectile projectile : new net.minecraft.world.entity.projectile.Projectile[] { bottle, snowball }) {
+            projectile.setNoGravity(true);
+            projectile.setDeltaMovement(-1, 0, 0);
+            projectile.xo = projectile.getX() + 1; // it moved during its last tick: not stuck
+        }
+        double bottleX = bottle.getX();
+        double snowballX = snowball.getX();
+        ItemGemChest.protectFromProjectiles(player, 0);
+        test.assertTrue(bottle.getX() == bottleX, "the experience bottle stays, x = " + bottle.getX());
+        test.assertTrue(snowball.getX() < snowballX - 1, "the snowball was carried past the wearer, x = " + snowball.getX());
+        bottle.discard();
+        snowball.discard();
+        test.succeed();
+    }
+
     public static void awakenedPickaxeGathersTheDropsOfTheClickedBlockToo(GameTestHelper test) {
         ItemStack pick = TTRegistry.stack(LibItemNames.ICHOR_PICK_GEM);
         ToolHandler.changeMode(pick);

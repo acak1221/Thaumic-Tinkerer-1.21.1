@@ -172,6 +172,11 @@ public final class KamiGearGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theRobesLeaveWhatTheDeflectBlacklistTagLists(GameTestHelper test) {
+        KamiGearRuntimeChecks.theRobesLeaveWhatTheDeflectBlacklistTagLists(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void awakenedPickaxeGathersTheDropsOfTheClickedBlockToo(GameTestHelper test) {
         KamiGearRuntimeChecks.awakenedPickaxeGathersTheDropsOfTheClickedBlockToo(test);
     }
