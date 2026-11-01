@@ -62,7 +62,17 @@ sourceSets {
  }
 }
 
+// CC: Tweaked on the GameTest server only (docs/deviations/ComputerCraft.md): the peripherals and the turtle upgrade are checked there with
+// the real mod, by real Lua on real computers. Loom remaps a mod only through its mod* configurations; these are the GameTest source set's.
+// The client smoke and the multiplayer check keep running without it, and so show that the add-on loads and works without CC: Tweaked.
+// fabric-loader and fabric-api are what CC: Tweaked was built against (0.18.4, 0.116.12): excluded, so the run keeps the add-on's versions.
+loom.createRemapConfigurations(sourceSets.thaumicTinkererGameTest)
+
 dependencies {
+ modThaumicTinkererGameTestRuntimeOnly("cc.tweaked:cc-tweaked-1.21.1-fabric:$cc_tweaked_version") {
+  exclude group: 'net.fabricmc'
+  exclude group: 'net.fabricmc.fabric-api'
+ }
  thaumicTinkererTestImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
  thaumicTinkererTestImplementation 'org.junit.platform:junit-platform-launcher'
  thaumicTinkererTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'

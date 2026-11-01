@@ -18,6 +18,7 @@ original, and `docs/PARITY_REPORT.md` compares the research and recipe definitio
 | Kami world (Bedrock dimension and portal, Celestial Gateway, Soul Hearts, dimensional shards) | [KamiWorld](deviations/KamiWorld.md) | `content/KamiWorld` |
 | Jade tooltips (the Waila providers of 1.7.10: Animation Tablet, Transvector Interface, Thaumic Restorer, Celestial Gateway, attractors) | [Tooltips](deviations/Tooltips.md) | `compat/.../tooltip`, `compat/.../jade` |
 | EMI and JEI pages (the NEI pages of 1.7.10: necromancy, infused seed drops) | [RecipeViewers](deviations/RecipeViewers.md) | `compat/.../viewer`, `compat/.../emi`, `compat/.../jei` |
+| CC: Tweaked peripherals and turtle tool (the ComputerCraft integration of 1.7.10) | [ComputerCraft](deviations/ComputerCraft.md) | `compat/.../computer`, `compat/.../computer/cc` |
 
 Related: [PORTING_RULES](PORTING_RULES.md) (the rules), [API_GAPS](API_GAPS.md) and [api-requests/](api-requests/) (what the add-on needed
 from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families](lang-key-families.md) (language keys).
@@ -128,9 +129,11 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
 * **Other mods' integrations**: Forge Multipart parts (candle and Nitor parts), EnderStorage page of the Ender Rift focus, Botania,
   Blood Magic, AE2 (`IMovableTile`, passenger handling), Tinkers' Construct repair, GregTech accelerator text, EnderIO planter,
   Electro-Magic Tools hoe.
-* **Computer peripherals** (ComputerCraft / OpenComputers) of the Animation Tablet, Transvector Interface, Golem Connector, Aspectalyzer and
-  the attractors. The method tables exist as plain Java; nothing registers them. The `peripherals` research category exists and is empty. The ComputerCraft turtle
-  tool of the Fume Dissipator (`FumeTool`, `FumePeripheral`) is not ported either (`SimpleBlocks.md` section 3).
+* **Computer peripherals**: ported for CC: Tweaked on both loaders, as an optional integration ([ComputerCraft](deviations/ComputerCraft.md)): the
+  peripherals of the Animation Tablet, the attractors, the Aspectalyzer, the Golem Connector and every Thaumcraft aspect container and essentia
+  transport (the Transvector Interface is one, as in 1.7.10), the Fume Dissipator's turtle tool, and the method pages of the `PERIPHERALS` research.
+  Not ported: the OpenComputers drivers (no 1.21.1 release). Waiting for Thaumcraft API: the peripherals of the Deconstruction Table, Brain in a Jar,
+  Arcane Ear and Arcane Bore (A12) and the golem data of the Golem Connector (A11).
 * **Energy through the Transvector Interface** (RF and EU in 1.7.10) is written for **neither** loader; fluids through it are forwarded on both (Fabric
   `TileBlocksFabric`, run in the GameTests; NeoForge `NeoForgeCapabilities`, which also offers the Interface's items as a capability, run in the NeoForge GameTests; `TileBlocks.md` sections 2.5 and 3, `api-requests/TileBlocks.md` section 6, `NEOFORGE.md`).
 * **The Kami foci's `canApplyUpgrade` override** (the original answered true for every upgrade) is dropped; the base rule applies (`Foci.md` section 10, `KamiGear.md` section 9).

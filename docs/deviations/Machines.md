@@ -63,10 +63,11 @@ and receives each of them.
   a computer mod the block would be unobtainable, so it is registered always; its research parent `PERIPHERALS` (also a
   CC-only entry in the fork) is created by `BlockAspectAnalyzer.ensurePeripheralsEntry()` if the lead's `ResearchHelper`
   has not registered it (a second registration of the key is ignored by Thaumcraft). See the shared-file requests.
-- **Peripherals not ported (forced / scope).** ComputerCraft and OpenComputers are not in the 1.21.1 build. The four
-  calls `hasItem`, `itemHasAspects`, `getAspects`, `getAspectCount` are plain methods of `TileAspectAnalyzer`
-  (`hasItemMethod`, `itemHasAspectsMethod`, `getAspectsMethod`, `getAspectsAmountsMethod`); a compat module only has to
-  call them. `getAspectsMethod` returns the tags sorted as the game sorts aspects.
+- **Peripheral (ported for CC: Tweaked).** With CC: Tweaked installed the Aspectalyzer is the peripheral `tt_aspectanalyzer` with
+  the four calls `hasItem`, `itemHasAspects`, `getAspects`, `getAspectCount` of 1.7.10, which are plain methods of
+  `TileAspectAnalyzer` (`hasItemMethod`, `itemHasAspectsMethod`, `getAspectsMethod`, `getAspectsAmountsMethod`), bridged by
+  `compat/.../computer/AspectAnalyzerTable` (`docs/deviations/ComputerCraft.md`). `getAspectsMethod` returns the tags sorted as the
+  game sorts aspects. The OpenComputers driver is not ported (no 1.21.1 release).
 - **Slot filter.** `SlotLimitedHasAspects` becomes "`ThaumcraftApiHelper.getObjectAspects(stack, level)` is not empty",
   which includes the contents of essentia containers and the bonus tags, as a scan does. The slot holds a stack of 64.
 - **Scan check.** As in the original, the screen shows the aspects only if the player scanned the item:
@@ -169,8 +170,10 @@ and receives each of them.
   slot that carries the flag to the client; the screen is `GuiMobMagnet`. Right click with a wand opens it (the sound
   `thaumcraft:key` at pitch 0.5, as the original); a right click without a wand changes the polarity and plays the
   button click.
-- **Peripherals not ported:** `isPulling`, `setPulling`, `getSignal` of ComputerCraft / OpenComputers; the methods exist
-  (`isPulling`, `setPulling`, `getRedstone` on `TileMagnet`, `setAdult` on `TileMobMagnet`).
+- **Peripheral (ported for CC: Tweaked):** both attractors are the peripheral `tt_magnet` with `isPulling`, `setPulling`,
+  `getSignal`, and the Corporeal Attractor also `getAdultSearch`, `setAdultSearch`, as in 1.7.10 (`isPulling`, `setPulling`,
+  `getRedstone` on `TileMagnet`, `adult` and `setAdult` on `TileMobMagnet`, bridged by `compat/.../computer/MagnetTable`;
+  `docs/deviations/ComputerCraft.md`). OpenComputers is not ported.
 - **Recipes.** The arcane recipes keep their keys (`MAGNET`, `MOB_MAGNET`, research `MAGNETS`); the research is carried only
   by the plain block (`getResearchItem` of the mob block returns null) so that it is registered once. The mob magnet's
   ingredient `RecipeHelper.oreDictOrStack(gold ingot, "ingotCopper")` is "the copper ingot if the ore dictionary has one":
@@ -369,8 +372,8 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
 
 ## 11. Not done / not ported
 
-- ComputerCraft and OpenComputers peripherals (Aspectalyzer, Attractors), AE2 `IMovableTile`, Tinkers' Construct
-  tool repair. (NEI integration and Waila providers were not this group's job; they are ported now as EMI/JEI pages and Jade
+- OpenComputers drivers (Aspectalyzer, Attractors; the CC: Tweaked peripherals are ported, `ComputerCraft.md`), AE2
+  `IMovableTile`, Tinkers' Construct tool repair. (NEI integration and Waila providers were not this group's job; they are ported now as EMI/JEI pages and Jade
   tooltips, `RecipeViewers.md`, `Tooltips.md`.)
 - The enchantability of the blade (shared tag files): the request in `docs/api-requests/Machines.md`. (The NeoForge poster of `LIVING_DROPS`, listed here
   before, is written now, section 12; the NeoForge backend of `ItemRenderers` is written, not seen drawn.) (The scan

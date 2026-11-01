@@ -1,0 +1,3 @@
+{
+  "ttresearch.page.PERIPHERALS.0": "Thaumic Tinkerer가 추가하는 일부 블록과 Thaumcraft의 일부 블록은 ComputerCraft 주변장치로 사용할 수 있습니다. CC: Tweaked가 설치되어 있으면 옆에 있거나 유선 모뎀으로 연결된 컴퓨터가 다음 페이지에 적힌 주변장치 유형으로 peripheral.wrap 또는 peripheral.find를 통해 블록을 찾습니다.<BR><BR>다음 페이지(영어)에는 각 주변장치의 메서드가 나와 있습니다. 호출은 월드의 다음 틱까지 기다립니다. CC: Tweaked가 없으면 이 블록들은 일반 블록으로 작동합니다."
+}

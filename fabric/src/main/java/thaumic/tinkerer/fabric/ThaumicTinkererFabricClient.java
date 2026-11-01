@@ -13,6 +13,8 @@ package thaumic.tinkerer.fabric;
 
 import net.fabricmc.api.ClientModInitializer;
 import thaumic.tinkerer.common.ThaumicTinkerer;
+import thaumic.tinkerer.compat.computer.Computers;
+import thaumic.tinkerer.fabric.client.ComputerCraftFabricClient;
 import thaumic.tinkerer.fabric.client.FabricItemRenderers;
 import thaumic.tinkerer.fabric.client.KamiGearFabricClient;
 
@@ -25,5 +27,7 @@ public final class ThaumicTinkererFabricClient implements ClientModInitializer {
         ThaumicTinkerer.initClient();
         // The client hooks of the Kami gear that Architectury has no event for (the wings layer, the mirror's ghost blocks).
         KamiGearFabricClient.register();
+        // The model of the Fume Dissipator's turtle tool, only with CC: Tweaked.
+        if (Computers.ccTweakedLoaded()) ThaumicTinkerer.guard("ComputerCraftFabricClient.register", ComputerCraftFabricClient::register);
     }
 }

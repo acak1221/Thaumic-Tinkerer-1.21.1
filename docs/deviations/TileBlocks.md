@@ -84,11 +84,12 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 * **Update packet (forced).** A 1.21.1 client ignores a block-entity update with an empty tag, and the original update
   packet carried the item and the two modes only. The packet keeps carrying those; `loadAdditional` reads the swing counters
   only when they are present, so a sync cannot stop a swing that is running on the client.
-* **Computer peripheral (forced).** `tt_animationTablet` (ComputerCraft/OpenComputers: `getRedstone`, `setRedstone`,
-  `getLeftClick`, `setLeftClick`, `getRotation`, `setRotation`, `hasItem`, `trigger`) has no loader-neutral registration.
-  The behaviour is plain methods on the block entity (`trigger()`, `getRotation()`, `setRotation(int)`, `setLeftClick`,
-  `setRedstone`, the public fields and `isEmpty()`), ready for a loader module to bridge. `setRotation` also refuses a
-  negative value (the original only refused values above 3 and wrote an invalid metadata for a negative one).
+* **Computer peripheral (ported for CC: Tweaked).** With CC: Tweaked installed the tablet is the peripheral `tt_animationTablet`
+  (`getRedstone`, `setRedstone`, `getLeftClick`, `setLeftClick`, `getRotation`, `setRotation`, `hasItem`, `trigger`, as in 1.7.10),
+  registered on both loaders (`docs/deviations/ComputerCraft.md`). The behaviour is plain methods on the block entity
+  (`trigger()`, `getRotation()`, `setRotation(int)`, `setLeftClick`, `setRedstone`, the public fields and `isEmpty()`), bridged by
+  `compat/.../computer/AnimationTabletTable`. `setRotation` also refuses a negative value (the original only refused values above 3
+  and wrote an invalid metadata for a negative one). The OpenComputers driver is not ported.
 * **AE2 `IMovableTile` (forced).** Not applicable to 1.21.1; `setRemoved` stops a break in progress, which is what
   `prepareToMove` was for.
 * **The tablet asks before it changes a block (new, for safety).** 1.7.10 asked nobody (Forge's `PlayerInteractEvent` only for the right
@@ -326,7 +327,9 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   the binding.
 * **Notification (kept).** Every 100 ticks the interface calls `updateNeighborsAt`, as `notifyBlockChange` did, so pipes
   look again.
-* **Computer peripheral (forced).** The Interface answered `getType` and the methods of the bound peripheral; not bridged.
+* **Computer peripheral (kept).** The Interface's own `IPeripheral` (the bound block's type and methods) was never reached in
+  1.7.10: `PeripheralHandler` tried `IAspectContainer` first, and the Interface is one, so a computer saw `tt_aspectContainer` with the
+  bound block's aspects. With CC: Tweaked the port answers the same (`docs/deviations/ComputerCraft.md` section 3, deviation 6).
 
 ### 2.6 Transvector Dislocator
 

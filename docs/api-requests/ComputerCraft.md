@@ -1,0 +1,23 @@
+# ComputerCraft (CC: Tweaked peripherals): requests to the Thaumcraft API
+
+The optional CC: Tweaked integration (`docs/deviations/ComputerCraft.md`). The numbers `A11` and `A12` are those of `docs/API_GAPS.md`
+section 2. Nothing here was done by reaching into `thaumcraft.common.*`.
+
+## 1. The machines and the golems (A11, A12; being written)
+
+`tt_deconstructor`, `tt_braininajar`, `tt_arcaneear`, `tt_arcanebore` need `thaumcraft.api.machines` (A12) and the golem data of
+`tt_golemconnector` needs `thaumcraft.api.golems` (A11). Both are being added to Thaumcraft 4 Reload; the peripherals follow when a
+Thaumcraft with them is published (`docs/deviations/ComputerCraft.md` section 1).
+
+## 2. The label of a jar (P3)
+
+**Need.** 1.7.10 `IAspectContainerImplementation.getAspects` answered a labelled jar (`TileJarFillable.aspectFilter != null`) with the
+label's aspect alone, also when the jar was empty; a script could read which aspect an empty labelled jar waits for.
+
+**What the add-on does today.** Nothing: `thaumcraft.api` has no read of a jar's label, so a labelled empty jar answers an empty table
+(deviation 5 of `docs/deviations/ComputerCraft.md`). Guessing it from `IEssentiaTransport.getSuctionType` was rejected: an empty jar
+whose label was taken off can keep the old aspect as its suction type.
+
+**Proposed.** `@Nullable Aspect BlocksTC.getJarLabel(BlockEntity)` (or an interface `thaumcraft.api.aspects.ILabelledContainer {
+@Nullable Aspect getLabel(); }` on the jar block entities), backed by `TileJar.getFilter()`. The same read for a jar item is request 1
+of `docs/api-requests/Machines.md`.

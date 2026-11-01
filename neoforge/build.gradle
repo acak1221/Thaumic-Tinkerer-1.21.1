@@ -25,6 +25,7 @@ repositories {
  maven { url = 'https://maven.terraformersmc.com/releases/'; content { includeGroup 'dev.emi' } }
  maven { url = 'https://maven.blamejared.com/'; content { includeGroup 'mezz.jei' } }
  maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+ maven { url = 'https://maven.squiddev.cc'; content { includeGroup 'cc.tweaked' } }
 }
 
 dependencies {
@@ -41,6 +42,10 @@ dependencies {
  if (providers.gradleProperty('withEmi').isPresent()) modLocalRuntime "dev.emi:emi-neoforge:$rootProject.emi_version"
  if (providers.gradleProperty('withJei').isPresent()) modLocalRuntime "mezz.jei:jei-1.21.1-neoforge:$rootProject.jei_version"
  if (providers.gradleProperty('withJade').isPresent()) modLocalRuntime "maven.modrinth:jade:$rootProject.jade_version+neoforge"
+ // CC: Tweaked: compile-only API, as on Fabric (its NeoForge artifacts are still called "forge"); the mod itself is on the GameTest
+ // runtime only (configuration modGameTestRuntimeOnly below), `-PwithComputerCraft` adds it to the development clients too.
+ modCompileOnly "cc.tweaked:cc-tweaked-1.21.1-forge-api:$rootProject.cc_tweaked_version"
+ if (providers.gradleProperty('withComputerCraft').isPresent()) modLocalRuntime "cc.tweaked:cc-tweaked-1.21.1-forge:$rootProject.cc_tweaked_version"
 }
 
 sourceSets {
@@ -90,6 +95,11 @@ sourceSets {
   compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
   runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
  }
+}
+// CC: Tweaked on the GameTest server only, as on Fabric (fabric.gradle): the peripherals and the turtle upgrade are checked with the real mod.
+loom.createRemapConfigurations(sourceSets.gameTest)
+dependencies {
+ modGameTestRuntimeOnly "cc.tweaked:cc-tweaked-1.21.1-forge:$rootProject.cc_tweaked_version"
 }
 
 def tinkererGameTestFilter = providers.gradleProperty('tinkererGameTestFilter').getOrElse('')

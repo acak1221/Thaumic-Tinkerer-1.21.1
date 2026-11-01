@@ -24,15 +24,18 @@ class TinkererApiOnlyTest {
             "org.jetbrains.", "org.joml.", "com.electronwill.", "thaumcraft.api.", "thaumic.tinkerer.");
     // The Fabric tree also holds mixins (thaumic.tinkerer.fabric.mixin): Mixin and MixinExtras are the loader's, not the mod's.
     private static final List<String> FABRIC_ALLOWED = List.of("net.fabricmc.", "org.spongepowered.", "com.llamalad7.");
-    // The optional integrations: the APIs of EMI, JEI and Jade, and nothing of Thaumcraft's own plugins for them.
-    private static final List<String> COMPAT_ALLOWED = List.of("dev.emi.emi.api.", "mezz.jei.api.", "snownee.jade.api.");
+    // The optional integrations: the APIs of EMI, JEI, Jade and CC: Tweaked, and nothing of Thaumcraft's own plugins for them.
+    // Where the CC: Tweaked API may be imported (its package and the loader glue only) is ComputerCraftIsOptionalTest's job.
+    private static final List<String> COMPAT_ALLOWED = List.of("dev.emi.emi.api.", "mezz.jei.api.", "snownee.jade.api.",
+            "dan200.computercraft.api.");
+    private static final List<String> COMPUTERCRAFT_API = List.of("dan200.computercraft.api.");
 
     @Test
     void thePluginSourcesImportOnlyThePublicApi() throws IOException {
         List<String> offending = new ArrayList<>();
         int files = scan(Path.of("common", "src", "main", "java"), COMMON_ALLOWED, offending)
-                + scan(Path.of("fabric", "src", "main", "java"), concat(COMMON_ALLOWED, FABRIC_ALLOWED), offending)
-                + scan(Path.of("neoforge", "src", "main", "java"), concat(COMMON_ALLOWED, List.of("net.neoforged.", "org.objectweb.", "org.spongepowered.", "com.llamalad7.")), offending)
+                + scan(Path.of("fabric", "src", "main", "java"), concat(concat(COMMON_ALLOWED, FABRIC_ALLOWED), COMPUTERCRAFT_API), offending)
+                + scan(Path.of("neoforge", "src", "main", "java"), concat(concat(COMMON_ALLOWED, List.of("net.neoforged.", "org.objectweb.", "org.spongepowered.", "com.llamalad7.")), COMPUTERCRAFT_API), offending)
                 + scan(Path.of("compat", "src", "main", "java"), concat(COMMON_ALLOWED, COMPAT_ALLOWED), offending);
         assertTrue(files > 0, "the add-on has sources: " + Path.of(".").toAbsolutePath());
         assertEquals(List.of(), offending, "the add-on reaches past thaumcraft.api");

@@ -1,0 +1,3 @@
+{
+  "ttresearch.page.PERIPHERALS.0": "神秘工匠添加的部分方块以及神秘时代的一些方块可以作为ComputerCraft的外设使用:安装CC: Tweaked后,旁边的电脑或通过有线调制解调器连接的电脑可以用peripheral.wrap或peripheral.find按照后面几页给出的外设类型找到它们.<BR><BR>后面几页(英文)列出了每种外设的方法.每次调用都会等待世界的下一个刻.没有CC: Tweaked时,这些方块仍然作为普通方块使用."
+}

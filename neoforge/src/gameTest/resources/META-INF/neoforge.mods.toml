@@ -18,6 +18,13 @@ type="required"
 versionRange="*"
 ordering="AFTER"
 side="BOTH"
+# The checks of the optional CC: Tweaked integration (ComputerCraftGameTests) run with the real mod.
+[[dependencies.thaumictinkerer_gametest]]
+modId="computercraft"
+type="required"
+versionRange="*"
+ordering="AFTER"
+side="BOTH"
 [[dependencies.thaumictinkerer_gametest]]
 modId="neoforge"
 type="required"

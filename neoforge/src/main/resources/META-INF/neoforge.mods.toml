@@ -55,3 +55,11 @@ type="optional"
 versionRange="*"
 ordering="NONE"
 side="BOTH"
+# CC: Tweaked: the peripherals of the add-on's and Thaumcraft's blocks and the Fume Dissipator's turtle upgrade, registered only when it is
+# installed (docs/deviations/ComputerCraft.md).
+[[dependencies.thaumictinkerer]]
+modId="computercraft"
+type="optional"
+versionRange="*"
+ordering="NONE"
+side="BOTH"

@@ -18,6 +18,9 @@ proved closed by mutation tests (section 7). The "about 92 research keys" of the
 research constructions (78 distinct keys) and 98 recipe constructions (130 recipes once the loop over the mob aspects is unrolled);
 section 5 says how that was counted twice.
 
+Added after these runs (2026-11-01): a twelfth entry of the allow-list, the eight pages of the research `PERIPHERALS` that document
+the CC: Tweaked peripherals (section 3, the row after the presence of `PERIPHERALS`); the GameTest and the unit test assert 12 now.
+
 ## 2. What ran
 
 The runs were made while the add-on was part of the Thaumcraft 4 Reload repository (the tasks then had the prefix `:fabric:`; `NOTICE.md`, "History"); the commands are
@@ -61,6 +64,7 @@ difference it matches (a second identical difference would be a failure).
 | research `GOLEM_CONNECTOR` | presence | only with ComputerCraft (`block/BlockGolemConnector.java:55`, research `:76`) | registered | documented deviation: `docs/deviations/TileBlocks.md` section 2.4, "Registered without ComputerCraft (decision)"; port `block/BlockGolemConnector.java:105`. Fields match |
 | recipe `GOLEM_CONNECTOR` | presence | arcane recipe only with ComputerCraft (`:94`) | arcane_shaped -> `thaumictinkerer:golem_connector` x1 | same deviation; port `block/BlockGolemConnector.java:123`. Fields match |
 | research `PERIPHERALS` | presence | registered only with ComputerCraft (`research/ResearchHelper.java:177-178`) | registered | documented deviation: `docs/deviations/BasicItems.md` ("The text of the `PERIPHERALS` page (decision)") and Machines.md section 3; port `research/ResearchHelper.java:94` (`registerPeripheralsRoot`). Cell -1,0, round, auto-unlocked, no aspects: match |
+| research `PERIPHERALS` | pages.count | 1 (`research/ResearchHelper.java:185`, one text page that sent the reader to a web page, `client/gui/GuiResearchPeripheral.java`) | 8 | documented deviation, added with the CC: Tweaked peripherals (2026-11-01, after the runs of this report): `docs/deviations/ComputerCraft.md` section 5, "the entry `PERIPHERALS` has eight text pages now"; port `research/ResearchHelper.java` (`registerPeripheralsRoot`, `PERIPHERALS_PAGES`). Page 0 is still compared (a text page, key `0`) |
 | research `REMOTE_PLACER` | presence | never registered: `BlockRPlacer.shouldRegister()` returns `false` (`block/BlockRPlacer.java:91`); the research (`:102`) and recipe (`:116`) are dead code | registered | documented deviation: `docs/deviations/TileBlocks.md` section 2.2, "Registered although the fork disabled it (decision)"; port `block/BlockRPlacer.java:113` |
 | recipe `REMOTE_PLACER` | presence | dead (same) | arcane_shaped -> `thaumictinkerer:remote_placer` x1 | same deviation; port `block/BlockRPlacer.java:129`. Aspects, shape and ingredients match the dead definition, including `s` = any of the 11 stone devices with an item and `d` = a dispenser (the port's `TileBlocks.anyOfLegacyBlocks("blockStoneDevice")` accepts all 11) |
 | research `REMOTE_PLACER` | column | -6 (`block/BlockRPlacer.java:102-108`, the cell of `MAGNETS`) | -8 | documented deviation: `docs/deviations/TileBlocks.md`, "Research cell of the Remote Placer (lead decision)". In 1.7.10 the clash never showed because the block was not registered; Thaumcraft would drop the second entry of a cell. Port `block/BlockRPlacer.java:118`. Row, aspects, complexity, parent and pages match |
@@ -172,12 +176,12 @@ registries in `aChangedOracleValueFailsAgainstTheLiveRegistries`):
   directions. Every recipe is mutated in result count and first aspect amount.
 * **Object tags:** presence and aspects of each of the 17 mob essences, and no other tag for an item of the namespace.
 * **The allow-list:** an entry allows exactly `occurrences` identical differences (one by default) and fails when it matches fewer; a second identical
-  difference is a failure; the number of allowed differences must equal the sum of the entries (11, asserted in the GameTest) and the quote has to be
+  difference is a failure; the number of allowed differences must equal the sum of the entries (12, asserted in the GameTest) and the quote has to be
   in the cited deviation text with the entry's name in the passage around it (`KnownDifferencesTest`, with negative tests for a sentence of another
   passage and for a borrowed name).
 * **The expectations are the original's:** the four flags the entries depend on must be at the defaults of the original's `ConfigHandler` in the port
   (a changed default fails the run instead of silently changing what is expected), and the figures are exact (74 research and 127 recipes compared,
-  17 object tags, 11 documented differences), not lower bounds.
+  17 object tags, 12 documented differences), not lower bounds.
 
 ```bash
 tools/porting.sh tt_oracle.py --check                                  # is the oracle current (needs the pinned 1.7.10 checkout and a Thaumcraft checkout)

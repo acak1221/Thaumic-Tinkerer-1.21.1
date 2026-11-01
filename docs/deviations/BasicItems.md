@@ -205,11 +205,11 @@ deleted it reads as follows: it keeps its 1.7.10 function names and stores under
   `ToolModeHUDHandler` has a counter of its own); it stays as the port of the public 1.7.10 field.
 - **The text of the `PERIPHERALS` page (decision).** The entry still exists, because the Aspectalyzer and the Golem Connector
   are its children in the book (Machines and TileBlocks groups register it). Its page text promised "Pressing ENTER right now
-  will take you to" a web page and named an address; nothing handles Enter any more, so
-  `lang-extra/basic_items.<lang>.json` replaces `ttresearch.page.PERIPHERALS.0` in all six languages with a text that says
-  that the computer link is not part of this version, in the way TileBlocks rewrote the Golem Connector pages. The shortcut
-  itself is not rebuilt: it would be a hook into the Thaumonomicon screen, which is not API. A JUnit test checks that no
-  language keeps the promise.
+  will take you to" a web page and named an address; nothing handles Enter any more. The shortcut itself is not rebuilt: it
+  would be a hook into the Thaumonomicon screen, which is not API. Since the CC: Tweaked peripherals are ported, the entry carries
+  the method documentation itself on eight pages (`docs/deviations/ComputerCraft.md` section 5), and the introduction, in all six
+  languages, is `lang-extra/computercraft.<lang>.json` (it was a text of `lang-extra/basic_items.<lang>.json` saying that the
+  computer link was not part of this version). A JUnit test checks that no language keeps the promise.
 
 ## 9. Helpers
 

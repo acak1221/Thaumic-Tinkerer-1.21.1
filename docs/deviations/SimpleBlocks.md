@@ -411,8 +411,9 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   Multipart has no 1.21.1 counterpart; the Hyperenergetic Nitor and the Gaseous blocks are not affected.
 * **NEI handler** (`client/nei/*`) for the seed drops: replaced by `AspectCropLootManager.getAllLoot()` for a future EMI/JEI
   plugin.
-* **EnderIO planter** (`InfusedSeedsPlanter`), **Electro-Magic Tools hoe** (`EMTCompat`), **ComputerCraft turtle tool**
-  (`FumeTool`, `FumePeripheral`; optional later as a data-driven turtle upgrade).
+* **EnderIO planter** (`InfusedSeedsPlanter`), **Electro-Magic Tools hoe** (`EMTCompat`). (The ComputerCraft turtle tool of
+  the Fume Dissipator, `FumeTool`, is ported as a CC: Tweaked turtle upgrade, `thaumictinkerer:gas_remover`: `docs/deviations/ComputerCraft.md`
+  section 4; `FumePeripheral` was never created in 1.7.10 and is not ported.)
 * **The `ItemBlock` helper classes** of the slabs and quartz blocks (`ItemTravelSlab`, `ItemWardSlab`, `ItemDarkQuartzBlock`)
   and `BlockMod`/`BlockModContainer`: block items are made by the registrar; the base classes are `BlockCamo` and plain
   blocks.

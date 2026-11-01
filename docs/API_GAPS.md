@@ -157,16 +157,16 @@ SimpleBlocks, Enchantments).
 
 | Peripheral | Verdict | Route / proposal |
 |---|---|---|
-| Generic `IAspectContainer` and `IEssentiaTransport` peripherals (`PeripheralAspectContainer`, `PeripheralEssentiaTransport`) | COVERED | pure API interfaces; implement with CC:Tweaked (`PeripheralLookup` on Fabric, capability on NeoForge). |
+| Generic `IAspectContainer` and `IEssentiaTransport` peripherals (`PeripheralAspectContainer`, `PeripheralEssentiaTransport`) | COVERED | **done** (2026-11-01, CC: Tweaked 1.116.1, both loaders: `PeripheralLookup` on Fabric, `PeripheralCapability` on NeoForge; `docs/deviations/ComputerCraft.md`). Not readable through the API: the label of an empty jar (`docs/api-requests/ComputerCraft.md`). The add-on's own peripherals (Tablet, attractors, Aspectalyzer, Golem Connector) and the turtle tool are done too. |
 | Arcane Ear note get/set, Brain in a Jar XP, Deconstruction Table aspect, Arcane Bore status | **NEEDS-API A12** | internals: `INT/tiles/TileSensor.java:21` (`getNote`, no setter), `TileJarBrain.java:51` (`getXp`), `TileDeconstructionTable.java:48` (`reward()`), `TileArcaneBore.java:169-170` (`hasFocus/hasPickaxe`, `stats()`). Alternative that needs no API: a CC:Tweaked module in the mod's own `compat/` (same pattern as `compat/jade`). |
-| Golem Connector peripheral | A11 | above. |
+| Golem Connector peripheral | A11 | the peripheral `tt_golemconnector` is registered (2026-11-01); its golem data needs A11 (until then it answers as a connector without a golem). |
 | OpenComputers drivers | DROP | OC 1 has no 1.21.1 release. |
 
 ### 1.12 DROP
 
 | # | 1.7.10 piece | 1.21.1 counterpart |
 |---|---|---|
-| 1 | OpenComputers drivers (`peripheral/OpenComputers/*`, `OCCompat`) | CC:Tweaked only |
+| 1 | OpenComputers drivers (`peripheral/OpenComputers/*`, `OCCompat`) | CC:Tweaked only (**done**, `deviations/ComputerCraft.md`) |
 | 2 | Forge Multipart (`multipart/*`: candle and nitor parts) | none |
 | 3 | NEI handlers (`client/nei/*`) | **done**: EMI and JEI plugins of the add-on (`compat/`, `deviations/RecipeViewers.md`); TC's arcane/crucible/infusion recipes show the add-on's through Thaumcraft's own plugins |
 | 4 | EnderIO planter (`EnderIO`, `InfusedSeedsPlanter`) | none |
@@ -182,10 +182,10 @@ SimpleBlocks, Enchantments).
 | 14 | Forge IMC (`InterModCommsOperations`) | an entity-type/block tag or own API |
 | 15 | ASM/mixins/preloader (`mixins/*`, `preloader/*`) | none |
 | 16 | CodeChicken `Vector3` bundled in Thaumcraft | `Vec3` |
-| 17 | `GuiResearchRecipe` hook for the peripherals page (`GuiResearchPeripheral`, `ClientTickHandler`) | a plain research page |
+| 17 | `GuiResearchRecipe` hook for the peripherals page (`GuiResearchPeripheral`, `ClientTickHandler`) | plain research pages (**done**: `PERIPHERALS` lists the methods on eight text pages, `deviations/ComputerCraft.md` section 5) |
 | 18 | `ConfigResearch.recipes` | `TTRecipes` (already in the skeleton) |
 | 19 | Potion id config and `Potion.potionTypes` hack | `MobEffect` registry |
-| 20 | CC turtle upgrade `FumeTool`, `FumePeripheral` | CC:Tweaked data-driven turtle upgrade, optional |
+| 20 | CC turtle upgrade `FumeTool`, `FumePeripheral` | CC:Tweaked data-driven turtle upgrade, optional (**done**: `thaumictinkerer:gas_remover`; `FumePeripheral` was never created in 1.7.10, `deviations/ComputerCraft.md` section 4) |
 | 21 | `SlotResearchTableOverride` (unused) | the research table accepts `IScribeTools` |
 | 22 | Update checker (`core/handler/updater/*`) | none |
 | 23 | `LibRenderIDs`, ISBRH ids | n/a |

@@ -8,13 +8,13 @@ No text was translated or edited. A value changed only where a literal `%` becam
 
 | Source | Target | Keys in .lang | Keys in .json | Renamed keys | Duplicates | Escaped `%` | Fragment files | Fragment keys |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `en_US.lang` | `en_us.json` | 478 | 684 | 114 | 1 | 1 | 11 | 57 |
+| `en_US.lang` | `en_us.json` | 478 | 691 | 114 | 1 | 1 | 12 | 64 |
 | `en_GB.lang` | `en_gb.json` | 14 | 14 | 1 | 0 | 0 | 0 | 0 |
-| `de_DE.lang` | `de_de.json` | 437 | 586 | 101 | 1 | 1 | 7 | 14 |
-| `fr_Fr.lang` | `fr_fr.json` | 464 | 627 | 102 | 1 | 1 | 7 | 14 |
-| `ko_KR.lang` | `ko_kr.json` | 421 | 570 | 91 | 1 | 1 | 7 | 14 |
-| `ru_RU.lang` | `ru_ru.json` | 467 | 680 | 105 | 1 | 1 | 11 | 78 |
-| `zh_CN.lang` | `zh_cn.json` | 469 | 632 | 107 | 1 | 1 | 7 | 14 |
+| `de_DE.lang` | `de_de.json` | 437 | 586 | 101 | 1 | 1 | 8 | 14 |
+| `fr_Fr.lang` | `fr_fr.json` | 464 | 627 | 102 | 1 | 1 | 8 | 14 |
+| `ko_KR.lang` | `ko_kr.json` | 421 | 570 | 91 | 1 | 1 | 8 | 14 |
+| `ru_RU.lang` | `ru_ru.json` | 467 | 687 | 105 | 1 | 1 | 12 | 85 |
+| `zh_CN.lang` | `zh_cn.json` | 469 | 632 | 107 | 1 | 1 | 8 | 14 |
 
 ## Key families
 
@@ -102,7 +102,8 @@ New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objec
 
 | Locale | Fragment | Keys | Replaced keys |
 | --- | --- | --- | --- |
-| `en_us` | `lang-extra/basic_items.en_us.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `en_us` | `lang-extra/basic_items.en_us.json` | 1 | none |
+| `en_us` | `lang-extra/computercraft.en_us.json` | 8 | `ttresearch.page.PERIPHERALS.0` |
 | `en_us` | `lang-extra/core.en_us.json` | 3 | none |
 | `en_us` | `lang-extra/foci.en_us.json` | 2 | none |
 | `en_us` | `lang-extra/kami_gear.en_us.json` | 1 | none |
@@ -113,28 +114,32 @@ New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objec
 | `en_us` | `lang-extra/tags.en_us.json` | 15 | none |
 | `en_us` | `lang-extra/tile_blocks.en_us.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `en_us` | `lang-extra/tooltips.en_us.json` | 5 | none |
-| `de_de` | `lang-extra/basic_items.de_de.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `de_de` | `lang-extra/basic_items.de_de.json` | 1 | none |
+| `de_de` | `lang-extra/computercraft.de_de.json` | 1 | `ttresearch.page.PERIPHERALS.0` |
 | `de_de` | `lang-extra/core.de_de.json` | 1 | none |
 | `de_de` | `lang-extra/kami_world.de_de.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
 | `de_de` | `lang-extra/machines.de_de.json` | 1 | none |
 | `de_de` | `lang-extra/recipe_viewers.de_de.json` | 1 | none |
 | `de_de` | `lang-extra/tile_blocks.de_de.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `de_de` | `lang-extra/tooltips.de_de.json` | 5 | none |
-| `fr_fr` | `lang-extra/basic_items.fr_fr.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `fr_fr` | `lang-extra/basic_items.fr_fr.json` | 1 | none |
+| `fr_fr` | `lang-extra/computercraft.fr_fr.json` | 1 | `ttresearch.page.PERIPHERALS.0` |
 | `fr_fr` | `lang-extra/core.fr_fr.json` | 1 | none |
 | `fr_fr` | `lang-extra/kami_world.fr_fr.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
 | `fr_fr` | `lang-extra/machines.fr_fr.json` | 1 | none |
 | `fr_fr` | `lang-extra/recipe_viewers.fr_fr.json` | 1 | none |
 | `fr_fr` | `lang-extra/tile_blocks.fr_fr.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `fr_fr` | `lang-extra/tooltips.fr_fr.json` | 5 | none |
-| `ko_kr` | `lang-extra/basic_items.ko_kr.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `ko_kr` | `lang-extra/basic_items.ko_kr.json` | 1 | none |
+| `ko_kr` | `lang-extra/computercraft.ko_kr.json` | 1 | `ttresearch.page.PERIPHERALS.0` |
 | `ko_kr` | `lang-extra/core.ko_kr.json` | 1 | none |
 | `ko_kr` | `lang-extra/kami_world.ko_kr.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
 | `ko_kr` | `lang-extra/machines.ko_kr.json` | 1 | none |
 | `ko_kr` | `lang-extra/recipe_viewers.ko_kr.json` | 1 | none |
 | `ko_kr` | `lang-extra/tile_blocks.ko_kr.json` | 3 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `ko_kr` | `lang-extra/tooltips.ko_kr.json` | 5 | none |
-| `ru_ru` | `lang-extra/basic_items.ru_ru.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `ru_ru` | `lang-extra/basic_items.ru_ru.json` | 1 | none |
+| `ru_ru` | `lang-extra/computercraft.ru_ru.json` | 8 | `ttresearch.page.PERIPHERALS.0` |
 | `ru_ru` | `lang-extra/core.ru_ru.json` | 3 | none |
 | `ru_ru` | `lang-extra/foci.ru_ru.json` | 2 | none |
 | `ru_ru` | `lang-extra/kami_gear.ru_ru.json` | 1 | none |
@@ -145,7 +150,8 @@ New 1.21.1-only keys live in `lang-extra/<group>.<lang>.json` (flat string objec
 | `ru_ru` | `lang-extra/tags.ru_ru.json` | 15 | none |
 | `ru_ru` | `lang-extra/tile_blocks.ru_ru.json` | 10 | `ttresearch.page.INTERFACE.0`, `ttresearch.page.GOLEM_CONNECTOR.0`, `ttresearch.page.GOLEM_CONNECTOR.3` |
 | `ru_ru` | `lang-extra/tooltips.ru_ru.json` | 19 | `ttwaila.allowIncoming`, `ttwaila.disallowIncoming`, `ttwaila.finishedRepairing`, `ttwaila.redstone`, `ttwaila.pullingMode`, `ttwaila.pushingMode`, `ttwaila.pullingAdult`, `ttwaila.pullingChild`, `ttwaila.pushingAdult`, `ttwaila.pushingChild`, `ttwaila.pullingAdultType`, `ttwaila.pullingChildType`, `ttwaila.pushingAdultType`, `ttwaila.pushingChildType` |
-| `zh_cn` | `lang-extra/basic_items.zh_cn.json` | 2 | `ttresearch.page.PERIPHERALS.0` |
+| `zh_cn` | `lang-extra/basic_items.zh_cn.json` | 1 | none |
+| `zh_cn` | `lang-extra/computercraft.zh_cn.json` | 1 | `ttresearch.page.PERIPHERALS.0` |
 | `zh_cn` | `lang-extra/core.zh_cn.json` | 1 | none |
 | `zh_cn` | `lang-extra/kami_world.zh_cn.json` | 1 | `ttresearch.page.DIMENSION_SHARDS.0` |
 | `zh_cn` | `lang-extra/machines.zh_cn.json` | 1 | none |

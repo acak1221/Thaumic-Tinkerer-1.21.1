@@ -1,0 +1,3 @@
+{
+  "ttresearch.page.PERIPHERALS.0": "Thaumic Tinkerer permet à certains de ses blocs, ainsi qu'à certains blocs de Thaumcraft, de servir de périphériques ComputerCraft : si CC: Tweaked est installé, un ordinateur placé à côté, ou relié par un modem filaire, les trouve avec peripheral.wrap ou peripheral.find, sous le type de périphérique que nomment les pages suivantes.<BR><BR>Les pages suivantes (en anglais) donnent les méthodes de chaque périphérique. Un appel attend le tick suivant du monde. Sans CC: Tweaked, ces blocs fonctionnent comme des blocs ordinaires."
+}

@@ -18,7 +18,8 @@
       "thaumic.tinkerer.fabric.testing.HooksGameTests",
       "thaumic.tinkerer.fabric.testing.ParityGameTests",
       "thaumic.tinkerer.fabric.testing.TooltipsGameTests",
-      "thaumic.tinkerer.fabric.testing.RecipeViewersGameTests"
+      "thaumic.tinkerer.fabric.testing.RecipeViewersGameTests",
+      "thaumic.tinkerer.fabric.testing.ComputerCraftGameTests"
     ]
   },
   "depends": {
@@ -26,6 +27,7 @@
     "thaumcraft": "*",
     "fabricloader": ">=0.16.14",
     "fabric-api": "*",
+    "computercraft": "*",
     "minecraft": "1.21.1",
     "java": ">=21"
   },

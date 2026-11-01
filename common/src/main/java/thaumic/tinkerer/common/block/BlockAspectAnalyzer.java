@@ -20,7 +20,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
@@ -30,7 +29,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
-import thaumcraft.api.research.ResearchCategories;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.TileAspectAnalyzer;
 import thaumic.tinkerer.common.block.tile.container.ContainerAspectAnalyzer;
@@ -123,13 +121,10 @@ public class BlockAspectAnalyzer extends BaseEntityBlock implements ITTinkererRe
     /**
      * The parent of the Aspectalyzer in the book. 1.7.10 registered this documentation entry in {@code ResearchHelper}
      * only when ComputerCraft was loaded; the Aspectalyzer is registered here without a computer mod, so the entry has
-     * to exist for its child. A second registration of the key (by the lead's {@code ResearchHelper}) is ignored by
-     * Thaumcraft.
+     * to exist for its child. {@link ResearchHelper#registerPeripheralsRoot()} makes it with all its pages, once.
      */
     static void ensurePeripheralsEntry() {
-        if (ResearchCategories.getResearch(LibResearch.KEY_PERIPHERALS) != null) return;
-        new TTResearchItem(LibResearch.KEY_PERIPHERALS, new AspectList(), -1, 0, 0, new ItemStack(Items.REDSTONE))
-                .setAutoUnlock().setRound().setPages(new ResearchPage("0")).registerResearchItem();
+        ResearchHelper.registerPeripheralsRoot();
     }
 
     @Override

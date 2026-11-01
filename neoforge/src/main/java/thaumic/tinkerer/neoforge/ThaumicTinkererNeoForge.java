@@ -10,7 +10,10 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.lib.LibMisc;
+import thaumic.tinkerer.compat.computer.Computers;
+import thaumic.tinkerer.neoforge.client.ComputerCraftNeoForgeClient;
 import thaumic.tinkerer.neoforge.client.ThaumicTinkererNeoForgeClient;
+import thaumic.tinkerer.neoforge.compat.ComputerCraftNeoForge;
 import thaumic.tinkerer.neoforge.hooks.NeoForgeBlockProtection;
 import thaumic.tinkerer.neoforge.hooks.NeoForgeEventPosters;
 
@@ -27,5 +30,12 @@ public final class ThaumicTinkererNeoForge {
         ThaumicTinkerer.guard("NeoForgeBlockProtection.install", NeoForgeBlockProtection::install);
         NeoForgeCapabilities.register(bus);
         if (FMLEnvironment.dist == Dist.CLIENT) ThaumicTinkererNeoForgeClient.register(bus);
+        // The optional CC: Tweaked peripherals and turtle upgrade (docs/deviations/ComputerCraft.md); no class of it is loaded without it.
+        if (Computers.ccTweakedLoaded()) {
+            ThaumicTinkerer.guard("ComputerCraftNeoForge.register", () -> ComputerCraftNeoForge.register(bus));
+            if (FMLEnvironment.dist == Dist.CLIENT) {
+                ThaumicTinkerer.guard("ComputerCraftNeoForgeClient.register", () -> ComputerCraftNeoForgeClient.register(bus));
+            }
+        }
     }
 }

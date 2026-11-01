@@ -147,6 +147,19 @@
         "Kami entries",
         "KamiResearchItem"
       ]
+    },
+    {
+      "kind": "research",
+      "key": "PERIPHERALS",
+      "field": "pages.count",
+      "original": "1",
+      "port": "8",
+      "reason": "1.7.10 had one text page, which sent the reader to a web page on Enter (GuiResearchPeripheral, not ported: it hooked into the Thaumonomicon screen). The port writes the methods of every computer peripheral and the turtle tool into the entry instead: page 0 is the introduction (still compared: a text page with the key ttresearch.page.PERIPHERALS.0), pages 1 to 7 are new text pages.",
+      "deviation": "ComputerCraft.md",
+      "quote": "the entry `PERIPHERALS` has eight text pages now",
+      "mentions": [
+        "PERIPHERALS"
+      ]
     }
   ]
 }

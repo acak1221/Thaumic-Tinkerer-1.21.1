@@ -34,6 +34,14 @@ Which files are under which licence:
   Thaumcraft assets and no Thaumcraft 4 source.
 - Publishing the port does not establish rights in Thaumcraft 4 (Azanor), which Thaumic Tinkerer is a derivative work
   of, nor in Minecraft.
+- **CC: Tweaked** (the optional computer integration, `compat/src/main/java/thaumic/tinkerer/compat/computer/cc` and the loader glue,
+  `docs/deviations/ComputerCraft.md`): the add-on is compiled against the API artifacts of CC: Tweaked (`cc.tweaked:cc-tweaked-1.21.1-core-api`,
+  `-fabric-api`, `-forge-api` from <https://maven.squiddev.cc>, the version is `cc_tweaked_version` in `gradle.properties`) and contains and
+  redistributes no part of it; players install CC: Tweaked themselves, and the GameTest runs download the mod as a test dependency that goes into
+  no artifact of the add-on. The API files carry their own licence in an SPDX line: the ComputerCraft Public License (`LicenseRef-CCPL`,
+  "Copyright Daniel Ratcliffe, 2011-2022. This API may be redistributed unmodified and in full only.") or the Mozilla Public License 2.0
+  (`MPL-2.0`, "The CC: Tweaked Developers"). CC: Tweaked itself is published under the ComputerCraft Public License 1.0 and the MPL 2.0
+  (<https://github.com/cc-tweaked/CC-Tweaked>). The add-on's own code that uses the API stays under CC BY-NC-SA 3.0 like the rest of it.
 
 ## Pinned sources
 
@@ -49,9 +57,9 @@ Which files are under which licence:
 ## What changed
 
 Every deviation from the 1.7.10 behaviour is listed in `docs/DEVIATIONS.md` with its reason (1.21.1 has no metadata,
-no OreDictionary, no numeric ids, no `EnumHelper`; enchantments, dimensions and recipes are data; the ComputerCraft and
-OpenComputers peripherals, NEI, Forge Multipart, EnderIO, Botania, Blood Magic, IC2 and Tinkers' Construct integrations
-depend on 1.7.10 mods that do not exist on 1.21.1).
+no OreDictionary, no numeric ids, no `EnumHelper`; enchantments, dimensions and recipes are data; the OpenComputers
+peripherals, NEI, Forge Multipart, EnderIO, Botania, Blood Magic, IC2 and Tinkers' Construct integrations depend on 1.7.10 mods
+that do not exist on 1.21.1, and the ComputerCraft peripherals and turtle tool are ported to CC: Tweaked).
 
 ## History
 

@@ -87,14 +87,24 @@ public final class ResearchHelper {
     }
 
     /**
+     * The text pages of {@code PERIPHERALS}: the introduction, then one page per computer peripheral and the turtle upgrade
+     * ({@code ttresearch.page.PERIPHERALS.0} to {@code .7}, {@code lang-extra/computercraft.<lang>.json}). 1.7.10 had the
+     * introduction alone and sent the reader to a web page (docs/deviations/ComputerCraft.md).
+     */
+    public static final int PERIPHERALS_PAGES = 8;
+
+    /**
      * The documentation root of the machines that 1.7.10 offered to computers (research {@code PERIPHERALS}, at -1,0, known from
-     * the start, round). 1.7.10 registered it only when ComputerCraft was loaded; the Aspect Analyzer and the Golem Connector are
-     * registered without a computer mod here and need it as their parent, so it is always registered. Idempotent.
+     * the start, round), with the methods of every peripheral on its pages. 1.7.10 registered it only when ComputerCraft was
+     * loaded; the Aspect Analyzer and the Golem Connector are registered without a computer mod here and need it as their parent,
+     * so it is always registered (the pages say that the peripherals need CC: Tweaked). Idempotent.
      */
     public static void registerPeripheralsRoot() {
         if (ResearchCategories.getResearch(LibResearch.KEY_PERIPHERALS) != null) return;
+        ResearchPage[] pages = new ResearchPage[PERIPHERALS_PAGES];
+        for (int i = 0; i < pages.length; i++) pages[i] = new ResearchPage(String.valueOf(i));
         new TTResearchItem(LibResearch.KEY_PERIPHERALS, new AspectList(), -1, 0, 0, new ItemStack(Items.REDSTONE))
-                .setAutoUnlock().setRound().setPages(new ResearchPage("0")).registerResearchItem();
+                .setAutoUnlock().setRound().setPages(pages).registerResearchItem();
     }
 
     /** A page that shows the crafting-table recipe {@code data/thaumictinkerer/recipe/<name>.json}. */

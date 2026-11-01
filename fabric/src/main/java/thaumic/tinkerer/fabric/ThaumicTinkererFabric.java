@@ -14,6 +14,8 @@ package thaumic.tinkerer.fabric;
 import net.fabricmc.api.ModInitializer;
 import thaumcraft.api.IThaumcraftAddon;
 import thaumic.tinkerer.common.ThaumicTinkerer;
+import thaumic.tinkerer.compat.computer.Computers;
+import thaumic.tinkerer.fabric.compat.ComputerCraftFabric;
 import thaumic.tinkerer.fabric.hooks.FabricBlockProtection;
 
 /** Fabric {@code main} entrypoint and the {@code "thaumcraft"} entrypoint of the add-on. */
@@ -23,6 +25,8 @@ public final class ThaumicTinkererFabric implements ModInitializer, IThaumcraftA
         ThaumicTinkerer.init();
         // The loader side of BlockProtection: Fabric's and Architectury's break and place listeners (docs/HOOKS.md).
         ThaumicTinkerer.guard("FabricBlockProtection.install", FabricBlockProtection::install);
+        // The optional CC: Tweaked peripherals and turtle upgrade (docs/deviations/ComputerCraft.md); no class of it is loaded without it.
+        if (Computers.ccTweakedLoaded()) ThaumicTinkerer.guard("ComputerCraftFabric.register", ComputerCraftFabric::register);
     }
 
     @Override
