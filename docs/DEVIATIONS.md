@@ -146,7 +146,7 @@ about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled
   mixins for the armour step, `lastHurt` and the kick counter); a fourth NeoForge mixin gives the Infused Farmland its soil rule (`SimpleBlocks.md` section 2.6). On a
   NeoForge GameTest server all GameTests passed (2026-10-31: 314, the 312 of the Fabric run plus 2 NeoForge-only checks of the Interface's capabilities; 2026-11-01, after the defect audit: 362), so the Soul
   Hearts, the shard drops, the enchantment effects, the Gem Boots, the Ichorcloth, the blade's reaping and the Uprising's reset ran there on the server; their client
-  side was not run, and nothing has been seen in a world on a NeoForge client yet. Where NeoForge differs from Fabric (`HOOKS.md` section 9): `LIVING_JUMP` is also posted for
+  side was not run (the NeoForge client smoke draws the content in a world, `CLIENT_VERIFICATION.md`, but does not play these effects). Where NeoForge differs from Fabric (`HOOKS.md` section 9): `LIVING_JUMP` is also posted for
   slimes, magma cubes and ridden horses and camels; NeoForge's damage container does its own float round trip after the armour step and leaves a NaN health after an
   infinite blow, whatever the add-on returns. **Loader glue that is not an event** (`HOOKS.md` section 9, "Other loader glue"): the NeoForge side of the `ItemRenderers`
   backend (the Mob Display), of the Kami gear's wings layer and ghost blocks and of the Transvector Interface's fluids (and items) is written (`NEOFORGE.md`, "Client glue
@@ -194,7 +194,8 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 * The client's copy of the events the groups listen to (`Enchantments.md` section 12): a server cannot show it, and the client harness does not exercise them.
 * On **NeoForge**: the client side of every event (the client smoke draws, it does not play), the Kami wings and ghost blocks, a
   dedicated server with real clients beyond the scenarios of the multiplayer check, other mods, EMI, JEI and Jade among them, and other mods' pipes and tanks at the Interface (`NEOFORGE.md`, `HOOKS.md` section 9).
-* The **CI workflow** (`.github/workflows/ci.yml`) builds and tests both loaders; it has not run on GitHub yet.
+* The **CI workflow** (`.github/workflows/ci.yml`) builds and tests both loaders on every push to `main` and on pull requests (green since run 6; run 8 on 2026-11-01 for
+  `b231f66`). It runs JUnit and the GameTests of both loaders, not the client smoke or the multiplayer check (they need Xvfb and take minutes each).
 
 The per-group documents say what each group's own checks were; they record runs in different amounts (KamiWorld, Foci and the first round of KamiGear with numbers; Machines and BasicItems
 record no result of their own server-side tests; Enchantments a statement without a result): `README.md` and `HOOKS.md` section 12 say what is recorded.
