@@ -171,18 +171,31 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   get ambient-occlusion shading from the chunk mesh and an animated block is not animated. The renderer passes its own
   `RandomSource` (fix: the first version passed the client level's, which the block renderer reseeds for every model, so
   every frame with a camouflaged platform in view reset the dice of the client's particles and sounds).
-* **What can be imitated (decision).** Blocks whose render shape is `MODEL` and whose collision shape fills the cell, and
-  that are no camouflage block themselves: the 1.7.10 test accepted the render types 0, 31 and 39 (plain cube, log, quartz
-  block), which is this set without slabs and stairs. Items that are no `BlockItem`, or whose block is refused, are left
-  alone.
-* **Facing (decision).** A block with a horizontal facing imitates the face that was clicked (the 1.7.10 `BlockDirectional`
-  rule); everything else its default state.
+* **What can be imitated (the original's one rule).** Blocks whose render shape is `MODEL` and whose collision shape fills the cell, and
+  that are no camouflage block themselves: the 1.7.10 test accepted the render types 0, 31 and 39 (plain cube, log, quartz block) and
+  refused every `BlockCamo`, the platform and the TileBlocks group's devices (Remote Placer, Golem Connector, Transvector Interface and
+  Dislocator) alike, which is this set without the 1.7.10 blocks of type 0 that were no cubes (slabs, farmland, soul sand, snow layers),
+  whose model would be drawn smaller than the platform. Items that are no `BlockItem`, or whose block is refused, are left alone. The
+  devices are recognised by their registry paths (`LibBlockNames`, PORTING_RULES 1.3). **Until 2026-11-01 the platform accepted those
+  devices** as a camouflage, which the original's `instanceof BlockCamo` refused (fix, `docs/DEVIATIONS.md` section 6, point 10).
+* **Facing (the original's rule).** A carved pumpkin or a jack o'lantern imitates the face that was clicked; everything else its default
+  state. 1.7.10 turned a `BlockDirectional`, and among the blocks a camouflage could be that was the pumpkin alone (a furnace or a
+  dispenser was no `BlockDirectional` and was not turned). **Until 2026-11-01 the platform turned every block with a horizontal facing**
+  (a furnace, a beehive, glazed terracotta) to the clicked face (fix, same point).
 * **Hands (forced).** Only the main hand counts (1.7.10 had one hand). An empty hand clears the camouflage; a sneaking
   player with an item uses the item (vanilla), which places the item's block beside the platform.
-* **Duplicate of the TileBlocks base (decision for the lead).** The Remote Placer, Dislocator and the other camouflageable
-  devices of the TileBlocks group use `CamoDeviceBlock`/`CamoDeviceBlockEntity` with their own `camo` property. Both
-  designs store a `BlockState` under `camo` and draw it with a block entity renderer; they could be merged later. Until then
-  the platform's tile entity type `thaumictinkerer:camo` is valid for the platform only.
+* **Two bases, one rule (settled 2026-11-01, `docs/DEVIATIONS.md` section 6, point 10).** The original had one `BlockCamo` for the platform and
+  the four devices of the TileBlocks group, which use `CamoDeviceBlock` / `CamoDeviceBlockEntity` with their own property `camo`. The two
+  bases are **not merged**, because a merge cannot keep what exists: the platform's block-state property is `camouflaged` and the devices'
+  is `camo` (both are saved in every chunk that holds such a block and named in the blockstate files, and a world would lose the property
+  of the placed blocks under one base with one property); the block entity types differ (`thaumictinkerer:camo` for the platform, one per
+  device) and so do their classes (`TileCamo` is a Thaumcraft `TileThaumcraft`, whose update tag carries `thaumcraft:update`; the devices'
+  carries `thaumictinkerer:update`); and the blocks behave differently on purpose (the platform's collision for players, path finding and
+  solidity; the devices' occlusion while camouflaged, the wand and binder clicks, the redstone pulse). What the original shared is the
+  rule which block may be imitated and how a click changes it, and that is now the same in both: `BlockCamo.isValidCamo` / `camoStateOf`
+  and `CamoRules`, compared over every block item of the game and every clicked face by the GameTest
+  `thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal`. The platform's block entity type `thaumictinkerer:camo` stays the
+  platform's only.
 
 ### 2.5 Forcefield
 
@@ -316,6 +329,12 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   effect for 3600 ticks, leaves a glass bottle and counts as a used item; the effect only on the server. It glints
   (`isFoil`), as `ItemPotion` did while `getEffects` was not empty. Its description id is the key of its name
   (`item.infusedPotion.<Aspect>.name`), so the statistics screen shows the name too.
+* **No recipe makes them (kept as in 1.7.10).** The four crucible recipes are registered under their own names, `INFUSED_POTIONSPOT0..3`
+  (`ItemInfusedPotion.getRecipeItem`), which are also their research keys, and no research entry has such a key; the research `INFUSED_POTIONS`
+  only shows them on its pages. Thaumcraft 4.2.3.5 refused a crucible recipe whose key the player had not completed, and a key that is no research
+  is never complete (`ResearchManager.isResearchComplete`, read in its bytecode); Thaumcraft 4 Reload refuses it the same way (`CrucibleCrafting.find`),
+  and its API cannot complete an unknown key. So the potions came from the creative tab and commands only, then and now (`docs/DEVIATIONS.md` section 6,
+  point 4, which says how to change it; GameTest `recipesUnderAResearchKeyNoEntryDefinesStayLocked`).
 * **The hit (forced).** `LivingAttackEvent` is Architectury `EntityEvent.LIVING_HURT`, the closest event; whether it fires
   before the invulnerability checks, as the attack event did, depends on the loader and is unverified. The attacker is the
   direct source of the damage if it is a player.

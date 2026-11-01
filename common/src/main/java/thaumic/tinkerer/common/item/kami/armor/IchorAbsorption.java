@@ -9,11 +9,13 @@
  */
 package thaumic.tinkerer.common.item.kami.armor;
 
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.CombatRules;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -31,9 +33,25 @@ import net.minecraft.world.item.ItemStack;
  * returned. This is the same sum here: the Ichorcloth ratio is added to the share the other armour takes under the 1.21.1
  * formula, and the sum never takes more than the blow.
  *
+ * <p>What Forge 1.7.10 did, read in its source ({@code docs/deviations/KamiGear.md} section 3 cites it), and what this class
+ * therefore does:</p>
+ * <ul>
+ * <li><b>Players only.</b> {@code ApplyArmor} had one caller, the {@code EntityPlayer.damageEntity} patch (it replaced vanilla's
+ * {@code applyArmorCalculations} there); {@code EntityLivingBase.damageEntity} kept vanilla's armour, which read the plain
+ * {@code damageReduceAmount} of the pieces. A mob in the pieces has vanilla armour here too, with the 1.7.10 points of that path
+ * ({@link KamiArmorMaterials#mobPoints}).</li>
+ * <li><b>The slot.</b> {@code getProperties} read the material's array at the index in {@code armorInventory}, so a player's
+ * chestplate has 6 points (25.5%) and the leggings 8 (34%): {@link KamiArmorMaterials#playerPoints}, the points of the
+ * material, so {@code getDefense()} of a piece is its 1.7.10 player value.</li>
+ * <li><b>Every source.</b> {@code ApplyArmor} skipped a plain {@code ItemArmor} for an unblockable source and asked an
+ * {@code ISpecialArmor} for every source: starvation, drowning, a fall, magic, the void and {@code /kill} lost 85% to the full
+ * set as well. So a source of {@code bypasses_armor} is reduced by the Ichorcloth pieces of a player, and the other armour takes
+ * no share of it, as vanilla's.</li>
+ * </ul>
+ *
  * <p>Registered on {@code TinkererEvents.LIVING_ARMOR_ABSORB} by {@code KamiArmorHandler.register()}. The armour points that
- * the pieces give the entity's attributes (3/8/6/3, the 1.7.10 {@code getArmorDisplay} of the HUD) are a display only: the
- * listener <i>replaces</i> the vanilla amount, so they never stack with the 85%.</p>
+ * the pieces give the entity's attributes (3/6/8/3, the 1.7.10 {@code getArmorDisplay} of the HUD) are a display only for a
+ * player: the listener <i>replaces</i> the vanilla amount, so they never stack with the 85%.</p>
  */
 public final class IchorAbsorption {
     /** 1.7.10 {@code ItemIchorclothArmor.getProperties}: the share of a blow that one armour point of a piece takes. */
@@ -63,12 +81,15 @@ public final class IchorAbsorption {
 
     /**
      * The listener of {@code TinkererEvents.LIVING_ARMOR_ABSORB}. For an entity that wears no Ichorcloth piece it returns
-     * {@code absorbed} untouched (the vanilla armour, and whatever the other listeners did). For one that does, it replaces the
-     * amount: the Ichorcloth share as above plus the vanilla share of the armour that is <i>not</i> Ichorcloth (the armour value of
-     * the entity less the points of the Ichorcloth pieces, with the toughness), so a mixed set keeps the other armour's worth.
+     * {@code absorbed} untouched (the vanilla armour, and whatever the other listeners did). For a player that does, it replaces
+     * the amount: the Ichorcloth share as above plus the vanilla share of the armour that is <i>not</i> Ichorcloth (the armour value
+     * of the player less the points of the Ichorcloth pieces, with the toughness; nothing for a source that bypasses armour), so a
+     * mixed set keeps the other armour's worth. For any other wearer it is vanilla's formula with the 1.7.10 points of vanilla's
+     * path ({@link #mobArmourAbsorbed}).
      */
     public static float onLivingArmorAbsorb(LivingEntity victim, DamageSource source, float damage, float absorbed) {
         int ichorPoints = 0;
+        int mobCorrection = 0;
         double ichorRatio = 0.0;
         for (EquipmentSlot slot : ARMOR_SLOTS) {
             ItemStack stack = victim.getItemBySlot(slot);
@@ -76,10 +97,29 @@ public final class IchorAbsorption {
             if (stack.getItem() instanceof ItemIchorclothArmor piece && piece.getEquipmentSlot() == slot) {
                 ichorPoints += piece.getDefense();
                 ichorRatio += ratio(piece.getDefense());
+                mobCorrection += KamiArmorMaterials.mobPoints(piece.getType()) - piece.getDefense();
             }
         }
         if (ichorPoints == 0) return absorbed;
-        return absorbed(damage, ichorRatio, otherArmourAbsorbed(victim, source, damage, ichorPoints));
+        boolean bypasses = source.is(DamageTypeTags.BYPASSES_ARMOR);
+        if (!(victim instanceof Player)) return mobArmourAbsorbed(victim, source, damage, absorbed, bypasses, mobCorrection);
+        float other = bypasses ? 0.0F : otherArmourAbsorbed(victim, source, damage, ichorPoints);
+        return absorbed(damage, ichorRatio, other);
+    }
+
+    /**
+     * A wearer that is not a player: 1.7.10 gave it vanilla's armour ({@code applyArmorCalculations}: nothing for an unblockable
+     * source, otherwise the armour value of {@code damageReduceAmount}, the array by armour type). The vanilla amount stands, except
+     * that the 1.21.1 formula is worked out with the 1.7.10 points of that path: a chestplate counts 8 and leggings 6 where the
+     * material, which carries a player's points, gives 6 and 8 ({@code correction} is the difference; the full set has none).
+     */
+    private static float mobArmourAbsorbed(LivingEntity victim, DamageSource source, float damage, float absorbed, boolean bypasses,
+            int correction) {
+        if (bypasses || correction == 0) return absorbed;
+        int armour = Math.max(0, victim.getArmorValue() + correction);
+        float left = CombatRules.getDamageAfterAbsorb(victim, damage, source, (float) armour,
+                (float) victim.getAttributeValue(Attributes.ARMOR_TOUGHNESS));
+        return damage - left;
     }
 
     /** What vanilla's formula takes with the armour value of everything but the Ichorcloth pieces. */

@@ -103,6 +103,11 @@ public final class SimpleBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theTravelSlabAndStairsQuickenWhoWalkOnThem(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theTravelSlabAndStairsQuickenWhoWalkOnThem(test);
     }

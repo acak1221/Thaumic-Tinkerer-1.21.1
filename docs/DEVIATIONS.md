@@ -79,15 +79,14 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   add-on included. 1.7.10 gave the 23 item-owned Kami entries only the item-owned research that happened to be registered before them, in `HashMap`
   order, so the port is stricter than any set the original could produce and a Kami entry is never available earlier (`KamiGear.md` section 12;
   one of the 11 documented differences of `PARITY_REPORT.md` section 3).
-* **Slow Fall's landing rule** (**a decision the owner may want to change**). The original lowered the fall distance on every tick of the fall, down to a
-  floor of 2.9, so a long fall ended at 2.9 and did no damage. The loader event comes once, at the landing, so the port applies the end result at once: a
-  landing of 2.9 blocks or more, for a player with Slow Fall on the armour who does not sneak at the landing, becomes a landing of 2.9
-  (`EnchantmentFormulas.slowFallLanding`). Falls of 3 to 4 blocks that 1.7.10 may have left with some damage do no damage here, and the level of the
-  enchantment no longer matters for the distance. That is by a reading of the formulas; the original was not run (`Enchantments.md` sections 4 and 12).
+* **Slow Fall's landing rule** (settled 2026-11-01, section 6, point 6). The original lowered the fall distance at the start of every tick of the fall, down
+  to a floor of 2.9; the loader event comes once, at the landing, so the port **replays those ticks** along the fall and gives the distance the original's rule
+  had left (`EnchantmentFormulas.slowFallLanding`): a long fall ends at 2.9 (no damage) at every level, and Slow Fall I still costs half a heart on a drop of
+  about 3.4 to 7 blocks, as in 1.7.10 (`Enchantments.md` sections 4 and 12).
 * **The order of the listeners of the loader events** is a decision about where each group registers (`HOOKS.md` section 2): LIVING_DAMAGE runs the Enchantments'
   listener before KamiWorld's Soul Hearts, and LIVING_DROPS the Cursed Spirit's Blade (Machines) before the dimensional shards (KamiWorld), both as in 1.7.10 (the
   registration phases, `preInit` and `init`, were read in the pinned Thaumic Tinkerer source; that Forge ran listeners of equal priority in registration order is
-  recalled, not read, `HOOKS.md` section 2); the shard order is pinned by the GameTest `aReapedEndermanAndZombifiedPiglinStillRollTheirDimensionalShard` and depends on the order of
+  read in FML's `ListenerList` of the branch `1.7.10`, `HOOKS.md` section 2); the shard order is pinned by the GameTest `aReapedEndermanAndZombifiedPiglinStillRollTheirDimensionalShard` and depends on the order of
   `ContentGroups.ALL` and on both groups registering in `register()`, not in `ready()`. LIVING_JUMP runs the Gem Boots (`KamiGear.register()`) before Ascent Boost
   (`Enchantments.ready()`, through `ModEnchantments.initJump()`), as the original's `preInit` and `init` did: `(0.42 + 0.3) × factor`, 1.08 for Ascent Boost I and
   1.80 for III, pinned by `gemBootsAndAscentBoostLeggingsComposeTheirJumps` (the first wiring had it reversed, 0.93 and 1.35). Shockwave's `LOW` priority of 1.7.10 is
@@ -105,20 +104,21 @@ Architectury has no events for several things the original used Forge events for
 their workarounds (SimpleBlocks, TileBlocks and BasicItems never needed an event of this layer that was missing; SimpleBlocks' Imbued effects and the Cursed Spirit's
 Blade still use the Architectury `EntityEvent.LIVING_HURT` for 1.7.10's `LivingAttackEvent`). `HOOKS.md` section 10 says, per group, which workaround was removed, which event
 replaces it and which check pins it, and what rests on the NeoForge posters. What the events change against the original, each in the group's document (what is said
-about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled, not read**: its source is not on this machine, section 6, point 5):
+about Forge's and Minecraft 1.7.10's own behaviour in this section is **read** in their sources since 2026-11-01, section 6, point 5):
 
 * **The damage event stands before the shield, the invulnerability frames and the armour**, where Forge's stood after the frames had taken the last hit off.
   A cancel is a refusal of the whole hit and starts no frames. So the Soul Hearts keep the original's frames themselves (`KamiWorld.md` section 5), a covered
   hit gives no knockback and does not wake a sleeper (the sleeper from the 1.21.1 code, not run), and the damage factors of the Enchantments meet two bands of a second blow inside the frames where
   1.7.10 behaved differently, and a sweep of a sword is a hit for each entity it reaches (`Enchantments.md` section 2, `HOOKS.md` section 3).
 * **Armour absorption of Kami armour (`ISpecialArmor`) is ported through `LIVING_ARMOR_ABSORB`** (`KamiGear.md` sections 3 and 13, `HOOKS.md` section 14): every
-  Ichorcloth piece takes `0.0425 × its armour points` of a blow, flat, the set 85%, and the pieces never wear. It was listed as "not written" before the
+  Ichorcloth piece a player wears takes `0.0425 × its armour points` of a blow, flat, the set 85%, and the pieces never wear. It was listed as "not written" before the
   event existed. It is posted on both loaders (on NeoForge by the same wrapper of the armour step as on Fabric, not by a reduction function of NeoForge's damage
-  container, so that Thaumcraft's ward pass keeps its order; the KamiGear GameTests passed on NeoForge, `HOOKS.md` section 14). The caveats, all in `KamiGear.md` section 3:
-  * **UNVERIFIED: the slot index that 1.7.10 gave `getProperties` and `getArmorDisplay`.** The port keeps the intended assignment (chestplate 8, leggings 6);
-    if Forge passed the `armorInventory` index, a chestplate alone took 25.5% and leggings alone 34% (section 6, open point 1).
-  * Damage that bypasses armour (starvation, drowning, magic, falling, the void) is not reduced, and the event is not posted for it; whether 1.7.10 reduced such a
-    hit by 85% could not be checked (section 6, open point 2). Mobs that wear the pieces get the 85% too (section 6, open point 3).
+  container, so that Thaumcraft's ward pass keeps its order; the KamiGear GameTests passed on NeoForge, `HOOKS.md` section 14). As Forge 1.7.10 did it (read in its
+  source, section 6, points 1 to 3, and `KamiGear.md` section 3):
+  * the points are the index Forge handed `getProperties` and `getArmorDisplay`, the slot in `armorInventory`: helmet 3, **chestplate 6, leggings 8**, boots 3 (a
+    chestplate alone 25.5%, leggings alone 34%);
+  * damage that bypasses armour (starvation, drowning, magic, a fall, the void, `/kill`) loses the same 85% for a player, and the event is posted for every source;
+  * a mob in the pieces has vanilla armour only (Forge asked `ISpecialArmor` from the player's damage path only), with the points of vanilla's path (chestplate 8).
   * The armour points and the enchantability of the materials are a display (the HUD and the tooltip) and never stack with the 85%; the stand-in toughness of the
     first port is gone. Thaumcraft's own ward pass (priority 1) runs before the event (`LivingEntityArmorMixin` has priority 900).
 * **Gem Boots and Ascent Boost, Slow Fall, Shockwave**: see the decisions of section 2 (landing rule, order of the listeners).
@@ -183,8 +183,10 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 * Particles over time, the Bedrock dimension in use (sky, light, the portal), the Placement Mirror's ghost blocks, the wings layer, the Mending and Ender Rift focus layers on a wand
   (their `_depth` sprites are now filtered out of the block atlas; that the wand renderer still loads them is argued from the code, not seen), break particles of the Mob Display,
   a Mob Display in a hand, on the ground or in an item frame, the camouflage devices with a camouflage block set (the block rows set none).
-* **Mob Display scale:** the Horse's head, the Witch's hat and the Mooshroom's mushrooms still overflow a 16x16 slot by up to about 2 slot pixels. The scale values are the original's;
-  changing them is a decision for the owner.
+* **Mob Display scale (settled 2026-11-01):** the Horse's head, the Witch's hat and the Mooshroom's mushrooms reached 4.75, 3.75 and 3 slot pixels above a 16x16 slot
+  (measured on the client harness's picture). On the owner's request these three are drawn smaller and lower in a slot only, and now lie inside it on both loaders (pictures
+  read); the `EnumMobAspect` scale values stay the original's and the other mobs are unchanged, among them some that reach up to 2 slot pixels past the slot's edge
+  (`Machines.md` section 7, "Slot fit of three mobs").
 * The network behaviour of the packets between a real client and a real server, beyond the scenarios of the multiplayer check (`MULTIPLAYER_VERIFICATION.md`:
   the config payload, `PacketEnchanterAddEnchant`, `PacketTabletButton`, the block-entity updates of the Enchanter and the Animation Tablet, and the
   registration of every payload of the add-on on both sides). The other packets (the Remote Placer's buttons, the Enchanter's start, the Kami armour
@@ -198,32 +200,89 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 The per-group documents say what each group's own checks were; they record runs in different amounts (KamiWorld, Foci and the first round of KamiGear with numbers; Machines and BasicItems
 record no result of their own server-side tests; Enchantments a statement without a result): `README.md` and `HOOKS.md` section 12 say what is recorded.
 
-## 6. Open points (need the owner or a source that is not on this machine)
+## 6. Points that were open (settled on 2026-11-01)
 
-None of these is a known defect. Each is something the port decided or assumed without being able to check it, or a question for the owner.
+None of these was a known defect. Each was something the port had decided or assumed without being able to check it, or a question for the owner.
+On 2026-11-01 each was settled by the evidence named in it (the sources of Forge 1.7.10, Minecraft 1.7.10 and Thaumcraft 1.7.10-4.2.3.5, read, and the
+pinned Thaumic Tinkerer source) and by the rule of `PORTING_RULES.md`: the original's behaviour where it gives an answer; where it gives none, what fits its
+intent and the game working properly, marked as a decision the owner can revert. Points 8 and 9 were settled before. Every point names its code and tests;
+the runs are at the end of this section.
 
-1. **The slot index of `ISpecialArmor.getProperties` and `getArmorDisplay` (UNVERIFIED).** The original reads the material's array by armour type (helmet 0,
-   chestplate 1, leggings 2, boots 3: 3/8/6/3). As far as remembered, Forge 1.7.10 passed the index in `armorInventory` (boots 0 ... helmet 3), which would have
-   swapped chestplate and leggings (a chestplate alone 25.5%, leggings alone 34%; the full set, a helmet and boots are the same either way). No Forge 1.7.10
-   source or jar is on this machine. The port keeps the intended assignment; to swap, change `CHESTPLATE` and `LEGGINGS` in `KamiArmorMaterials.create` and the
-   expectations of `KamiGearLogicTest` and the GameTests (`KamiGear.md` section 3).
-2. **Did Forge 1.7.10 reduce armour-bypassing damage by 85%?** The original `getProperties` has no look at the damage source; whether Forge's damage path called
-   `ApplyArmor` for unblockable damage could not be checked. The port does not reduce it. The one place to change it is the `BYPASSES_ARMOR` test in
-   `TinkererEvents.postLivingArmorAbsorb`.
-3. **Did Forge 1.7.10 consult `ISpecialArmor` for mobs?** To the best of the authors' knowledge it did so from the player's damage path (not verified). The port
-   answers for every wearer, so a zombie in the set takes the 85% too.
-4. **Recipes with no research.** The four crucible recipes `INFUSED_POTIONSPOT0..3` and the infusion recipe `INFUSED_INKWELL` have no research entry in 1.7.10
-   and none in the port (`PARITY_REPORT.md` section 4), so Thaumcraft never unlocks them. The inkwell is documented (`BasicItems.md` section 6); the four
-   potion recipes are documented nowhere else. Whether they are meant to be obtainable is the owner's decision, not a parity defect.
-5. **The 1.7.10 side of the invulnerability-frames bands** (`HOOKS.md` section 3, `Enchantments.md` sections 2 and 12): taken from `HOOKS.md` and recalled from
-   `EntityLivingBase.attackEntityFrom`, not read in the Minecraft 1.7.10 source (not on this machine). The same holds for every statement about Forge's
-   `LivingHurtEvent` in `HOOKS.md` section 3 (its place after the frames and after a player's sword block, that a cancel only skipped `damageEntity`, that
-   `ISpecialArmor` sat after it) and for the claim that Forge ran listeners of equal priority in registration order, which the listener orders of section 2 lean on.
-   The 1.21.1 side has checks (`HOOKS.md` section 12 says what is recorded as run).
-6. **Slow Fall's landing rule** (section 2) is a decision of the port that the owner may want to change.
-7. **The Cursed Spirit's Blade cannot take the vanilla sword enchantments** (Sharpness, Smite, Looting, Fire Aspect, Unbreaking, Mending ...), which the 1.7.10 `ItemSword`
-   took: it is in none of the vanilla sword tags. The fix touches files of other groups (`data/minecraft/tags/item/swords.json` and the Vampirism tag, which must keep refusing
-   the blade) and is a request to the lead, **not done** (`Machines.md` section 8, `api-requests/Machines.md` section 5).
+1. **The slot index of `ISpecialArmor.getProperties` and `getArmorDisplay`: resolved, ported as 1.7.10 had it.** *Evidence* (Forge branch `1.7.10`, commit
+   `9274e4fe`; Minecraft 1.7.10 from the MCP decompile <https://github.com/Kittycat7J/MCP-1.7.10-Docker/tree/bb5cf03e3571c9e06f7801425f38598a45e1ee49>):
+   `ArmorProperties.ApplyArmor` loops `x` over the inventory it is given and calls `getProperties(entity, stack, source, damage / 25D, x)`
+   (`src/main/java/net/minecraftforge/common/ISpecialArmor.java` lines 101-112), and its caller passes `inventory.armorInventory`
+   (`patches/minecraft/net/minecraft/entity/player/EntityPlayer.java.patch` line 321); `ForgeHooks.getTotalArmorValue` hands `getArmorDisplay` the same `x`
+   (`ForgeHooks.java` lines 190-206; the armour bar of `GuiIngameForge`, line 269); `ArmorMaterial.getDamageReductionAmount(i)` reads the array at `i`, which is laid
+   out by armour type (`net/minecraft/item/ItemArmor.java` lines 61-65 and 212-214), and `ContainerPlayer` puts armour type `t` into `armorInventory[3 - t]`
+   (`inventory/ContainerPlayer.java` lines 33-42). So a player's chestplate read 6 points (25.5%) and the leggings 8 (34%). *Decision*: the original's effective
+   numbers. *Code*: `KamiArmorMaterials.playerPoints` (the points of the materials: HUD, tooltip and absorption) and `mobPoints`; *tests*: JUnit
+   `KamiGearLogicTest.theSlotForgeHandedTheArmourWasItsIndexInTheArmourInventory`, the GameTests `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone`
+   and `ichorclothPiecesShowTheOriginalArmourAndNeverWear` (`KamiGear.md` section 3).
+2. **Armour-bypassing damage: resolved, Forge 1.7.10 reduced it by 85%, and so does the port.** *Evidence*: `ApplyArmor` asks every `ISpecialArmor` piece for
+   every source and skips only a plain `ItemArmor` for an unblockable one (`ISpecialArmor.java` lines 109-118); the player's `damageEntity` calls it for every hit
+   that `attackEntityFrom` lets through (`EntityPlayer.java.patch` lines 310-322), and `DamageSource` shows which sources were unblockable
+   (`net/minecraft/util/DamageSource.java` lines 11-24, 57-58). *Decision*: `TinkererEvents.postLivingArmorAbsorb` posts every source (vanilla's step takes
+   nothing of a bypassing one) and `IchorAbsorption` takes the Ichorcloth share of it for a player, with no share for the other armour. The table of every damage
+   type of the tag `bypasses_armor` (the void and the source of `/kill` included: 15% of `Float.MAX_VALUE` still kills) is in `KamiGear.md` section 3; the seven types
+   that 1.7.10 did not have (cramming, flying into a wall, dragon's breath, freezing, stalagmites, the sonic boom, the world border) are reduced by the same rule, a
+   decision the owner can revert per type in `IchorAbsorption.onLivingArmorAbsorb`. *Tests*: JUnit `TinkererEventsTest` and `KamiGearLogicTest.aKillStillKillsAWearerOfTheFullSet`;
+   GameTests `ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes` (starvation, magic, a fall, drowning, the void, the source of `/kill`) and
+   `livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff`.
+3. **Mobs: resolved, Forge 1.7.10 did not consult `ISpecialArmor` for them, and neither does the port.** *Evidence*: the only caller of `ApplyArmor` in the branch is
+   the `EntityPlayer` patch; the patch of `EntityLivingBase.damageEntity` keeps vanilla's `applyArmorCalculations` (`EntityLivingBase.java.patch` lines 145-152), which
+   reads `damageReduceAmount` (by armour type: chestplate 8, leggings 6) and nothing for an unblockable source (`net/minecraft/entity/EntityLivingBase.java` lines
+   795-822). *Decision*: for a wearer that is not a player `IchorAbsorption` leaves vanilla's armour, worked out with those points. *Test*: the zombies of
+   `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone` (the full set: vanilla armour of 22 points, nothing against magic; the chestplate alone:
+   2 + 8 points).
+4. **Recipes with no research: resolved, they stay locked as in 1.7.10.** *Evidence*: the four crucible recipes `INFUSED_POTIONSPOT0..3` are registered with
+   their name as research key (`ItemInfusedPotion.getRecipeItem` and `ThaumicTinkererCrucibleRecipe.registerRecipe` of the pinned source) and the infusion recipe
+   `INFUSED_INKWELL` under its own name (`ItemInfusedInkwell`, whose `getResearchItem` is null); no research has these keys. Thaumcraft 1.7.10-4.2.3.5 (its jar,
+   disassembled with `javap`) checks the key against the player's research before it matches a crucible recipe
+   (`ThaumcraftCraftingManager.findMatchingCrucibleRecipe`, offset 70) or an infusion recipe (`InfusionRecipe.matches`, through
+   `ThaumcraftApiHelper.isResearchComplete`), and `ResearchManager.isResearchComplete(player, key)` returns false at once for a key that does not start with
+   `@` and is no registered research (offsets 0-17). So nobody could make the four potions or the inkwell in 1.7.10 (the potions' research page showed the
+   recipes all the same). *Decision*: the original's behaviour; Thaumcraft 4 Reload refuses the same way (`CrucibleCrafting.find` and `TileInfusionMatrix` ask
+   the player's knowledge, and its API cannot complete an unknown key). To make the potions obtainable, the owner would register the four recipes under the
+   research key `INFUSED_POTIONS` (one argument in `ItemInfusedPotion.getRecipeItem`; the parity oracle would then list a documented difference). *Test*: GameTest
+   `recipesUnderAResearchKeyNoEntryDefinesStayLocked` (a player with every research cannot complete the keys or pass the gate; the recipes match their own
+   catalyst, aspects and components; another infusion of the add-on passes with the same player). `SimpleBlocks.md` section 2.8, `BasicItems.md` section 6,
+   `PARITY_REPORT.md` section 4.
+5. **The 1.7.10 side of the invulnerability-frames bands and of Forge's `LivingHurtEvent`: resolved, read in the 1.7.10 sources.** *Evidence* (the sources of
+   point 1, plus FML's event bus, <https://github.com/MinecraftForge/FML/tree/1.7.10>): `EntityLivingBase.attackEntityFrom` refuses a blow with
+   `amount <= lastDamage` while `hurtResistantTime > maxHurtResistantTime / 2`, calls `damageEntity(source, amount - lastDamage)` for a stronger one and stores the
+   raw amount as `lastDamage`; outside the frames it sets `hurtResistantTime` first and then calls `damageEntity` (MCP `entity/EntityLivingBase.java` lines
+   599-612); Forge's `LivingHurtEvent` is posted at the head of `damageEntity` (`EntityLivingBase.java.patch` lines 145-152, `EntityPlayer.java.patch` lines
+   309-322), so it came after the frames and after the helmet's `* 0.75` of a falling block (lines 592-595), **before** a player's sword block, the armour and
+   `ApplyArmor`; a cancel (`ForgeHooks.onLivingHurt` returns 0) only ends `damageEntity`, after which `attackEntityFrom` still plays the hurt animation and the
+   knockback (lines 612-666: the hurt animation at line 635, the knockback at 649). Listeners of one priority run in registration order (FML `ListenerList.java` lines 195-220, `EventBus.post` lines 130-147).
+   *Decision*: nothing in the code changes: the two bands are as `HOOKS.md` section 3 and `Enchantments.md` section 2 described them (the GameTest
+   `theFramesCompareTheBoostedAmountsNotTheRawOnes` pins the 1.21.1 side). One statement was wrong and is corrected: the event did **not** stand after a
+   player's sword block, so the factors of the Enchantments met the same amount as here (`HOOKS.md` section 3, `Enchantments.md` sections 2 and 12; also the
+   statements of `KamiWorld.md` section 5 about the sleeper and of `KamiGear.md` section 3 about the listener order now cite the sources).
+6. **Slow Fall's landing rule: resolved, the landing is what the original's tick rule left of the fall.** *Evidence*: the original lowered the distance at the
+   start of every tick of a player who did not sneak, fell faster than -0.0784 and had fallen 2.9 blocks or more (`ModEnchantmentHandler.onEntityUpdate` of
+   the pinned source, lines 127-140: `motionY /= 1 + slowfall * 0.33F; fallDistance = Math.max(2.9F, fallDistance - slowfall / 3F)`); the tick's drop was
+   added after it and the landing tick adds none (MCP `entity/Entity.java` `updateFallState`, lines 691-700); the server, which decided the damage, ran the
+   same handler from `onUpdateEntity` before `handleFalling` added the client's drop (`network/NetHandlerPlayServer.java` lines 252-321,
+   `entity/player/EntityPlayerMP.java` lines 471-475). Played tick by tick, a long fall ends at 2.9; at level I the slowed drop per tick stays above 1/3 for a
+   few ticks after the rule starts, so a drop of about 3.4 to 7 blocks lands at up to 3.42 and costs one point; at II and III no fall does. The port's first
+   rule (every landing of 2.9 or more becomes 2.9) spared those level-I falls and made the level irrelevant. *Decision*: the original's numbers, by a replay of
+   its ticks at the landing (`EnchantmentFormulas.slowFallLanding`); a fall that did not start from a standstill is placed between two ticks of the replay,
+   and sneaking counts at the landing (1.7.10 asked in every tick), the two corners the single landing event cannot know. *Tests*: JUnit
+   `EnchantmentFormulasTest.aLandingWithSlowFallIsWhatTheTickRuleOfTheOriginalLeftOfTheFall` (a literal copy of the original's handler and of the 1.7.10 move,
+   drops of 2 to 102 blocks at levels 1, 2, 3 and 5, equal within 1e-4) and `slowFallOneStillCostsHalfAHeartOnADropOfFourToSixBlocksAndTheHigherLevelsNothing`;
+   GameTests `slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall` and `shockwaveHurtsTheCreaturesAroundALanding`. `Enchantments.md` sections 4 and 12.
+7. **The Cursed Spirit's Blade and the vanilla sword enchantments: resolved, it takes them as in 1.7.10 (the open point was out of date).** *Evidence*:
+   `ItemBloodSword extends ItemSword` with the thaumium enchantability and no override of `getItemEnchantability`, `isBookEnchantable` or
+   `canApplyAtEnchantingTable` (pinned source); the 1.7.10 table and anvil asked `EnumEnchantmentType.weapon` (`item instanceof ItemSword`) and
+   `breakable` (`isDamageable()`) (MCP `enchantment/EnumEnchantmentType.java`, `enchantment/Enchantment.java` `canApply`, `inventory/ContainerRepair.java`),
+   so it took Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting and Unbreaking, and Vampirism refused it
+   (`EnchantmentVampirism.canApply`). In the port the blade has been in the item tags `minecraft:enchantable/sword`, `sharp_weapon`, `fire_aspect` and
+   `durability` since the first import (`Enchantments.md` section 5) and stays out of `#minecraft:swords`, which the Vampirism tag holds; the request of
+   `api-requests/Machines.md` section 5 was never needed. *Decision*: keep it; Sweeping Edge, Mending and Curse of Vanishing (not in 1.7.10) go on the blade
+   as on any sword. *Test*: GameTest `theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil` (the table's list at a power of 30, a book of each of ten
+   enchantments in a real anvil menu, Vampirism refused by both). `Machines.md` sections 8 and 11.
 8. **The gateway tooltip of the original (Waila, now Jade) was inverted**: it showed "allow incoming" when the gate's `locked` flag is true, which is the opposite of what the flag
    does. Decided: the Jade port shows what the flag does (`deviations/Tooltips.md`). Two more decisions from `KamiWorld.md` section 10:
    **`PORTING_RULES` 1.3** (groups reach each other by registry path) has no exception for the four KamiGear helpers that the gateway uses (`ItemSkyPearl`, `SlotSkyPearl`,
@@ -231,5 +290,24 @@ None of these is a known defect. Each is something the port decided or assumed w
    `KamiWorld.md` section 9).
 9. **The `ichor_nuggets` recipe and the Celestial Gateway's loot table are conditional on their items**: each file carries a load condition for both loaders
    (`fabric:load_conditions` / `neoforge:conditions`), so with Kami off they are skipped instead of logging a parse error at data load (`KamiGear.md` section 11).
-10. **Two designs of the camouflage base** exist, `BlockCamo` in SimpleBlocks (the Ethereal Platform) and `CamoDeviceBlock` in TileBlocks (the Remote Placer, the Dislocator): the
-    lead may merge them (`SimpleBlocks.md` section 2.4); until then the platform's block entity type `thaumictinkerer:camo` is valid for the platform only.
+10. **Two designs of the camouflage base: resolved, they stay two, and now follow the one rule of the original.** *Evidence*: the original had one
+    `BlockCamo` for the Ethereal Platform and the four devices (`BlockPlatform`, `BlockRPlacer`, `BlockGolemConnector`, `BlockTransvectorInterface`,
+    `BlockTransvectorDislocator` of the pinned source), one tile `TileCamo` and one click rule (`BlockCamo.onBlockActivated`: render types 0, 31 and 39,
+    no `BlockCamo`, `BlockDirectional` turned to the clicked side). The port has `BlockCamo` / `TileCamo` (SimpleBlocks: property `camouflaged`, block
+    entity type `thaumictinkerer:camo`, a Thaumcraft `TileThaumcraft`) and `CamoDeviceBlock` / `CamoDeviceBlockEntity` (TileBlocks: property `camo`, one
+    block entity type per device, a plain `BlockEntity`). *Decision*: **no merge**, because it cannot keep the registry ids, the block entity types, the
+    saved data and the behaviour identical: one base with one property would rename `camouflaged` or `camo` in the chunks of existing worlds and in
+    the blockstate files, a shared block entity class would change the superclass and the update tag of one family, and the blocks behave differently
+    on purpose (`SimpleBlocks.md` section 2.4). What the original shared, the rule, is now the same in both: the platform had accepted the devices as a
+    camouflage (the original's `instanceof BlockCamo` refused them) and turned every block with a horizontal facing (the original turned the pumpkin
+    alone); both are fixed in `BlockCamo`, and `CamoRules` names the platform by its real registry path. *Test*: GameTest
+    `thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal` (both rules over every block item of the game and every face; the devices refused; the
+    pumpkin turned, the furnace not; a real click of a Remote Placer on a platform), beside the existing checks of both groups. The owner can merge
+    later only with a data fixer for the property; the platform's block entity type `thaumictinkerer:camo` stays the platform's only.
+
+**Runs after these changes (2026-11-01, branch `owner-decisions`).** `check runTinkererGameTest :neoforge:runGameTest assemble :neoforge:assemble --continue`:
+JUnit `tinkererTest` 428 tests, 0 failures, 0 skipped; Fabric GameTest server "All 359 required tests passed"; NeoForge GameTest server "All 367 required tests
+passed" (the 359 generated wrappers and the 8 NeoForge-only checks); both jars built. Client smoke (`tools/client-smoke.sh`, the Mob Display's picture read on each):
+Fabric 727 PASS, 0 FAIL, 0 harness errors, 1 NOT_RUN, 80 pictures; NeoForge 731 PASS, 0 FAIL, 1 NOT_RUN, 80 pictures. **Not verified**: none of the 1.7.10
+behaviour was run (Forge, Minecraft and Thaumcraft 1.7.10 were read, not started); the armour's HUD and tooltip ("+6 Armor" on the chestplate), a real fall with
+Slow Fall and the table and anvil screens with the blade were not seen in a client (the checks drive the server-side code); the Mob Display was seen in a slot only.

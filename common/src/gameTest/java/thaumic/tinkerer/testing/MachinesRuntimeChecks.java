@@ -1026,6 +1026,63 @@ public final class MachinesRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The blade takes the sword enchantments at the enchanting table and the anvil, as the 1.7.10 {@code ItemSword} did: the table's
+     * {@code EnchantmentHelper.mapEnchantmentData} and the anvil's {@code Enchantment.canApply} asked {@code EnumEnchantmentType.weapon}
+     * ({@code item instanceof ItemSword}) and {@code breakable} ({@code isDamageable()}), and {@code ItemBloodSword} overrides neither the
+     * enchantability (thaumium's) nor the book check. In 1.21.1 the blade is in the item tags those enchantments ask
+     * ({@code minecraft:enchantable/sword}, {@code sharp_weapon}, {@code fire_aspect}, {@code durability}). Vampirism refuses it, as
+     * {@code EnchantmentVampirism.canApply} did. Sweeping Edge, Mending and Curse of Vanishing, which 1.7.10 did not have, go on it as on
+     * any sword (docs/DEVIATIONS.md section 6, point 7).
+     */
+    public static void theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil(GameTestHelper test) {
+        ItemStack blade = freshBlade();
+        var enchantments = test.getLevel().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+        test.assertTrue(blade.isEnchantable() && blade.getItem().getEnchantmentValue() > 0,
+                "the table may enchant the blade (enchantability " + blade.getItem().getEnchantmentValue() + ")");
+        // what the table offers at a power of 30 (EnchantmentHelper.selectEnchantment draws from this list)
+        var offered = net.minecraft.world.item.enchantment.EnchantmentHelper.getAvailableEnchantmentResults(30, blade,
+                java.util.stream.StreamSupport.stream(enchantments.getTagOrEmpty(net.minecraft.tags.EnchantmentTags.IN_ENCHANTING_TABLE)
+                        .spliterator(), false));
+        java.util.Set<net.minecraft.resources.ResourceKey<net.minecraft.world.item.enchantment.Enchantment>> table = new java.util.HashSet<>();
+        for (var instance : offered) instance.enchantment.unwrapKey().ifPresent(table::add);
+        for (var key : List.of(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS, net.minecraft.world.item.enchantment.Enchantments.SMITE,
+                net.minecraft.world.item.enchantment.Enchantments.BANE_OF_ARTHROPODS, net.minecraft.world.item.enchantment.Enchantments.KNOCKBACK,
+                net.minecraft.world.item.enchantment.Enchantments.FIRE_ASPECT, net.minecraft.world.item.enchantment.Enchantments.LOOTING,
+                net.minecraft.world.item.enchantment.Enchantments.UNBREAKING, net.minecraft.world.item.enchantment.Enchantments.SWEEPING_EDGE)) {
+            test.assertTrue(table.contains(key), "the table offers " + key.location() + " for the blade: " + table);
+        }
+        test.assertTrue(!table.contains(thaumic.tinkerer.common.enchantment.ModEnchantments.vampirism), "but not Vampirism");
+
+        // the anvil: a book on the blade
+        ServerPlayer player = mockPlayer(test);
+        player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        player.experienceLevel = 100;
+        java.util.function.BiFunction<net.minecraft.resources.ResourceKey<net.minecraft.world.item.enchantment.Enchantment>, Integer, ItemStack> anvil =
+                (key, level) -> {
+                    ItemStack book = net.minecraft.world.item.EnchantedBookItem.createForEnchantment(
+                            new net.minecraft.world.item.enchantment.EnchantmentInstance(enchantments.getHolderOrThrow(key), level));
+                    net.minecraft.world.inventory.AnvilMenu menu = new net.minecraft.world.inventory.AnvilMenu(0, player.getInventory());
+                    menu.getSlot(0).set(freshBlade());
+                    menu.getSlot(1).set(book);
+                    menu.createResult();
+                    return menu.getSlot(2).getItem();
+                };
+        for (var key : List.of(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS, net.minecraft.world.item.enchantment.Enchantments.SMITE,
+                net.minecraft.world.item.enchantment.Enchantments.BANE_OF_ARTHROPODS, net.minecraft.world.item.enchantment.Enchantments.KNOCKBACK,
+                net.minecraft.world.item.enchantment.Enchantments.FIRE_ASPECT, net.minecraft.world.item.enchantment.Enchantments.LOOTING,
+                net.minecraft.world.item.enchantment.Enchantments.UNBREAKING, net.minecraft.world.item.enchantment.Enchantments.SWEEPING_EDGE,
+                net.minecraft.world.item.enchantment.Enchantments.MENDING, net.minecraft.world.item.enchantment.Enchantments.VANISHING_CURSE)) {
+            ItemStack result = anvil.apply(key, 1);
+            test.assertTrue(result.is(TTRegistry.item(LibItemNames.BLOOD_SWORD))
+                            && result.getEnchantments().getLevel(enchantments.getHolderOrThrow(key)) == 1,
+                    "the anvil puts " + key.location() + " on the blade: " + result);
+        }
+        test.assertTrue(anvil.apply(thaumic.tinkerer.common.enchantment.ModEnchantments.vampirism, 1).isEmpty(),
+                "the anvil refuses Vampirism for the blade");
+        finish(test, player);
+    }
+
     public static void aBladeHurtsWhoStrikesWithIt(GameTestHelper test) {
         floor(test);
         Villager wielder = test.spawnWithNoFreeWill(EntityType.VILLAGER, new BlockPos(2, 1, 2));

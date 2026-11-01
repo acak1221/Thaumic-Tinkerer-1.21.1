@@ -1197,10 +1197,11 @@ public final class EnchantmentsRuntimeChecks {
     }
 
     /**
-     * Slow Fall: a landing of 2.9 blocks or more is a landing of 2.9 (no damage), for a player with the enchantment on the armor
-     * and not sneaking; shorter falls, mobs and players without it are left alone.
+     * Slow Fall: a landing is what the original's tick rule left of the fall ({@code EnchantmentFormulas.slowFallLanding}): a long one
+     * ends at 2.9 (no damage) at every level; at level I a landing of 4.7 counted blocks (a drop of five) still lands at 3.4 and costs a
+     * point, as in 1.7.10, at level III it does not; sneaking, shorter falls, mobs and players without it are left alone.
      */
-    public static void slowFallMakesALandingAFallOfTwoPointNineBlocks(GameTestHelper test) {
+    public static void slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall(GameTestHelper test) {
         floor(test);
         ServerPlayer slow = player(test);
         ServerPlayer plain = player(test);
@@ -1219,9 +1220,12 @@ public final class EnchantmentsRuntimeChecks {
         test.assertTrue(sneaking.causeFallDamage(10F, 1F, level.damageSources().fall()), "sneaking turns Slow Fall off");
         test.assertTrue(!slow.causeFallDamage(2.5F, 1F, level.damageSources().fall()) && !plain.causeFallDamage(2.5F, 1F, level.damageSources().fall()),
                 "a short fall is a short fall");
-        // the worn level does not change the 2.9: Slow Fall I and III alike
+        // a long fall: Slow Fall I and III alike; a drop of five blocks (4.7 counted): the original's level I had not yet brought the
+        // distance down to 2.9 at the landing, level III had
         sneaking.setShiftKeyDown(false);
         test.assertTrue(!sneaking.causeFallDamage(10F, 1F, level.damageSources().fall()), "Slow Fall III as well");
+        test.assertTrue(slow.causeFallDamage(4.7F, 1F, level.damageSources().fall()), "Slow Fall I works out a point for a drop of five");
+        test.assertTrue(!sneaking.causeFallDamage(4.7F, 1F, level.damageSources().fall()), "Slow Fall III nothing");
 
         // a mob in the same boots is not a player
         Zombie zombie = armedZombie(test, new Vec3(6, 1, 2), ItemStack.EMPTY);

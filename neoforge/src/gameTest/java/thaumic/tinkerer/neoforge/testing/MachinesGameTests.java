@@ -191,6 +191,11 @@ public final class MachinesGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil(GameTestHelper test) {
+        MachinesRuntimeChecks.theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void aBladeHurtsWhoStrikesWithIt(GameTestHelper test) {
         MachinesRuntimeChecks.aBladeHurtsWhoStrikesWithIt(test);
     }

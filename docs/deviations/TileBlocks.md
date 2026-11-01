@@ -448,8 +448,10 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   (chests, beds, skulls, banners, signs) too, and glass, leaves, ice, a furnace or a dispenser are accepted. **Narrower
   than 1.7.10 in one place:** render type 0 also covered blocks that were not cubes (slabs, farmland, soul sand, snow
   layers, an enchanting table), which the device showed as a cube with their textures; the port draws the model, which
-  would be smaller than the device, so these are refused. The camouflageable devices of this group (`CamoDeviceBlock`) and the Camouflage block of the SimpleBlocks group (by its
-  registry path `thaumictinkerer:camo`) are refused, as `block instanceof BlockCamo` refused them.
+  would be smaller than the device, so these are refused. The camouflageable devices of this group (`CamoDeviceBlock`) and the Ethereal Platform of the SimpleBlocks group (by its
+  registry path `thaumictinkerer:platform`; the check named `thaumictinkerer:camo`, the platform's block entity type, until 2026-11-01, and the
+  platform was refused all the same by its empty collision shape) are refused, as `block instanceof BlockCamo` refused them. The platform
+  applies the same rule since 2026-11-01 (`deviations/SimpleBlocks.md` section 2.4; GameTest `thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal`).
 * **Variants (forced).** 1.7.10 copied the item's damage as the camouflage's metadata. A 1.21.1 block item is one block
   with its default state, with the horizontal facing set to the clicked side for the pumpkins (`BlockDirectional` was the
   one directional class among the accepted cube-like blocks; a furnace or dispenser, which was not directional, keeps its

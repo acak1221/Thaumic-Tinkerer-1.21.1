@@ -256,9 +256,22 @@ and receives each of them.
     set-up (no `display` in the model, so 16 pixels per unit and no turn): the mobs were 1.6 times as large as the original,
     overran their neighbours, and the four-legged ones stood in a head-on view that looked upright. `models/item/mob_display.json`
     now carries `display.gui = {rotation [30, 45, 0], scale 0.625}`, and `RenderMobDisplay` keeps its own -30 degrees and the
-    `EnumMobAspect` scales unchanged. Derived from the 1.7.10 GL calls by hand, **not compared with a picture of the original**; the
-    mobs are still tall for a slot (the Horse's head is above the cell in the harness picture), as the unchanged scale values
-    say they were in 1.7.10 too (not verified against it).
+    `EnumMobAspect` scales unchanged. Derived from the 1.7.10 GL calls by hand, **not compared with a picture of the original**; some
+    mobs are tall for a slot, as the unchanged scale values say they were in 1.7.10 too (not verified against it).
+  - **Slot fit of three mobs (decision on the owner's request, 2026-11-01).** In the harness picture `items-machines-02.png` the Horse's
+    head, the Witch's hat and the Mooshroom's mushrooms reached 4.75, 3.75 and 3 slot pixels above the 16 x 16 slot (measured on the
+    picture: one slot pixel is four screen pixels there). In a slot (`ItemDisplayContext.GUI`) only, `RenderMobDisplay` now draws these
+    three smaller about the middle of the slot and lower (`SLOT_FIT`: Horse 0.74 and 1.94 slot pixels, Witch 0.75 and 1.41, Mooshroom 0.80
+    and 1.30), which puts each of them from 0.5 to at most 15.5 slot pixels, inside the slot. The `EnumMobAspect` scales stay the
+    original's, and every other mob and every other place (hand, ground, frame) is drawn as before; to undo it, remove the three rows. The
+    other mobs were measured too and left alone as asked: the Wither Skeleton reaches 2 slot pixels above the slot, the Enderman 1.75, the
+    Angry Zombie 1.5, the Cow 1, the Zombified Piglin 0.75, the Villager, Zombie, Skeleton and Firebat 0.5, the Snow and Iron Golem 0.25,
+    the Bat 1.5 to the right, the Spider 0.75 to the right and the Ocelot 0.5 to the left; the same table of `SLOT_FIT` would take them in.
+    Checks: JUnit `MachinesClientWiringTest.onlyTheHorseTheWitchAndTheMooshroomAreFittedIntoASlot` (which mobs and contexts, and the
+    measured extent inside the slot), and the client smoke of both loaders (2026-11-01: Fabric 727 PASS, NeoForge 731 PASS, 0 FAIL): the
+    pictures were read, the three mobs lie inside their slots, the other 27 cells are the same as before to the pixel on Fabric except the
+    Blaze (82 pixels, its rods turn), and the NeoForge picture equals the Fabric one in all but 840 of 921600 pixels (the Mooshroom and the
+    Snow Golem).
   - **No shadow, no hitbox (choice).** `EntityRenderDispatcher.render` draws a shadow (on the blocks of the level around the
     cached mob's own position, the world origin) and, with F3+B, a hitbox; 1.7.10 called `doRender`, which draws neither.
     `RenderMobDisplay` switches both off around the call and restores them. Defensive: the harness world is a flat one whose ground is
@@ -333,11 +346,16 @@ and receives each of them.
 - **Model.** `blood_sword_0` / `blood_sword_active` with the override on the item property `thaumictinkerer:activated`
   (section 2). The client harness checks that the predicate has a property function and draws the activated variant
   (`ItemVariants` sets the component); not run since the change.
-- **Enchanting (open, shared files).** The blade is not in `#minecraft:swords`, so the vanilla sword enchantments (Sharpness,
-  Smite, Bane of Arthropods, Looting, Knockback, Fire Aspect, Sweeping Edge, Unbreaking, Mending) cannot be put on it, while
-  the 1.7.10 `ItemSword` took them. Only the four strike enchantments of the add-on list it. The fix is in two files of
-  other groups (`data/minecraft/tags/item/swords.json` and the Vampirism tag, which must keep refusing the blade): request
-  in section 5 of `docs/api-requests/Machines.md`.
+- **Enchanting (as in 1.7.10).** The 1.7.10 blade was an `ItemSword` without overrides of the enchantability (thaumium's) or of the
+  book check, so the table (`EnchantmentHelper.mapEnchantmentData`) and the anvil (`Enchantment.canApply`) gave it every enchantment of
+  `EnumEnchantmentType.weapon` (`item instanceof ItemSword`: Sharpness, Smite, Bane of Arthropods, Knockback, Fire Aspect, Looting) and of
+  `breakable` (Unbreaking); Vampirism refused it (`EnchantmentVampirism.canApply`). Here the blade stays out of `#minecraft:swords` (the
+  tag of Vampirism holds it) and is listed in the item tags those enchantments ask, `minecraft:enchantable/sword`, `sharp_weapon` (and so
+  `weapon`), `fire_aspect` and `durability` (and so `vanishing`), files of the Enchantments group (`Enchantments.md` section 5). So it also
+  takes Sweeping Edge, Mending and Curse of Vanishing, which 1.7.10 did not have, as any sword. The section of this document that said the
+  blade could not take them was out of date (the tags were in the first import); the GameTest
+  `theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil` checks the table's list at a power of 30 and a book of each in a real anvil menu,
+  and the refusal of Vampirism (`docs/DEVIATIONS.md` section 6, point 7).
 
 ## 9. Values checked against the original on purpose
 
@@ -372,7 +390,7 @@ crucible (beast 4, mind 8, senses 8) on an ender pearl under the key `MAGNETS`.
 - ComputerCraft and OpenComputers peripherals (Aspectalyzer, Attractors), AE2 `IMovableTile`, Tinkers' Construct
   tool repair. (NEI integration and Waila providers were not this group's job; they are ported now as EMI/JEI pages and Jade
   tooltips, `RecipeViewers.md`, `Tooltips.md`.)
-- The enchantability of the blade (shared tag files): the request in `docs/api-requests/Machines.md`. (The NeoForge poster of `LIVING_DROPS`, listed here
+- (The enchantability of the blade, listed here before, was there all along: section 8.) (The NeoForge poster of `LIVING_DROPS`, listed here
   before, is written now, section 12; the NeoForge backend of `ItemRenderers` is written, not seen drawn.) (The scan
   check, the sparkles, the aspect tag drawing and the Thaumcraft entity keys use the API since the review.)
 - Recipe-viewer pages for the necromancy recipes: done since 2026-10-31 as an EMI and a JEI category (`RecipeViewers.md`).

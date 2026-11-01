@@ -88,10 +88,10 @@ the shooter of an arrow, the wearer of thorns), as the original did: the blow of
     stored: the listener's result for the hit before) is **not posted** (the poster applies vanilla's test first), so it does not
     move the counter of Focused and Dispersed Strikes and does not heal with Vampirism. That is what 1.7.10 did too, except in
     the band above for a factor below one. A hit that a shield blocks or a helmet reduces is posted with its full amount and may
-    be refused afterwards; the counter and the heal have happened then. (1.7.10 had no shields and no helmet rule; `docs/HOOKS.md` section 3 puts its event after the
-    blocking, which for a player victim that blocked with a sword was `(1 + amount) / 2` before the factors, and now it is not
-    applied at all. A player victim that holds a sword up is the one case in which the factors of the enchantments meet a
-    different amount than in 1.7.10.)
+    be refused afterwards; the counter and the heal have happened then. (1.7.10 had no shields; its helmet rule for a falling anvil or block, `* 0.75`,
+    came before the frames and before its event. Its event came **before** a player's sword block (`(1 + amount) / 2`, applied after the event to what the
+    listeners left: Forge's patch of `EntityPlayer.damageEntity`, `docs/HOOKS.md` section 3), so the factors met the same amount as here; what is gone is
+    the halving afterwards, because 1.21.1 has no sword block. An earlier version of this note, written from memory, put the event after the block.)
   - the listener never cancels, so no frames are lost; other listeners (Soul Hearts of the KamiWorld group) chain in the order
     of registration, each seeing the amount the one before returned.
 - **What the workaround could not do and the event does** (all of them were limits written down here before): the factors
@@ -152,16 +152,21 @@ number both sides compute is the same on both; the one with an effect on the wor
   original) and spawns the cloud while the player falls faster than `-0.0784`, for 2.9 blocks or more, not sneaking, with the
   highest level on the armor; this is the `LivingUpdateEvent` of 1.7.10 on a real per-tick event, not a workaround. (2) *The fall
   distance*, on both sides, in `LIVING_FALL`: the original lowered it **every tick** of the fall
-  (`fallDistance = Math.max(2.9F, fallDistance - L / 3F)`), which ends, however long the fall, at the floor of 2.9, a fall that
-  does no damage. The event comes **once, at the landing**, so the listener applies that end result at once: a landing of 2.9
-  blocks or more, for a player with Slow Fall on the armor who does not sneak at the landing, is a landing of 2.9
-  (`EnchantmentFormulas.slowFallLanding`). The single step `max(2.9, d - L/3)` would leave a fall of 100 blocks at 99 and kill
-  the wearer, which is why it was not taken. The old server-side tick rule (`PLAYER_PRE`, fall distance only) and the client's
-  own per-tick reduction of the distance are gone; the event is the one place that touches the distance. **Differences** (by a
-  reading of the formulas, section 12): a fall of 3 to 4 blocks, which the original may have left at 3.0 to 3.5 because the player
-  landed before the rule had run for many ticks, does no damage here; the level of the enchantment no longer matters for the distance (it did only in how fast the floor was
-  reached); sneaking matters at the moment of the landing; the unreduced distance still goes to `Block.fallOn` (the chance of
-  trampling farmland) as it is the argument of that call, the event only lowers what `causeFallDamage` works the damage out
+  (`fallDistance = Math.max(2.9F, fallDistance - L / 3F)`, at the start of the tick, before the tick's drop was added). The event comes
+  **once, at the landing**, so the listener replays those ticks (`EnchantmentFormulas.slowFallLanding`): a fall from a standstill under the
+  rules both versions share (gravity 0.08, drag 0.98, the division of the motion of part (1)), counting the drops as 1.21.1 counts them and
+  the distance as the original's rule kept it, and returns the kept distance at the tick whose count is the landing's (between two ticks, the
+  straight line between them). The single step `max(2.9, d - L/3)` would leave a fall of 100 blocks at 99 and kill the wearer, which is why it
+  was not taken. **What that gives, as in 1.7.10** (a JUnit test compares it with a literal copy of the original's handler over drops of 2 to
+  102 blocks at levels 1, 2, 3 and 5): a long fall ends at 2.9, no damage, at every level; at **Slow Fall I** the slowed drop per tick stays above
+  1/3 for a few ticks after the rule starts, so a landing of about 3.32 to 6.88 counted blocks (a drop of about 3.4 to 7) still ends above 3 and
+  costs one point (half a heart); at II and III every fall ends at or below 3. (Until 2026-11-01 the port set every landing of 2.9 or more to
+  2.9, which spared Slow Fall I those falls; that was open point 6 of `docs/DEVIATIONS.md` section 6.) The old server-side tick rule
+  (`PLAYER_PRE`, fall distance only) and the client's own per-tick reduction of the distance are gone; the event is the one place that touches
+  the distance. **Differences** that remain: the replay assumes a fall from a standstill (a fall that began with another motion, a knock-back or
+  a jump down from a moving block, is placed between two ticks of it); sneaking matters at the moment of the landing (1.7.10 asked in every
+  tick); the unreduced distance still goes to `Block.fallOn` (the chance of trampling farmland) as it is the argument of that call, the event
+  only lowers what `causeFallDamage` works the damage out
   from. As for every `LIVING_FALL` listener, a rider of a horse, donkey, mule or llama is not served (`HOOKS.md` section 6).
 - **Shockwave** (`LIVING_FALL`, server only). A player whose **boots** carry it, landing from more than three blocks (the
   distance the event carries, after Slow Fall's listener, which is registered first because its effect in the original had been
@@ -172,8 +177,8 @@ number both sides compute is the same on both; the one with an effect on the wor
   water or by a teleport is not posted by the game in the first place. The passenger of a vehicle that lands is posted with the
   vehicle's distance, as in 1.7.10.
   - **Order against the listeners of other groups (limit, read, not run).** The chain of an event runs in the order of
-    registration. Inside this group it is Slow Fall, then Shockwave (so the wave sees a fall of 2.9 blocks, never more, on boots
-    that carry both: the GameTest `shockwaveHurtsTheCreaturesAroundALanding` puts both on one pair of boots, a combination that
+    registration. Inside this group it is Slow Fall, then Shockwave (so the wave sees what Slow Fall left of the fall, as the original's
+    `LOW` handler saw the distance its tick rule had left: 2.9 for a long fall, on boots that carry both: the GameTest `shockwaveHurtsTheCreaturesAroundALanding` puts both on one pair of boots, a combination that
     the Enchanter and the exclusive sets forbid, and sees no wave from ten blocks). Shockwave's `LOW` priority of 1.7.10 (after
     the handlers of every other mod) is **not reproduced against other groups**: Slow Fall's and Shockwave's listeners are registered in
     `Enchantments.register()` (through `ModEnchantments.initEnchantments()`) and the Gem Boots' `LIVING_FALL` listener (it sets the distance to
@@ -382,9 +387,9 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
   a new streak).
 - Focused Strikes divides by two *before* adding; the added term uses `max(counter, 5)`.
 - Final Strike's roll is `nextInt(19)`; level 5 wins 5 of 19.
-- Slow Fall: threshold `2.9` as a `double` comparison (`fallDistance >= 2.9`) in the landing rule and in the client's per-tick
-  condition, the floor `2.9F` that the original's per-tick `max(2.9F, d - L/3F)` ends at (the landing result), the motion limit
-  `-0.0784000015258789`, the divisor `1 + L * 0.33` (the float literal of the original).
+- Slow Fall: threshold `2.9` as a `double` comparison (`fallDistance >= 2.9`) in the landing rule's replay and in the client's per-tick
+  condition, the per-tick `max(2.9F, d - L/3F)` itself (in the replay, whose long falls end at that floor), the motion limit
+  `-0.0784000015258789`, the divisor `1 + L * 0.33` (the float literal of the original), gravity `0.08` and drag `0.98F` of the move.
 - Shockwave: `d > 3`, box of 10 to each side, damage `.1 L d`, the faller excluded.
 - Ascent Boost: `(L + 2) / 2`, not while sneaking.
 - Quick Draw: `speedup = L / 6`, plus one when the clock is a multiple of `6 - L % 6`, never below 2, on the count that is left
@@ -404,13 +409,16 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
   `PLAYER_PRE` listener, which is client-only and so has no check at all) and the thud of a landing, the pose and HUD of a bow
   under Quick Draw, and the `isClientSide` branch of Shockwave. The listeners are plain code on shared events, with the same rule
   on both sides; a run of a real client with the enchantments would show it.
-- The per-tick Slow Fall of 1.7.10 against the landing rule of section 4 was compared by reading the formulas, not by running
-  the original (its jar is not run here): the claim that a long fall ends at 2.9 there is arithmetic, and the claim that a short
-  fall of 3 to 3.5 blocks may keep some of its damage there is too.
+- The per-tick Slow Fall of 1.7.10 against the landing rule of section 4 was compared by running a literal copy of the original's handler and
+  of the 1.7.10 move (`EnchantmentFormulasTest`), not by running the original (its jar is not run here). That 1.7.10's server, which decided
+  the damage, saw the same falling motion as its client is read, not run: `NetHandlerPlayServer.processPlayer` calls
+  `EntityPlayerMP.onUpdateEntity` (the `LivingUpdateEvent` and the server's own copy of the motion) before `handleFalling`, which adds the
+  client's drop, and `EntityPlayerMP.updateFallState` does nothing else (MCP decompile of 1.7.10, `network/NetHandlerPlayServer.java` lines
+  252-321, `entity/player/EntityPlayerMP.java` lines 471-475; `docs/HOOKS.md` names the sources).
 - The 1.7.10 side of the two bands of the invulnerability frames (section 2: `EntityLivingBase.attackEntityFrom` compares the raw
-  amounts and passes the difference to `damageEntity`) is taken from `docs/HOOKS.md` section 3 and recalled from that method (the
-  Minecraft 1.7.10 sources are not at hand here), and the one-target swing of 1.7.10 is a fact of its version (no sweep); neither was
-  run. The 1.21.1 side of both is run by `theFramesCompareTheBoostedAmountsNotTheRawOnes` and `aSweepOfASwordIsAHitForEachEntityItReaches`. A sweep with a Sweeping Edge
+  amounts and passes the difference to `damageEntity`, where Forge posts `LivingHurtEvent`) is **read** since 2026-11-01 in an MCP decompile of
+  Minecraft 1.7.10 (`entity/EntityLivingBase.java` lines 599-612) and in Forge's patch (`EntityLivingBase.java.patch` lines 145-152), the sources
+  that `docs/HOOKS.md` names; the one-target swing of 1.7.10 is a fact of its version (no sweep). Neither was run. The 1.21.1 side of both is run by `theFramesCompareTheBoostedAmountsNotTheRawOnes` and `aSweepOfASwordIsAHitForEachEntityItReaches`. A sweep with a Sweeping Edge
   sword (the share of the blow in the sweep damage), with Final Strike, and the heal of a swing at three or more entities were not tried.
 - Nothing about the screen, the renderer, the particles and sounds, and the multiplayer behaviour of the packets has been seen.
 - **Checks that changed with the wiring** (`EnchantmentsRuntimeChecks`), all of them because they drove the deleted workaround: the
@@ -418,7 +426,7 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
   in `valianceMultipliesTheWholeAttackAtLowHealth`, `theStrikeCounterIsKeptOnTheWeapon` and `pounceDependsOnTheBlockUnderTheFeet`,
   which now hit with real `hurt` and `attack` calls; the dig checks no longer set a crosshair or call `update`/`updateFor`
   (`desintegrateAndFlamingTouchChangeTheDigSpeedOfTheBlock`, `aPlayerThatIsNeverTickedDigsAtTheSpeedOfItsEnchantments`); the
-  Slow Fall and Quick Draw checks land and draw for real (`slowFallMakesALandingAFallOfTwoPointNineBlocks`,
+  Slow Fall and Quick Draw checks land and draw for real (`slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall`,
   `quickDrawTakesTicksOffTheDrawClockOfABow`); `aToolOfDisintegrateRefusesTheOtherBlocksAndWearsDoubleOnItsOwn` proves the refusal on
   the real dig path (first click, ticks, finishing packet) with a plain pickaxe as the control, because a direct `destroyBlock` is no
   longer refused (section 9). `aFakePlayerAttackGetsTheEnchantmentsOfItsSword` is required now. The checks of the Enchanter, the data

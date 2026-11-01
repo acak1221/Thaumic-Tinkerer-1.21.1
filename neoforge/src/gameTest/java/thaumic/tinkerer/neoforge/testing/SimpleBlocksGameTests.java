@@ -106,6 +106,11 @@ public final class SimpleBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void theTravelSlabAndStairsQuickenWhoWalkOnThem(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theTravelSlabAndStairsQuickenWhoWalkOnThem(test);
     }

@@ -16,8 +16,9 @@ import thaumic.tinkerer.common.hooks.TinkererEvents;
  * section 14). NeoForge's patched {@code LivingEntity.actuallyHurt} and {@code Player.actuallyHurt} still call
  * {@code getDamageAfterArmorAbsorb(source, container.getNewDamage())} and record {@code newDamage - result} as the container's
  * {@code ARMOR} reduction, so the original runs untouched here (the wear included), the listeners see what it took off and may replace
- * it, and NeoForge takes the amount this returns. The source test ({@code bypasses_armor}) and the bit-for-bit pass-through are in
- * {@link TinkererEvents#damageAfterArmorAbsorb} and {@link TinkererEvents#postLivingArmorAbsorb}, the one rule for both loaders.
+ * it, and NeoForge takes the amount this returns (for every source: one that bypasses armour is posted with nothing absorbed). The
+ * test of the amount and the bit-for-bit pass-through are in {@link TinkererEvents#damageAfterArmorAbsorb} and
+ * {@link TinkererEvents#postLivingArmorAbsorb}, the one rule for both loaders.
  *
  * <p><b>Why not {@code LivingIncomingDamageEvent#addReductionModifier(ARMOR, ...)}.</b> Thaumcraft's own mixin wraps the same method on
  * NeoForge too (its common mixin config is loaded there): the runic shield and the worn wards come off the blow first, and the armour

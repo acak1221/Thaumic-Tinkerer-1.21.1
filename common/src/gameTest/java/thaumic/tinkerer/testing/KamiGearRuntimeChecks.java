@@ -1007,8 +1007,9 @@ public final class KamiGearRuntimeChecks {
 
     /**
      * The Gem Boots' fall arrives through {@code LIVING_FALL}: the landing of a wearer is worked out with a distance of 0 whatever the
-     * switches say (the original asked only for the boots on the feet), a bare player, plain Ichorcloth boots and Gem Boots on the
-     * head take the fall damage. A listener registered after the boots' sees the 0.
+     * switches say (the original asked only for the boots on the feet), a bare player and Gem Boots on the head take the fall damage,
+     * plain Ichorcloth boots take it less their armour share (12.75%: the armour step of Forge 1.7.10 asked the Ichorcloth for a fall too).
+     * A listener registered after the boots' sees the 0.
      *
      * <p>Every player that is hurt is hurt once: the Soul Hearts of the KamiWorld group keep the 1.7.10 invulnerability frames of
      * each server player by game tick, so a second hit in the same tick would be taken for a repeat and cancelled.</p>
@@ -1065,7 +1066,10 @@ public final class KamiGearRuntimeChecks {
                 plainBoots.setItemSlot(EquipmentSlot.FEET, TTRegistry.stack(LibItemNames.ICHOR_BOOTS));
                 plainBoots.setHealth(20F);
                 land(test, plainBoots, 10F);
-                near(test, plainBoots.getHealth(), 13F, "plain Ichorcloth boots are not the Gem Boots");
+                // a fall bypasses armour, but Forge 1.7.10's ApplyArmor asked the Ichorcloth (ISpecialArmor) for it all the same: the boots'
+                // 3 x 0.0425 = 12.75% of the 7
+                near(test, plainBoots.getHealth(), 20F - 7F * (1F - 0.1275F),
+                        "plain Ichorcloth boots are not the Gem Boots: the fall less the boots' armour share of 12.75%");
                 onHead.setItemSlot(EquipmentSlot.HEAD, boots.copy());
                 onHead.setHealth(20F);
                 land(test, onHead, 10F);
@@ -1080,14 +1084,15 @@ public final class KamiGearRuntimeChecks {
     }
 
     /**
-     * The full Ichorcloth set (plain and awakened pieces alike, whatever the awakened pieces' switches say) takes 85% of every blow
-     * that armour reduces, flat, through {@code LIVING_ARMOR_ABSORB}: 1.5 of a blow of 10 and 6 of a blow of 40 get through, where the
-     * 1.21.1 formula alone, on the same twenty armour points, would let 4 and 33.6 through. Damage that bypasses armour is not reduced. The
-     * pieces show the original's 3/8/6/3 armour points and no toughness, and do not wear.
+     * The full Ichorcloth set (plain and awakened pieces alike, whatever the awakened pieces' switches say) takes 85% of every blow a
+     * player takes, flat, through {@code LIVING_ARMOR_ABSORB}: 1.5 of a blow of 10 and 6 of a blow of 40 get through, where the
+     * 1.21.1 formula alone, on the same twenty armour points, would let 4 and 33.6 through. Damage that bypasses armour is reduced as
+     * well (starvation, magic, a fall, drowning, the void, the source of {@code /kill}), because Forge 1.7.10's {@code ApplyArmor} asked
+     * an {@code ISpecialArmor} piece for every source. The pieces show twenty armour points and no toughness, and do not wear.
      *
      * <p>One player per hit: the Soul Hearts keep the 1.7.10 invulnerability frames of each server player by game tick.</p>
      */
-    public static void ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone(GameTestHelper test) {
+    public static void ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes(GameTestHelper test) {
         floor(test);
         ServerLevel level = test.getLevel();
         List<ServerPlayer> players = new java.util.ArrayList<>();
@@ -1107,9 +1112,11 @@ public final class KamiGearRuntimeChecks {
         ServerPlayer magic = dressed.apply(false);
         ServerPlayer fall = dressed.apply(false);
         ServerPlayer drown = dressed.apply(false);
+        ServerPlayer voidHit = dressed.apply(false);
+        ServerPlayer killHit = dressed.apply(false);
         ServerPlayer gemOff = dressed.apply(true);
         ServerPlayer gemOn = dressed.apply(true);
-        near(test, blow10.getArmorValue(), 20D, "the pieces show the original's 3+8+6+3 armour points on the HUD");
+        near(test, blow10.getArmorValue(), 20D, "the pieces show the original's 3+6+8+3 armour points on the HUD");
         near(test, blow10.getAttributeValue(Attributes.ARMOR_TOUGHNESS), 0D, "and have no toughness (the original had none)");
         near(test, gemOn.getArmorValue(), 20D, "so do the awakened pieces");
         // the awakened pieces' own switches and the master switch are off for one player (getProperties looked at neither)
@@ -1128,10 +1135,15 @@ public final class KamiGearRuntimeChecks {
                 near(test, lost(blow40, cactus, 40F), 6D, "and 15% of a blow of 40");
                 near(test, lost(blow1, cactus, 1F), 0.15D, "and of a blow of 1");
 
-                near(test, lost(starve, level.damageSources().starve(), 10F), 10D, "starvation is not reduced");
-                near(test, lost(magic, level.damageSources().magic(), 10F), 10D, "magic is not reduced");
-                near(test, lost(fall, level.damageSources().fall(), 10F), 10D, "a fall is not reduced");
-                near(test, lost(drown, level.damageSources().drown(), 10F), 10D, "drowning is not reduced");
+                // the sources of bypasses_armor: Forge 1.7.10 asked the ISpecialArmor pieces for them too (ApplyArmor skipped only a
+                // plain ItemArmor for an unblockable source)
+                near(test, lost(starve, level.damageSources().starve(), 10F), 1.5D, "starvation is reduced by 85% too");
+                near(test, lost(magic, level.damageSources().magic(), 10F), 1.5D, "so is magic");
+                near(test, lost(fall, level.damageSources().fall(), 10F), 1.5D, "a fall");
+                near(test, lost(drown, level.damageSources().drown(), 10F), 1.5D, "drowning");
+                near(test, lost(voidHit, level.damageSources().fellOutOfWorld(), 4F), 0.6D, "and a hit of the void (4, as below the world)");
+                near(test, lost(killHit, level.damageSources().genericKill(), 100F), 15D,
+                        "and the source of /kill (whose Float.MAX_VALUE still kills: KamiGearLogicTest)");
 
                 near(test, lost(gemOff, cactus, 10F), 1.5D, "the awakened set takes 85% with two pieces and the master switch off");
                 near(test, lost(gemOn, cactus, 40F), 6D, "and with the switches on");
@@ -1148,11 +1160,12 @@ public final class KamiGearRuntimeChecks {
     }
 
     /**
-     * Partial sets take the share of their pieces (0.0425 per armour point); an Ichorcloth piece beside other armour adds to it (the
-     * other armour keeps the 1.21.1 formula), the pieces of other armour wear and the Ichorcloth does not; an Ichorcloth piece in a slot that is not
-     * its own, iron armour and a bare player are left as vanilla; the other armour keeps its toughness in the share it takes (diamond
-     * chestplate beside Ichorcloth leggings); a mob in the set has the same 85%; and another listener of the event sees the Ichorcloth
-     * amount and still adds to it.
+     * Partial sets take the share of their pieces (0.0425 per armour point, a player's chestplate 6 points and leggings 8, the index
+     * Forge 1.7.10 handed {@code getProperties}); an Ichorcloth piece beside other armour adds to it (the other armour keeps the 1.21.1
+     * formula), the pieces of other armour wear and the Ichorcloth does not; an Ichorcloth piece in a slot that is not its own, iron
+     * armour and a bare player are left as vanilla; the other armour keeps its toughness in the share it takes (diamond chestplate beside
+     * Ichorcloth leggings); a mob in the pieces has vanilla armour only, with the points of 1.7.10's vanilla path (a chestplate counts 8),
+     * and nothing against a source that bypasses armour; and another listener of the event sees the Ichorcloth amount and still adds to it.
      *
      * <p>One player per hit: the Soul Hearts keep the 1.7.10 invulnerability frames of each server player by game tick.</p>
      */
@@ -1204,12 +1217,18 @@ public final class KamiGearRuntimeChecks {
         zombie.setItemSlot(EquipmentSlot.CHEST, mob[1]);
         zombie.setItemSlot(EquipmentSlot.LEGS, mob[2]);
         zombie.setItemSlot(EquipmentSlot.FEET, mob[3]);
+        Zombie chestZombie = PlainMobs.spawn(test, EntityType.ZOMBIE, new Vec3(6.5, 1, 2.5));
+        chestZombie.setNoAi(true);
+        chestZombie.getAttribute(Attributes.MAX_HEALTH).setBaseValue(1000D);
+        chestZombie.setHealth(1000F);
+        chestZombie.setItemSlot(EquipmentSlot.CHEST, TTRegistry.stack(LibItemNames.ICHOR_CHEST));
 
         near(test, helmet.getArmorValue(), 3D, "the helmet shows its 3 points");
-        near(test, mixed.getArmorValue(), 17D, "the mixed set has 8 + 2 + 5 + 2 armour points on the HUD");
+        near(test, chestAndLegs.getArmorValue(), 14D, "a player's chestplate and leggings show 6 + 8 points (1.7.10 getArmorDisplay)");
+        near(test, mixed.getArmorValue(), 15D, "the mixed set has 2 + 6 + 5 + 2 armour points on the HUD");
         near(test, iron.getArmorValue(), 15D, "a full iron set has 15 points");
         near(test, wrongSlot.getArmorValue(), 0D, "a chestplate on the head gives no armour points");
-        near(test, toughMixed.getArmorValue(), 14D, "diamond chestplate and Ichorcloth leggings: 8 + 6 points");
+        near(test, toughMixed.getArmorValue(), 16D, "diamond chestplate and Ichorcloth leggings: 8 + 8 points");
         near(test, toughMixed.getAttributeValue(Attributes.ARMOR_TOUGHNESS), 2D, "and the toughness is the diamond's alone (the Ichorcloth has none)");
 
         // another listener of the event, registered after the Ichorcloth one: it sees the amount of the full set, and one of the
@@ -1224,7 +1243,7 @@ public final class KamiGearRuntimeChecks {
             try {
                 DamageSource cactus = level.damageSources().cactus();
                 near(test, lost(helmet, cactus, 10F), 10D - 1.275D, "a helmet alone takes 3 x 0.0425 = 12.75%");
-                near(test, lost(chestAndLegs, cactus, 10F), 10D - 5.95D, "chestplate and leggings take (8 + 6) x 0.0425 = 59.5%");
+                near(test, lost(chestAndLegs, cactus, 10F), 10D - 5.95D, "chestplate and leggings take (6 + 8) x 0.0425 = 59.5%");
                 near(test, lost(boots, cactus, 10F), 10D - 1.275D, "boots alone take 12.75%");
 
                 near(test, lost(full, cactus, 10F), 1.5D, "the full set");
@@ -1232,15 +1251,16 @@ public final class KamiGearRuntimeChecks {
                         "the listener registered after the Ichorcloth one saw 8.5 absorbed: " + spyAbsorbed.get(full));
                 near(test, lost(fullPlusOne, cactus, 10F), 0.5D, "and a point more of absorption from it is on top of the Ichorcloth's");
 
-                // a mixed set: an Ichorcloth chestplate (8 x 0.0425 = 3.4 of 10) and iron armour of 9 points (16% = 1.6 of 10 in the 1.21.1 formula)
-                near(test, lost(mixed, cactus, 10F), 10D - 3.4D - 1.6D, "the Ichorcloth chestplate adds its 34% to what the iron takes");
+                // a mixed set: an Ichorcloth chestplate (a player's 6 x 0.0425 = 2.55 of 10) and iron armour of 9 points (16% = 1.6 of 10 in
+                // the 1.21.1 formula)
+                near(test, lost(mixed, cactus, 10F), 10D - 2.55D - 1.6D, "the Ichorcloth chestplate adds its 25.5% to what the iron takes");
                 test.assertTrue(ironHelm.getDamageValue() > 0 && ironLegs.getDamageValue() > 0 && ironBoots.getDamageValue() > 0,
                         "the iron wore (the game's wear ran for the blow)");
                 test.assertTrue(ichorChest.getDamageValue() == 0, "the Ichorcloth chestplate did not");
 
                 // other armour with toughness: 8 points and toughness 2 take 1.6 of 10 in the 1.21.1 formula (1.2 with no toughness), and
-                // the leggings' 6 x 0.0425 = 25.5% (2.55) come on top
-                near(test, lost(toughMixed, cactus, 10F), 10D - 2.55D - 1.6D, "the diamond chestplate keeps its toughness in the share the other armour takes");
+                // the leggings' 8 x 0.0425 = 34% (3.4) come on top
+                near(test, lost(toughMixed, cactus, 10F), 10D - 3.4D - 1.6D, "the diamond chestplate keeps its toughness in the share the other armour takes");
                 test.assertTrue(diamondChest.getDamageValue() > 0, "and wears");
 
                 // iron alone: vanilla (15 points: 40% of 10)
@@ -1252,13 +1272,19 @@ public final class KamiGearRuntimeChecks {
                 near(test, lost(wrongSlot, cactus, 10F), 10D, "a chestplate on the head does not absorb");
                 near(test, lost(bare, cactus, 10F), 10D, "a bare player takes the whole blow");
 
-                // a mob in the full set: the same 85%, and the zombie's own 2 armour points (its base attribute) keep their vanilla share on top
-                double zombieOwn = 10D - CombatRules.getDamageAfterAbsorb(zombie, 10F, cactus, 2F, 0F);
+                // a mob in the pieces: Forge 1.7.10 asked ISpecialArmor from the player's damage path only; a mob had vanilla's
+                // applyArmorCalculations, with the damageReduceAmount of the pieces (by armour type: a chestplate 8, leggings 6)
                 near(test, zombie.getArmorValue(), 22D, "the zombie has its own 2 armour points and the pieces' 20");
-                near(test, lost(zombie, cactus, 10F), 10D - 8.5D - zombieOwn, "a zombie in the full set takes 85% too, and what its own armour takes");
+                near(test, lost(zombie, cactus, 10F), CombatRules.getDamageAfterAbsorb(zombie, 10F, cactus, 22F, 0F),
+                        "a zombie in the full set has vanilla armour of 22 points, not the 85%");
+                near(test, lost(zombie, level.damageSources().magic(), 10F), 10D, "and nothing against a source that bypasses armour");
+                near(test, chestZombie.getArmorValue(), 8D, "a zombie in the chestplate alone has 2 + 6 points of attributes");
+                near(test, lost(chestZombie, cactus, 10F), CombatRules.getDamageAfterAbsorb(chestZombie, 10F, cactus, 10F, 0F),
+                        "and is armoured as 2 + 8 points, the chestplate's damageReduceAmount of 1.7.10");
             } finally {
                 TinkererEvents.LIVING_ARMOR_ABSORB.unregister(spy);
                 zombie.discard();
+                chestZombie.discard();
                 players.forEach(ServerPlayer::discard);
             }
             test.succeed();
@@ -1266,11 +1292,12 @@ public final class KamiGearRuntimeChecks {
     }
 
     /**
-     * The pieces of both sets give the original's armour points to the entity's attributes (3/8/6/3, what 1.7.10's
-     * {@code getArmorDisplay} showed) and no toughness, have no durability (so the game's wear does nothing to them), and are still enchantable.
+     * The pieces of both sets give the original's armour points to the entity's attributes (helmet 3, chestplate 6, leggings 8, boots
+     * 3: what 1.7.10's {@code getArmorDisplay} showed a player, which read the material's array at the index in {@code armorInventory})
+     * and no toughness, have no durability (so the game's wear does nothing to them), and are still enchantable.
      */
     public static void ichorclothPiecesShowTheOriginalArmourAndNeverWear(GameTestHelper test) {
-        int[] defense = { 3, 8, 6, 3 };
+        int[] defense = { 3, 6, 8, 3 };
         for (boolean awakened : new boolean[] { false, true }) {
             ItemStack[] set = ichorSet(awakened);
             for (int i = 0; i < 4; i++) {

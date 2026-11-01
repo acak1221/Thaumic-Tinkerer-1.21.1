@@ -182,6 +182,11 @@ public final class MachinesGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil(GameTestHelper test) {
+        MachinesRuntimeChecks.theBladeTakesTheSwordEnchantmentsAtTheTableAndTheAnvil(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void aBladeHurtsWhoStrikesWithIt(GameTestHelper test) {
         MachinesRuntimeChecks.aBladeHurtsWhoStrikesWithIt(test);
     }

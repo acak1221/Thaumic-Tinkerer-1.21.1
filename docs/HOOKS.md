@@ -14,9 +14,14 @@ the events is not exercised there.
 
 How the words are used: *implemented* means the code exists; a *check* is a JUnit test or a GameTest in the source that was written for the thing it
 is named for, and a check counts as *run* only where a document or a results file says so (section 12, "What ran", says what that is for the hooks); *read*
-means taken from the 1.21.1 or NeoForge bytecode, or from the pinned 1.7.10 source of Thaumic Tinkerer, by reading, not run; *recalled* means from memory
-of Forge or Minecraft 1.7.10, whose source and jars are not on this machine; *unverified* is everything else, in particular every effect on a client (no
-check runs one, section 12).
+means taken from the 1.21.1 or NeoForge bytecode, or from the pinned 1.7.10 source of Thaumic Tinkerer, by reading, not run; since 2026-11-01 also from the
+sources of Forge and Minecraft 1.7.10 named below (*read in 1.7.10*); *recalled* means from memory of Forge or Minecraft 1.7.10 (nothing in sections 2 and 3 is
+recalled any more); *unverified* is everything else, in particular every effect on a client (no check runs one, section 12).
+
+The 1.7.10 sources read: Forge's branch `1.7.10` (<https://github.com/MinecraftForge/MinecraftForge/tree/1.7.10>, commit `9274e4fe`), its patches of the
+Minecraft classes (`patches/minecraft/net/minecraft/...`), FML's event bus (<https://github.com/MinecraftForge/FML/tree/1.7.10>,
+`src/main/java/cpw/mods/fml/common/eventhandler/`), and an MCP decompile of Minecraft 1.7.10 without Forge, <https://github.com/Kittycat7J/MCP-1.7.10-Docker/tree/bb5cf03e3571c9e06f7801425f38598a45e1ee49/src/minecraft/net/minecraft> ("MCP" below; line numbers are
+those of the files there).
 
 | What | Where |
 |---|---|
@@ -68,7 +73,9 @@ section is appended as section 14 (it belongs with sections 3 to 8). Section 15 
   KamiGear and KamiWorld register nothing while `ConfigHandler.enableKami` is off. What the groups rely on today; each line is a choice of
   where a group registers and of the order of `ContentGroups.ALL`, which the event layer does not guarantee. The 1.7.10 column was **read** in
   the pinned source (`TTCommonProxy.init`, the constructors of `ItemBloodSword` and of `ItemIchorclothArmorAdv`, the `@SubscribeEvent` priorities
-  of `ModEnchantmentHandler`); the Forge rule that equal priorities run in registration order is recalled, not read.
+  of `ModEnchantmentHandler`); the Forge rule that equal priorities run in registration order is **read in 1.7.10**: FML's `ListenerList.ListenerListInst`
+  keeps one `ArrayList` per priority and `register` appends to it (lines 216-220), `buildCache` lists the priorities from `HIGHEST` to `LOWEST` and each
+  list in its order (lines 195-214), and `EventBus.post` calls them in that order (`EventBus.java` lines 130-147).
 
   | Event | Order of the listeners here | 1.7.10 | What pins it |
   |---|---|---|---|
@@ -94,7 +101,8 @@ throws away a hit that is not stronger than the last one (`amount <= lastHurt`) 
 `bypasses_cooldown` (empty in vanilla 1.21.1). The Fabric poster makes the same test first (`TinkererEvents.framesRefuse(victim, source,
 amount, lastHurt)`, the one rule for both loaders) and posts only a hit that the game goes on to deal. A listener with a side effect
 (Soul Hearts spending points) is therefore not charged for the lava, fire or cactus hit that vanilla would have refused: the 1.7.10 event
-came after that test as well (recalled, not read). The test uses the amount as the event sees it, so the later steps of `hurt` can still decide differently
+came after that test as well (read in 1.7.10: MCP `entity/EntityLivingBase.java` lines 599-606, the refusal `amount <= lastDamage` returns before
+`damageEntity`, which posts `LivingHurtEvent`). The test uses the amount as the event sees it, so the later steps of `hurt` can still decide differently
 in two corners: a hit that a shield blocks or a helmet reduces (`* 0.75`, falling blocks) is posted with its full amount and may be
 refused afterwards; and a freezing hit on a strider, blaze or magma cube (the game multiplies it by five before it compares) is always
 posted. The GameTest `livingDamageIsNotPostedForHitsTheInvulnerabilityFramesRefuse` pins this (the bypass branch only if a data pack
@@ -110,7 +118,7 @@ damage source. The listeners after a cancel are not called.
 and vanilla lets one in about ten through because the first hit's frames refuse the rest; after a cancelled hit there are no frames, and the
 next tick's hit is posted again. A listener that cancels with a side effect (Soul Hearts taking a covered hit off the pool and returning
 zero) is called for every repeat and would drain the pool about ten times faster than 1.7.10, where `hurtResistantTime` was set before the
-event (recalled, not read). Returning the uncovered rest and letting the game's frames count does not work alone: a fully covered hit has no rest (it must be
+event (read in 1.7.10: MCP `entity/EntityLivingBase.java` lines 607-611, `hurtResistantTime = maxHurtResistantTime` and then `damageEntity`). Returning the uncovered rest and letting the game's frames count does not work alone: a fully covered hit has no rest (it must be
 cancelled), and even a partly covered one comes back on the next tick, because the game's frames compare it with the *rest*. **The Soul Hearts
 therefore keep the frames of the original themselves**, per player (`SoulHeartHandler.Frames`, in memory: the game tick of the hit that began
 them, the strongest raw amount so far, and the amount last handed to the game), charge the pool by the rule of the original inside and outside
@@ -140,8 +148,11 @@ counter step, a heal), and vanilla then refuses it because `f·a2` is not above 
 factor that is not constant (Final Strike rolls a new one per hit, Dispersed Strikes moves with its counter) there is no such band formula. A check of both bands on
 the 1.21.1 side exists, the GameTest `theFramesCompareTheBoostedAmountsNotTheRawOnes` (Pounce IV; Dispersed Strikes I at a counter of 6); the results file of
 section 12 lists it without a failure.
-**Unverified**: the 1.7.10 side of both bands. The Minecraft 1.7.10 source is not on this machine; it is taken from the first bullet of the
-differences below and recalled from `EntityLivingBase.attackEntityFrom` (`deviations/Enchantments.md` sections 2 and 12).
+**The 1.7.10 side of both bands is read** (2026-11-01): MCP `entity/EntityLivingBase.java` lines 599-612. While `hurtResistantTime > maxHurtResistantTime / 2`
+a blow with `amount <= lastDamage` returns `false` before anything else; a stronger one calls `damageEntity(source, amount - lastDamage)` and sets
+`lastDamage = amount`, the **raw** amount; Forge's patch posts `LivingHurtEvent` at the head of `damageEntity` with that difference
+(`EntityLivingBase.java.patch` lines 145-152; for a player `EntityPlayer.java.patch` lines 309-322). So 1.7.10 dealt `f·(a2 - a1)` for `a1 < a2 <= f·a1`
+and refused `f·a1 < a2 <= a1` before its event, as said above (`deviations/Enchantments.md` sections 2 and 12).
 
 *Other listeners and the Soul Hearts' frames.* The chain runs in the order of registration across the groups: the Enchantments' listener is
 earlier than the Soul Hearts', as in 1.7.10 (section 2). Because the poster filters only the *game's* refusals, a hit that the **Soul Hearts'
@@ -149,23 +160,28 @@ frames** refuse (a repeat inside ten ticks of a covered hit, which began no game
 posted, so the Enchantments' listener has already run for it (Vampirism heals the attacker, the strike counter advances) when the pool refuses
 the hit; in 1.7.10 that hit was refused before any event. A hook that asks the pool's frames before any listener runs would close it (section 15).
 
-*Differences from Forge's `LivingHurtEvent` of 1.7.10* (**recalled, not read**: neither the Minecraft 1.7.10 source nor a Forge 1.7.10 jar is on this machine,
-so what the bullets say about 1.7.10 rests on memory of `EntityLivingBase.attackEntityFrom` and `damageEntity` and on the Thaumic Tinkerer source that listens to
-the event, as `deviations/Enchantments.md` section 12 says; the 1.21.1 side of each bullet was read in the bytecode)
+*Differences from Forge's `LivingHurtEvent` of 1.7.10* (**read in 1.7.10**, 2026-11-01: MCP `entity/EntityLivingBase.java` `attackEntityFrom`, lines 580-668,
+and `damageEntity`, lines 861-877; MCP `entity/player/EntityPlayer.java` `attackEntityFrom`, lines 687-728, and `damageEntity`, lines 759-777; Forge's
+`EntityLivingBase.java.patch` lines 53-60 (`onLivingAttack`) and 145-152 (`onLivingHurt`), `EntityPlayer.java.patch` lines 303-322; `ForgeHooks.onLivingHurt`,
+`ForgeHooks.java` lines 295-299. The 1.21.1 side of each bullet was read in the bytecode. The first version of these bullets was written from memory and had
+the place of the sword block wrong; corrected here)
 
-* 1.7.10 posted it in `damageEntity`, after the sword block of a player victim (there was no shield item, but a player who held a sword up took
-  `(1 + amount) / 2` before the event) and after the invulnerability frames had subtracted the last
-  hit (`damageEntity(source, amount - lastDamage)`); here the event comes first and the frames compare the **listener's** result with
-  the last hit. The test pins it down: a listener that halves turns 10 and then 8 into 5 and 4, and the second hit is refused, where
-  vanilla would let 3 of it through. This is NeoForge's order as well (`LivingIncomingDamageEvent`).
-* A cancel in 1.7.10 only skipped `damageEntity`: knockback and the hurt animation still happened. Here a cancel is a refusal of the
-  whole hit.
-* 1.7.10 passed the amount after that sword block; 1.21.1 has no sword block, and a hit that a shield will block is posted with its full amount.
+* 1.7.10 posted it at the head of `damageEntity`, **after** the invulnerability frames had subtracted the last hit (`damageEntity(source, amount -
+  lastDamage)`) and the helmet's share of a falling anvil or block (`amount *= 0.75F`, in `attackEntityFrom` before the frames), and **before** a player's
+  sword block (`(1 + amount) / 2`, which the patch leaves after the event) and the armour; here the event comes first and the frames compare the
+  **listener's** result with the last hit. The test pins it down: a listener that halves turns 10 and then 8 into 5 and 4, and the second hit is refused,
+  where vanilla would let 3 of it through. This is NeoForge's order as well (`LivingIncomingDamageEvent`).
+* A cancel in 1.7.10 (`ForgeHooks.onLivingHurt` returns 0 for a cancelled event, and `damageEntity` returns at `amount <= 0`) only skipped the rest of
+  `damageEntity`: `attackEntityFrom` had already started the frames, and went on to the hurt animation, the knockback and the hurt sound. Here a cancel is a
+  refusal of the whole hit.
+* The amount: 1.7.10's event saw the amount before the sword block and the armour, and after the helmet's share of a falling block; here it sees the whole
+  amount before the shield and the helmet (1.21.1 has no sword block, a hit that a shield will block is posted with its full amount, and the helmet's
+  `* 0.75` comes after the event).
 * 1.7.10 compared the frames with the *raw* amount and posted the event with the difference (`amount - lastDamage`); here the event gets the whole
   amount of a hit that goes on to be dealt, and the frames compare the *listener's result* with the next hit.
 * The armour of KamiGear (`ISpecialArmor`, `docs/api-requests/KamiGear.md` section 1) is **not** served by this event: it sat
-  *after* the event in 1.7.10 (inside the armour calculation). It has an event of its own, `LIVING_ARMOR_ABSORB`, posted from
-  `LivingEntity.getDamageAfterArmorAbsorb` (section 14).
+  *after* the event in 1.7.10 (`ApplyArmor` comes after `onLivingHurt` in the patched `EntityPlayer.damageEntity`). It has an event of its own,
+  `LIVING_ARMOR_ABSORB`, posted from `LivingEntity.getDamageAfterArmorAbsorb` (section 14).
 
 *NeoForge* (written; run on a GameTest server, section 9): `NeoForgeEventPosters.onLivingIncomingDamage`, a handler of `LivingIncomingDamageEvent` at
 `EventPriority.NORMAL` that does not receive cancelled events. It skips an amount that is not positive, returns without posting when
@@ -412,7 +428,7 @@ Mojang names, and the build makes none). All the rules stay in `TinkererEvents`;
 | Event / registry | NeoForge poster (NeoForge event and priority, or mixin) | Where it differs from the Fabric poster | Details |
 |---|---|---|---|
 | `LIVING_DAMAGE` | `onLivingIncomingDamage`: `LivingIncomingDamageEvent`, `NORMAL`. `framesRefuse(entity, source, amount, lastHurt)` first (`lastHurt` through `LastHurtAccess`, added by `LivingEntityLastHurtMixin`), then `postLivingDamage`, `setAmount(result)` or `setCanceled(true)` for zero | none in what is posted. Architectury's `LIVING_HURT` handler of the same event runs at `HIGH`, before it, as its Fabric injection does. NeoForge left the container of a cancelled hit on the entity's stack (its own behaviour); `LivingEntityDamageContainerMixin` takes it away | section 3 |
-| `LIVING_ARMOR_ABSORB` | **a mixin, not a reduction modifier**: `LivingEntityArmorMixin` (`@WrapMethod` on `getDamageAfterArmorAbsorb`, priority 900, the same code as the Fabric mixin) → `TinkererEvents.damageAfterArmorAbsorb`, which keeps the `bypasses_armor` test | what the game makes of the returned amount: NeoForge subtracts `newDamage - result` as the ARMOR reduction of its container, so the damage that goes on is `d - (d - result)`, and an infinite blow gives a NaN damage whatever the step returns (both NeoForge's own arithmetic) | section 14 |
+| `LIVING_ARMOR_ABSORB` | **a mixin, not a reduction modifier**: `LivingEntityArmorMixin` (`@WrapMethod` on `getDamageAfterArmorAbsorb`, priority 900, the same code as the Fabric mixin) → `TinkererEvents.damageAfterArmorAbsorb` (every source is posted, one of `bypasses_armor` with 0 absorbed) | what the game makes of the returned amount: NeoForge subtracts `newDamage - result` as the ARMOR reduction of its container, so the damage that goes on is `d - (d - result)`, and an infinite blow gives a NaN damage whatever the step returns (both NeoForge's own arithmetic) | section 14 |
 | `BREAK_SPEED` | `onBreakSpeed`: `PlayerEvent.BreakSpeed`, **`LOW`**, no filter by side, tick or kind of player; `setNewSpeed(postBreakSpeed(...))`, so "cannot dig" is a speed of 0 and **not a cancel** (a cancel is a speed of -1 there) | an event without a position (`Player.getDestroySpeed(state)`, which nothing in the game calls) is not posted, as on Fabric. A speed of zero is a progress of exactly zero through `BlockBehaviourZeroSpeedMixin` (the Fabric mixin does the same) | section 4 |
 | `LIVING_JUMP` | `onLivingJump`: `LivingEvent.LivingJumpEvent`, `NORMAL` | **also posted** for the hop of slimes and magma cubes and the ridden jump of horses and camels, which NeoForge posts its event for and Fabric does not | section 5 |
 | `LIVING_FALL` | `onLivingFall`: `LivingFallEvent`, `NORMAL`; `setDistance`/`setDamageMultiplier`, or `setCanceled(true)` | none found | section 6 |
@@ -487,8 +503,9 @@ last bullet of each group says what rests on the NeoForge posters there.
   * `LIVING_JUMP` replaced the client handler that guessed a jump from the tick of the local player (`EnchantmentClientHandler`) for Ascent Boost.
     Pinned by `ascentBoostMultipliesTheJumpOfAPlayer` and, against the Gem Boots, `gemBootsAndAscentBoostLeggingsComposeTheirJumps` (KamiGear).
   * `LIVING_FALL` replaced the tracking of the airborne ticks of every server player (`onPlayerPost`), Shockwave's guesses about water and teleports,
-    and Slow Fall's per-tick reduction of the distance (the landing rule `EnchantmentFormulas.slowFallLanding` stands in: a decision the owner may
-    want to change, `DEVIATIONS.md` section 2). Pinned by `slowFallMakesALandingAFallOfTwoPointNineBlocks` and `shockwaveHurtsTheCreaturesAroundALanding`.
+    and Slow Fall's per-tick reduction of the distance (the landing rule `EnchantmentFormulas.slowFallLanding` stands in: it replays the original's tick
+    rule along the fall and gives the distance that rule had left, `DEVIATIONS.md` section 6, point 6). Pinned by
+    `slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall`, `shockwaveHurtsTheCreaturesAroundALanding` and the JUnit tests of `EnchantmentFormulasTest`.
   * `USE_ITEM_TICK` replaced the arrow-speed workaround through `EntityEvent.ADD` for Quick Draw. Pinned by `quickDrawTakesTicksOffTheDrawClockOfABow`.
   * Kept on Architectury, not an event of this layer: `BlockEvent.BREAK` (Tunnel's remembered direction, the extra wear) and `TickEvent.PLAYER_PRE`
     (Slow Fall's motion and cloud on the local client). The only other users of Architectury's `EntityEvent.LIVING_HURT` in the add-on are the Cursed Spirit's
@@ -511,12 +528,12 @@ last bullet of each group says what rests on the NeoForge posters there.
     and the zeroing of the fall distance of every wearer on every tick. Pinned by `gemBootsRaiseTheJumpOnlyWhileWornAndSwitchedOn`,
     `gemBootsLandWithoutFallDamageWhateverTheSwitchesSay` and `gemBootsAndAscentBoostLeggingsComposeTheirJumps` (the order of section 2).
   * `LIVING_ARMOR_ABSORB` (section 14) replaced the stand-in of a toughness of 5 per piece that the first port gave the Ichorcloth for want of
-    `ISpecialArmor`: `IchorAbsorption`. Pinned by `ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone`,
+    `ISpecialArmor`: `IchorAbsorption`. Pinned by `ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes`,
     `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone`, `ichorclothPiecesShowTheOriginalArmourAndNeverWear`, JUnit
     `KamiGearLogicTest`, and the event's own checks in `HooksRuntimeChecks` (section 12).
   * Rests on the NeoForge posters (the group's 36 GameTests passed on NeoForge, section 9): the higher jump of the Gem Boots and the spared fall of
     switched-off boots (switched-on boots also zero the fall distance every tick, `ItemGemBoots.tick`); the Ichorcloth's absorption (the NeoForge
-    `LivingEntityArmorMixin`; without it, plain 3/8/6/3 armour).
+    `LivingEntityArmorMixin`; without it, plain 3/6/8/3 armour).
 * **Machines** (`deviations/Machines.md` sections 7, 8 and 12; `Machines.register()` → `ItemBloodSword.registerEvents()`, `MachinesClient.register()`).
   * `LIVING_DROPS` (`ItemBloodSword.onLivingDrops`, the Cursed Spirit's Blade) replaced the note-and-refuse workaround (a note made on `LIVING_DEATH`, a
     filter on `EntityEvent.ADD` and a spawn at the end of the level tick). Pinned by `anActivatedBladeReapsTheSoulAspectsOfTheMobItKills`,
@@ -632,7 +649,7 @@ GameTest does not run the callbacks it still has pending):
 | `livingJumpIsPostedAfterTheJumpMotionIsApplied` | a pig's `jumpFromGround` (listener sees 0.42 and doubles it) and a player's jump through `setJumping(true)` and `doTick` (the `aiStep` path): the listener sees 0.42, the player rises 0.84 in that tick and keeps (0.84 - 0.08) * 0.98 of vertical motion, not the 0.3332 of a plain jump |
 | `livingFallIsPostedOnLandingAndCanHalveOrCancel` | four pigs really fall 10.5 blocks (the harness's barrier ceiling at relative y = 9 is opened for the columns): the listener sees the distance vanilla counts (about 9.7: the movement of the landing tick is not in it), the untouched pig takes the damage of that distance, the halved one the damage of half of it, the cancelled one nothing (no frames), the one whose damage multiplier the listener sets to 0.5 the damage of `ceil((distance - safe) * 0.5)` (the multiplier seen is the stone's 1); on the server; a player's `causeFallDamage` cancelled |
 | `useItemTickExtendsABowDraw` | two mock players draw a bow for 12 ticks: the draw clock reads 3× with the listener, the listener always gets the bow that is in use (`stack == getUseItem()`), and the released arrow flies at 3.0 against under 2.0 |
-| `livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff` | a pig in 20 armour points and a player: the listener sees the damage after `LIVING_DAMAGE` and vanilla's amount, can leave it alone, halve the blow, push past the blow or below nothing, answer NaN; chains; starvation and magic are not posted and not reduced; a bystander is left as vanilla; a pig in a Fortress chestplate is posted after Thaumcraft's ward pass (what is left after it) |
+| `livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff` | a pig in 20 armour points and a player: the listener sees the damage after `LIVING_DAMAGE` and vanilla's amount, can leave it alone, halve the blow, push past the blow or below nothing, answer NaN; chains; starvation and magic are posted with nothing absorbed, stay whole when the listener leaves them alone and lose half to one that takes half; a bystander is left as vanilla; a pig in a Fortress chestplate is posted after Thaumcraft's ward pass (what is left after it) |
 | `livingArmorAbsorbHandsBackTheGamesOwnFloatAndSurvivesAnInfiniteBlow` | a real `hurt` of a real pig: the health after a blow whose round trip differs from vanilla's float in the last place is vanilla's exactly, with and without a listener that returns what it is given; an infinite blow kills, leaves no NaN health and is not posted. On NeoForge (`Platform.isNeoForge()`) the expected health is NeoForge's own round trip, the "not the round trip" assertion is dropped, and the infinite blow is only checked for not being posted (section 14) |
 | `livingDropsAreEditedBeforeTheyEnterTheWorld` | a pig killed by the fake player with Looting III: sees pork, level 3, recently hit, the fake player as the attacker, nothing in the world yet; add a diamond / remove the pork / clear / cancel; experience orbs unaffected; a pig killed by plain damage: looting 0, not recently hit, no attacker; a pig that has a bystander spawn an emerald during its death: the list holds its own gold and pork and not the emerald, which is in the world at once; a fox's mouth item (spawned before `super`) is in the list, with a control that it drops with nobody listening; the listener count is back to what it was before; plain again afterwards |
 | `livingDropsCoverAPlayersInventoryButNotADropByHand` | `ServerPlayer.die` offers the inventory and a cleared list drops nothing; a drop by hand is immediate |
@@ -675,7 +692,7 @@ written because no group needs them yet. (The fox's mouth item, which a first re
 | 6 | Hits the invulnerability frames certainly refuse are not posted; a covered hit that a listener cancels starts no frames | see section 3 | `LIVING_DAMAGE` |
 | 7 | Shield-blocked and helmet-reduced hits are posted with the full amount | the game's later steps may still refuse them | `LIVING_DAMAGE` |
 | 8 | Client side of every "both sides" event is not run by a test | the dig prediction, the jump, the fall and the bow of the local player rely on the vanilla code being shared | all |
-| 9 | A source of the tag `bypasses_armor` (starvation, drowning, magic, falling, the void...) never gets a share from the armour step | `LIVING_ARMOR_ABSORB` is not posted for it, so the Ichorcloth does not reduce it; whether Forge 1.7.10 reduced such a hit by 85% as well is **unverified** (`deviations/KamiGear.md` section 3) | `LIVING_ARMOR_ABSORB` |
+| 9 | A source of the tag `bypasses_armor` (starvation, drowning, magic, falling, the void...) gets no share from the game's own armour step | `LIVING_ARMOR_ABSORB` is posted for it with nothing absorbed (since 2026-11-01, as Forge 1.7.10's `ApplyArmor` asked an `ISpecialArmor` piece for every source, section 14); a listener that means only the damage armour reduces tests the tag itself | `LIVING_ARMOR_ABSORB` |
 | 10 | The wear of the armour pieces (`hurtArmor`) has happened before the event is posted | a listener cannot change or undo it; a piece without durability does not wear | `LIVING_ARMOR_ABSORB` |
 
 ## 14. `LIVING_ARMOR_ABSORB`
@@ -692,16 +709,20 @@ float onLivingArmorAbsorb(LivingEntity victim, DamageSource source, float damage
 **after** vanilla has worn the armour pieces (`hurtArmor`) and worked out what its formula takes off (`damage - CombatRules.getDamageAfterAbsorb(...)`), and
 **before** the magic step (Resistance, the Protection enchantments) and Absorption. `damage` is what comes to the armour step: the hit after
 `LIVING_DAMAGE`, the shield and the invulnerability frames; `absorbed` is vanilla's amount, or what the listeners before returned. It is the position at which
-Forge 1.7.10 asked an `ISpecialArmor` piece for its `ArmorProperties` (from the documented behaviour of `ArmorProperties.ApplyArmor`; **unverified**: no Forge
-1.7.10 source or jar is on this machine), and the listener has the same power: it **replaces the amount the armour absorbs**. The damage that goes on is
+Forge 1.7.10 asked an `ISpecialArmor` piece for its `ArmorProperties` (read in Forge's source, branch `1.7.10`: `ISpecialArmor.ArmorProperties.ApplyArmor`, called
+by the patch of `EntityPlayer.damageEntity` in place of `applyArmorCalculations`, after `LivingHurtEvent` and the sword block; `deviations/KamiGear.md` section 3 has
+the lines), and the listener has the same power: it **replaces the amount the armour absorbs**. The damage that goes on is
 `damage - result`. Posted for every living entity, player or mob, so a listener answers only for the entities it means (the pieces its item classes
 wear); it has no world effect and needs no side test, because the armour step runs on the server only.
 
 *A listener may* return another amount (`absorbed` to leave it alone). The rules are in `TinkererEvents.postLivingArmorAbsorb`, the one place both
 loaders share:
 
-* **Not posted** for a source of the tag `bypasses_armor` (the game does not reduce such a hit by armour) nor for a damage that is not positive and finite.
-  The same for a hit that never reaches the armour step (cancelled by `LIVING_DAMAGE`, refused by the invulnerability frames, an invulnerable entity).
+* **Posted for every source**, the tag `bypasses_armor` included: the game's own step takes nothing of such a hit (`absorbed` is 0), and a listener may take a
+  share all the same, because Forge 1.7.10's `ApplyArmor` skipped a plain `ItemArmor` for an unblockable source (`!source.isUnblockable()`) but asked every
+  `ISpecialArmor` piece whatever the source (until 2026-11-01 the poster did not post such a source; that was open point 2 of `DEVIATIONS.md` section 6). **Not
+  posted** for a damage that is not positive and finite, nor for a hit that never reaches the armour step (cancelled by `LIVING_DAMAGE`, refused by the
+  invulnerability frames, an invulnerable entity).
 * The result is held between `0` and `damage` (a listener cannot make the armour heal, or take more than the blow); a NaN is ignored (the value stays what
   it was).
 * Listeners run in the order they were registered and each sees the last one's result in `absorbed`: a listener that *replaces* the value (Ichorcloth)
@@ -710,9 +731,8 @@ loaders share:
 
 *Differences from `ISpecialArmor`* (what this event is not): there is no per-piece `getProperties` / `damageArmor` call, no priority levels of its own (the
 one Thaumcraft pass of priority 1, the wards, runs before the event, see below), no `AbsorbMax`, and no hook on the wear of other armour. The share of the
-armour that a listener leaves alone is the 1.21.1 formula's, not 1.7.10's 4% a point. A hit that bypasses armour is not posted; whether Forge applied
-`ISpecialArmor` to such hits could not be checked, and the one place to change it is the `BYPASSES_ARMOR` test in `postLivingArmorAbsorb`
-(`api-requests/KamiGear.md` section 1, `deviations/KamiGear.md` section 3).
+armour that a listener leaves alone is the 1.21.1 formula's, not 1.7.10's 4% a point. Forge consulted `ISpecialArmor` from the player's damage path only;
+this event is posted for every living entity, and the listener decides (the Ichorcloth's answers for a player only, `deviations/KamiGear.md` section 3).
 
 *Order against Thaumcraft's ward pass*: Thaumcraft's `LivingEntityMagicWardMixin` wraps the same method for the priority-1 pieces of the original's
 `ISpecialArmor` (the void robes and the Fortress armour: their share comes off first, then the ordinary armour sees what is left). `LivingEntityArmorMixin`
@@ -738,8 +758,7 @@ formula. A reduction function runs after the whole wrapped method: it would get 
 that already holds the ward's and the shield's share, so a listener that replaces the amount (the Ichorcloth) would throw that share away: the order that the
 priority 900 exists to keep (above). The mixin of priority 900 is the inner wrapper there as well; the Fortress chestplate case of
 `livingArmorAbsorbIsPostedFromTheArmourStepAndReplacesWhatArmourTakesOff` (6.5 of an explosion of 10) passed on NeoForge. That the modifier would fail it was read,
-not run. The `bypasses_armor` test stays in `postLivingArmorAbsorb` (for such a source `getDamageAfterArmorAbsorb` returns the damage untouched, the absorbed
-amount is 0 and nothing is posted).
+not run. For a source of `bypasses_armor` `getDamageAfterArmorAbsorb` returns the damage untouched and the event is posted with 0 absorbed, as on Fabric.
 
 *What NeoForge does with the returned amount* (read, and seen in the GameTest): the damage that goes on is NeoForge's `newDamage - (newDamage - result)`, not
 `result` itself, so the bit-for-bit pass-through of `damageAfterArmorAbsorb` cannot show in the health there: for the blow of
@@ -751,20 +770,21 @@ checks the infinite blow on NeoForge only for not being posted; on Fabric it is 
 would make the blow kill; it is not written (not this layer's, and no group needs it). NeoForge also has `ArmorHurtEvent` (the wear of the pieces) and
 `LivingShieldBlockEvent`; neither changes the amount, so neither is used.
 
-*Used by*: KamiGear, `IchorAbsorption.onLivingArmorAbsorb`, registered by `KamiArmorHandler.register()`: every Ichorcloth piece takes `0.0425 × its armour points`
-of a blow, flat, plus the formula's share for the armour that is not Ichorcloth (`deviations/KamiGear.md` sections 3 and 13). **Open point, unverified**: the
-slot index that 1.7.10 passed to `getProperties` and `getArmorDisplay` (chestplate and leggings may have been swapped; `deviations/KamiGear.md` section 3).
+*Used by*: KamiGear, `IchorAbsorption.onLivingArmorAbsorb`, registered by `KamiArmorHandler.register()`: for a player every Ichorcloth piece takes `0.0425 × its
+armour points` (the index Forge 1.7.10 handed `getProperties`: helmet 3, chestplate 6, leggings 8, boots 3) of every blow, flat, plus the formula's share for the
+armour that is not Ichorcloth; any other wearer has vanilla's armour with the 1.7.10 points of vanilla's path (`deviations/KamiGear.md` sections 3 and 13).
 
 *Tests*: JUnit `TinkererEventsTest` and the two GameTests of the event (section 12), and the checks of the KamiGear group that use the three events it
 listens to (text of `deviations/KamiGear.md` section 14; they build real pieces on mock players, use a new player for every hit because the Soul Hearts keep the
 1.7.10 frames of each server player by game tick, and wait 65 ticks for the spawn invulnerability of a new player):
 
-* JUnit `KamiGearLogicTest`: the ratio of each piece, 85% for the set of any blow, partial sets, the sum with other armour and its cap at the blow.
-* `ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone`, `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone` (with a
-  diamond chestplate, toughness 2, beside Ichorcloth leggings: 5.85 of 10, where the same set without the toughness would let 6.25 through) and
-  `ichorclothPiecesShowTheOriginalArmourAndNeverWear`: the numbers of `deviations/KamiGear.md` section 3 (blows of 1, 10 and 40; starvation, magic, fall and
-  drowning; both sets; the switches; partial, mixed, iron, wrong slot, bare and a zombie; another listener sees 8.5 and its extra point composes; the pieces keep
-  damage 0 while iron wears; 3/8/6/3 and no toughness in the attributes). A blow of 10 against the full set leaves 1.5 where the formula alone, on the same twenty
+* JUnit `KamiGearLogicTest`: the ratio of each piece, 85% for the set of any blow, partial sets, the sum with other armour and its cap at the blow, the points
+  of each piece from a literal copy of Forge 1.7.10's loop over `armorInventory`, and that 15% of `Float.MAX_VALUE` still kills.
+* `ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes`, `ichorclothPartialAndMixedSetsKeepTheOtherArmourAndLeaveOtherWearersAlone` (with a
+  diamond chestplate, toughness 2, beside Ichorcloth leggings: 5.0 of 10, where the same set without the toughness would let 5.4 through) and
+  `ichorclothPiecesShowTheOriginalArmourAndNeverWear`: the numbers of `deviations/KamiGear.md` section 3 (blows of 1, 10 and 40; starvation, magic, fall,
+  drowning, the void and the source of `/kill`, 85% off each for a player; both sets; the switches; partial, mixed, iron, wrong slot, bare; zombies with vanilla
+  armour only; another listener sees 8.5 and its extra point composes; the pieces keep damage 0 while iron wears; 3/6/8/3 and no toughness in the attributes). A blow of 10 against the full set leaves 1.5 where the formula alone, on the same twenty
   armour points, leaves 4.0.
 * `gemBootsRaiseTheJumpOnlyWhileWornAndSwitchedOn` (0.42 against 0.72; piece off, master switch off, plain Ichorcloth boots, Gem Boots on the head, a pig in the
   boots and a bare player: 0.42; on honey the 0.3 comes on top; the jump key's own path carries the wearer 0.72 up),

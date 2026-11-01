@@ -132,8 +132,8 @@ public final class EnchantmentsGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
-    public void slowFallMakesALandingAFallOfTwoPointNineBlocks(GameTestHelper test) {
-        EnchantmentsRuntimeChecks.slowFallMakesALandingAFallOfTwoPointNineBlocks(test);
+    public void slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall(GameTestHelper test) {
+        EnchantmentsRuntimeChecks.slowFallLandsWhereTheTickRuleOfTheOriginalLeftTheFall(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)

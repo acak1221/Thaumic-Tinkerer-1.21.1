@@ -13,9 +13,12 @@
  */
 package thaumic.tinkerer.common.block;
 
+import java.util.List;
 import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -26,12 +29,15 @@ import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CarvedPumpkinBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import thaumic.tinkerer.common.lib.LibBlockNames;
+import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.block.tile.TileCamo;
 
 /**
@@ -74,26 +80,38 @@ public abstract class BlockCamo extends BaseEntityBlock {
     }
 
     /**
+     * The camouflageable devices of the TileBlocks group (Remote Placer, Golem Connector, Transvector Interface and Dislocator), reached
+     * by registry path (PORTING_RULES 1.3): in 1.7.10 they were {@code BlockCamo} subclasses like the platform, so the original's test
+     * {@code block instanceof BlockCamo} refused them as a camouflage too.
+     */
+    private static final List<ResourceLocation> CAMOUFLAGE_DEVICES = List.of(LibMisc.id(LibBlockNames.REMOTE_PLACER),
+            LibMisc.id(LibBlockNames.GOLEMCONNECTOR), LibMisc.id(LibBlockNames.INTERFACE), LibMisc.id(LibBlockNames.DISLOCATOR));
+
+    /**
      * Whether a block may be imitated: the 1.7.10 test accepted the render types of the plain cube, the log and the quartz
-     * block and refused air and other camouflage blocks. The 1.21.1 equivalent is a block that the chunk renderer
-     * draws from its model and that fills its cell with a full cube.
+     * block and refused air and every camouflage block (the platform and the devices of the TileBlocks group alike). The 1.21.1
+     * equivalent is a block that the chunk renderer draws from its model and that fills its cell with a full cube. The same rule
+     * as the TileBlocks group's {@code CamoRules.isValidCamo}, which the devices use (the original had one {@code BlockCamo} for all of
+     * them; a GameTest compares the two over every block item).
      */
     public static boolean isValidCamo(BlockState state) {
         if (state == null || state.isAir()) return false;
         if (state.getBlock() instanceof BlockCamo) return false;
+        if (CAMOUFLAGE_DEVICES.contains(BuiltInRegistries.BLOCK.getKey(state.getBlock()))) return false;
         if (state.getRenderShape() != RenderShape.MODEL) return false;
         return state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 
     /**
-     * The state a block item imitates when it is used on the face {@code face}: its default state, turned to the clicked
-     * side when it has a horizontal facing (1.7.10 {@code BlockDirectional}). Null when the item is no valid block.
+     * The state a block item imitates when it is used on the face {@code face}: its default state, turned to the clicked side when
+     * it is a carved pumpkin or a jack o'lantern (1.7.10 turned a {@code BlockDirectional}, and among the blocks a camouflage could be
+     * that was the pumpkin alone). Null when the item is no valid block.
      */
     @Nullable
     public static BlockState camoStateOf(ItemStack stack, Direction face) {
         if (!(stack.getItem() instanceof BlockItem blockItem)) return null;
         BlockState state = blockItem.getBlock().defaultBlockState();
-        if (state.hasProperty(BlockStateProperties.HORIZONTAL_FACING) && face.getAxis().isHorizontal()) {
+        if (state.getBlock() instanceof CarvedPumpkinBlock && face.getAxis().isHorizontal()) {
             state = state.setValue(BlockStateProperties.HORIZONTAL_FACING, face);
         }
         return isValidCamo(state) ? state : null;

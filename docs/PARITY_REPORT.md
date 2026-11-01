@@ -75,9 +75,10 @@ These are not parity differences (the port equals the original) but they came ou
 * **Recipes under a research key that no entry defines.** The four crucible recipes `INFUSED_POTIONSPOT0..3` (`item/ItemInfusedPotion.java`,
   key `LibResearch.KEY_POTIONS + "POT<n>"`, whose crucible recipe key is its name) and the infusion recipe `INFUSED_INKWELL`
   have no research with that key in the oracle, so in 1.7.10 Thaumcraft never unlocks them. The port carries the same keys
-  (the recipes compared equal) and its Thaumic Tinkerer tab has no such entry either (the reverse check passes). The inkwell case is
-  documented in `deviations/BasicItems.md`; the four potion recipes are not documented anywhere. If they are meant to be
-  obtainable that is a decision for the owner, not a parity defect.
+  (the recipes compared equal) and its Thaumic Tinkerer tab has no such entry either (the reverse check passes). Settled on 2026-11-01
+  (`DEVIATIONS.md` section 6, point 4): Thaumcraft 4.2.3.5 answered `isResearchComplete` with false for a key that is no research (read in
+  its bytecode), so the five recipes could not be made in 1.7.10, and the port keeps them so (`deviations/SimpleBlocks.md` section 2.8,
+  `deviations/BasicItems.md` section 6; GameTest `recipesUnderAResearchKeyNoEntryDefinesStayLocked`).
 * **Names registered more than once** (`ConfigResearch.recipes` keeps the last): `SUMMON` (17 infusion recipes), `SUMMON1` (17 table
   recipes), `DARK_QUARTZ0` (2), `PAVETRAVEL` (a slab and a stairs recipe). The research pages show the last one; the test compares what the
   page shows (the output of the last), and the port matches.

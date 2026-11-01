@@ -54,4 +54,9 @@ public final class ParityGameTests {
     public void aChangedOracleValueFailsAgainstTheLiveRegistries(GameTestHelper test) {
         ParityRuntimeChecks.aChangedOracleValueFailsAgainstTheLiveRegistries(test);
     }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void recipesUnderAResearchKeyNoEntryDefinesStayLocked(GameTestHelper test) {
+        ParityRuntimeChecks.recipesUnderAResearchKeyNoEntryDefinesStayLocked(test);
+    }
 }

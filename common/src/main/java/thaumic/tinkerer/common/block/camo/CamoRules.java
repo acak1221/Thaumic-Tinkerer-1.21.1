@@ -34,6 +34,9 @@ import thaumic.tinkerer.common.lib.LibMisc;
  * itself and would show smaller than the device. Fluids, invisible blocks and blocks drawn by a special renderer (chests,
  * beds, skulls) are refused by the render shape. Glass, leaves, ice, a furnace or a dispenser (a plain cube in 1.7.10) are
  * accepted: the model is drawn, without the block entity.</p>
+ *
+ * <p>The Ethereal Platform of the SimpleBlocks group ({@code BlockCamo.isValidCamo} and {@code camoStateOf}) applies the same rule, as
+ * the original's one {@code BlockCamo} did for all of them; a GameTest compares the two over every block item of the game.</p>
  */
 public final class CamoRules {
     private CamoRules() {}
@@ -57,7 +60,8 @@ public final class CamoRules {
     public static boolean isValidCamo(BlockState state) {
         if (state == null || state.isAir()) return false;
         if (state.getBlock() instanceof CamoDeviceBlock) return false;
-        if (BuiltInRegistries.BLOCK.getKey(state.getBlock()).equals(LibMisc.id(LibBlockNames.CAMO))) return false;
+        // the Ethereal Platform of the SimpleBlocks group, reached by registry path (its empty collision shape refuses it below as well)
+        if (BuiltInRegistries.BLOCK.getKey(state.getBlock()).equals(LibMisc.id(LibBlockNames.PLATFORM))) return false;
         return state.getRenderShape() == RenderShape.MODEL
                 && state.isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }

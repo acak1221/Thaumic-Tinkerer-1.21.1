@@ -177,8 +177,8 @@ public final class KamiGearGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
-    public void ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone(GameTestHelper test) {
-        KamiGearRuntimeChecks.ichorclothSetTakesEightyFivePercentOfBlowsAndLeavesBypassingDamageAlone(test);
+    public void ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes(GameTestHelper test) {
+        KamiGearRuntimeChecks.ichorclothSetTakesEightyFivePercentOfEveryBlowAPlayerTakes(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)

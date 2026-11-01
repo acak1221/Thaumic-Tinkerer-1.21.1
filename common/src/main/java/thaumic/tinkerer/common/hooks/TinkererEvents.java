@@ -155,8 +155,9 @@ public final class TinkererEvents {
     public interface LivingArmorAbsorb {
         /**
          * @param victim   the entity whose armour works (a player or a mob, whoever wears it)
-         * @param source   the damage source; never one that bypasses armour ({@link DamageTypeTags#BYPASSES_ARMOR}: starvation,
-         *                 drowning, magic, falling, the void), which the armour does not reduce and which is not posted
+         * @param source   the damage source, any source: also one that bypasses armour ({@link DamageTypeTags#BYPASSES_ARMOR}:
+         *                 starvation, drowning, magic, falling, the void, {@code /kill}), for which vanilla's formula takes nothing
+         *                 ({@code absorbed} is 0); a listener that means only the damage armour reduces tests the tag itself
          * @param damage   the damage that comes to the armour step: the hit as it is after {@link #LIVING_DAMAGE}, the shield
          *                 and the invulnerability frames, before Resistance, the Protection enchantments and Absorption; always
          *                 positive and finite
@@ -181,11 +182,14 @@ public final class TinkererEvents {
      * power: it <b>replaces the amount the armour absorbs</b>, so a flat share of the blow (Ichorcloth's 0.0425 per armour point,
      * 85% for the set) can stand in for the formula, or add to it, or shorten it.
      *
-     * <p><b>Not posted</b> for a source of the tag {@code bypasses_armor}: the game does not reduce such a hit by armour
-     * (the poster tests it, the one rule for both loaders), nor for a hit of no damage. A hit that the armour step does not
-     * reach (cancelled by {@link #LIVING_DAMAGE}, refused by the invulnerability frames, an invulnerable entity) is not posted
-     * either. Posted for every living entity, player or mob, so a listener answers only for the entities it means (the pieces
-     * its item classes wear). It has no world effect and needs no side test: the armour step runs on the server only.</p>
+     * <p><b>Posted for every source</b>, the tag {@code bypasses_armor} included: the game's own step takes nothing off such a
+     * hit ({@code absorbed} is 0), and a listener may still take a share, as Forge 1.7.10's {@code ArmorProperties.ApplyArmor}
+     * skipped a plain {@code ItemArmor} for an unblockable source but asked every {@code ISpecialArmor} piece whatever the source
+     * (read in its source, {@code docs/HOOKS.md} section 14). <b>Not posted</b> for a hit of no damage or of infinite damage. A
+     * hit that the armour step does not reach (cancelled by {@link #LIVING_DAMAGE}, refused by the invulnerability frames, an
+     * invulnerable entity) is not posted either. Posted for every living entity, player or mob, so a listener answers only for
+     * the entities it means (the pieces its item classes wear). It has no world effect and needs no side test: the armour step
+     * runs on the server only.</p>
      *
      * <p>Listeners run in the order they were registered and each sees what the one before returned in {@code absorbed}; a
      * listener that <i>replaces</i> the value (the Ichorcloth rule) overrides the ones before it, one that <i>adjusts</i> it
@@ -210,13 +214,13 @@ public final class TinkererEvents {
      *
      * @param damage   the damage that comes to the armour step
      * @param absorbed what vanilla's formula takes off it
-     * @return the amount the armour takes off: {@code absorbed} itself (the very same value) when nobody changed it, when the
-     *         source bypasses armour, or when {@code damage} is not a positive finite number; otherwise the listeners' result,
+     * @return the amount the armour takes off: {@code absorbed} itself (the very same value) when nobody changed it, or when
+     *         {@code damage} is not a positive finite number; otherwise the listeners' result,
      *         held between 0 and {@code damage}. A poster that wraps the armour step of the game uses
      *         {@link #damageAfterArmorAbsorb} instead, which turns this into the damage that goes on.
      */
     public static float postLivingArmorAbsorb(LivingEntity victim, DamageSource source, float damage, float absorbed) {
-        if (!(damage > 0.0F) || damage == Float.POSITIVE_INFINITY || source.is(DamageTypeTags.BYPASSES_ARMOR)) return absorbed;
+        if (!(damage > 0.0F) || damage == Float.POSITIVE_INFINITY) return absorbed;
         float result = LIVING_ARMOR_ABSORB.invoker().onLivingArmorAbsorb(victim, source, damage, absorbed);
         if (Float.isNaN(result)) return absorbed;
         return Mth.clamp(result, 0.0F, damage);
