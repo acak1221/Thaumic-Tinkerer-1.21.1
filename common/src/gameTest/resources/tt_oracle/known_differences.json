@@ -95,6 +95,20 @@
       ]
     },
     {
+      "kind": "research",
+      "key": "LEVITATOR_LOCOMOTIVE",
+      "field": "pages.count",
+      "original": "3",
+      "port": "4",
+      "reason": "1.7.10's ResearchHelper.LeviationaryHelp builds the multiblock diagram of the locomotive (a COMPOUND_CRAFTING page: relay, empty space, locomotive, empty space, relay), but no research uses it: the entry has three pages (text, infusion, the relay's arcane recipe). The port adds the diagram as a fourth page now that Thaumcraft 4 Reload draws compound pages. The first three pages are still compared with the original and match.",
+      "deviation": "TileBlocks.md",
+      "quote": "The port adds it as a fourth page, after the three of the original.",
+      "mentions": [
+        "LEVITATOR_LOCOMOTIVE",
+        "LeviationaryHelp"
+      ]
+    },
+    {
       "kind": "recipe",
       "key": "REMOTE_PLACER -> thaumictinkerer:remote_placer",
       "field": "presence",

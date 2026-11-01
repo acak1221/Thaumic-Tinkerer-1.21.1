@@ -346,7 +346,7 @@ public final class ParityRuntimeChecks {
     /** What the last run of the comparison found, exactly; a change of these is a change of the oracle or of the port to look at. */
     static final int RESEARCH_COMPARED = 74;
     static final int RECIPES_COMPARED = 127;
-    static final int DOCUMENTED_DIFFERENCES = 11;
+    static final int DOCUMENTED_DIFFERENCES = 12;
     static final int OBJECT_TAGS_COMPARED = 17;
 
     private static void assertOriginalDefaults(GameTestHelper test, OracleData oracle) {

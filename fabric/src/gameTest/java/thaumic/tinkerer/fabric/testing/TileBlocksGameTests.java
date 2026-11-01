@@ -82,6 +82,11 @@ public final class TileBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void locomotiveResearchShowsItsDiagram(GameTestHelper h) {
+        TileBlocksRuntimeChecks.locomotiveResearchShowsItsDiagram(h);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void blockEntitiesPersist(GameTestHelper h) {
         TileBlocksRuntimeChecks.blockEntitiesPersist(h);
     }

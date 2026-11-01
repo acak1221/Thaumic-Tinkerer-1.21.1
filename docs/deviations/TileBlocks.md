@@ -230,8 +230,23 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   never registered them in its client proxy, and `relay.png` is not among the original's textures. The relay is a block
   with a model.
 * **Research (kept).** The Relay has no research of its own: its recipe is the second page of the
-  locomotive's entry, under the key `LEVITATOR_RELAY`, as in 1.7.10. The multiblock diagram of the original is not drawn
-  (N1 of `docs/API_GAPS.md`); the pages are text and the two recipe pages.
+  locomotive's entry, under the key `LEVITATOR_RELAY`, as in 1.7.10.
+* **The multiblock diagram page (decision).** The original builds a diagram of the track in `ResearchHelper.LeviationaryHelp`
+  (`research/ResearchHelper.java:228` of the pinned source): a `COMPOUND_CRAFTING` page, the list of Thaumcraft's wand
+  construct pages, five blocks wide, one high, one deep, no vis, with the blocks relay, empty space, locomotive, empty space,
+  relay. **No research of the original uses it**: the entry `LEVITATOR_LOCOMOTIVE` of the pinned commit has three pages (text,
+  the infusion, the relay's arcane recipe), and the oracle of `PARITY_REPORT.md` records exactly those. The upstream history
+  says why: the page came with the research on 2014-02-04 (commit `c3402593`: pages "0", infusion, "1", relay, "2", diagram)
+  and left the entry the same day (`59713058`), leaving the helper unused ever since. The port adds it as a fourth page, after the three of the original.
+  `ResearchHelper.LeviationaryHelp()` is the original's list with two forced changes: it goes through a raw `List` cast,
+  because the 1.21.1 constructor is typed `ResearchPage(List<Recipe<?>>)`, and the original's "Empty Space" block
+  (`new ItemStack(ConfigBlocks.blockHole, 1, 15)`) has no item in 1.21.1, so the two gaps are `ItemStack.EMPTY`, which
+  Thaumcraft 4 Reload draws as that block (nothing visible, "Empty Space" on hover). Thaumcraft draws the page as TC4 did, all
+  layers at once in its isometric layout over the ground plate, with the item names on hover, from the version that draws
+  compound pages (Thaumcraft branch `compound-pages`, 2026-11-01); an older Thaumcraft skips a page it cannot draw, so the
+  entry then shows the three pages of the original. The parity check allows this one difference (`pages.count` 3 to 4,
+  `known_differences.json`); the first three pages are still compared and match. The GameTest
+  `locomotiveResearchShowsItsDiagram` pins the page, its size and its five blocks.
 
 ### 2.4 Golem Connector
 
@@ -478,6 +493,16 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   described in this document from those pictures.
 
 ## 4. Unverified
+
+Round of 2026-11-01 (the multiblock diagram page, 2.3): the full add-on run `check runTinkererGameTest :neoforge:runGameTest assemble
+:neoforge:assemble --continue` passed (`tinkererTest` 424 tests with `ParityComparatorTest` and `KnownDifferencesTest` counting the twelfth
+documented difference; "All 357 required tests passed" on Fabric and "All 365 required tests passed" on NeoForge, `locomotiveResearchShowsItsDiagram`
+among them on both; the parity report lists `LEVITATOR_LOCOMOTIVE: pages.count: original=3 | port=4` as allowed). The page was **seen** in a
+Fabric dev client of Thaumcraft 4 Reload's branch `compound-pages` (software rendering under Xvfb, the add-on's release jar in its `mods`
+folder): the fourth page of the entry shows "Mystical Construct", the relay, the locomotive and the relay on a diagonal with the two gaps, over
+the ground plate and without an aspect row, and hovering shows "Levitational Locomotive Relay", "Empty Space" and "Levitational Locomotive".
+**Not seen:** the page in a NeoForge client, and with the Thaumcraft that this repository's `thaumcraft_ref` pins (that one has no compound
+drawing and skips the page).
 
 Round of 2026-11-01 (the fixes of the review: the Interface's self-binding, the Dislocator's check, `BlockProtection` in the three devices,
 the Remote Placer's bucket, the fake player's cooldowns, size, statistics, rides, beds and menus, the Binder's dimension, the saved formats,

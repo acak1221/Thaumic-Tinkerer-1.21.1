@@ -88,7 +88,10 @@ public class BlockMobilizer extends BaseEntityBlock implements ITTinkererRegiste
                         .setPages(
                                 new ResearchPage("0"),
                                 ResearchHelper.infusionPage(LibResearch.KEY_MOBILIZER),
-                                ResearchHelper.arcaneRecipePage(LibResearch.KEY_RELAY))
+                                ResearchHelper.arcaneRecipePage(LibResearch.KEY_RELAY),
+                                // The multiblock diagram, built by the original's ResearchHelper.LeviationaryHelp; added
+                                // here, see docs/deviations/TileBlocks.md section 2.3.
+                                ResearchHelper.LeviationaryHelp())
                         .setSecondary();
     }
 

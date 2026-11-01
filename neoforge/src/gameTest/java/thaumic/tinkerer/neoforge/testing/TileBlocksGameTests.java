@@ -33,6 +33,11 @@ public final class TileBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void locomotiveResearchShowsItsDiagram(GameTestHelper h) {
+        TileBlocksRuntimeChecks.locomotiveResearchShowsItsDiagram(h);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void blockEntitiesPersist(GameTestHelper h) {
         TileBlocksRuntimeChecks.blockEntitiesPersist(h);
     }

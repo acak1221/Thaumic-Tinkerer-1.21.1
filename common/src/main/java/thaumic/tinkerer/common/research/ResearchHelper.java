@@ -12,6 +12,7 @@
 package thaumic.tinkerer.common.research;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -26,8 +27,10 @@ import thaumcraft.api.research.ResearchItem;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.client.lib.LibResources;
+import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.TTRecipes;
+import thaumic.tinkerer.common.registry.TTRegistry;
 
 /** The research tab of the add-on and the page factories that look recipes up by name. */
 public final class ResearchHelper {
@@ -125,5 +128,28 @@ public final class ResearchHelper {
 
     public static ResearchPage crucibleRecipePage(String name) {
         return new ResearchPage(TTRecipes.get(name, CrucibleRecipe.class));
+    }
+
+    /**
+     * The multiblock diagram of the Levitational Locomotive: a {@code COMPOUND_CRAFTING} page, the list
+     * {@code [vis, width, height, depth, blocks]} of Thaumcraft's wand construct pages. A row of five blocks, one layer
+     * high: relay, empty space, locomotive, empty space, relay; no vis.
+     *
+     * <p>As in 1.7.10, with two forced changes: the list goes through a raw {@code List} cast, because the 1.21.1
+     * constructor is typed {@code ResearchPage(List<Recipe<?>>)} (the list is read as the original's, not as recipes), and
+     * the original's "Empty Space" block ({@code new ItemStack(ConfigBlocks.blockHole, 1, 15)}) has no item in 1.21.1:
+     * Thaumcraft draws {@code ItemStack.EMPTY} as that block (invisible, named on hover). Must be called after
+     * registration.</p>
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public static ResearchPage LeviationaryHelp() {
+        ItemStack relay = TTRegistry.stack(LibBlockNames.MOBILIZER_RELAY);
+        ItemStack locomotive = TTRegistry.stack(LibBlockNames.MOBILIZER);
+        return new ResearchPage((List) Arrays.asList(
+                new AspectList(),
+                5,
+                1,
+                1,
+                Arrays.asList(relay, ItemStack.EMPTY, locomotive, ItemStack.EMPTY, relay.copy())));
     }
 }

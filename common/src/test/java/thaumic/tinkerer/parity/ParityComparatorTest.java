@@ -703,7 +703,7 @@ class ParityComparatorTest {
         Result result = ParityComparator.compare(oracle, PortFixtures.documentedPort(oracle), PORT, known);
         assertTrue(result.passed(), result.describe());
         assertEquals(known.stream().mapToInt(KnownDifference::occurrences).sum(), result.allowed.size(), "every entry is consumed exactly");
-        assertEquals(11, result.allowed.size());
+        assertEquals(12, result.allowed.size());
         assertEquals(1, result.counts.get("shaped patterns that are a mirror image of the original"), "the left staircase");
         assertEquals(18, result.counts.get("slots of merged recipes checked against the union"), "two 3x3 recipes");
         assertTrue(result.counts.get("ingredient slots broader than the original (merged recipes)") >= 1, result.counts.toString());
