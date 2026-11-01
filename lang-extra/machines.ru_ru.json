@@ -1,3 +1,4 @@
 {
-  "item.thaumictinkerer.mob_display": "Неизвестный моб"
+  "item.thaumictinkerer.mob_display": "Неизвестный моб",
+  "tag.item.thaumictinkerer.repairer_blacklist": "Не чинится таум-восстановителем"
 }

@@ -11,10 +11,14 @@ package thaumic.tinkerer.common.core.fakeplayer;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.mojang.authlib.GameProfile;
+import com.mojang.datafixers.util.Either;
 import java.util.OptionalInt;
+import java.util.UUID;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.Connection;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
@@ -25,6 +29,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.stats.Stat;
+import net.minecraft.util.Unit;
+import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
@@ -35,6 +42,8 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.BlockHitResult;
@@ -45,23 +54,47 @@ import net.minecraft.world.phys.Vec3;
  * the Remote Placer (1.7.10: Forge's {@code FakePlayer}).
  *
  * <p>The add-on is loader neutral, so it cannot use the FakePlayer of Fabric API or NeoForge. This is a plain
- * {@link ServerPlayer} with a dummy packet listener (every packet is dropped), no menus, no chat, no damage and no
- * collision box. It is not ticked by the level; its owner positions it and drives it ({@link #useItemOnBlock},
+ * {@link ServerPlayer} with a dummy packet listener (every packet is dropped), no menus, no chat, no damage, no
+ * collision box (0 by 0, so its eye is at its position: the owner places the eye), no statistics or scores, no
+ * riding and no sleeping. It is not ticked by the level; its owner positions it and drives it ({@link #useItemOnBlock},
  * {@link #useItemInAir}, {@link #attackEntity}, {@link #interactWithEntity}), which run the vanilla paths
  * ({@code ServerPlayerGameMode}, {@code Player.attack}, {@code Player.interactOn}), so enchantments, tool wear, drops,
- * and the loaders' interaction and break events apply as they would to a player.</p>
+ * and the loaders' interaction and break events apply as they would to a player. NeoForge sees it as a fake player
+ * ({@link #isFakePlayer()}).</p>
  */
 public class TinkererFakePlayer extends ServerPlayer {
+    /**
+     * The profile of Forge's {@code FakePlayerFactory.getMinecraft} player, the one shared machine player of 1.7.10 that the
+     * Remote Placer used; the port's devices without a profile of their own (the Remote Placer, the Transvector Dislocator)
+     * act under it.
+     */
+    public static final GameProfile MINECRAFT_PROFILE =
+            new GameProfile(UUID.fromString("41C82C87-7AfB-4024-BA57-13D2C99CAE77"), "[Minecraft]");
+
     /** The attack-strength ticker value that counts as a fully charged swing (1.7.10 had no attack cooldown). */
     private static final int CHARGED = 1000;
+    /**
+     * The most ticks {@link #advanceCooldowns()} catches up at once (five minutes): longer than any vanilla item cooldown,
+     * and a bound on the loop after a device stood still for a long time.
+     */
+    private static final int MAX_COOLDOWN_CATCH_UP = 6000;
 
     private final Multimap<Holder<Attribute>, AttributeModifier> appliedModifiers = HashMultimap.create();
     private ItemStack modifiersFor = ItemStack.EMPTY;
+    /** The game time up to which the item cooldowns have run (see {@link #advanceCooldowns()}). */
+    private long cooldownsAt;
 
     public TinkererFakePlayer(ServerLevel level, GameProfile profile) {
         super(level.getServer(), level, profile, ClientInformation.createDefault());
         this.connection = new SilentConnection(level, this, profile);
         this.getAbilities().instabuild = false;
+        // The Entity constructor takes the size and the eye height of the entity type (a player's 0.6 by 1.8, eye 1.62);
+        // getDefaultDimensions below is only asked when the dimensions are refreshed, which a player that is never ticked
+        // and never changes its pose does not do by itself. Refreshed here, the box is 0 by 0 and the eye is at the
+        // position, so an item that looks along the player's view (a bucket, a thrown pearl) starts where the owner put
+        // the player, not 1.62 above it.
+        this.refreshDimensions();
+        this.cooldownsAt = level.getGameTime();
         // Not on the ground, as the 1.7.10 FakePlayer (never ticked, so never landed): the player breaks blocks at a fifth
         // of the speed (Player.getDestroySpeed, 1.7.10 getBreakSpeed had the same rule), and its attacks are neither
         // sweeping (a charged sword swing on the ground also hurts the mobs next to the target) nor critical.
@@ -84,6 +117,19 @@ public class TinkererFakePlayer extends ServerPlayer {
     @Override
     public BlockPos adjustSpawnLocation(ServerLevel level, BlockPos pos) {
         return pos;
+    }
+
+    /**
+     * Runs the item cooldowns (an ender pearl's, a wind charge's, a chorus fruit's) up to the level's game time. A player's
+     * cooldowns run in its tick; the fake player is never ticked, so without this a cooldown it started never ended and the
+     * item stayed unusable in the device for good. The owner calls it before the fake player acts (the Tablet every tick,
+     * the Remote Placer on every pulse); at most {@value #MAX_COOLDOWN_CATCH_UP} ticks are caught up per call.
+     */
+    public void advanceCooldowns() {
+        long now = this.serverLevel().getGameTime();
+        long elapsed = Math.min(Math.max(now - cooldownsAt, 0L), MAX_COOLDOWN_CATCH_UP);
+        cooldownsAt = now;
+        for (long i = 0; i < elapsed; i++) this.getCooldowns().tick();
     }
 
     /** Puts the fake player at a point, looking along {@code yRot}/{@code xRot} (1.7.10 {@code posX/rotationYaw}). */
@@ -133,10 +179,15 @@ public class TinkererFakePlayer extends ServerPlayer {
         this.attack(target);
     }
 
-    /** {@code interactWith}: a right click on an entity; true when something happened. */
+    /**
+     * {@code interactWith}: a right click on an entity; true when something happened. A villager or wandering trader that
+     * started trading with the fake player is let go at once: no trading screen opens for it, and the merchant would
+     * otherwise stay "busy" with a player that never closes the screen, for every real player.
+     */
     public boolean interactWithEntity(Entity target) {
         InteractionResult result = this.interactOn(target, InteractionHand.MAIN_HAND);
         if (this.isUsingItem()) this.stopUsingItem();
+        if (target instanceof AbstractVillager merchant && merchant.getTradingPlayer() == this) merchant.setTradingPlayer(null);
         return result.consumesAction();
     }
 
@@ -221,6 +272,63 @@ public class TinkererFakePlayer extends ServerPlayer {
     public OptionalInt openMenu(MenuProvider provider) {
         return OptionalInt.empty();
     }
+
+    /**
+     * NeoForge's extended menus ({@code IPlayerExtension.openMenu(MenuProvider, Consumer)}, what Architectury's
+     * {@code MenuRegistry.openExtendedMenu} and NeoForge's own {@code openMenu(provider, pos)} call; NeoForge's
+     * {@code openMenu(MenuProvider)} goes through it too): refused like the plain one. No {@code @Override}: the method does
+     * not exist in vanilla, against which this class is compiled; on NeoForge it overrides {@code ServerPlayer}'s.
+     */
+    public OptionalInt openMenu(MenuProvider provider, Consumer<RegistryFriendlyByteBuf> extraDataWriter) {
+        return OptionalInt.empty();
+    }
+
+    /** A horse's or llama's inventory is not opened either (vanilla opens it without {@link #openMenu}). */
+    @Override
+    public void openHorseInventory(AbstractHorse horse, Container inventory) {}
+
+    /**
+     * NeoForge's {@code IPlayerExtension.isFakePlayer()}: true, so NeoForge and the mods that ask treat the devices' player
+     * as a machine (as Forge's {@code FakePlayer} of 1.7.10 was). No {@code @Override}, for the reason given above.
+     */
+    public boolean isFakePlayer() {
+        return true;
+    }
+
+    /**
+     * No statistics and so no scoreboard scores: a scoreboard objective on a statistic (blocks mined, items used, mobs
+     * killed) would otherwise list "[ThaumcraftTablet]" or "[Minecraft]" with the devices' work.
+     */
+    @Override
+    public void awardStat(Stat<?> stat, int amount) {}
+
+    @Override
+    public void resetStat(Stat<?> stat) {}
+
+    /** No kill score either (the "totalKillCount" and team-kill objectives, and the player's score). */
+    @Override
+    public void awardKillScore(Entity killed, int score, DamageSource source) {}
+
+    /**
+     * The fake player boards nothing: a Tablet in right-click mode in front of a boat or a minecart would sit a player
+     * that is never ticked in it, and the vehicle would stand still with it for good.
+     */
+    @Override
+    public boolean startRiding(Entity vehicle, boolean force) {
+        return false;
+    }
+
+    /**
+     * Nor does it sleep: at night a Tablet in right-click mode in front of a bed would lie down in it, and the bed would stay
+     * occupied by a player that never wakes. (In the day vanilla also sets the respawn point to the bed; that is refused too.)
+     */
+    @Override
+    public Either<BedSleepingProblem, Unit> startSleepInBed(BlockPos pos) {
+        return Either.left(BedSleepingProblem.OTHER_PROBLEM);
+    }
+
+    @Override
+    public void startSleeping(BlockPos pos) {}
 
     /** The packet listener of the fake player: it has no channel, so every packet is dropped. */
     private static final class SilentConnection extends ServerGamePacketListenerImpl {

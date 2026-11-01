@@ -7,6 +7,8 @@ package thaumic.tinkerer.testing;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
@@ -57,6 +59,7 @@ import thaumic.tinkerer.common.hooks.TinkererEvents;
 import thaumic.tinkerer.common.item.ItemBloodSword;
 import thaumic.tinkerer.common.item.ItemMobAspect;
 import thaumic.tinkerer.common.item.ItemSoulMould;
+import thaumic.tinkerer.common.item.MachineComponents;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -70,6 +73,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * session): the first run may show a wrong assumption of a check as well as a defect.</p>
  */
 public final class MachinesRuntimeChecks {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("ThaumicTinkerer/MachinesChecks");
+
     private MachinesRuntimeChecks() {}
 
     // ---- helpers ---------------------------------------------------------------------------------------------------
@@ -133,6 +138,11 @@ public final class MachinesRuntimeChecks {
         test.assertTrue(soulAspects == 51, "51 soul aspect items");
         test.assertTrue(Machines.MENU_ASPECT_ANALYZER.isPresent() && Machines.MENU_MOB_MAGNET.isPresent(), "menus");
         test.assertTrue(Machines.TILE_SUMMON.isPresent() && Machines.TILE_FUNNEL.isPresent(), "block entities");
+        for (var component : List.of(MachineComponents.SOUL_PATTERN, MachineComponents.DISPLAYED_MOB,
+                MachineComponents.BLADE_ACTIVATED, MachineComponents.LAST_TABLET)) {
+            test.assertTrue(component != null && component.isPresent()
+                    && BuiltInRegistries.DATA_COMPONENT_TYPE.containsKey(component.getId()), "component " + (component == null ? null : component.getId()));
+        }
 
         for (String key : List.of(LibResearch.KEY_ASPECT_ANALYZER, LibResearch.KEY_REPAIRER, LibResearch.KEY_FUNNEL,
                 LibResearch.KEY_MAGNETS, LibResearch.KEY_SUMMON, LibResearch.KEY_BLOOD_SWORD)) {
@@ -225,6 +235,49 @@ public final class MachinesRuntimeChecks {
         test.assertTrue(loaded.getItem(0).is(Items.DIAMOND_AXE) && loaded.getItem(0).getDamageValue() == 77, "the tool with its damage");
         test.assertTrue(!loaded.tookLastTick, "the flag of the last tick");
         test.succeed();
+    }
+
+    /**
+     * 1.7.10 {@code setNoRepair()}: the Restorer asked {@code Item.isRepairable()} and refused the Spellbinding Cloth. The cloth
+     * is in the item tag {@code thaumictinkerer:repairer_blacklist}: a click and a hopper do not put it in, and a cloth put in
+     * by other means sets no suction, so no tube gives the Restorer essentia for it.
+     */
+    public static void theRestorerNeitherTakesNorMendsTheSpellbindingCloth(GameTestHelper test) {
+        floor(test);
+        BlockPos pos = new BlockPos(3, 1, 3);
+        test.setBlock(pos, Machines.REPAIRER.get().defaultBlockState());
+        TileRepairer repairer = tile(test, pos, TileRepairer.class);
+        ServerPlayer player = mockPlayer(test);
+
+        ItemStack cloth = TTRegistry.stack(LibItemNames.SPELL_CLOTH);
+        cloth.setDamageValue(10);
+        test.assertTrue(cloth.isDamageableItem() && cloth.getDamageValue() == 10, "a worn cloth: " + cloth);
+        test.assertTrue(TileRepairer.BLACKLIST.location().equals(LibMisc.id("repairer_blacklist")), "the tag " + TileRepairer.BLACKLIST);
+        test.assertTrue(cloth.is(TileRepairer.BLACKLIST), "the cloth is in " + TileRepairer.BLACKLIST.location());
+        test.assertTrue(!TileRepairer.isRepairable(cloth), "a worn cloth is not repairable");
+        test.assertTrue(!repairer.canPlaceItemThroughFace(0, cloth, Direction.UP), "a hopper cannot put it in");
+        ItemStack pickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
+        pickaxe.setDamageValue(10);
+        test.assertTrue(!pickaxe.is(TileRepairer.BLACKLIST) && TileRepairer.isRepairable(pickaxe), "control: a worn pickaxe is");
+
+        player.setItemInHand(InteractionHand.MAIN_HAND, cloth);
+        test.useBlock(pos, player);
+        test.assertTrue(repairer.getItem(0).isEmpty(), "a click does not put the cloth in");
+        test.assertTrue(player.getMainHandItem() == cloth && cloth.getDamageValue() == 10, "it stays in the hand, as worn as before");
+
+        // put in by other means (a command, another mod's pipe): no suction, so no essentia and no mending
+        repairer.setItem(0, cloth.copy());
+        Direction facing = repairer.getOrientation();
+        test.assertTrue(repairer.getSuctionAmount(facing) == 0, "no suction for the cloth");
+        test.assertTrue(repairer.canTakeItemThroughFace(0, repairer.getItem(0), Direction.DOWN), "a hopper may take it out again");
+        repairer.setItem(0, pickaxe.copy());
+        test.assertTrue(repairer.getSuctionAmount(facing) == 128, "control: the worn pickaxe sucks 128");
+        repairer.setItem(0, cloth.copy());
+        test.runAfterDelay(25, () -> {
+            test.assertTrue(repairer.getItem(0).getDamageValue() == 10, "two work cycles later the cloth is as worn: " + repairer.getItem(0));
+            test.assertTrue(!repairer.tookLastTick, "and nothing was taken");
+            finish(test, player);
+        });
     }
 
     // ---- Essentia Funnel -------------------------------------------------------------------------------------------
@@ -613,7 +666,7 @@ public final class MachinesRuntimeChecks {
     public static void infusedSoulAspectsSummonOnlyEveryTwentyMinutesAreKeptAndBindToTheLastTablet(GameTestHelper test) {
         ItemStack b = soul(Aspect.BEAST, ItemMobAspect.Form.INFUSED);
         TileSummon tablet = tabletWith(test, b.copy(), b.copy(), b.copy());
-        BlockPos tabletPos = test.absolutePos(new BlockPos(3, 1, 3));
+        GlobalPos tabletPos = GlobalPos.of(test.getLevel().dimension(), test.absolutePos(new BlockPos(3, 1, 3)));
         test.assertTrue(!tablet.summon(test.getLevel(), 300), "300 is not a multiple of 1200: nothing happens");
         test.assertEntityNotPresent(EntityType.WOLF);
 
@@ -623,7 +676,10 @@ public final class MachinesRuntimeChecks {
         ItemStack kept = pedestal(test, new BlockPos(1, 1, 3)).getItem(0);
         test.assertTrue(ItemMobAspect.isInfused(kept), "the infused soul aspect is kept");
         test.assertTrue(ItemMobAspect.lastUsedTabletMatches(kept, tabletPos), "and remembers the tablet");
-        test.assertTrue(!ItemMobAspect.lastUsedTabletMatches(kept, test.absolutePos(new BlockPos(0, 1, 0))), "not another one");
+        test.assertTrue(!ItemMobAspect.lastUsedTabletMatches(kept, GlobalPos.of(test.getLevel().dimension(), test.absolutePos(new BlockPos(0, 1, 0)))),
+                "not another one");
+        test.assertTrue(!ItemMobAspect.lastUsedTabletMatches(kept, GlobalPos.of(net.minecraft.world.level.Level.NETHER, tabletPos.pos())),
+                "nor the same coordinates in another dimension");
 
         test.assertTrue(tablet.summon(test.getLevel(), 2400), "2400: the same tablet summons again");
         test.assertTrue(wolves(test) == 2, "two wolves, found " + wolves(test));
@@ -636,7 +692,7 @@ public final class MachinesRuntimeChecks {
         test.assertTrue(other.summon(test.getLevel(), 3600), "3600: the set is recognised by the other tablet");
         test.assertTrue(wolves(test) == 2, "but nothing is summoned: " + wolves(test));
         test.assertTrue(ItemMobAspect.lastUsedTabletMatches(pedestal(test, new BlockPos(1, 1, 3)).getItem(0),
-                test.absolutePos(otherPos)), "the other tablet took the mark");
+                GlobalPos.of(test.getLevel().dimension(), test.absolutePos(otherPos))), "the other tablet took the mark");
         test.succeed();
     }
 
@@ -673,6 +729,212 @@ public final class MachinesRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The search of the tablet as it was before the change (and as 1.7.10 wrote it): every square from radius 1 to 5 scanned
+     * anew, every ordered triple tried, each pedestal of a triple looked up in the world again. The reference for
+     * {@link TileSummon#findMatch}; {@code lookups[0]} counts its look-ups. No side effects.
+     */
+    private static TileSummon.Match legacyMatch(ServerLevel level, BlockPos tablet, int[] lookups) {
+        java.util.function.Function<BlockPos, Container> lookup = TileSummon.pedestalLookup(level);
+        for (int radius = 1; radius < 6; radius++) {
+            List<BlockPos> pedestals = new java.util.ArrayList<>();
+            for (int x = tablet.getX() - radius; x <= tablet.getX() + radius; x++) {
+                for (int z = tablet.getZ() - radius; z <= tablet.getZ() + radius; z++) {
+                    BlockPos at = new BlockPos(x, tablet.getY(), z);
+                    lookups[0]++;
+                    Container pedestal = lookup.apply(at);
+                    if (pedestal != null && pedestal.getItem(0).getItem() instanceof ItemMobAspect) pedestals.add(at);
+                }
+            }
+            for (int i = 0; i < pedestals.size(); i++) {
+                for (int j = 0; j < pedestals.size(); j++) {
+                    for (BlockPos pos3 : pedestals) {
+                        BlockPos pos1 = pedestals.get(i);
+                        BlockPos pos2 = pedestals.get(j);
+                        if (pos1.equals(pos2) || pos2.equals(pos3) || pos1.equals(pos3)) continue;
+                        lookups[0] += 3;
+                        Container ped1 = lookup.apply(pos1);
+                        Container ped2 = lookup.apply(pos2);
+                        Container ped3 = lookup.apply(pos3);
+                        if (ped1 == null || ped2 == null || ped3 == null) continue;
+                        List<Aspect> aspects = new java.util.ArrayList<>();
+                        aspects.add(ItemMobAspect.getAspect(ped1.getItem(0)));
+                        aspects.add(ItemMobAspect.getAspect(ped2.getItem(0)));
+                        aspects.add(ItemMobAspect.getAspect(ped3.getItem(0)));
+                        for (EnumMobAspect recipe : EnumMobAspect.values()) {
+                            if (!recipe.matchesAspectSet(aspects)) continue;
+                            return new TileSummon.Match(recipe, new TileSummon.SoulPedestal(pos1, ped1, aspects.get(0)),
+                                    new TileSummon.SoulPedestal(pos2, ped2, aspects.get(1)),
+                                    new TileSummon.SoulPedestal(pos3, ped3, aspects.get(2)));
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String describe(TileSummon.Match match) {
+        if (match == null) return "no match";
+        StringBuilder text = new StringBuilder(match.recipe().name());
+        for (TileSummon.SoulPedestal pedestal : match.pedestals()) {
+            text.append(' ').append(pedestal.pos().toShortString()).append('=').append(pedestal.aspect().getTag());
+        }
+        return text.toString();
+    }
+
+    private static final BlockPos LAYOUT_TABLET = new BlockPos(4, 1, 4);
+
+    /** Empties the pedestals of the area (so that removing them drops nothing) and removes them; the tablet stays. */
+    private static void clearLayout(GameTestHelper test) {
+        for (int x = 0; x <= 7; x++) {
+            for (int z = 0; z <= 7; z++) {
+                BlockPos at = new BlockPos(x, 1, z);
+                if (at.equals(LAYOUT_TABLET)) continue;
+                if (test.getLevel().getBlockEntity(test.absolutePos(at)) instanceof Container container) container.clearContent();
+                test.setBlock(at, Blocks.AIR);
+            }
+        }
+    }
+
+    private static void placeSoul(GameTestHelper test, BlockPos at, ItemStack soul) {
+        test.setBlock(at, BlocksTC.get("arcane_pedestal").defaultBlockState());
+        pedestal(test, at).setItem(0, soul);
+    }
+
+    private static void clearMobs(GameTestHelper test) {
+        test.getLevel().getEntitiesOfClass(net.minecraft.world.entity.Entity.class, test.getBounds().inflate(2),
+                entity -> !(entity instanceof net.minecraft.world.entity.player.Player)).forEach(net.minecraft.world.entity.Entity::discard);
+    }
+
+    /**
+     * The tablet of the port picks the same row and the same three pedestals, in the same order (the order of the essentia
+     * trails), as the search it replaced, for hand-made layouts (several matches in one square, matches in two squares, a set
+     * as a multiset) and for seeded random ones; then a cycle summons that row's mob and uses up exactly those three.
+     */
+    public static void theTabletPicksTheSameSetAsTheOriginalSearch(GameTestHelper test) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        test.setBlock(LAYOUT_TABLET, Machines.SUMMON.get().defaultBlockState());
+        TileSummon tablet = tile(test, LAYOUT_TABLET, TileSummon.class);
+        BlockPos tabletAbs = test.absolutePos(LAYOUT_TABLET);
+        clearMobs(test);
+
+        List<List<Object[]>> layouts = new java.util.ArrayList<>();
+        // several triples match in the square of radius 2 (wolf, cow, pig): the first in the scan order wins
+        layouts.add(List.of(new Object[] { new BlockPos(2, 1, 4), Aspect.BEAST }, new Object[] { new BlockPos(6, 1, 4), Aspect.BEAST },
+                new Object[] { new BlockPos(4, 1, 6), Aspect.BEAST }, new Object[] { new BlockPos(4, 1, 2), Aspect.EARTH },
+                new Object[] { new BlockPos(3, 1, 3), Aspect.TRAVEL }, new Object[] { new BlockPos(5, 1, 5), Aspect.BEAST }));
+        // a pig at radius 1 and a zombie at radius 3, whose pedestals come first in the scan: the smaller square wins
+        layouts.add(List.of(new Object[] { new BlockPos(1, 1, 1), Aspect.FLESH }, new Object[] { new BlockPos(1, 1, 2), Aspect.UNDEAD },
+                new Object[] { new BlockPos(1, 1, 3), Aspect.FLESH }, new Object[] { new BlockPos(3, 1, 4), Aspect.BEAST },
+                new Object[] { new BlockPos(5, 1, 4), Aspect.EARTH }, new Object[] { new BlockPos(4, 1, 5), Aspect.TRAVEL }));
+        // the cow is a set {bestia, terra}: two terra and one bestia are a cow too, found only in the square of radius 4
+        layouts.add(List.of(new Object[] { new BlockPos(0, 1, 7), Aspect.EARTH }, new Object[] { new BlockPos(7, 1, 0), Aspect.EARTH },
+                new Object[] { new BlockPos(7, 1, 7), Aspect.BEAST }));
+        // nothing to summon
+        layouts.add(List.of(new Object[] { new BlockPos(2, 1, 2), Aspect.AIR }, new Object[] { new BlockPos(6, 1, 6), Aspect.AIR },
+                new Object[] { new BlockPos(2, 1, 6), Aspect.WATER }));
+        Aspect[] pool = { Aspect.BEAST, Aspect.EARTH, Aspect.TRAVEL, Aspect.CROP, Aspect.FLESH, Aspect.UNDEAD };
+        java.util.Random random = new java.util.Random(1710L);
+        for (int seed = 0; seed < 40; seed++) {
+            List<Object[]> layout = new java.util.ArrayList<>();
+            java.util.Set<BlockPos> used = new java.util.HashSet<>();
+            int count = 3 + random.nextInt(10);
+            while (layout.size() < count) {
+                BlockPos at = new BlockPos(random.nextInt(8), 1, random.nextInt(8));
+                if (at.equals(LAYOUT_TABLET) || !used.add(at)) continue;
+                layout.add(new Object[] { at, pool[random.nextInt(pool.length)] });
+            }
+            layouts.add(layout);
+        }
+
+        int matched = 0;
+        int legacyLookups = 0;
+        for (int n = 0; n < layouts.size(); n++) {
+            clearLayout(test);
+            List<Object[]> layout = layouts.get(n);
+            for (Object[] entry : layout) {
+                ItemMobAspect.Form form = n % 3 == 1 ? ItemMobAspect.Form.CONDENSED : ItemMobAspect.Form.BASIC;
+                placeSoul(test, (BlockPos) entry[0], soul((Aspect) entry[1], form));
+            }
+            int[] lookups = { 0 };
+            TileSummon.Match expected = legacyMatch(level, tabletAbs, lookups);
+            legacyLookups += lookups[0];
+            TileSummon.Match actual = tablet.findMatch(level);
+            String what = "layout " + n + ": expected " + describe(expected) + ", found " + describe(actual);
+            test.assertTrue((expected == null) == (actual == null), what);
+            if (expected == null) continue;
+            matched++;
+            test.assertTrue(expected.recipe() == actual.recipe(), what);
+            for (int i = 0; i < 3; i++) {
+                test.assertTrue(expected.pedestals().get(i).pos().equals(actual.pedestals().get(i).pos())
+                        && expected.pedestals().get(i).aspect() == actual.pedestals().get(i).aspect(), what + " (pedestal " + i + ")");
+            }
+
+            // the cycle summons that mob and uses up those three pedestals, and only those
+            clearMobs(test);
+            test.assertTrue(tablet.summon(level, 300), what + ": the cycle summons");
+            EntityType<?> type = expected.recipe().getEntityType();
+            int mobs = level.getEntitiesOfClass(net.minecraft.world.entity.Entity.class, test.getBounds().inflate(2),
+                    entity -> entity.getType() == type).size();
+            test.assertTrue(mobs == 1, what + ": one " + type + ", found " + mobs);
+            List<BlockPos> usedUp = expected.pedestals().stream().map(TileSummon.SoulPedestal::pos).toList();
+            for (Object[] entry : layout) {
+                BlockPos at = test.absolutePos((BlockPos) entry[0]);
+                boolean empty = test.getLevel().getBlockEntity(at) instanceof Container container && container.getItem(0).isEmpty();
+                test.assertTrue(empty == usedUp.contains(at), what + ": the pedestal " + entry[0] + (empty ? " was" : " was not") + " used up");
+            }
+            clearMobs(test);
+        }
+        test.assertTrue(matched >= 20, "most layouts have a match: " + matched + " of " + layouts.size());
+        clearLayout(test);
+        LOG.info("Necromancy tablet: {} layouts, {} with a match, the same as the original search ({} look-ups of the old search)",
+                layouts.size(), matched, legacyLookups);
+        test.succeed();
+    }
+
+    /**
+     * A cycle looks up every position of the square of radius 5 once (121, the tablet's own included, whatever the number of
+     * pedestals), where the old search looked up the squares of every radius anew and every pedestal again for each ordered
+     * triple. Timing-insensitive: the look-ups are counted.
+     */
+    public static void theTabletLooksUpEveryPositionOnceACycle(GameTestHelper test) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        test.setBlock(LAYOUT_TABLET, Machines.SUMMON.get().defaultBlockState());
+        BlockPos tabletAbs = test.absolutePos(LAYOUT_TABLET);
+        // twelve pedestals of aer: no mob, so both searches try every triple of every square
+        int placed = 0;
+        for (int x = 0; x <= 7 && placed < 12; x += 2) {
+            for (int z = 0; z <= 7 && placed < 12; z += 3) {
+                BlockPos at = new BlockPos(x, 1, z);
+                if (at.equals(LAYOUT_TABLET)) continue;
+                placeSoul(test, at, soul(Aspect.AIR, ItemMobAspect.Form.BASIC));
+                placed++;
+            }
+        }
+        java.util.function.Function<BlockPos, Container> real = TileSummon.pedestalLookup(level);
+        int[] calls = { 0 };
+        java.util.Set<BlockPos> seen = new java.util.HashSet<>();
+        List<TileSummon.SoulPedestal> found = TileSummon.scan(tabletAbs, at -> {
+            calls[0]++;
+            seen.add(at.immutable());
+            return real.apply(at);
+        });
+        int side = 2 * TileSummon.MAX_RADIUS + 1;
+        test.assertTrue(calls[0] == side * side && seen.size() == side * side, "one look-up per position: " + calls[0] + ", " + seen.size());
+        test.assertTrue(found.size() == placed, "the scan finds the " + placed + " pedestals: " + found.size());
+        test.assertTrue(TileSummon.firstMatch(found) == null && tile(test, LAYOUT_TABLET, TileSummon.class).findMatch(level) == null,
+                "twelve aer are no mob");
+        int[] legacy = { 0 };
+        test.assertTrue(legacyMatch(level, tabletAbs, legacy) == null, "nor for the old search");
+        test.assertTrue(legacy[0] > 10 * calls[0], "the old search looked up " + legacy[0] + " times, the new one " + calls[0]);
+        LOG.info("Necromancy tablet: {} look-ups a cycle for {} pedestals (the old search: {})", calls[0], placed, legacy[0]);
+        clearLayout(test);
+        test.succeed();
+    }
+
     // ---- Cursed Spirit's Blade ---------------------------------------------------------------------------------------
 
     private static ItemStack freshBlade() {
@@ -688,11 +950,15 @@ public final class MachinesRuntimeChecks {
         player.setShiftKeyDown(true);
         blade.getItem().use(test.getLevel(), player, InteractionHand.MAIN_HAND);
         test.assertTrue(ItemBloodSword.isActivated(blade), "on");
-        test.assertTrue(blade.get(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA) != null, "the active icon");
+        test.assertTrue(Boolean.TRUE.equals(blade.get(MachineComponents.BLADE_ACTIVATED.get())),
+                "the flag is the component (the client's item property shows the active icon from it)");
+        test.assertTrue(!blade.has(DataComponents.CUSTOM_DATA) && !blade.has(DataComponents.CUSTOM_MODEL_DATA),
+                "no custom data and no custom model data any more");
         player.stopUsingItem();
         blade.getItem().use(test.getLevel(), player, InteractionHand.MAIN_HAND);
         test.assertTrue(!ItemBloodSword.isActivated(blade), "off again");
-        test.assertTrue(blade.get(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA) == null, "the plain icon");
+        test.assertTrue(!blade.has(MachineComponents.BLADE_ACTIVATED.get()), "the component is gone: the stack is a fresh blade again");
+        test.assertTrue(ItemStack.isSameItemSameComponents(blade, freshBlade()), "the same stack as a fresh blade");
         finish(test, player);
     }
 
@@ -743,6 +1009,39 @@ public final class MachinesRuntimeChecks {
             player.stopUsingItem();
             EventResult lowered = ItemBloodSword.onDamageTaken(player, test.getLevel().damageSources().mobAttack(attacker), 8F);
             test.assertTrue(lowered.isEmpty(), "a lowered blade leaves the blow alone");
+            finish(test, player);
+        });
+    }
+
+    /**
+     * Damage that bypasses invulnerability ({@code /kill}: {@code generic_kill}; the void: {@code out_of_world}) is not
+     * blocked by a raised blade and costs no magic damage; a blow still is. The void goes through the real damage path
+     * ({@code hurt}, which posts the handler).
+     */
+    public static void aBlockingWielderIsNotSavedFromKillOrTheVoid(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = mockPlayer(test);
+        // the test world is creative, and a new player is untouchable for 60 ticks
+        player.setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        player.setItemInHand(InteractionHand.MAIN_HAND, freshBlade());
+        player.startUsingItem(InteractionHand.MAIN_HAND);
+        Villager attacker = test.spawnWithNoFreeWill(EntityType.VILLAGER, new BlockPos(2, 1, 2));
+        test.runAfterDelay(70, () -> {
+            test.assertTrue(player.isUsingItem(), "raised");
+            net.minecraft.world.damagesource.DamageSources sources = test.getLevel().damageSources();
+            for (net.minecraft.world.damagesource.DamageSource source : List.of(sources.genericKill(), sources.fellOutOfWorld())) {
+                test.assertTrue(source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY), source.getMsgId() + " bypasses invulnerability");
+                float before = player.getHealth();
+                EventResult result = ItemBloodSword.onDamageTaken(player, source, 4F);
+                test.assertTrue(result.isEmpty(), source.getMsgId() + " is not blocked");
+                test.assertTrue(player.getHealth() == before, source.getMsgId() + " costs no magic damage: " + before + " -> " + player.getHealth());
+            }
+
+            float before = player.getHealth();
+            test.assertTrue(player.hurt(sources.fellOutOfWorld(), 4F), "the void hurts the blocking wielder");
+            test.assertTrue(player.getHealth() == before - 4F, "by its full 4 points: " + before + " -> " + player.getHealth());
+            test.assertTrue(player.isUsingItem(), "still raised");
+            test.assertTrue(ItemBloodSword.onDamageTaken(player, sources.mobAttack(attacker), 8F).isFalse(), "a blow is still blocked");
             finish(test, player);
         });
     }
@@ -1192,6 +1491,68 @@ public final class MachinesRuntimeChecks {
                     block + " drops exactly itself, got " + drops);
         }
         test.succeed();
+    }
+
+    private static ItemStack throughTheNetwork(GameTestHelper test, ItemStack stack) {
+        net.minecraft.network.RegistryFriendlyByteBuf buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                io.netty.buffer.Unpooled.buffer(), test.getLevel().registryAccess());
+        ItemStack.STREAM_CODEC.encode(buffer, stack);
+        return ItemStack.STREAM_CODEC.decode(buffer);
+    }
+
+    private static ItemStack throughSaving(GameTestHelper test, ItemStack stack) {
+        return ItemStack.parse(test.getLevel().registryAccess(), stack.save(test.getLevel().registryAccess())).orElseThrow();
+    }
+
+    /**
+     * The typed components of the group (1.7.10: the stack tag) are saved and sent: the mould's entity type, the display's
+     * row, the blade's flag and the soul aspect's last tablet with its dimension. None of them writes custom data.
+     */
+    public static void theStackDataOfTheMachinesSurvivesSavingAndTheNetwork(GameTestHelper test) {
+        ServerPlayer player = mockPlayer(test);
+        Zombie zombie = EntityType.ZOMBIE.create(test.getLevel());
+        ItemStack mould = TTRegistry.stack(LibItemNames.SOUL_MOULD);
+        mould.getItem().interactLivingEntity(mould, player, zombie, InteractionHand.MAIN_HAND);
+        test.assertTrue(BuiltInRegistries.ENTITY_TYPE.getResourceKey(EntityType.ZOMBIE).orElseThrow().equals(ItemSoulMould.getPattern(mould)),
+                "the mould's key: " + ItemSoulMould.getPattern(mould));
+        ItemStack display = thaumic.tinkerer.common.item.ItemMobDisplay.stackFor(EnumMobAspect.Wisp);
+        ItemStack blade = freshBlade();
+        player.setItemInHand(InteractionHand.MAIN_HAND, blade);
+        player.setShiftKeyDown(true);
+        blade.getItem().use(test.getLevel(), player, InteractionHand.MAIN_HAND);
+        player.stopUsingItem();
+        ItemStack soul = soul(Aspect.BEAST, ItemMobAspect.Form.INFUSED);
+        GlobalPos nether = GlobalPos.of(net.minecraft.world.level.Level.NETHER, new BlockPos(1, 64, -3));
+        ItemMobAspect.markLastUsedTablet(soul, nether);
+
+        for (ItemStack stack : List.of(mould, display, blade, soul)) {
+            test.assertTrue(!stack.has(DataComponents.CUSTOM_DATA), "no custom data on " + stack);
+            test.assertTrue(ItemStack.isSameItemSameComponents(stack, throughSaving(test, stack)), "saved and loaded: " + stack);
+            test.assertTrue(ItemStack.isSameItemSameComponents(stack, throughTheNetwork(test, stack)), "sent and received: " + stack);
+        }
+        test.assertTrue("minecraft:zombie".equals(ItemSoulMould.getPatternName(throughSaving(test, mould))), "the pattern after loading");
+        test.assertTrue(thaumic.tinkerer.common.item.ItemMobDisplay.getMob(throughTheNetwork(test, display)) == EnumMobAspect.Wisp, "the mob after the network");
+        test.assertTrue(ItemBloodSword.isActivated(throughSaving(test, blade)), "the flag after loading");
+        test.assertTrue(nether.equals(ItemMobAspect.lastUsedTablet(throughSaving(test, soul))), "the tablet after loading");
+        // the saved form of the display names the row, as the tag "type" of 1.7.10 did
+        net.minecraft.nbt.Tag saved = display.save(test.getLevel().registryAccess());
+        String row = ((CompoundTag) saved).getCompound("components").getString(MachineComponents.DISPLAYED_MOB.getId().toString());
+        test.assertTrue("Wisp".equals(row), "the display is saved as the row name: " + saved);
+
+        // the dimension counts: the same coordinates in the Overworld are another tablet
+        test.assertTrue(ItemMobAspect.lastUsedTabletMatches(soul, nether), "the same tablet");
+        test.assertTrue(!ItemMobAspect.lastUsedTabletMatches(soul, GlobalPos.of(net.minecraft.world.level.Level.OVERWORLD, nether.pos())),
+                "the same coordinates in another dimension are another tablet");
+        test.assertTrue(ItemMobAspect.lastUsedTabletMatches(soul(Aspect.BEAST, ItemMobAspect.Form.INFUSED), nether), "a fresh one matches every tablet");
+
+        // a key, not a holder: a mould of an entity type that is not registered keeps it and shows the id
+        ItemStack foreign = TTRegistry.stack(LibItemNames.SOUL_MOULD);
+        net.minecraft.resources.ResourceKey<EntityType<?>> beast = net.minecraft.resources.ResourceKey.create(
+                net.minecraft.core.registries.Registries.ENTITY_TYPE, net.minecraft.resources.ResourceLocation.parse("othermod:beast"));
+        foreign.set(MachineComponents.SOUL_PATTERN.get(), beast);
+        test.assertTrue(beast.equals(ItemSoulMould.getPattern(throughSaving(test, foreign))), "an unknown pattern survives loading");
+        test.assertTrue("othermod:beast".equals(ItemSoulMould.patternDisplayName(beast).getString()), "and is shown as its id");
+        finish(test, player);
     }
 
     public static void everyMobOfTheTableHasAnEntityType(GameTestHelper test) {

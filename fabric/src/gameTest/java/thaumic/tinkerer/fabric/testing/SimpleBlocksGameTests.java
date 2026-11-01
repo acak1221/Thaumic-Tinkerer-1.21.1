@@ -78,6 +78,11 @@ public final class SimpleBlocksGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void aTreeGrowsThroughTheGases(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.aTreeGrowsThroughTheGases(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theBrightNitorMakesGasAtTheHoldersHead(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theBrightNitorMakesGasAtTheHoldersHead(test);
     }
@@ -85,6 +90,11 @@ public final class SimpleBlocksGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void thePlatformIsSolidOnlyForWhoStandsAbove(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.thePlatformIsSolidOnlyForWhoStandsAbove(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    public void thePlatformHoldsBackWaterAndLava(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.thePlatformHoldsBackWaterAndLava(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
@@ -175,6 +185,11 @@ public final class SimpleBlocksGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theSoilAndTheCropHoldAtMostTheirCaps(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theSoilAndTheCropHoldAtMostTheirCaps(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void anOutOfRangeSeedStackCannotHangTheHarvest(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.anOutOfRangeSeedStackCannotHangTheHarvest(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

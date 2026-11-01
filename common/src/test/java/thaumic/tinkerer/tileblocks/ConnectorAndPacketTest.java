@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mojang.serialization.JsonOps;
 import io.netty.buffer.Unpooled;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -16,6 +18,7 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.level.Level;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import thaumic.tinkerer.common.item.ItemConnector;
@@ -25,8 +28,10 @@ import thaumic.tinkerer.common.network.packet.PacketTabletButton;
 /**
  * Test-only code of the port (no 1.7.10 counterpart), CC BY-NC-SA 3.0 like the add-on.
  *
- * <p>The Transvector Binder's memory of a device (in the stack's custom data, where 1.7.10 used {@code posy == -1} for
- * "nothing remembered", a real height now) and the wire format of the two menu packets.</p>
+ * <p>The Transvector Binder's memory of a device (its typed component, a dimension and a position; 1.7.10 used
+ * {@code posy == -1} in the stack's NBT for "nothing remembered", a real height now) and the wire format of the two menu
+ * packets. The component type is not registered in a unit test; a stack holds it all the same, and its codecs are
+ * vanilla's.</p>
  */
 class ConnectorAndPacketTest {
     @BeforeAll
@@ -39,17 +44,30 @@ class ConnectorAndPacketTest {
     void aFreshBinderRemembersNothing() {
         ItemStack binder = new ItemStack(Items.STICK);
         assertFalse(ItemConnector.hasTarget(binder));
-        assertFalse(ItemConnector.getConnectingGolem(binder));
+        assertNull(ItemConnector.getTarget(binder));
     }
 
     @Test
-    void theBinderRemembersAnyHeightIncludingMinusOne() {
+    void theBinderRemembersAnyHeightIncludingMinusOneAndTheDimension() {
         for (BlockPos pos : new BlockPos[] { new BlockPos(3, 70, -8), new BlockPos(0, -1, 0), new BlockPos(-30000000, -64, 29999999) }) {
-            ItemStack binder = new ItemStack(Items.STICK);
-            ItemConnector.setTarget(binder, pos);
-            assertTrue(ItemConnector.hasTarget(binder), pos.toString());
-            assertEquals(pos, ItemConnector.getTarget(binder));
+            for (var dimension : java.util.List.of(Level.OVERWORLD, Level.NETHER)) {
+                ItemStack binder = new ItemStack(Items.STICK);
+                ItemConnector.setTarget(binder, GlobalPos.of(dimension, pos));
+                assertTrue(ItemConnector.hasTarget(binder), pos.toString());
+                assertEquals(GlobalPos.of(dimension, pos), ItemConnector.getTarget(binder));
+            }
         }
+    }
+
+    @Test
+    void theRememberedDeviceSurvivesItsCodecs() {
+        GlobalPos device = GlobalPos.of(Level.NETHER, new BlockPos(-5, -1, 77));
+        var json = ItemConnector.REMEMBERED_DEVICE.codecOrThrow().encodeStart(JsonOps.INSTANCE, device).getOrThrow();
+        assertEquals(device, ItemConnector.REMEMBERED_DEVICE.codecOrThrow().parse(JsonOps.INSTANCE, json).getOrThrow());
+        RegistryFriendlyByteBuf buf = buffer();
+        ItemConnector.REMEMBERED_DEVICE.streamCodec().encode(buf, device);
+        assertEquals(device, ItemConnector.REMEMBERED_DEVICE.streamCodec().decode(buf));
+        assertEquals(0, buf.readableBytes());
     }
 
     @Test
@@ -59,7 +77,8 @@ class ConnectorAndPacketTest {
         other.putString("mine", "kept");
         binder.set(DataComponents.CUSTOM_DATA, CustomData.of(other));
 
-        ItemConnector.setTarget(binder, new BlockPos(1, 2, 3));
+        ItemConnector.setTarget(binder, GlobalPos.of(Level.OVERWORLD, new BlockPos(1, 2, 3)));
+        assertEquals(other, binder.get(DataComponents.CUSTOM_DATA).copyTag(), "the device is not in the custom data");
         ItemConnector.clearTarget(binder);
 
         assertFalse(ItemConnector.hasTarget(binder));
@@ -67,21 +86,12 @@ class ConnectorAndPacketTest {
     }
 
     @Test
-    void forgettingTheOnlyDataRemovesTheComponent() {
+    void forgettingTheDeviceRemovesTheComponent() {
         ItemStack binder = new ItemStack(Items.STICK);
-        ItemConnector.setTarget(binder, new BlockPos(1, 2, 3));
+        ItemConnector.setTarget(binder, GlobalPos.of(Level.OVERWORLD, new BlockPos(1, 2, 3)));
         ItemConnector.clearTarget(binder);
+        assertNull(binder.get(ItemConnector.REMEMBERED_DEVICE));
         assertNull(binder.get(DataComponents.CUSTOM_DATA));
-    }
-
-    @Test
-    void theGolemFlagIsKeptSeparately() {
-        ItemStack binder = new ItemStack(Items.STICK);
-        ItemConnector.setConnectingGolem(binder, true);
-        assertTrue(ItemConnector.getConnectingGolem(binder));
-        assertFalse(ItemConnector.hasTarget(binder));
-        ItemConnector.setConnectingGolem(binder, false);
-        assertFalse(ItemConnector.getConnectingGolem(binder));
     }
 
     private static RegistryFriendlyByteBuf buffer() {

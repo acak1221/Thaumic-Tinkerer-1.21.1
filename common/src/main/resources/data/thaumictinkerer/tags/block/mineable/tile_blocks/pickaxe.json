@@ -6,7 +6,6 @@
     "thaumictinkerer:levitational_locomotive_relay",
     "thaumictinkerer:interface",
     "thaumictinkerer:dislocator",
-    "thaumictinkerer:remote_placer",
-    "thaumictinkerer:enchanter"
+    "thaumictinkerer:remote_placer"
   ]
 }

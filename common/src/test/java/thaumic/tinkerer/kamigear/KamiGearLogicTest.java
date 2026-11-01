@@ -26,6 +26,10 @@ import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -162,6 +166,42 @@ class KamiGearLogicTest {
             assertFalse(ItemPlacementMirror.canRemember(EmptyBlockGetter.INSTANCE, at, block.defaultBlockState()),
                     block + " is refused");
         }
+    }
+
+    @Test
+    void theMirrorPlacesWhatOneItemIsWorth() {
+        // A double slab is one slab, a top slab stays a top slab, snow is one layer; waterlogging is not carried over.
+        var doubleSlab = Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.DOUBLE)
+                .setValue(BlockStateProperties.WATERLOGGED, true);
+        assertEquals(Blocks.STONE_SLAB.defaultBlockState(), ItemPlacementMirror.placedState(doubleSlab));
+        var topSlab = Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.TOP);
+        assertEquals(topSlab, ItemPlacementMirror.placedState(topSlab));
+        assertEquals(1, ItemPlacementMirror.placedState(Blocks.SNOW.defaultBlockState().setValue(SnowLayerBlock.LAYERS, 8))
+                .getValue(SnowLayerBlock.LAYERS));
+        // The properties that only turn a block are kept; the rest is the block's default.
+        var log = Blocks.OAK_LOG.defaultBlockState().setValue(BlockStateProperties.AXIS, Direction.Axis.X);
+        assertEquals(log, ItemPlacementMirror.placedState(log));
+        var furnace = Blocks.FURNACE.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.EAST)
+                .setValue(BlockStateProperties.LIT, true);
+        assertEquals(Blocks.FURNACE.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.EAST),
+                ItemPlacementMirror.placedState(furnace));
+        var note = Blocks.NOTE_BLOCK.defaultBlockState().setValue(BlockStateProperties.NOTE, 12)
+                .setValue(BlockStateProperties.POWERED, true);
+        assertEquals(Blocks.NOTE_BLOCK.defaultBlockState(), ItemPlacementMirror.placedState(note));
+        // Leaves are persistent, as when a player places them by hand.
+        var leaves = Blocks.OAK_LEAVES.defaultBlockState().setValue(BlockStateProperties.DISTANCE, 1);
+        assertEquals(Blocks.OAK_LEAVES.defaultBlockState().setValue(BlockStateProperties.PERSISTENT, true),
+                ItemPlacementMirror.placedState(leaves));
+        // Something put into the block: refused; the empty block is fine.
+        assertEquals(null, ItemPlacementMirror.placedState(Blocks.BEEHIVE.defaultBlockState().setValue(BlockStateProperties.LEVEL_HONEY, 5)));
+        assertEquals(null, ItemPlacementMirror.placedState(
+                Blocks.RESPAWN_ANCHOR.defaultBlockState().setValue(BlockStateProperties.RESPAWN_ANCHOR_CHARGES, 1)));
+        assertEquals(null, ItemPlacementMirror.placedState(Blocks.JUKEBOX.defaultBlockState().setValue(BlockStateProperties.HAS_RECORD, true)));
+        var hive = Blocks.BEEHIVE.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.WEST);
+        assertEquals(hive, ItemPlacementMirror.placedState(hive));
+        assertFalse(ItemPlacementMirror.canRemember(EmptyBlockGetter.INSTANCE, BlockPos.ZERO,
+                Blocks.BEEHIVE.defaultBlockState().setValue(BlockStateProperties.LEVEL_HONEY, 5)), "a hive with honey is not remembered");
+        assertEquals(null, ItemPlacementMirror.placedState(null));
     }
 
     // ---- the tools -----------------------------------------------------------------------------------------------

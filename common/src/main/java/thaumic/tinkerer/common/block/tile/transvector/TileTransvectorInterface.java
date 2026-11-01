@@ -43,6 +43,14 @@ import thaumic.tinkerer.common.content.TileBlocks;
  * <p><b>Not forwarded: fluids and energy</b> (1.7.10 {@code IFluidHandler}, CoFH RF and IC2 EU). 1.21.1 has no fluid or
  * energy interface that common code can implement; they are loader capabilities (Fabric Transfer API, NeoForge
  * capabilities). {@link #getTile()} is the single place a loader module needs to forward them from.</p>
+ *
+ * <p><b>Never itself, never another Interface</b> (new in the port). Every forwarding path goes through {@link #bound()},
+ * which answers null for the Interface itself and for another Interface, and on the server {@link #getTile()} ends such a
+ * binding. The Transvector Binder refuses to bind an Interface to an Interface, but a Transvector Dislocator that moves an
+ * Interface onto the block it is bound to, or two bound Interfaces into each other's targets, can make one; every question
+ * (a hopper's, a comparator's, the {@code setChanged} of a click) then asked the Interface again until the stack overflowed:
+ * a crash of the server, again after every restart as soon as something asked. A world saved with such a binding repairs
+ * itself at the first question.</p>
  */
 public class TileTransvectorInterface extends TileTransvector implements WorldlyContainer, IAspectContainer, IEssentiaTransport {
 
@@ -74,16 +82,32 @@ public class TileTransvectorInterface extends TileTransvector implements Worldly
     public void setChanged() {
         super.setChanged();
         if (level != null) {
-            BlockEntity tile = getTile();
+            BlockEntity tile = bound();
             if (tile != null) tile.setChanged();
         }
+    }
+
+    /** Not itself, not another Interface (see the class comment); {@link #getTile()} ends such a binding on the server. */
+    @Override
+    protected boolean mayBindTo(BlockEntity tile) {
+        return tile != this && !(tile instanceof TileTransvectorInterface);
+    }
+
+    /**
+     * The block entity the Interface forwards to: {@link #getTile()}, and never the Interface itself or another Interface,
+     * on either side. Every forwarding path asks this.
+     */
+    @Nullable
+    public final BlockEntity bound() {
+        BlockEntity tile = getTile();
+        return tile == this || tile instanceof TileTransvectorInterface ? null : tile;
     }
 
     // ---- items ----------------------------------------------------------------------------------------------------
 
     @Nullable
     private Container container() {
-        return getTile() instanceof Container container ? container : null;
+        return bound() instanceof Container container ? container : null;
     }
 
     @Override
@@ -146,10 +170,24 @@ public class TileTransvectorInterface extends TileTransvector implements Worldly
         if (container != null) container.stopOpen(player);
     }
 
+    /** The limit for this stack (new in 1.21.1's {@code Container}; the hopper asks it), the bound inventory's. */
+    @Override
+    public int getMaxStackSize(ItemStack stack) {
+        Container container = container();
+        return container != null ? container.getMaxStackSize(stack) : 0;
+    }
+
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
         Container container = container();
         return container != null && container.canPlaceItem(slot, stack);
+    }
+
+    /** May {@code target} (a hopper) take this stack out (new in 1.21.1's {@code Container}): the bound inventory decides. */
+    @Override
+    public boolean canTakeItem(Container target, int slot, ItemStack stack) {
+        Container container = container();
+        return container != null && container.canTakeItem(target, slot, stack);
     }
 
     @Override
@@ -159,21 +197,21 @@ public class TileTransvectorInterface extends TileTransvector implements Worldly
 
     @Override
     public int[] getSlotsForFace(Direction side) {
-        BlockEntity tile = getTile();
+        BlockEntity tile = bound();
         return tile instanceof WorldlyContainer worldly ? worldly.getSlotsForFace(side)
                 : tile instanceof Container container ? buildSlotsForLinearInventory(container) : new int[0];
     }
 
     @Override
     public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
-        BlockEntity tile = getTile();
+        BlockEntity tile = bound();
         return tile instanceof WorldlyContainer worldly ? worldly.canPlaceItemThroughFace(slot, stack, side)
                 : tile instanceof Container;
     }
 
     @Override
     public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
-        BlockEntity tile = getTile();
+        BlockEntity tile = bound();
         return tile instanceof WorldlyContainer worldly ? worldly.canTakeItemThroughFace(slot, stack, side)
                 : tile instanceof Container;
     }
@@ -182,7 +220,7 @@ public class TileTransvectorInterface extends TileTransvector implements Worldly
 
     @Nullable
     private IAspectContainer aspects() {
-        return getTile() instanceof IAspectContainer container ? container : null;
+        return bound() instanceof IAspectContainer container ? container : null;
     }
 
     @Override
@@ -249,7 +287,7 @@ public class TileTransvectorInterface extends TileTransvector implements Worldly
 
     @Nullable
     private IEssentiaTransport transport() {
-        return getTile() instanceof IEssentiaTransport transport ? transport : null;
+        return bound() instanceof IEssentiaTransport transport ? transport : null;
     }
 
     @Override

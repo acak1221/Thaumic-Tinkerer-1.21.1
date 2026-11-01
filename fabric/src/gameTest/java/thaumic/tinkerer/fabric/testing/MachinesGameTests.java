@@ -36,6 +36,11 @@ public final class MachinesGameTests implements FabricGameTest {
         MachinesRuntimeChecks.repairerSavesItsToolAndItsState(test);
     }
 
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 100)
+    public void theRestorerNeitherTakesNorMendsTheSpellbindingCloth(GameTestHelper test) {
+        MachinesRuntimeChecks.theRestorerNeitherTakesNorMendsTheSpellbindingCloth(test);
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void funnelNeedsAHopperUnderIt(GameTestHelper test) {
         MachinesRuntimeChecks.funnelNeedsAHopperUnderIt(test);
@@ -152,6 +157,16 @@ public final class MachinesGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theTabletPicksTheSameSetAsTheOriginalSearch(GameTestHelper test) {
+        MachinesRuntimeChecks.theTabletPicksTheSameSetAsTheOriginalSearch(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theTabletLooksUpEveryPositionOnceACycle(GameTestHelper test) {
+        MachinesRuntimeChecks.theTabletLooksUpEveryPositionOnceACycle(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void theBladeSwitchesTheHarvestWithAShiftRightClick(GameTestHelper test) {
         MachinesRuntimeChecks.theBladeSwitchesTheHarvestWithAShiftRightClick(test);
     }
@@ -169,6 +184,11 @@ public final class MachinesGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
     public void aBlockingWielderTakesThreeMagicDamageInsteadOfTheBlow(GameTestHelper test) {
         MachinesRuntimeChecks.aBlockingWielderTakesThreeMagicDamageInsteadOfTheBlow(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 200)
+    public void aBlockingWielderIsNotSavedFromKillOrTheVoid(GameTestHelper test) {
+        MachinesRuntimeChecks.aBlockingWielderIsNotSavedFromKillOrTheVoid(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
@@ -204,6 +224,11 @@ public final class MachinesGameTests implements FabricGameTest {
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void everyMobOfTheTableHasAnEntityType(GameTestHelper test) {
         MachinesRuntimeChecks.everyMobOfTheTableHasAnEntityType(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theStackDataOfTheMachinesSurvivesSavingAndTheNetwork(GameTestHelper test) {
+        MachinesRuntimeChecks.theStackDataOfTheMachinesSurvivesSavingAndTheNetwork(test);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

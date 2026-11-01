@@ -39,8 +39,8 @@ import thaumic.tinkerer.common.item.ItemConnector;
  */
 public class TileGolemConnector extends CamoDeviceBlockEntity {
 
-    private static final String TAG_UUID_MOST = "UUIDMost";
-    private static final String TAG_UUID_LEAST = "UUIDLeast";
+    /** The bound golem's id, in the vanilla UUID format ({@code putUUID}: four ints); absent when not bound. */
+    private static final String TAG_GOLEM = "golem";
 
     /** How far from the connector the bound golem is searched for. */
     private static final int GOLEM_RANGE = 30;
@@ -100,19 +100,12 @@ public class TileGolemConnector extends CamoDeviceBlockEntity {
     @Override
     protected void writeCustomData(CompoundTag cmp, HolderLookup.Provider registries) {
         super.writeCustomData(cmp, registries);
-        if (golemConnected != null) {
-            cmp.putLong(TAG_UUID_MOST, golemConnected.getMostSignificantBits());
-            cmp.putLong(TAG_UUID_LEAST, golemConnected.getLeastSignificantBits());
-        }
+        if (golemConnected != null) cmp.putUUID(TAG_GOLEM, golemConnected);
     }
 
     @Override
     protected void readCustomData(CompoundTag cmp, HolderLookup.Provider registries) {
         super.readCustomData(cmp, registries);
-        if (cmp.contains(TAG_UUID_LEAST) && cmp.contains(TAG_UUID_MOST)) {
-            golemConnected = new UUID(cmp.getLong(TAG_UUID_MOST), cmp.getLong(TAG_UUID_LEAST));
-        } else {
-            golemConnected = null;
-        }
+        golemConnected = cmp.hasUUID(TAG_GOLEM) ? cmp.getUUID(TAG_GOLEM) : null;
     }
 }

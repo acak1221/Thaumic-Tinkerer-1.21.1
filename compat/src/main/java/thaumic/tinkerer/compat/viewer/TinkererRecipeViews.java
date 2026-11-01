@@ -8,12 +8,11 @@ package thaumic.tinkerer.compat.viewer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +23,7 @@ import thaumic.tinkerer.common.item.InfusedSeedComponents;
 import thaumic.tinkerer.common.item.ItemInfusedSeeds;
 import thaumic.tinkerer.common.item.ItemMobAspect;
 import thaumic.tinkerer.common.item.ItemMobDisplay;
+import thaumic.tinkerer.common.item.MachineComponents;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.registry.TTRegistry;
@@ -68,7 +68,7 @@ public final class TinkererRecipeViews {
                 LOG.warn("Necromancy page of {} skipped: its entity type does not exist", mob.name());
                 continue;
             }
-            ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+            ResourceLocation typeId = mob.getEntityTypeKey().location();
             List<Aspect> aspects = List.of(mob.aspects);
             List<List<ItemStack>> essences = new ArrayList<>();
             for (Aspect aspect : aspects) essences.add(acceptedEssences(aspect));
@@ -95,11 +95,16 @@ public final class TinkererRecipeViews {
     }
 
     /**
-     * What tells two Mob Displays apart: the row name in the key {@code type} of the custom data ("" for none). Takes the
-     * custom data of the stack ({@code stack.get(DataComponents.CUSTOM_DATA)}), which EMI hands out without a stack.
+     * What tells two Mob Displays apart: the name of the row of the table the display shows ("" for none). Takes the value
+     * of the component {@link #mobDisplayComponent()} ({@code stack.get(...)}), which EMI hands out without a stack.
      */
-    public static String mobDisplayKey(@Nullable CustomData data) {
-        return data == null ? "" : data.copyTag().getString(ItemMobDisplay.TAG_TYPE);
+    public static String mobDisplayKey(@Nullable EnumMobAspect mob) {
+        return mob == null ? "" : mob.name();
+    }
+
+    /** The component that holds the mob of a Mob Display ({@code MachineComponents.DISPLAYED_MOB}). */
+    public static DataComponentType<EnumMobAspect> mobDisplayComponent() {
+        return MachineComponents.DISPLAYED_MOB.get();
     }
 
     public static Item mobDisplayItem() {

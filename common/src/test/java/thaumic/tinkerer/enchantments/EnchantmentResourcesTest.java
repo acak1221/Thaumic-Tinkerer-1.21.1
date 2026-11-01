@@ -392,6 +392,6 @@ class EnchantmentResourcesTest {
         assertEquals("minecraft:block", loot.get("type").getAsString());
         assertEquals(NS + ":enchanter", loot.getAsJsonArray("pools").get(0).getAsJsonObject().getAsJsonArray("entries").get(0)
                 .getAsJsonObject().get("name").getAsString());
-        assertTrue(values("/data/" + NS + "/tags/block/mineable/tile_blocks/pickaxe.json").contains(NS + ":enchanter"));
+        assertTrue(values("/data/" + NS + "/tags/block/mineable/enchantments/pickaxe.json").contains(NS + ":enchanter"));
     }
 }

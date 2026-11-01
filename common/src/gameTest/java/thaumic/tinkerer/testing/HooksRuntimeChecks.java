@@ -818,6 +818,40 @@ public final class HooksRuntimeChecks {
         finish(test, player);
     }
 
+    /**
+     * "Cannot dig" on a block of hardness zero (a slime block) is a progress of exactly zero, not the NaN of {@code 0 / 0} that
+     * {@code speed / hardness / 30} would give; the real dig start does not break the block then. Without the listener the same
+     * block breaks at once (a progress of 1 or more), as in vanilla.
+     */
+    public static void breakSpeedCannotDigOnABlockOfHardnessZeroIsProgressZero(GameTestHelper test) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        BlockPos slimeRel = new BlockPos(3, 1, 3);
+        BlockPos slime = test.absolutePos(slimeRel);
+        test.setBlock(slimeRel, Blocks.SLIME_BLOCK);
+        BlockState state = level.getBlockState(slime);
+        test.assertTrue(state.getDestroySpeed(level, slime) == 0F, "a slime block has hardness zero");
+        ServerPlayer player = player(test, 6.5, 1, 6.5);
+
+        float plain = state.getDestroyProgress(player, level, slime);
+        test.assertTrue(plain >= 1F, "without a listener a block of hardness zero breaks at once: " + plain);
+
+        TinkererEvents.BreakSpeed never = (who, blockState, pos, speed) -> who == player && slime.equals(pos) ? 0F : speed;
+        TinkererEvents.BREAK_SPEED.register(never);
+        try {
+            float progress = state.getDestroyProgress(player, level, slime);
+            test.assertTrue(progress == 0F, "cannot dig: a progress of exactly zero, not NaN: " + progress);
+            player.gameMode.handleBlockBreakAction(slime, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, Direction.UP,
+                    level.getMaxBuildHeight(), 1);
+            test.assertTrue(level.getBlockState(slime).is(Blocks.SLIME_BLOCK), "and the dig start does not break it");
+            player.gameMode.handleBlockBreakAction(slime, ServerboundPlayerActionPacket.Action.ABORT_DESTROY_BLOCK, Direction.UP,
+                    level.getMaxBuildHeight(), 2);
+        } finally {
+            TinkererEvents.BREAK_SPEED.unregister(never);
+        }
+        finish(test, player);
+    }
+
     // ---- LIVING_JUMP -----------------------------------------------------------------------------------------------
 
     /** The jump of a mob and of a player pressing the key: the listener sees the motion of the jump and changes it. */

@@ -130,20 +130,17 @@ public class ItemIchorPickAdv extends ItemIchorPick implements IAdvancedTool {
         if (!level.isLoaded(pos)) return false;
         BlockState state = level.getBlockState(pos);
         if (!state.is(Blocks.BEDROCK)) return false;
-        if (!BlockProtection.mayBreak(player, level, pos, state)) return false;
         boolean bedrockDimension = level.dimension() == KamiHooks.BEDROCK_DIMENSION;
         boolean top = pos.getY() > level.getMaxBuildHeight() - 3;
         boolean overworldFloor = level.dimension() == Level.OVERWORLD && pos.getY() < level.getMinBuildHeight() + 5;
         Block portal = KamiHooks.optionalBlock(LibBlockNames.PORTAL);
-        if (portal != null && (overworldFloor || (bedrockDimension && top))) {
-            level.setBlock(pos, portal.defaultBlockState(), Block.UPDATE_ALL);
-            return true;
-        }
-        if (bedrockDimension && !top) {
-            level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-            return true;
-        }
-        return false;
+        BlockState converted = null;
+        if (portal != null && (overworldFloor || (bedrockDimension && top))) converted = portal.defaultBlockState();
+        else if (bedrockDimension && !top) converted = Blocks.AIR.defaultBlockState();
+        // Asked only when something would change, so that a protection mod is not asked (and does not answer the player) for nothing.
+        if (converted == null || !BlockProtection.mayBreak(player, level, pos, state)) return false;
+        level.setBlock(pos, converted, Block.UPDATE_ALL);
+        return true;
     }
 
     /**

@@ -41,10 +41,7 @@ public final class MachineComponents {
     public static RegistrySupplier<DataComponentType<GlobalPos>> LAST_TABLET;
 
     /** A row of the necromancy table by its constant name ({@code Chicken}, {@code PigZombie}...), as 1.7.10 wrote it. */
-    public static final Codec<EnumMobAspect> MOB_CODEC = Codec.STRING.comapFlatMap(name -> {
-        EnumMobAspect row = EnumMobAspect.get(name);
-        return row != null ? DataResult.success(row) : DataResult.error(() -> "No row of the necromancy table named " + name);
-    }, EnumMobAspect::name);
+    public static final Codec<EnumMobAspect> MOB_CODEC = Codec.STRING.comapFlatMap(MachineComponents::parseMob, EnumMobAspect::name);
 
     /** A row of the necromancy table by its ordinal (both sides run the same table). */
     public static final StreamCodec<ByteBuf, EnumMobAspect> MOB_STREAM_CODEC = ByteBufCodecs.idMapper(
@@ -52,6 +49,12 @@ public final class MachineComponents {
             EnumMobAspect::ordinal);
 
     private static boolean registered;
+
+    private static DataResult<EnumMobAspect> parseMob(String name) {
+        EnumMobAspect row = EnumMobAspect.get(name);
+        if (row == null) return DataResult.error(() -> "No row of the necromancy table named " + name);
+        return DataResult.success(row);
+    }
 
     private MachineComponents() {}
 

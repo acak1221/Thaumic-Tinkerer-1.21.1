@@ -65,7 +65,7 @@ public class ItemGemChest extends ItemIchorclothArmorAdv {
     private static boolean shouldPlayerHaveFlight(Player player) {
         ItemStack armor = player.getItemBySlot(EquipmentSlot.CHEST);
         return armor.getItem() instanceof ItemGemChest && KamiArmorHandler.getArmorStatus(player) && !isDisabled(armor)
-                && ConfigHandler.enableFlight;
+                && ConfigHandler.flightEnabled(player.level());
     }
 
     /** 1.7.10 {@code tickPlayer}, run while the chestplate is worn. */

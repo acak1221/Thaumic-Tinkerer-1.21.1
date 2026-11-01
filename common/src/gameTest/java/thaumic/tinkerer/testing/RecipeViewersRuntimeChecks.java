@@ -91,7 +91,7 @@ public final class RecipeViewersRuntimeChecks {
         Set<String> keys = new HashSet<>();
         for (ItemStack display : displays) {
             test.assertTrue(display.is(TinkererRecipeViews.mobDisplayItem()), "a Mob Display: " + display);
-            keys.add(TinkererRecipeViews.mobDisplayKey(display.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA)));
+            keys.add(TinkererRecipeViews.mobDisplayKey(display.get(TinkererRecipeViews.mobDisplayComponent())));
         }
         test.assertTrue(displays.size() == EnumMobAspect.values().length && keys.size() == displays.size() && !keys.contains(""),
                 "one Mob Display per mob, each told apart by its type: " + keys);

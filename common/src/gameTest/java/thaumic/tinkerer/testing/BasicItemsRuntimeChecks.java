@@ -390,6 +390,68 @@ public final class BasicItemsRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * Curses ({@code #minecraft:curse}) stay on the item, as the grindstone keeps them (1.7.10 had no curses: a deviation);
+     * the other enchantments go, and an item whose only enchantments are curses is not taken (there is nothing to wipe).
+     */
+    public static void spellClothKeepsTheCurses(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test, 4.5, 1, 4.5);
+        CraftingMenu menu = craftingMenu(test, player);
+        ServerLevel level = test.getLevel();
+        var enchantments = level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
+        Holder<Enchantment> sharpness = enchantments.getOrThrow(Enchantments.SHARPNESS);
+        Holder<Enchantment> looting = enchantments.getOrThrow(Enchantments.LOOTING);
+        Holder<Enchantment> vanishing = enchantments.getOrThrow(Enchantments.VANISHING_CURSE);
+        Holder<Enchantment> binding = enchantments.getOrThrow(Enchantments.BINDING_CURSE);
+        test.assertTrue(vanishing.is(net.minecraft.tags.EnchantmentTags.CURSE) && binding.is(net.minecraft.tags.EnchantmentTags.CURSE)
+                && !sharpness.is(net.minecraft.tags.EnchantmentTags.CURSE), "the curse tag of the data pack");
+
+        ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+        sword.enchant(sharpness, 3);
+        sword.enchant(looting, 2);
+        sword.enchant(vanishing, 1);
+        menu.getSlot(2).set(TTRegistry.stack(LibItemNames.SPELL_CLOTH));
+        menu.getSlot(5).set(sword);
+        ItemStack shown = menu.getSlot(0).getItem();
+        test.assertTrue(shown.is(Items.DIAMOND_SWORD), "a cursed and enchanted sword is wiped: " + shown);
+        ItemEnchantments left = shown.getEnchantments();
+        test.assertTrue(left.size() == 1 && left.getLevel(vanishing) == 1, "only the Curse of Vanishing stays: " + left);
+        test.assertTrue(left.getLevel(sharpness) == 0 && left.getLevel(looting) == 0, "Sharpness and Looting are gone: " + left);
+
+        menu.clicked(0, 0, ClickType.PICKUP, player);
+        ItemStack taken = menu.getCarried();
+        test.assertTrue(taken.is(Items.DIAMOND_SWORD) && taken.getEnchantments().getLevel(vanishing) == 1 && taken.getEnchantments().size() == 1,
+                "the player takes the sword with its curse: " + taken);
+        ItemStack cloth = menu.getSlot(2).getItem();
+        test.assertTrue(cloth.getItem() instanceof ItemSpellCloth && cloth.getDamageValue() == 1, "one use of the cloth: " + cloth);
+        menu.setCarried(ItemStack.EMPTY);
+
+        // curses only: nothing to wipe, the recipe does not match and the cloth is not worn
+        ItemStack helmet = new ItemStack(Items.DIAMOND_HELMET);
+        helmet.enchant(binding, 1);
+        helmet.enchant(vanishing, 1);
+        test.assertTrue(helmet.isEnchanted(), "the helmet is enchanted (with curses)");
+        test.assertTrue(recipeFor(test, grid(TTRegistry.stack(LibItemNames.SPELL_CLOTH), helmet)).isEmpty(), "curses alone are not wiped");
+        menu.getSlot(5).set(helmet);
+        test.assertTrue(menu.getSlot(0).getItem().isEmpty(), "no result for the cursed helmet");
+        clearGrid(menu);
+
+        // control: a sword without curses comes out without any enchantment, as before
+        ItemStack plain = enchantedSword(level, "Plain");
+        ItemStack wiped = recipeFor(test, grid(TTRegistry.stack(LibItemNames.SPELL_CLOTH), plain)).orElseThrow().value()
+                .assemble(CraftingInput.of(3, 3, grid(TTRegistry.stack(LibItemNames.SPELL_CLOTH), plain)), level.registryAccess());
+        test.assertTrue(!wiped.isEnchanted() && ItemStack.isSameItemSameComponents(wiped.copy(), withoutEnchantments(plain)),
+                "without curses nothing is left: " + wiped);
+        test.succeed();
+    }
+
+    private static ItemStack withoutEnchantments(ItemStack stack) {
+        ItemStack copy = stack.copy();
+        copy.set(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+        return copy;
+    }
+
     // ---- the Talisman of Remedium ------------------------------------------------------------------------------------
 
     public static void cleansingTalismanSneakClickTogglesAndKeepsTheSwitch(GameTestHelper test) {

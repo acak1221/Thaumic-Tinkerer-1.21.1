@@ -158,6 +158,16 @@ class FociResourcesTest {
     }
 
     @Test
+    void theBlacklistTagOfTheDislocationFocusHoldsWhatNoPistonMoves() {
+        JsonObject tag = json("/data/" + NS + "/tags/block/dislocation_blacklist.json");
+        assertFalse(tag.get("replace").getAsBoolean());
+        List<String> values = new ArrayList<>();
+        for (JsonElement value : tag.getAsJsonArray("values")) values.add(value.getAsString());
+        assertTrue(values.contains("minecraft:reinforced_deepslate"), "reinforced deepslate: " + values);
+        assertTrue(values.contains("minecraft:budding_amethyst"), "budding amethyst: " + values);
+    }
+
+    @Test
     void theBlacklistTagOfTheDistortionFocusHoldsTheExperienceBottle() {
         JsonObject tag = json("/data/" + NS + "/tags/entity_type/deflect_blacklist.json");
         assertFalse(tag.get("replace").getAsBoolean());

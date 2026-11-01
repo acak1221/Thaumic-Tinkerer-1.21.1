@@ -25,6 +25,10 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * component holds the whole block state; the saved block entity stays a compound tag, because it is the block entity's own
  * format. The component sits on the focus stack inside the wand ({@code WandHelper.setFocus} keeps the whole stack), and
  * "available" is the presence of the component.</p>
+ *
+ * <p>New: the component also carries the server's seal of a load the focus took itself ({@link DislocationSeal}), so that the
+ * data of a block entity that only an operator may set (a spawner, a sign, a lectern) is put back for every player when the
+ * load is genuine, and not when the component was written by hand (a creative player can give his stacks any component).</p>
  */
 public final class FociComponents {
     /** The block, with its state and saved block entity, that a Focus of Dislocation carries; absent when it carries none. */
@@ -34,18 +38,28 @@ public final class FociComponents {
 
     private FociComponents() {}
 
-    /** What a Focus of Dislocation holds: the state of the block it took and the saved data of its block entity (empty for none). */
-    public record DislocationData(BlockState state, CompoundTag tile) {
+    /**
+     * What a Focus of Dislocation holds: the state of the block it took, the saved data of its block entity (empty for none) and
+     * the seal of the server that took it ({@link DislocationSeal}; empty for a load the focus did not take).
+     */
+    public record DislocationData(BlockState state, CompoundTag tile, String seal) {
         public static final Codec<DislocationData> CODEC = RecordCodecBuilder.create(i -> i.group(
                 BlockState.CODEC.fieldOf("state").forGetter(DislocationData::state),
-                CompoundTag.CODEC.optionalFieldOf("tile", new CompoundTag()).forGetter(DislocationData::tile))
+                CompoundTag.CODEC.optionalFieldOf("tile", new CompoundTag()).forGetter(DislocationData::tile),
+                Codec.STRING.optionalFieldOf("seal", "").forGetter(DislocationData::seal))
                 .apply(i, DislocationData::new));
         public static final StreamCodec<RegistryFriendlyByteBuf, DislocationData> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.idMapper(Block.BLOCK_STATE_REGISTRY), DislocationData::state, ByteBufCodecs.COMPOUND_TAG,
-                DislocationData::tile, DislocationData::new);
+                DislocationData::tile, ByteBufCodecs.STRING_UTF8, DislocationData::seal, DislocationData::new);
 
         public DislocationData {
             tile = tile.copy();
+            seal = seal == null ? "" : seal;
+        }
+
+        /** A load without a seal (made by a command or a test). */
+        public DislocationData(BlockState state, CompoundTag tile) {
+            this(state, tile, "");
         }
 
         /** A copy: the tag of a stack component is never shared with the caller. */

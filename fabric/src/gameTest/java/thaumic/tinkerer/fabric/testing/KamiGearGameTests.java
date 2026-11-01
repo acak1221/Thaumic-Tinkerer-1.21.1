@@ -190,4 +190,54 @@ public final class KamiGearGameTests implements FabricGameTest {
     public void ichorclothPiecesShowTheOriginalArmourAndNeverWear(GameTestHelper test) {
         KamiGearRuntimeChecks.ichorclothPiecesShowTheOriginalArmourAndNeverWear(test);
     }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void awakenedPickaxeIgnoresBedrockClicksThePlayerCannotMake(GameTestHelper test) {
+        KamiGearRuntimeChecks.awakenedPickaxeIgnoresBedrockClicksThePlayerCannotMake(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void bedrockTurnsIntoAirOnlyWhereThePlayerMayBreakIt(GameTestHelper test) {
+        KamiGearRuntimeChecks.bedrockTurnsIntoAirOnlyWhereThePlayerMayBreakIt(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void protoclayIgnoresClicksThePlayerCannotMake(GameTestHelper test) {
+        KamiGearRuntimeChecks.protoclayIgnoresClicksThePlayerCannotMake(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void hoeOfGrowthIgnoresClicksThePlayerCannotMake(GameTestHelper test) {
+        KamiGearRuntimeChecks.hoeOfGrowthIgnoresClicksThePlayerCannotMake(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void mirrorPlacesASingleSlabForADoubleOne(GameTestHelper test) {
+        KamiGearRuntimeChecks.mirrorPlacesASingleSlabForADoubleOne(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks(GameTestHelper test) {
+        KamiGearRuntimeChecks.mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void mirrorPlacesNothingWhereThePlayerMayNotBuild(GameTestHelper test) {
+        KamiGearRuntimeChecks.mirrorPlacesNothingWhereThePlayerMayNotBuild(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void pouchDoesNotGoIntoShulkerBoxesOrBundles(GameTestHelper test) {
+        KamiGearRuntimeChecks.pouchDoesNotGoIntoShulkerBoxesOrBundles(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void soulModeGivesAHeartOnlyForAHitThatLands(GameTestHelper test) {
+        KamiGearRuntimeChecks.soulModeGivesAHeartOnlyForAHitThatLands(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void switchedOffGemBootsGiveTheStepWhileThePlayerWalks(GameTestHelper test) {
+        KamiGearRuntimeChecks.switchedOffGemBootsGiveTheStepWhileThePlayerWalks(test);
+    }
 }

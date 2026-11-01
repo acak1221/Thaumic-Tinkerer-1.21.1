@@ -45,6 +45,11 @@ public final class MachinesGameTests {
         MachinesRuntimeChecks.repairerSavesItsToolAndItsState(test);
     }
 
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 100)
+    public void theRestorerNeitherTakesNorMendsTheSpellbindingCloth(GameTestHelper test) {
+        MachinesRuntimeChecks.theRestorerNeitherTakesNorMendsTheSpellbindingCloth(test);
+    }
+
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void funnelNeedsAHopperUnderIt(GameTestHelper test) {
         MachinesRuntimeChecks.funnelNeedsAHopperUnderIt(test);
@@ -161,6 +166,16 @@ public final class MachinesGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theTabletPicksTheSameSetAsTheOriginalSearch(GameTestHelper test) {
+        MachinesRuntimeChecks.theTabletPicksTheSameSetAsTheOriginalSearch(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theTabletLooksUpEveryPositionOnceACycle(GameTestHelper test) {
+        MachinesRuntimeChecks.theTabletLooksUpEveryPositionOnceACycle(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void theBladeSwitchesTheHarvestWithAShiftRightClick(GameTestHelper test) {
         MachinesRuntimeChecks.theBladeSwitchesTheHarvestWithAShiftRightClick(test);
     }
@@ -178,6 +193,11 @@ public final class MachinesGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
     public void aBlockingWielderTakesThreeMagicDamageInsteadOfTheBlow(GameTestHelper test) {
         MachinesRuntimeChecks.aBlockingWielderTakesThreeMagicDamageInsteadOfTheBlow(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
+    public void aBlockingWielderIsNotSavedFromKillOrTheVoid(GameTestHelper test) {
+        MachinesRuntimeChecks.aBlockingWielderIsNotSavedFromKillOrTheVoid(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
@@ -213,6 +233,11 @@ public final class MachinesGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void everyMobOfTheTableHasAnEntityType(GameTestHelper test) {
         MachinesRuntimeChecks.everyMobOfTheTableHasAnEntityType(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theStackDataOfTheMachinesSurvivesSavingAndTheNetwork(GameTestHelper test) {
+        MachinesRuntimeChecks.theStackDataOfTheMachinesSurvivesSavingAndTheNetwork(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

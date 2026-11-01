@@ -1,7 +1,9 @@
 package thaumic.tinkerer.testing;
 
 import com.mojang.authlib.GameProfile;
+import dev.architectury.event.events.common.BlockEvent;
 import dev.architectury.registry.menu.MenuRegistry;
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -11,6 +13,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
@@ -57,11 +60,12 @@ import thaumic.tinkerer.common.block.tile.TileEnchanter;
 import thaumic.tinkerer.common.block.tile.container.ContainerEnchanter;
 import thaumic.tinkerer.common.content.Enchantments;
 import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
-import thaumic.tinkerer.common.core.helper.ItemNBTHelper;
+import thaumic.tinkerer.common.enchantment.EnchantmentComponents;
+import thaumic.tinkerer.common.enchantment.EnchantmentComponents.StrikeMemory;
 import thaumic.tinkerer.common.enchantment.EnchantmentFormulas;
-import thaumic.tinkerer.common.enchantment.ModEnchantmentHandler;
 import thaumic.tinkerer.common.enchantment.ModEnchantments;
 import thaumic.tinkerer.common.enchantment.core.EnchantmentManager;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibEnchantIDs;
 import thaumic.tinkerer.common.lib.LibEnchantNames;
@@ -481,6 +485,36 @@ public final class EnchantmentsRuntimeChecks {
         finish(test, player);
     }
 
+    /**
+     * The packet adds only what the screen offers ({@code EnchantmentManager.canOffer}): shears take Unbreaking by its item tag,
+     * but have no enchantability, so the screen offers them nothing and a packet that asks for it anyway is refused. A diamond
+     * pickaxe, which has enchantability, takes it.
+     */
+    public static void theEnchanterRefusesWhatItsScreenDoesNotOffer(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test);
+        TileEnchanter tile = enchanter(test);
+        ItemStack shears = new ItemStack(Items.SHEARS);
+        test.assertTrue(shears.getItem().getEnchantmentValue() == 0, "shears have no enchantability");
+        test.assertTrue(EnchantmentManager.canApply(test.getLevel().registryAccess(), shears, Vanilla.UNBREAKING, List.of()),
+                "but Unbreaking is made for them (without this the check proves nothing)");
+        test.assertTrue(EnchantmentManager.offered(player, shears, List.of(), 16).isEmpty(), "the screen offers nothing for shears");
+        test.assertTrue(!EnchantmentManager.canOffer(player, shears, Vanilla.UNBREAKING, List.of()), "and the rule says no");
+
+        tile.setItem(0, shears);
+        open(player, tile);
+        new PacketEnchanterAddEnchant(tile, Vanilla.UNBREAKING, 0).apply(player);
+        test.assertTrue(tile.enchantments.isEmpty(), "the packet adds nothing to shears: " + tile.enchantments);
+
+        tile.setItem(0, new ItemStack(Items.DIAMOND_PICKAXE));
+        tile.setChanged();
+        test.assertTrue(EnchantmentManager.offered(player, tile.getItem(0), List.of(), 16).contains(Vanilla.UNBREAKING),
+                "the screen offers Unbreaking for a pickaxe");
+        new PacketEnchanterAddEnchant(tile, Vanilla.UNBREAKING, 0).apply(player);
+        test.assertTrue(tile.enchantments.equals(List.of(Vanilla.UNBREAKING)), "and the packet adds it: " + tile.enchantments);
+        finish(test, player);
+    }
+
     public static void withoutSixPillarsTheEnchanterDoesNotStart(GameTestHelper test) {
         floor(test);
         ServerPlayer player = player(test);
@@ -572,8 +606,16 @@ public final class EnchantmentsRuntimeChecks {
         return before - victim.getHealth();
     }
 
-    private static CompoundTag customData(ItemStack stack) {
-        return stack.get(DataComponents.CUSTOM_DATA).copyTag();
+    /** What a weapon remembers of Focused and Dispersed Strikes; the checks fail when it remembers nothing. */
+    private static StrikeMemory strikes(ItemStack stack) {
+        StrikeMemory memory = stack.get(EnchantmentComponents.STRIKE_MEMORY.get());
+        if (memory == null) throw new GameTestAssertException("no strike memory on " + stack);
+        return memory;
+    }
+
+    /** The direction Tunnel remembers on the tool, null for none. */
+    private static Float tunnelDirection(ItemStack stack) {
+        return stack.get(EnchantmentComponents.TUNNEL_DIRECTION.get());
     }
 
     public static void vampirismHealsTheAttacker(GameTestHelper test) {
@@ -716,34 +758,32 @@ public final class EnchantmentsRuntimeChecks {
             ItemStack held = player.getMainHandItem();
             DamageSource blow = player.damageSources().playerAttack(player);
             near(test, lost(first, blow, 10F), 17.5F, "the first blow on a target: 5 + .5 * 5 * 5");
-            test.assertTrue(customData(held).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 0, "the counter: 0");
-            test.assertTrue(customData(held).getLong(ModEnchantmentHandler.NBT_LAST_TARGET) == first.getUUID().getMostSignificantBits()
-                    && customData(held).getLong(ModEnchantmentHandler.NBT_LAST_TARGET_2) == first.getUUID().getLeastSignificantBits(),
-                    "the target is remembered");
+            test.assertTrue(strikes(held).strikes() == 0, "the counter: 0");
+            test.assertTrue(strikes(held).target().equals(first.getUUID()), "the target is remembered");
             near(test, lost(first, blow, 10F), 17.5F, "the second blow on it");
-            test.assertTrue(customData(held).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 5, "the counter jumps to 5 (max where min was meant)");
+            test.assertTrue(strikes(held).strikes() == 5, "the counter jumps to 5 (max where min was meant)");
             near(test, lost(first, blow, 10F), 20F, "the third: 5 + .5 * 6 * 5");
-            test.assertTrue(customData(held).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 6, "and goes on: 6");
+            test.assertTrue(strikes(held).strikes() == 6, "and goes on: 6");
 
             // a blow in the frames of the victim that is not stronger than the last is refused by the game: the event is not posted
             float before = first.getHealth();
             test.assertTrue(!first.hurt(blow, 10F) && first.getHealth() == before, "refused by the frames");
-            test.assertTrue(customData(held).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 6, "and the counter did not move");
+            test.assertTrue(strikes(held).strikes() == 6, "and the counter did not move");
 
             near(test, lost(second, blow, 10F), 17.5F, "another target starts again");
-            test.assertTrue(customData(held).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 0
-                    && customData(held).getLong(ModEnchantmentHandler.NBT_LAST_TARGET) == second.getUUID().getMostSignificantBits(), "counter 0, new target");
+            test.assertTrue(strikes(held).strikes() == 0 && strikes(held).target().equals(second.getUUID()), "counter 0, new target");
 
             // Dispersed Strikes on its own sword: 10 * (1 + .6 + s / 5) / (1 + .25 + 2.5 s)
             ItemStack dispersed = enchanted(test, new ItemStack(Items.DIAMOND_SWORD), ModEnchantments.dispersedStrikes, 1);
             player.setItemInHand(InteractionHand.MAIN_HAND, dispersed);
             near(test, lost(first, blow, 10F), 12.8F, "Dispersed Strikes: the first blow");
             near(test, lost(first, blow, 10F), 10F * (1F + .6F + 1F) / (1F + .25F + 12.5F), "and the second (counter 5)");
-            test.assertTrue(customData(player.getMainHandItem()).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 5, "counter 5");
+            test.assertTrue(strikes(player.getMainHandItem()).strikes() == 5, "counter 5");
             // an item without either enchantment gets no counter
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.DIAMOND_SWORD));
             near(test, lost(first, blow, 10F), 10F, "a plain sword");
-            test.assertTrue(player.getMainHandItem().get(DataComponents.CUSTOM_DATA) == null, "and no data on it");
+            test.assertTrue(player.getMainHandItem().get(EnchantmentComponents.STRIKE_MEMORY.get()) == null
+                    && player.getMainHandItem().get(DataComponents.CUSTOM_DATA) == null, "and no data on it");
             finish(test, player);
         });
     }
@@ -850,12 +890,10 @@ public final class EnchantmentsRuntimeChecks {
             test.assertTrue(swept.getHealth() < 1000F, "the sweep hurt the pig beside it (without that this check proves nothing): " + swept.getHealth());
             test.assertTrue(outside.getHealth() == 1000F, "the pig out of the sweep is left alone: " + outside.getHealth());
             test.assertTrue(player.getHealth() == 14F, "Vampirism heals by its level for each pig the swing hurt: " + player.getHealth());
-            CompoundTag data = customData(player.getMainHandItem());
-            test.assertTrue(data.getLong(ModEnchantmentHandler.NBT_LAST_TARGET) == swept.getUUID().getMostSignificantBits()
-                    && data.getLong(ModEnchantmentHandler.NBT_LAST_TARGET_2) == swept.getUUID().getLeastSignificantBits(),
+            StrikeMemory data = strikes(player.getMainHandItem());
+            test.assertTrue(data.target().equals(swept.getUUID()),
                     "the strike counter's target is the last pig of the swing, the swept one, not the one aimed at");
-            test.assertTrue(data.getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 0,
-                    "and its streak starts again: " + data.getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE));
+            test.assertTrue(data.strikes() == 0, "and its streak starts again: " + data.strikes());
             for (Pig pig : List.of(primary, swept, outside, lone)) pig.discard();
             finish(test, player);
         });
@@ -887,18 +925,16 @@ public final class EnchantmentsRuntimeChecks {
         // a factor below one
         player.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
         ItemStack dispersed = enchanted(test, new ItemStack(Items.DIAMOND_SWORD), ModEnchantments.dispersedStrikes, 1);
-        ItemNBTHelper.setLong(dispersed, ModEnchantmentHandler.NBT_LAST_TARGET, pig.getUUID().getMostSignificantBits());
-        ItemNBTHelper.setLong(dispersed, ModEnchantmentHandler.NBT_LAST_TARGET_2, pig.getUUID().getLeastSignificantBits());
-        ItemNBTHelper.setInt(dispersed, ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE, 5);
+        dispersed.set(EnchantmentComponents.STRIKE_MEMORY.get(), new StrikeMemory(pig.getUUID(), 5));
         player.setItemInHand(InteractionHand.MAIN_HAND, dispersed);
         pig.setHealth(1000F);
         near(test, lost(pig, blow, 10F), 10F * (1F + .6F + 1F) / (1F + .25F + 15F), "the first blow, the counter 6: 10 * 2.6 / 16.25");
         float afterDispersed = pig.getHealth();
-        test.assertTrue(customData(player.getMainHandItem()).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 6, "the counter is 6");
+        test.assertTrue(strikes(player.getMainHandItem()).strikes() == 6, "the counter is 6");
         test.assertTrue(!pig.hurt(blow, 10F) && pig.getHealth() == afterDispersed, "the same raw blow inside the frames deals nothing");
-        test.assertTrue(customData(player.getMainHandItem()).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 7,
+        test.assertTrue(strikes(player.getMainHandItem()).strikes() == 7,
                 "but it was posted (1.7.10 refused it before its event): the counter moved to "
-                        + customData(player.getMainHandItem()).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE));
+                        + strikes(player.getMainHandItem()).strikes());
         pig.discard();
         finish(test, player);
     }
@@ -978,21 +1014,21 @@ public final class EnchantmentsRuntimeChecks {
         test.assertTrue(Math.abs(progress(test, player, target) / stonePlain - 1F) < 0.01F, "no direction remembered, no change");
         // a real break remembers the direction (Architectury's BlockEvent.BREAK is posted by ServerPlayerGameMode.destroyBlock)
         test.assertTrue(player.gameMode.destroyBlock(test.absolutePos(target)), "the stone is broken");
-        float remembered = customData(player.getMainHandItem()).getFloat(ModEnchantmentHandler.NBT_TUNNEL_DIRECTION);
-        test.assertTrue(remembered == player.getYRot(), "the direction is kept on the tool: " + remembered);
+        Float remembered = tunnelDirection(player.getMainHandItem());
+        test.assertTrue(remembered != null && remembered == player.getYRot(), "the direction is kept on the tool: " + remembered);
         test.setBlock(target, Blocks.STONE);
         test.assertTrue(Math.abs(progress(test, player, target) / stonePlain - 1.6F) < 0.01F, "the same way: 1 + .2 * 3");
         player.setYRot(player.getYRot() + 90F);
         test.assertTrue(Math.abs(progress(test, player, target) / stonePlain - 0.3F) < 0.01F, "after a turn: 0.3");
         // the yaw of the server wraps at 180: 179 and -179 are two degrees apart
-        ItemNBTHelper.setFloat(player.getMainHandItem(), ModEnchantmentHandler.NBT_TUNNEL_DIRECTION, 179F);
+        player.getMainHandItem().set(EnchantmentComponents.TUNNEL_DIRECTION.get(), 179F);
         player.setYRot(-179F);
         test.assertTrue(Math.abs(progress(test, player, target) / stonePlain - 1.6F) < 0.01F, "across the seam of the angle it is the same way");
 
         // Shatter and Tunnel together multiply, in the hands of the one who holds both
         // (an item with Shatter in the off hand and Tunnel in the main hand is only Tunnel)
         player.setYRot(0F);
-        ItemNBTHelper.setFloat(player.getMainHandItem(), ModEnchantmentHandler.NBT_TUNNEL_DIRECTION, 0F);
+        player.getMainHandItem().set(EnchantmentComponents.TUNNEL_DIRECTION.get(), 0F);
         player.setItemInHand(InteractionHand.OFF_HAND, shatter.copy());
         test.assertTrue(Math.abs(progress(test, player, target) / stonePlain - 1.6F) < 0.01F, "the off hand adds nothing");
 
@@ -1004,8 +1040,8 @@ public final class EnchantmentsRuntimeChecks {
             player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
             test.assertTrue(player.gameMode.destroyBlock(test.absolutePos(target)), "a tool without Tunnel breaks the stone as well");
             ItemStack held = player.getMainHandItem();
-            test.assertTrue(held.get(DataComponents.CUSTOM_DATA) == null || !customData(held).contains(ModEnchantmentHandler.NBT_TUNNEL_DIRECTION),
-                    "a tool without Tunnel remembers no direction: " + held.get(DataComponents.CUSTOM_DATA));
+            test.assertTrue(tunnelDirection(held) == null && held.get(DataComponents.CUSTOM_DATA) == null,
+                    "a tool without Tunnel remembers no direction: " + held.getComponentsPatch());
         }
         player.discard();
         test.succeed();
@@ -1609,7 +1645,7 @@ public final class EnchantmentsRuntimeChecks {
         near(test, blowOf(fake, pig), (float) (base / 2D + .5D * 5 * base / 2D), "Focused Strikes I on the first blow: 1.75 times");
         near(test, blowOf(fake, pig), (float) (base / 2D + .5D * 5 * base / 2D), "and on the second, the counter being 5");
         near(test, blowOf(fake, pig), (float) (base / 2D + .5D * 6 * base / 2D), "and on the third, the counter being 6");
-        test.assertTrue(customData(fake.getMainHandItem()).getInt(ModEnchantmentHandler.NBT_SUCCESSIVE_STRIKE) == 6, "the counter is on the sword of the fake player");
+        test.assertTrue(strikes(fake.getMainHandItem()).strikes() == 6, "the counter is on the sword of the fake player");
         near(test, blowOf(plainFake, pig), (float) base, "the plain sword is still the plain blow");
         test.succeed();
     }
@@ -1641,7 +1677,7 @@ public final class EnchantmentsRuntimeChecks {
         test.assertTrue(Math.abs(progress(test, tunneler, target) / stonePlain - 1F) < 0.01F, "nothing remembered yet: the plain speed");
         test.assertTrue(tunneler.gameMode.destroyBlock(absolute), "the fake player breaks the stone");
         test.setBlock(target, Blocks.STONE);
-        test.assertTrue(customData(tunneler.getMainHandItem()).contains(ModEnchantmentHandler.NBT_TUNNEL_DIRECTION), "and the tool remembers the way");
+        test.assertTrue(tunnelDirection(tunneler.getMainHandItem()) != null, "and the tool remembers the way");
         test.assertTrue(Math.abs(progress(test, tunneler, target) / stonePlain - 1.6F) < 0.01F, "the same way: 1 + .2 * 3");
         tunneler.setYRot(90F);
         test.assertTrue(Math.abs(progress(test, tunneler, target) / stonePlain - 0.3F) < 0.01F, "after a turn of the tablet: .3");
@@ -1662,6 +1698,65 @@ public final class EnchantmentsRuntimeChecks {
         near(test, blowOf(grounded, pig), swordBlow, "on the stone floor it does nothing");
         near(test, blowOf(unarmoured, pig), swordBlow, "and the same sword in the air without the leggings is the plain blow");
         test.succeed();
+    }
+
+    /**
+     * A question of {@link BlockProtection} (a focus or a device of the add-on asking the protection mods whether a block may go)
+     * posts the break event of the loader, as a real break would, with the asking player; the Tunnel and Disintegrate listener
+     * must not take it for a break: the tool remembers no direction and is not worn. The backend here posts Architectury's
+     * {@code BlockEvent.BREAK} itself, as the Fabric backend does, so that the check does not depend on the loader's backend; the
+     * loader's own backend is asked as well.
+     */
+    public static void aQuestionOfTheProtectionModsIsNoBreakForTunnelOrTheWear(GameTestHelper test) {
+        floor(test);
+        BlockPos target = new BlockPos(3, 1, 3);
+        test.setBlock(target, Blocks.STONE);
+        ItemStack tool = enchanted(test, enchanted(test, new ItemStack(Items.DIAMOND_PICKAXE), ModEnchantments.tunnel, 3),
+                ModEnchantments.desintegrate, 1);
+        ServerPlayer player = miner(test, tool);
+        BlockPos absolute = test.absolutePos(target);
+        BlockState stone = test.getLevel().getBlockState(absolute);
+
+        test.assertTrue(BlockProtection.mayBreak(player, test.getLevel(), absolute, stone), "the loader's backend lets the stone go");
+        boolean[] posted = new boolean[1];
+        BlockProtection.Backend asking = new BlockProtection.Backend() {
+            @Override
+            public boolean mayBreak(ServerPlayer who, ServerLevel level, BlockPos pos, BlockState state) {
+                posted[0] = BlockProtection.isProbing();
+                return !BlockEvent.BREAK.invoker().breakBlock(level, pos, state, who, null).isFalse();
+            }
+
+            @Override
+            public boolean mayPlace(ServerPlayer who, ServerLevel level, BlockPos pos, BlockState state) {
+                return true;
+            }
+        };
+        BlockProtection.Backend installed;
+        try {
+            // BlockProtection has no getter for its backend; the check reads the field so that it can put it back.
+            Field field = BlockProtection.class.getDeclaredField("backend");
+            field.setAccessible(true);
+            installed = (BlockProtection.Backend) field.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new GameTestAssertException("the backend of BlockProtection cannot be read: " + e);
+        }
+        BlockProtection.setBackend(asking);
+        try {
+            test.assertTrue(BlockProtection.mayBreak(player, test.getLevel(), absolute, stone), "the question is answered yes");
+        } finally {
+            BlockProtection.setBackend(installed);
+        }
+        test.assertTrue(posted[0], "the break event was posted while the question was asked");
+        ItemStack held = player.getMainHandItem();
+        test.assertTrue(tunnelDirection(held) == null, "Tunnel remembers no direction from a question");
+        test.assertTrue(held.getDamageValue() == 0, "and the tool is not worn: " + held.getDamageValue());
+        test.assertBlockPresent(Blocks.STONE, target);
+
+        // A real break still teaches Tunnel and wears the tool (one point for the block, one for Disintegrate).
+        test.assertTrue(player.gameMode.destroyBlock(absolute), "the stone is broken for real");
+        test.assertTrue(tunnelDirection(player.getMainHandItem()) != null, "now Tunnel remembers the way");
+        test.assertTrue(player.getMainHandItem().getDamageValue() == 2, "and the tool is worn: " + player.getMainHandItem().getDamageValue());
+        finish(test, player);
     }
 
     /**

@@ -38,8 +38,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * killing blow, an arrow's shooter included, not "hurt by a player lately"), the entity is of the right kind in the right
  * dimension ({@code instanceof}, so a subclass of the two mobs counts as it did), and a random chance. The shard is added to
  * the list of drops as a separate item entity at the mob's position, as the original added an {@code EntityItem}; what
- * the other listeners and the loot table dropped is left alone and Looting does not change the chance. The NeoForge poster of
- * the event does not exist yet: until it does no shard drops there.</p>
+ * the other listeners and the loot table dropped is left alone and Looting does not change the chance. The event is posted on
+ * both loaders (Fabric: {@code LivingEntityDropsMixin}; NeoForge: {@code NeoForgeEventPosters.onLivingDrops}).</p>
  */
 public final class DimensionalShardDropHandler {
     /** 1.7.10: {@code Math.random() <= 1D / 32D}. */

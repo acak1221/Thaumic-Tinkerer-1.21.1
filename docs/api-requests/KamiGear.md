@@ -19,8 +19,9 @@ sees, P3 only hardens something that works today).
 | K1 armour absorption (`ISpecialArmor`) | not the API: the add-on's loader event `TinkererEvents.LIVING_ARMOR_ABSORB` (section 1) | `IchorAbsorption`, registered by `KamiArmorHandler.register()` |
 
 Consequences of the API's own rules, kept as they are: `isWoodLog` is false for the plain oak log (the original's rule, so tree
-mode does not fell oak trees), `breakFurthestBlock` wears no tool and asks neither protection nor loader break events (see
-`docs/deviations/KamiGear.md` section 5).
+mode does not fell oak trees), `breakFurthestBlock` wears no tool, fires no loader break event and asks no claims or protection mod, but
+does check the game's own rules for the cell it breaks (`mayBreakFar`: the world border, `Level.mayInteract`, so spawn protection, and
+`blockActionRestricted`, so adventure and spectator mode; see `docs/deviations/KamiGear.md` section 4).
 
 ## 1. Armour absorption (K1, answered by a loader event of the add-on)
 
@@ -87,7 +88,8 @@ KamiGear does not reference the KamiWorld classes; it reaches them like this (al
 
 - **Soul Hearts.** `KamiHooks.soulHeartSink` is a `Consumer<ServerPlayer>` that the Soul Mode of the Awakened Sword calls (1.7.10
   `SoulHeartHandler.addHearts`). KamiWorld assigns it from its `register()`/`ready()`. Until then a warning is logged once and
-  the mode gives no hearts.
+  the mode gives no hearts. Since the review fix of 2026-11-01 it is called at the end of the server tick in which the target took the hit
+  (`docs/deviations/KamiGear.md` section 4), not at the click.
 - **Celestial Gateway.** The Focus of Celestial Recall calls `KamiHooks.warpGateTeleporter` (1.7.10 `TileWarpGate.teleportPlayer`). The
   default reads the saved data of the block entity at the destination: the block `thaumictinkerer:warp_gate` (`LibBlockNames.WARP_GATE`)
   and a boolean `locked` in its saved tag. KamiWorld may replace the hook with its own method.

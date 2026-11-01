@@ -1,7 +1,6 @@
 package thaumic.tinkerer.enchantments;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,7 +34,7 @@ import thaumic.tinkerer.common.network.packet.PacketEnchanterStartWorking;
  * Test-only code of the port (no 1.7.10 counterpart), CC BY-NC-SA 3.0 like the add-on.
  *
  * <p>The wire format of the two packets of the Enchanter's screen, the reading of a level off a stack, and the size of the
- * icon textures (the screen draws a 32 pixel and a 512 pixel texture onto the same 16 by 16 button).</p>
+ * icon textures (the screen draws a 32 pixel and a 512 pixel texture onto the same 16 by 16 button, which needs them square).</p>
  */
 class EnchanterPacketsAndIconsTest {
     @BeforeAll
@@ -104,35 +103,31 @@ class EnchanterPacketsAndIconsTest {
         }
     }
 
+    /** The width or the height in the IHDR chunk of a PNG (bytes 16 to 19 and 20 to 23). */
+    private static int pngInt(byte[] header, int offset) {
+        assertTrue(header.length >= 24 && header[1] == 'P' && header[2] == 'N' && header[3] == 'G', "a PNG header");
+        return ((header[offset] & 0xFF) << 24) | ((header[offset + 1] & 0xFF) << 16) | ((header[offset + 2] & 0xFF) << 8)
+                | (header[offset + 3] & 0xFF);
+    }
+
+    /**
+     * The screen draws the whole texture of an icon onto 16 by 16 pixels by telling {@code blit} that the texture is 16 by
+     * 16 ({@link EnchantIcons#draw}); that is right for a texture of any size as long as it is square, which every icon is
+     * (the eight of the add-on's own enchantments are 512 pixels, the others 32).
+     */
     @Test
-    void theSizeOfAnIconIsReadFromItsPng() throws IOException {
-        // the eight textures of the add-on's own enchantments are 512 pixels, the others 32
+    void everyIconIsSquareSoTheWholeTextureFitsTheButton() throws IOException {
         for (String big : new String[] { "pounce", "tunnel", "shatter", "shockwave", "valiance", "final_strike", "focused_strikes",
                 "dispersed_strikes" }) {
-            assertEquals(512, EnchantIcons.pngWidth(header("/assets/thaumictinkerer/textures/enchant/" + big + ".png")), big);
+            byte[] header = header("/assets/thaumictinkerer/textures/enchant/" + big + ".png");
+            assertEquals(512, pngInt(header, 16), big);
+            assertEquals(512, pngInt(header, 20), big);
         }
         for (String small : new String[] { "protection", "sharpness", "quick_draw", "vamprisim", "ascent_boost", "repair" }) {
-            assertEquals(32, EnchantIcons.pngWidth(header("/assets/thaumictinkerer/textures/enchant/" + small + ".png")), small);
+            byte[] header = header("/assets/thaumictinkerer/textures/enchant/" + small + ".png");
+            assertEquals(32, pngInt(header, 16), small);
+            assertEquals(32, pngInt(header, 20), small);
         }
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void clearForgetsTheSizesSoAResourcePackWithOtherIconsIsReadAgain() throws ReflectiveOperationException {
-        java.lang.reflect.Field field = EnchantIcons.class.getDeclaredField("SIZES");
-        field.setAccessible(true);
-        java.util.Map<ResourceLocation, Integer> sizes = (java.util.Map<ResourceLocation, Integer>) field.get(null);
-        sizes.put(ResourceLocation.parse("thaumictinkerer:textures/enchant/pounce.png"), 32);
-        sizes.put(ResourceLocation.parse("thaumictinkerer:textures/enchant/missing.png"), 32);
-        EnchantIcons.clear();
-        assertTrue(sizes.isEmpty(), "the sizes and the fallbacks are gone, the next draw reads the PNG again");
-    }
-
-    @Test
-    void anythingThatIsNoPngHeaderGivesTheDefaultSize() {
-        assertEquals(32, EnchantIcons.pngWidth(new byte[0]));
-        assertEquals(32, EnchantIcons.pngWidth(new byte[24]));
-        assertFalse(EnchantIcons.pngWidth(new byte[24]) == 0);
-        assertTrue(EnchantIcons.SIZE == 16);
+        assertEquals(16, EnchantIcons.SIZE, "the size of an icon on the screen, and the size the texture is said to have");
     }
 }

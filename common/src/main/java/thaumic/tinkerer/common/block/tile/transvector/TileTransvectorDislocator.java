@@ -23,6 +23,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.GameMasterBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -32,11 +33,18 @@ import thaumcraft.api.blocks.BlocksTC;
 import thaumic.tinkerer.common.block.camo.PulseDeviceBlock;
 import thaumic.tinkerer.common.block.camo.RedstonePulseReceiver;
 import thaumic.tinkerer.common.content.TileBlocks;
+import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 
 /**
  * The Transvector Dislocator: on a redstone pulse it swaps the block in front of it with the block it is bound to (up to
  * sixteen blocks away), block entities with their data, and moves every entity standing in those two blocks to the other
  * one (1.7.10 {@code TileTransvectorDislocator}). The facing is the block state's.
+ *
+ * <p>New in the port: a block that a player cannot break is not swapped (see {@link #checkBlock}), and the whole swap,
+ * blocks and entities, is left out when a player may not change both places ({@link #mayChange}: the world border, spawn
+ * protection, the protection mods). The question is asked with a fake player of the Dislocator's own, under the profile
+ * of the Remote Placer ({@link TinkererFakePlayer#MINECRAFT_PROFILE}); 1.7.10 asked nobody.</p>
  */
 public class TileTransvectorDislocator extends TileTransvector implements RedstonePulseReceiver {
 
@@ -45,6 +53,9 @@ public class TileTransvectorDislocator extends TileTransvector implements Redsto
 
     private int cooldown = 0;
     private boolean pulseStored = false;
+    /** The player that asks the protection questions; created the first time it is needed, not saved. */
+    @Nullable
+    private TinkererFakePlayer player;
 
     public TileTransvectorDislocator(BlockPos pos, BlockState state) {
         super(TileBlocks.dislocatorType(), pos, state);
@@ -88,6 +99,15 @@ public class TileTransvectorDislocator extends TileTransvector implements Redsto
         BlockData endData = new BlockData(serverLevel, endCoords);
         BlockData targetData = new BlockData(serverLevel, targetCoords);
 
+        TinkererFakePlayer fake = player(serverLevel);
+        if (!mayChange(serverLevel, fake, targetCoords, targetData.state, endData.state)
+                || !mayChange(serverLevel, fake, endCoords, endData.state, targetData.state)) {
+            // A protected end: neither the blocks nor the entities change places (moving a mob or a chest out of a claim
+            // is as much a change as breaking it).
+            cooldown = COOLDOWN;
+            return;
+        }
+
         if (checkBlock(serverLevel, targetCoords) && checkBlock(serverLevel, endCoords)) {
             endData.clearBlockEntityAt();
             targetData.clearBlockEntityAt();
@@ -106,16 +126,44 @@ public class TileTransvectorDislocator extends TileTransvector implements Redsto
     }
 
     /**
-     * {@code checkBlock}, with the original expression: {@code (not a node && not blacklisted && not unbreakable) ||
-     * block != air}. The {@code ||} makes it true for every block, so the Dislocator also swaps nodes, bedrock and the
-     * portable hole's blacklist; the check is kept as it was written (see docs/deviations/TileBlocks.md).
+     * {@code checkBlock}: may this block be swapped? Not an aura node, not on the portable hole's blacklist, and breakable
+     * by a player: not unbreakable ({@code destroySpeed < 0}: bedrock, barriers, end portal frames, portals) and not a block
+     * that only an operator handles ({@link GameMasterBlock}: command, structure and jigsaw blocks). Air passes, so a block
+     * can be moved into an empty place.
+     *
+     * <p>The 1.7.10 expression was {@code (not a node && not blacklisted && hardness != -1) || block != air}: the trailing
+     * {@code ||} made it true for every block, so the original swapped nodes, bedrock and the blacklist too. The port drops
+     * that operand (the evident intention) and adds the operator blocks, so that the Dislocator cannot take apart what a
+     * player cannot (docs/deviations/TileBlocks.md, 2.6).</p>
      */
     public static boolean checkBlock(Level level, BlockPos coords) {
         BlockState state = level.getBlockState(coords);
-        boolean node = state.is(BlocksTC.auraNode());
-        return !node && !ThaumcraftApi.portableHoleBlackList.contains(state.getBlock())
-                && state.getDestroySpeed(level, coords) != -1F
-                || !state.isAir();
+        return !state.is(BlocksTC.auraNode()) && !ThaumcraftApi.portableHoleBlackList.contains(state.getBlock())
+                && state.getDestroySpeed(level, coords) >= 0F && !(state.getBlock() instanceof GameMasterBlock);
+    }
+
+    /**
+     * May a player take {@code now} away from {@code pos} and put {@code next} there? The game's rules for the place
+     * ({@link BlockProtection#gameAllows}, also when both are air: the entities there are moved), then
+     * {@link BlockProtection#mayBreak} for a block that goes and {@link BlockProtection#mayPlace} for one that comes.
+     */
+    private static boolean mayChange(ServerLevel level, TinkererFakePlayer fake, BlockPos pos, BlockState now, BlockState next) {
+        if (!BlockProtection.gameAllows(fake, level, pos)) return false;
+        if (!now.isAir() && !BlockProtection.mayBreak(fake, level, pos, now)) return false;
+        return next.isAir() || BlockProtection.mayPlace(fake, level, pos, next);
+    }
+
+    /** The fake player of this Dislocator, standing in it. */
+    private TinkererFakePlayer player(ServerLevel serverLevel) {
+        if (player == null) player = new TinkererFakePlayer(serverLevel, TinkererFakePlayer.MINECRAFT_PROFILE);
+        player.placeAt(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5, 0F, 0F);
+        return player;
+    }
+
+    @Override
+    public void setRemoved() {
+        player = null;
+        super.setRemoved();
     }
 
     private static List<Entity> getEntitiesAtPoint(Level level, BlockPos coords) {

@@ -117,7 +117,7 @@ public class ItemXPTalisman extends Item implements IBauble, ITTinkererRegistera
                     if (!player.getInventory().add(experienceBottle)) player.spawnAtLocation(experienceBottle);
                     setXP(stack, getXP(stack) - BOTTLE_COST);
                     BasicItemSupport.playSound(level, player, SoundEvents.EXPERIENCE_ORB_PICKUP, 0.1F,
-                            (float) (0.1F + Math.random() / 2F));
+                            0.1F + level.random.nextFloat() / 2F);
                     if (level instanceof ServerLevel serverLevel) {
                         // 1.7.10: six sparkles of Thaumcraft, within half a block of the player
                         serverLevel.sendParticles(ParticleTypes.HAPPY_VILLAGER, player.getX(), player.getY(), player.getZ(),

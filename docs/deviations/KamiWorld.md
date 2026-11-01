@@ -325,8 +325,8 @@ items `ender_shard` and `nether_shard`). Ported through the real event: `onLivin
 (`source.getEntity() instanceof Player`: the attacker of the killing blow, the shooter of an arrow or the thrower of a potion
 counts, a wolf does not; the Animation Tablet's fake player is a player, as a `FakePlayer` was an `EntityPlayer`), the victim is an
 `EnderMan` in the End or a `ZombifiedPiglin` in the Nether (`instanceof`, so a subclass counts again; the dimension is
-`Level.END` / `Level.NETHER` where 1.7.10 compared the ids from the config) and `Math.random() <= 1D / 32D` (`1D / 16D`), the
-roll made only when the first two hold. The shard is a new `ItemEntity` at the victim's position added to the list, as the
+`Level.END` / `Level.NETHER` where 1.7.10 compared the ids from the config) and a roll `<= 1D / 32D` (`1D / 16D`; 1.7.10 rolled
+`Math.random()`, the port the victim's random, see below), the roll made only when the first two hold. The shard is a new `ItemEntity` at the victim's position added to the list, as the
 original added an `EntityItem` (the `ItemEntity` constructor gives it the same small random motion, 0.2 up, and, like the `EntityItem`
 constructor (recalled: the vanilla 1.7.10 source is not on disk), no pickup delay: the game's own drops get the delay of 10 only through
 `spawnAtLocation`, which neither handler uses);
@@ -344,8 +344,11 @@ would be thrown into the mob's death. Differences that remain: none known in beh
 pools, written for both loaders, are gone; they were never run on NeoForge). The shard checks passed on a NeoForge GameTest server with it (header); whether the NeoForge
 poster, like the Fabric one, posts whatever `doMobLoot` says is not recorded.
 
-The chance is rolled with `DimensionalShardDropHandler.dice` (`Math::random`), a public field that only the GameTests replace to make a roll
-certain; the real dice are checked on 12,800 real deaths (`shardDropsComeFromRealDeathsWithTheChanceOfTheOriginal`).
+The chance is rolled with the victim's own random (`victim.getRandom().nextDouble()`, the random the game rolls the mob's other drops
+with; 1.7.10 and the first version of the port used `Math.random()`, which takes the roll out of the game's random sources): the same
+uniform number in [0, 1) compared with `<=`, so the chance is unchanged. `DimensionalShardDropHandler.dice`, a public field that only the
+GameTests set (to make a roll certain) and set back, replaces that roll while it is not null (the default). The real dice are checked
+on 12,800 real deaths (`shardDropsComeFromRealDeathsWithTheChanceOfTheOriginal`).
 
 The research `DIMENSION_SHARDS` belongs to the KamiGear group's `ItemKamiResource`; its page text embedded
 `<IMG>ttinkerer:textures/items/netherShard.png...`, which no longer exists: `lang-extra/kami_world.<lang>.json` (six languages)

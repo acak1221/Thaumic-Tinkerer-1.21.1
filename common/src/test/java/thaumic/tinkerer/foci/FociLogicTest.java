@@ -36,6 +36,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.helper.ProjectileHelper;
 import thaumic.tinkerer.common.item.foci.FociComponents.DislocationData;
 import thaumic.tinkerer.common.item.foci.FociHooks;
@@ -191,17 +192,51 @@ class FociLogicTest {
     }
 
     @Test
-    void onlyBlocksThatCanBeBrokenAndAreNotPistonsOrAirCanBeTaken() {
+    void onlyBlocksThatCanBeBrokenAndAreNotPistonsOrAirCanBeCarried() {
         BlockPos pos = BlockPos.ZERO;
-        assertTrue(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.STONE.defaultBlockState()));
-        assertTrue(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.CHEST.defaultBlockState()));
-        assertFalse(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.AIR.defaultBlockState()), "air");
-        assertFalse(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.BEDROCK.defaultBlockState()),
+        assertTrue(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.STONE.defaultBlockState()));
+        assertTrue(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.CHEST.defaultBlockState()));
+        assertTrue(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.SPAWNER.defaultBlockState()), "a spawner can");
+        assertFalse(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.AIR.defaultBlockState()), "air");
+        assertFalse(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.BEDROCK.defaultBlockState()),
                 "hardness -1");
-        assertFalse(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.PISTON_HEAD.defaultBlockState()));
-        assertFalse(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.MOVING_PISTON.defaultBlockState()));
-        assertFalse(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.COMMAND_BLOCK.defaultBlockState()),
+        assertFalse(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.PISTON_HEAD.defaultBlockState()));
+        assertFalse(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.MOVING_PISTON.defaultBlockState()));
+        assertFalse(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.COMMAND_BLOCK.defaultBlockState()),
                 "hardness -1");
+    }
+
+    /**
+     * What no cast of the focus can have put into it is an impossible load: a load of that kind (a creative player's
+     * component) is dropped instead of being placed. A block on a blacklist is not impossible: it may have been taken before
+     * the list named it, and stays in the focus.
+     */
+    @Test
+    void anImpossibleLoadIsWhatNoCastCouldHaveTaken() {
+        BlockPos pos = BlockPos.ZERO;
+        for (BlockState impossible : List.of(Blocks.AIR.defaultBlockState(), Blocks.BEDROCK.defaultBlockState(),
+                Blocks.BARRIER.defaultBlockState(), Blocks.COMMAND_BLOCK.defaultBlockState(),
+                Blocks.CHAIN_COMMAND_BLOCK.defaultBlockState(), Blocks.STRUCTURE_BLOCK.defaultBlockState(),
+                Blocks.JIGSAW.defaultBlockState(), Blocks.END_PORTAL_FRAME.defaultBlockState(), Blocks.PISTON_HEAD.defaultBlockState(),
+                Blocks.MOVING_PISTON.defaultBlockState(), Blocks.ROSE_BUSH.defaultBlockState(),
+                Blocks.WATER.defaultBlockState().setValue(LiquidBlock.LEVEL, 3))) {
+            assertTrue(ItemFocusDislocation.isImpossibleLoad(EmptyBlockGetter.INSTANCE, pos, impossible), impossible + " is impossible");
+        }
+        for (BlockState possible : List.of(Blocks.STONE.defaultBlockState(), Blocks.SPAWNER.defaultBlockState(),
+                Blocks.CHEST.defaultBlockState(), Blocks.WATER.defaultBlockState(), Blocks.OBSIDIAN.defaultBlockState())) {
+            assertFalse(ItemFocusDislocation.isImpossibleLoad(EmptyBlockGetter.INSTANCE, pos, possible), possible + " is possible");
+        }
+        String[] blacklist = ConfigHandler.blockBlacklist;
+        try {
+            ConfigHandler.blockBlacklist = new String[] { "minecraft:glass" };
+            assertTrue(ItemFocusDislocation.isBlacklisted(Blocks.GLASS.defaultBlockState()), "on the config's list");
+            assertFalse(ItemFocusDislocation.isImpossibleLoad(EmptyBlockGetter.INSTANCE, pos, Blocks.GLASS.defaultBlockState()),
+                    "but not impossible: it may have been taken before the list named it");
+            assertFalse(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.GLASS.defaultBlockState()));
+            assertFalse(ItemFocusDislocation.isBlacklisted(Blocks.STONE.defaultBlockState()));
+        } finally {
+            ConfigHandler.blockBlacklist = blacklist;
+        }
     }
 
     @Test
@@ -217,10 +252,10 @@ class FociLogicTest {
         for (BlockState refused : List.of(Blocks.ROSE_BUSH.defaultBlockState(), upperRose, Blocks.TALL_GRASS.defaultBlockState(),
                 Blocks.TALL_SEAGRASS.defaultBlockState(), Blocks.OAK_DOOR.defaultBlockState(), Blocks.RED_BED.defaultBlockState(),
                 Blocks.WATER.defaultBlockState().setValue(LiquidBlock.LEVEL, 3), Blocks.LAVA.defaultBlockState().setValue(LiquidBlock.LEVEL, 5))) {
-            assertFalse(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, refused), refused + " cannot be taken");
+            assertFalse(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, refused), refused + " cannot be taken");
         }
-        assertTrue(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.WATER.defaultBlockState()), "a source of water can");
-        assertTrue(ItemFocusDislocation.canTake(EmptyBlockGetter.INSTANCE, pos, Blocks.LAVA.defaultBlockState()), "a source of lava can");
+        assertTrue(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.WATER.defaultBlockState()), "a source of water can");
+        assertTrue(ItemFocusDislocation.canCarry(EmptyBlockGetter.INSTANCE, pos, Blocks.LAVA.defaultBlockState()), "a source of lava can");
     }
 
     @Test
@@ -262,7 +297,7 @@ class FociLogicTest {
         tile.put("Items", items);
         BlockState state = Blocks.CHEST.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING,
                 net.minecraft.core.Direction.EAST);
-        return new DislocationData(state, tile);
+        return new DislocationData(state, tile, "0123456789abcdef");
     }
 
     @Test
@@ -286,7 +321,10 @@ class FociLogicTest {
         // A load saved without the optional field reads as a load without a block entity.
         var stateOnly = DislocationData.CODEC.encodeStart(JsonOps.INSTANCE, plain).getOrThrow().getAsJsonObject();
         stateOnly.remove("tile");
+        stateOnly.remove("seal");
         assertEquals(plain, DislocationData.CODEC.parse(JsonOps.INSTANCE, stateOnly).getOrThrow());
+        assertEquals("", DislocationData.CODEC.parse(JsonOps.INSTANCE, stateOnly).getOrThrow().seal(),
+                "a load saved before the seal existed (or written by hand) has none");
         assertTrue(sampleLoad().hasTile());
     }
 

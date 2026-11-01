@@ -77,8 +77,8 @@ The first version had no event for `LivingDropsEvent`, and added a loot pool to 
 `LivingDropsEvent` handler `NeoForgeEventPosters.onLivingDrops`, written 2026-10-31) answers it, and `DimensionalShardDropHandler.onLivingDrops` is the 1.7.10 handler on it; the
 loot-table pools are deleted. What the event gives: the victim, the source (so `getEntity() instanceof Player`), the list of item entities
 before they are in the world, which a listener appends to. What it does not: nothing the group needed (the experience is not an item, which
-the shard is). The one thing a test needs is a certain roll, so the chance is drawn from `DimensionalShardDropHandler.dice` (default
-`Math::random`).
+the shard is). The one thing a test needs is a certain roll, so a test may set `DimensionalShardDropHandler.dice`; while it is null (the
+default) the chance is rolled with the victim's random.
 
 ## 2. Loader modules (to the lead)
 

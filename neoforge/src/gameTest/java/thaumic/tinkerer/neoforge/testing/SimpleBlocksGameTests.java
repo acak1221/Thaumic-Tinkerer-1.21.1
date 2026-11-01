@@ -81,6 +81,11 @@ public final class SimpleBlocksGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void aTreeGrowsThroughTheGases(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.aTreeGrowsThroughTheGases(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void theBrightNitorMakesGasAtTheHoldersHead(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theBrightNitorMakesGasAtTheHoldersHead(test);
     }
@@ -88,6 +93,11 @@ public final class SimpleBlocksGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void thePlatformIsSolidOnlyForWhoStandsAbove(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.thePlatformIsSolidOnlyForWhoStandsAbove(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 200)
+    public void thePlatformHoldsBackWaterAndLava(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.thePlatformHoldsBackWaterAndLava(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
@@ -178,6 +188,11 @@ public final class SimpleBlocksGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void theSoilAndTheCropHoldAtMostTheirCaps(GameTestHelper test) {
         SimpleBlocksRuntimeChecks.theSoilAndTheCropHoldAtMostTheirCaps(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void anOutOfRangeSeedStackCannotHangTheHarvest(GameTestHelper test) {
+        SimpleBlocksRuntimeChecks.anOutOfRangeSeedStackCannotHangTheHarvest(test);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

@@ -105,7 +105,8 @@ public class ItemFocusTelekinesis extends ItemModFocus {
         return true;
     }
 
-    // TODO (1.7.10) add range upgrades
+    // Frugal only, as in 1.7.10, which left "TODO add range upgrades" here and never added one. That gap is kept: the port adds
+    // no upgrade the original did not have (docs/deviations/Foci.md section 5).
     @Override
     public FocusUpgradeType[] getPossibleUpgradesByRank(ItemStack focusstack, int rank) {
         return rank >= 1 && rank <= 5 ? new FocusUpgradeType[] { FocusUpgradeType.frugal } : null;

@@ -51,6 +51,11 @@ public final class BasicItemsGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void spellClothKeepsTheCurses(GameTestHelper test) {
+        BasicItemsRuntimeChecks.spellClothKeepsTheCurses(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void cleansingTalismanSneakClickTogglesAndKeepsTheSwitch(GameTestHelper test) {
         BasicItemsRuntimeChecks.cleansingTalismanSneakClickTogglesAndKeepsTheSwitch(test);
     }

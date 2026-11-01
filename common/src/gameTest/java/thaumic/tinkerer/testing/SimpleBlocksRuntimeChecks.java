@@ -9,6 +9,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.commands.CommandSourceStack;
@@ -20,6 +21,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -42,10 +44,13 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FireBlock;
+import net.minecraft.world.level.block.SaplingBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.level.levelgen.feature.TreeFeature;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -215,6 +220,9 @@ public final class SimpleBlocksRuntimeChecks {
                 "travel_slab", "travel_stairs", "ward_slab")) {
             test.assertTrue(BuiltInRegistries.BLOCK.get(LibMisc.id(block)).defaultBlockState().is(BlockTags.MINEABLE_WITH_PICKAXE),
                     block + " is mined with a pickaxe");
+        }
+        for (Block gas : List.of(SimpleBlocks.GASEOUS_LIGHT.get(), SimpleBlocks.GASEOUS_SHADOW.get(), SimpleBlocks.NITOR_GAS.get())) {
+            test.assertTrue(gas.defaultBlockState().is(BlockTags.REPLACEABLE_BY_TREES), gas + " may be replaced by a tree");
         }
         test.assertTrue(SimpleBlocks.PLATFORM.get().defaultBlockState().is(BlockTags.MINEABLE_WITH_AXE), "platform: axe");
         test.assertTrue(SimpleBlocks.INFUSED_FARMLAND.get().defaultBlockState().is(BlockTags.MINEABLE_WITH_SHOVEL), "farmland: shovel");
@@ -495,6 +503,36 @@ public final class SimpleBlocksRuntimeChecks {
         finish(test, player);
     }
 
+    /**
+     * The gases are no air blocks (docs/deviations/SimpleBlocks.md 2.3), so a tree would stop at a settled cloud; they are
+     * in {@code #minecraft:replaceable_by_trees}, the tag the trunk and the leaves of a tree ask beside {@code isAir()}.
+     * A sapling under a column of the three gases grows (a plain or a fancy oak, the dice decide; both pass).
+     */
+    public static void aTreeGrowsThroughTheGases(GameTestHelper test) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        BlockPos saplingRel = new BlockPos(3, 1, 3);
+        test.setBlock(saplingRel.below(), Blocks.DIRT);
+        test.setBlock(saplingRel, Blocks.OAK_SAPLING);
+        Block[] gases = { SimpleBlocks.GASEOUS_LIGHT.get(), SimpleBlocks.GASEOUS_SHADOW.get(), SimpleBlocks.NITOR_GAS.get() };
+        for (int y = 2; y <= 7; y++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    BlockPos rel = new BlockPos(3 + dx, y, 3 + dz);
+                    test.setBlock(rel, gases[Math.floorMod(y + dx + dz, 3)].defaultBlockState());
+                    test.assertTrue(TreeFeature.validTreePos(level, test.absolutePos(rel)), "a tree may grow into " + stateAt(test, rel));
+                }
+            }
+        }
+        BlockState sapling = stateAt(test, saplingRel).setValue(SaplingBlock.STAGE, 1);
+        ((SaplingBlock) Blocks.OAK_SAPLING).advanceTree(level, test.absolutePos(saplingRel), sapling, RandomSource.create(20261101L));
+        for (int y = 1; y <= 3; y++) {
+            BlockState trunk = stateAt(test, new BlockPos(3, y, 3));
+            test.assertTrue(trunk.is(BlockTags.LOGS), "the trunk grew through the gas at y = " + y + ": " + trunk);
+        }
+        test.succeed();
+    }
+
     // ---- nitor ------------------------------------------------------------------------------------------------------
 
     public static void nitorGasStaysOnlyWhileACarrierIsNear(GameTestHelper test) {
@@ -582,6 +620,50 @@ public final class SimpleBlocksRuntimeChecks {
         test.assertTrue(platform.getCollisionShape(level, abs, CollisionContext.empty()).isEmpty(), "nothing without an entity");
         test.assertTrue(!platform.isPathfindable(PathComputationType.LAND), "the path finder keeps out");
         finish(test, player);
+    }
+
+    /**
+     * The platform holds back liquids: flowing water from the west and lava from the east run in walled channels up to it
+     * and stop there. Its collision shape without an entity is empty, so without {@code forceSolidOn} 1.21.1 would count
+     * it as a block that does not block motion and the liquids would wash it away. ({@code blocksMotion} and
+     * {@code isSolid} are deprecated in 1.21.1 but are what the fluids ask, so the check asks them too.)
+     */
+    @SuppressWarnings("deprecation")
+    public static void thePlatformHoldsBackWaterAndLava(GameTestHelper test) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        BlockPos platformRel = new BlockPos(3, 1, 3);
+        test.setBlock(platformRel, SimpleBlocks.PLATFORM.get());
+        BlockPos platformAbs = test.absolutePos(platformRel);
+        BlockState platform = stateAt(test, platformRel);
+        test.assertTrue(platform.blocksMotion() && platform.isSolid(), "solid for the rules of the game");
+        test.assertTrue(!platform.canBeReplaced(Fluids.WATER) && !platform.canBeReplaced(Fluids.FLOWING_WATER)
+                && !platform.canBeReplaced(Fluids.LAVA), "no liquid may replace it");
+        test.assertTrue(!platform.isSuffocating(level, platformAbs) && !platform.isViewBlocking(level, platformAbs)
+                && !platform.isRedstoneConductor(level, platformAbs), "and still no suffocating, view blocking or conducting cube");
+        test.assertTrue(platform.getCollisionShape(level, platformAbs, CollisionContext.empty()).isEmpty(), "the shapes are unchanged");
+
+        // the channels: x 0..6 at z = 3, walled at z = 2 and z = 4 and at both ends; water at x = 1, lava at x = 5
+        for (int x = 0; x <= 6; x++) {
+            test.setBlock(new BlockPos(x, 1, 2), Blocks.STONE);
+            test.setBlock(new BlockPos(x, 1, 4), Blocks.STONE);
+        }
+        test.setBlock(new BlockPos(0, 1, 3), Blocks.STONE);
+        test.setBlock(new BlockPos(6, 1, 3), Blocks.STONE);
+        test.setBlock(new BlockPos(1, 1, 3), Blocks.WATER);
+        test.setBlock(new BlockPos(5, 1, 3), Blocks.LAVA);
+
+        // water spreads every 5 ticks, lava every 30 in the Overworld: two steps of lava are 60 ticks
+        test.runAfterDelay(80, () -> {
+            BlockState water = stateAt(test, new BlockPos(2, 1, 3));
+            BlockState lava = stateAt(test, new BlockPos(4, 1, 3));
+            test.assertTrue(water.getFluidState().is(Fluids.FLOWING_WATER), "flowing water stands next to the platform: " + water);
+            test.assertTrue(lava.getFluidState().is(Fluids.FLOWING_LAVA), "flowing lava stands next to the platform: " + lava);
+            BlockState now = stateAt(test, platformRel);
+            test.assertTrue(now.is(SimpleBlocks.PLATFORM.get()), "the platform is still there: " + now);
+            test.assertTrue(now.getFluidState().isEmpty(), "and holds no liquid");
+            test.succeed();
+        });
     }
 
     private static boolean isFull(VoxelShape shape) {
@@ -926,6 +1008,11 @@ public final class SimpleBlocksRuntimeChecks {
         int ordo = tile.primalTendencies.getAmount(Aspect.ORDER);
         test.assertTrue(SetTendencyCommand.apply(tile, "ordo", "many") == SetTendencyCommand.Result.INVALID_NUMBER
                 && tile.primalTendencies.getAmount(Aspect.ORDER) == ordo, "a count that is no number: 'Invalid number', nothing merged");
+        AspectList beforeNegative = tile.primalTendencies.copy();
+        test.assertTrue(SetTendencyCommand.apply(tile, "perditio", "-5") == SetTendencyCommand.Result.INVALID_NUMBER
+                && SetTendencyCommand.apply(tile, "ordo", Integer.toString(Integer.MIN_VALUE)) == SetTendencyCommand.Result.INVALID_NUMBER,
+                "a negative count is refused ('Invalid number')");
+        test.assertTrue(sameAmounts(beforeNegative, tile.primalTendencies), "and nothing is merged");
         test.assertTrue(SetTendencyCommand.apply(tile, "vacuos", "5") == SetTendencyCommand.Result.NO_SUCH_ASPECT
                 && SetTendencyCommand.apply(tile, "", "5") == SetTendencyCommand.Result.NO_SUCH_ASPECT, "a compound aspect does nothing");
 
@@ -936,6 +1023,8 @@ public final class SimpleBlocksRuntimeChecks {
         sum = 0;
         for (int amount : tile.primalTendencies.aspects.values()) sum += amount;
         test.assertTrue(sum == 50, "still fifty points: " + sum);
+        test.assertTrue(tile.primalTendencies.getAmount(Aspect.EARTH) <= TileInfusedGrain.MAX_TENDENCIES, "the count was merged as fifty at most");
+        for (int amount : tile.primalTendencies.aspects.values()) test.assertTrue(amount >= 0, "no negative tendency: " + amount);
 
         // the command exists while the debug switch is on
         CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
@@ -1096,6 +1185,97 @@ public final class SimpleBlocksRuntimeChecks {
         farmland.reduceSaturatedAspects();
         test.assertTrue(sum(farmland.aspectList) == TileInfusedFarmland.MAX_ASPECTS, "still twenty");
         test.succeed();
+    }
+
+    private static boolean sameAmounts(AspectList a, AspectList b) {
+        if (a.size() != b.size()) return false;
+        for (Aspect aspect : a.getAspects()) if (a.getAmount(aspect) != b.getAmount(aspect)) return false;
+        return true;
+    }
+
+    /**
+     * A stack whose tendency component holds amounts far out of range (put there by code, a command or an edited save)
+     * reads as fifty at most, plants a crop of fifty points at most, and survives the codec clamped; a crop whose list
+     * was filled by hand past every bound (amounts that would overflow the sum, ordo and terra beyond 75 and 55, where
+     * the 1.7.10 harvest rolls never end) is trimmed without overflow and harvests at once.
+     */
+    public static void anOutOfRangeSeedStackCannotHangTheHarvest(GameTestHelper test) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        ServerPlayer player = mockPlayer(test, 6.5, 6.5);
+        ItemStack seeds = ItemInfusedSeeds.getStackFromAspect(Aspect.EARTH);
+        seeds.set(InfusedSeedComponents.tendenciesType(), Map.of("ordo", 1_000_000, "terra", Integer.MAX_VALUE,
+                "perditio", 1_000_000, "aqua", -7));
+        AspectList read = ItemInfusedSeeds.getAspectTendencies(seeds);
+        test.assertTrue(read.getAmount(Aspect.ORDER) == 50 && read.getAmount(Aspect.EARTH) == 50
+                && read.getAmount(Aspect.ENTROPY) == 50 && read.getAmount(Aspect.WATER) == 0, "the amounts read are clamped to 0..50");
+
+        // through the codec of the stack (the save of a chest): written clamped, read back clamped, the stack kept
+        net.minecraft.nbt.Tag saved = seeds.save(level.registryAccess());
+        ItemStack loaded = ItemStack.parse(level.registryAccess(), saved).orElse(ItemStack.EMPTY);
+        test.assertTrue(loaded.is(ItemInfusedSeeds.item()), "the stack survives its save");
+        Map<String, Integer> loadedMap = loaded.get(InfusedSeedComponents.tendenciesType());
+        test.assertTrue(loadedMap != null && loadedMap.get("ordo") == 50 && loadedMap.get("terra") == 50 && loadedMap.get("aqua") == 0,
+                "and holds the clamped amounts: " + loadedMap);
+        CompoundTag edited = (CompoundTag) saved.copy();
+        CompoundTag components = edited.getCompound("components");
+        CompoundTag big = new CompoundTag();
+        big.putInt("ordo", 100_000);
+        components.put(LibMisc.id(InfusedSeedComponents.TENDENCIES_PATH).toString(), big);
+        edited.put("components", components);
+        ItemStack fromEdit = ItemStack.parse(level.registryAccess(), edited).orElse(ItemStack.EMPTY);
+        Map<String, Integer> editedMap = fromEdit.get(InfusedSeedComponents.tendenciesType());
+        test.assertTrue(fromEdit.is(ItemInfusedSeeds.item()) && editedMap != null && editedMap.get("ordo") == 50,
+                "an edited save with an amount out of range is kept, clamped: " + editedMap);
+        boolean frozen;
+        try {
+            editedMap.put("ordo", 1_000_000);
+            frozen = false;
+        } catch (UnsupportedOperationException expected) {
+            frozen = true;
+        }
+        test.assertTrue(frozen, "the component map cannot be changed in place");
+
+        // planting trims the clamped amounts to fifty points in all
+        BlockPos soil = new BlockPos(3, 1, 3);
+        test.setBlock(soil, Blocks.FARMLAND);
+        player.setItemInHand(InteractionHand.MAIN_HAND, seeds);
+        test.assertTrue(seeds.getItem().useOn(onTop(test, player, seeds, soil, Direction.UP)).consumesAction(), "planted");
+        TileInfusedGrain tile = tile(test, soil.above(), TileInfusedGrain.class);
+        test.assertTrue(sum(tile.primalTendencies) <= TileInfusedGrain.MAX_TENDENCIES, "planted with fifty points at most: " + sum(tile.primalTendencies));
+
+        // a list filled by hand past every bound: the trimming neither overflows nor loops for long
+        tile.primalTendencies = new AspectList().add(Aspect.ORDER, Integer.MAX_VALUE).add(Aspect.EARTH, Integer.MAX_VALUE);
+        tile.reduceSaturatedAspects(level.random);
+        test.assertTrue(sum(tile.primalTendencies) == TileInfusedGrain.MAX_TENDENCIES, "trimmed to fifty without overflow: " + sum(tile.primalTendencies));
+
+        // and a ripe crop with such a list harvests at once
+        BlockPos crop = test.absolutePos(soil.above());
+        level.setBlock(crop, level.getBlockState(crop).setValue(CropBlock.AGE, 7), Block.UPDATE_CLIENTS);
+        tile.primalTendencies = new AspectList().add(Aspect.ORDER, 1_000_000).add(Aspect.EARTH, 1_000_000).add(Aspect.ENTROPY, 1_000_000);
+        long start = System.nanoTime();
+        List<ItemStack> drops = Block.getDrops(level.getBlockState(crop), level, crop, tile);
+        test.assertTrue(System.nanoTime() - start < 2_000_000_000L, "the harvest returns at once");
+        test.assertTrue(drops.size() <= 1 + BlockInfusedGrain.MAX_HARVEST_ROLLS, "a bounded number of stacks: " + drops.size());
+        test.assertTrue(drops.get(0).is(ItemInfusedSeeds.item()) && drops.get(0).getCount() <= drops.get(0).getMaxStackSize(), "the seeds first");
+        AspectList carried = ItemInfusedSeeds.getAspectTendencies(drops.get(0));
+        for (Aspect aspect : carried.getAspects()) {
+            test.assertTrue(carried.getAmount(aspect) <= InfusedSeedComponents.MAX_AMOUNT, "the seeds carry fifty at most of " + aspect.getTag());
+        }
+        TileInfusedFarmland farmland = tile(test, soil, TileInfusedFarmland.class);
+        test.assertTrue(sum(farmland.aspectList) <= TileInfusedFarmland.MAX_ASPECTS, "the residue stays within its cap");
+
+        // a saved crop past the bounds is clamped when it is read and trimmed on its next tick
+        CompoundTag crafted = tile.saveWithFullMetadata(level.registryAccess());
+        TileInfusedGrain reloaded = new TileInfusedGrain(crop, level.getBlockState(crop));
+        reloaded.loadWithComponents(crafted, level.registryAccess());
+        for (Aspect aspect : reloaded.primalTendencies.getAspects()) {
+            test.assertTrue(reloaded.primalTendencies.getAmount(aspect) <= TileInfusedGrain.MAX_TENDENCIES, "read clamped: " + aspect.getTag());
+        }
+        test.assertTrue(sum(reloaded.primalTendencies) > TileInfusedGrain.MAX_TENDENCIES, "(three clamped amounts of fifty)");
+        TileInfusedGrain.serverTick(level, crop, level.getBlockState(crop), reloaded);
+        test.assertTrue(sum(reloaded.primalTendencies) <= TileInfusedGrain.MAX_TENDENCIES, "trimmed on its first tick: " + sum(reloaded.primalTendencies));
+        finish(test, player);
     }
 
     private static int sum(AspectList list) {

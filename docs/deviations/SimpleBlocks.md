@@ -105,6 +105,21 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   `BlockGas.isAirLike(state)` stands in for `isAirBlock` wherever the add-on asks that question (the spreading, the
   phial, the Earth wall, the fires' fuel scan). Other groups must use it too for "free space" tests that should treat gas as
   air.
+* **Trees grow through a cloud (fix of the forced change above).** The three gases are in `#minecraft:replaceable_by_trees`
+  (`data/minecraft/tags/block/replaceable_by_trees.json`), the tag that the trunk, the branches and the leaves of every tree
+  ask beside `isAir()` (`TreeFeature.validTreePos`, read in the 1.21.1 bytecode of both loaders), so a sapling under a
+  settled cloud grows and its tree replaces the gas, as it replaced the air-like gas in 1.7.10 (GameTest
+  `aTreeGrowsThroughTheGases`, JUnit `theGasesMayBeReplacedByTrees`). There is no `replaceable_by_mushrooms` in 1.21.1 (the
+  huge mushroom asks `isAir() || #leaves`), so nothing was added for mushrooms.
+* **What still treats a gas as a block (forced, not fixed).** Vanilla code that asks `isAir()` or `isEmptyBlock` and has no
+  tag to extend still stops at a gas cell, where 1.7.10 saw air (the classes were read in the 1.21.1 bytecode; the behaviour
+  was not tried in a game): a huge mushroom does not grow and a small mushroom does not spread into gas; sugar cane, cactus
+  and bamboo do not grow up into it, vines do not spread into it, and a melon or pumpkin stem does not put its fruit there;
+  flint and steel and fire charges do not light a gas cell, fire does not spread into one and lava does not set one alight;
+  a nether portal frame with gas in it does not light; bone meal on grass puts no grass or flowers into gas cells; snow does
+  not settle in a gas cell; the decorations of a tree (vines, cocoa, bee nests) are not placed into gas. What works because
+  a gas is replaceable and has no collision: placing blocks and pouring buckets into it, liquids flowing into it (they
+  replace it), falling blocks falling through it, entities moving and mobs spawning in it, rain falling through it.
 * **Light (forced).** `setLightOpacity(215)` of the Gaseous Tenebrae is `getLightBlock` 15 (the scale has 16 steps). The
   Nitor Gas: light 12, or 15 for level 1; the Gaseous Illuminae 12. `getLightValue()` of the base class (15) is not needed.
 * **Spreading (forced).** `updateTick` is `tick` (scheduled), and `randomTick` (the 1.7.10 random update) calls `tick`, because the
@@ -139,10 +154,23 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   bottom, so standing on top) and is not sneaking; any other entity when its feet are above the platform's bottom;
   `CollisionContext.empty()` (and so the path finder, which asks `isPathfindable`) sees nothing, and the block is not
   pathfindable.
+* **Solid for the rules of the game (fix).** 1.21.1 derives `blocksMotion()` and `isSolid()` of a block from its collision
+  shape without an entity, which is empty here, so in the first version flowing water and lava treated the platform like a
+  flower: they flowed into it and destroyed it (`FlowingFluid.canHoldFluid` asks `blocksMotion()`, and a block that is not
+  solid may be replaced by a fluid). The 1.7.10 block was `Material.wood`, which blocks movement and is solid. The block has
+  `forceSolidOn()` now; the collision shapes, the path finder rule and the absence of suffocation, view blocking and
+  redstone conduction are unchanged (no shape is a full cube without an entity). The other consequences, all of which the
+  `Material.wood` block of 1.7.10 had too (read in the 1.21.1 bytecode, not each tried): liquids do not flow into it, the
+  motion-blocking height maps stop at it (rain and snowfall stop on a platform), farmland under it turns into dirt, a cactus
+  beside it breaks, signs, banners and item frames hang on it, an enderman may teleport onto it, ice melting above it leaves
+  water, the fire of lava stops at it. GameTest `thePlatformHoldsBackWaterAndLava`: flowing water and flowing lava in walled
+  channels stand next to the platform for 80 ticks and the platform stays.
 * **Camouflage drawn as a block entity (forced).** 1.7.10 asked the camouflaged block for its icons per side. A dynamic
   model needs a loader API, so the block is invisible while `camouflaged` is true and `RenderTileCamo` draws the imitated
   state through `BlockRenderDispatcher.renderBatched`, with the lighting and the culling of the neighbourhood. It does not
-  get ambient-occlusion shading from the chunk mesh and an animated block is not animated.
+  get ambient-occlusion shading from the chunk mesh and an animated block is not animated. The renderer passes its own
+  `RandomSource` (fix: the first version passed the client level's, which the block renderer reseeds for every model, so
+  every frame with a camouflaged platform in view reset the dice of the client's particles and sounds).
 * **What can be imitated (decision).** Blocks whose render shape is `MODEL` and whose collision shape fills the cell, and
   that are no camouflage block themselves: the 1.7.10 test accepted the render types 0, 31 and 39 (plain cube, log, quartz
   block), which is this set without slabs and stairs. Items that are no `BlockItem`, or whose block is refused, are left
@@ -206,7 +234,31 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   `BLOCK_ENTITY` (or the level at the origin). The quirks are kept: the seed count grows while
   `nextInt(10000) < entropy^2` (up to the stack size, which the original did not limit), the bounty at age 7 repeats while
   `nextInt(75) < order`, the soil is fertilised while `nextInt(55) < earth`, and the breeding roll is
-  `nextInt(10) < (fire + 1) * amount^2` over the soil's aspects.
+  `nextInt(10) < (fire + 1) * amount^2` over the soil's aspects. The dice are the level's (`RandomSource`) throughout, the
+  bounty's draw from the loot table included (section 2.7).
+* **Bounded tendencies (fix).** 1.7.10 bounded the tendencies only by the trimming to fifty points in all after the
+  exchange and the debug command, and nothing bounded the amounts on a stack: seeds given with a tendency of ordo 75 or terra
+  55 or more (a `/give` with the component, a creative client, an edited save) made the harvest roll forever on the server
+  thread, a negative amount (the debug command took any int) lowered the sum so that the others could pass fifty, and the
+  trimming summed in an `int` that two large amounts overflow. Now: every amount of the seeds' component is clamped to
+  `0..50` when it is read from disk or the network, when it is written, and when it becomes an aspect list
+  (`InfusedSeedComponents`; an amount out of range is clamped, not refused, so a stack saved with one is kept rather than
+  dropped by the codec, which `Codec.intRange` would do); the component map is unmodifiable; the crop trims the tendencies
+  of the seeds to fifty points in all when they are planted; `reduceSaturatedAspects` clamps every amount to `0..50` first,
+  sums in a `long` and draws only aspects that still hold a point (1.7.10 also drew empty ones, which removed nothing and left
+  the sum above fifty); the saved tendencies of a crop are clamped when they are read and trimmed on its next tick; the
+  growth and the harvest read the clamped amount (`TileInfusedGrain.tendency`); and each repeating harvest roll stops after
+  `BlockInfusedGrain.MAX_HARVEST_ROLLS` = 256 rolls, which the clamped amounts reach with a chance below 1 in 10^10 (terra,
+  50 against 55), so the drops are those of 1.7.10 in practice. The soil's residue is trimmed the same way (clamped to
+  `0..20`, a `long` sum, the level's dice). GameTest `anOutOfRangeSeedStackCannotHangTheHarvest`; JUnit
+  `everyAmountOutsideZeroToFiftyIsClampedOnTheWayInAndOut` and `theCodecsOfTheTendenciesClampAndHandOutUnmodifiableMaps`.
+* **The dice (fix).** `reduceSaturatedAspects` of the crop and of the soil made a `new Random()` for every point they removed;
+  they take the level's `RandomSource` now (the no-argument form uses the level of the block entity, or a new source when it
+  has none).
+* **The components (decision).** The Thaumcraft API has `Aspect.CODEC` and `AspectList.CODEC` now; the seeds keep the tag
+  string and the tag map of the first version: an `AspectList` compares by identity (two stacks with equal tendencies would
+  not stack), its codecs drop amounts of zero (1.7.10 kept them) and refuse a whole list for one unknown tag (a stack whose
+  add-on aspect is gone would be lost). The stored form did not change.
 * **Seeds (decision).** `useOn` plants on the top of any `FarmBlock` (the original tested `instanceof BlockFarmland`), turns
   the soil into infused farmland unless it is one already and plants the crop with the aspect (aer when the stack has none)
   and the tendencies of the stack. As before the player must be allowed to build at both cells. The differences: the cell
@@ -250,7 +302,9 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   blocks and stained glass panes are by `DyeColor`; the healing potion (`potionitem:8261`) is a potion of healing.
 * **Recipe viewers.** `getAllLoot()` returns the whole table with the tags resolved, aspect to weighted stacks; the NEI
   handler that listed it is dropped and an EMI/JEI category should be written later (the lang key `tt.nei.category.infusedseeds`
-  is kept).
+  is kept). It needs no level and draws no dice.
+* **The dice (fix).** `getLootForAspect(aspect, random)` draws with the caller's `RandomSource` (the crop passes the level's);
+  1.7.10 kept a static `Random` of the class.
 
 ### 2.8 Infused potions and the Imbued effects
 
@@ -270,7 +324,8 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   tables are dropped when the server stops. A victim is processed once per tick of the server, not twice (1.7.10 handled
   both phases of the tick).
 * **Air.** Every fifth tick for one second a random velocity (`x, z` in -0.5..0.5, `y` in 0..1) is set on the victim and sent
-  to the clients (`hurtMarked`; `setVelocity` of 1.7.10 did not mark players). The burst of the client twin (size 0.5) is
+  to the clients (`hurtMarked`; `setVelocity` of 1.7.10 did not mark players). The dice are the victim's level's
+  `RandomSource` (1.7.10 made a `new Random()` for every fling). The burst of the client twin (size 0.5) is
   sent by the server with `ThaumcraftFX.burst`.
 * **Fire.** Every fifth tick for five minutes the victim burns for six seconds. The 30 wisps of the client twin
   (`PotionEffectHandlerClient`, `wispFX2` type 4) have no server twin in the API, so the server sends one packet of 30
@@ -343,9 +398,12 @@ now `dark_quartz_0..5`, `pave_travel_slab`, `pave_travel_stairs`, `pave_ward_sla
   only while `debugCommands.enabled` is on, for everybody (1.7.10 `canCommandSenderUseCommand` returned the switch). It
   finds the crop with `player.pick(10, 1, true)` (1.7.10 `BlockUtils.getTargetBlock`), merges the count into the
   primal tendencies (the larger of the old and the new amount) and trims the sum to fifty points; a count that is no
-  number answers "Invalid number"; an aspect that is not primal does nothing. **Fix:** the count is limited to 10000
-  before it is merged (trimming removes one point at a time, so 1.7.10 spent two billion iterations on the server
-  thread for the largest int). The crop is sent to the clients afterwards, which 1.7.10 did not.
+  number answers "Invalid number"; an aspect that is not primal does nothing. **Fix:** the count is limited to
+  `0..50` (`MAX_COUNT`, the most one tendency holds): a larger one is merged as fifty (trimming removes one point at a
+  time, so 1.7.10 spent two billion iterations on the server thread for the largest int; the first version of the port
+  limited it to 10000), and a negative one is refused like a count that is no number ("Invalid number", nothing merged),
+  because a negative amount lowered the sum and let the other tendencies pass fifty (section 2.6). The crop is sent to the
+  clients afterwards, which 1.7.10 did not.
 
 ## 3. Dropped (forced)
 
@@ -409,6 +467,15 @@ Written without being able to run Gradle or the game; the GameTests were run lat
   (`tinkererTest --rerun`) 364 tests, 0 failures; the 48 GameTests of the group (`simpleblocksgametests.*`) all passed. These
   pictures show what a software renderer drew; they are not an acceptance on a GPU, and the other pictures of the group
   (block rows, the crop at every age, the tint of the generic crop, the camouflage) were not judged in that pass.
+
+* **Review fixes, 2026-11-01** (bounded seed tendencies, the platform that holds liquids, the gases in
+  `#minecraft:replaceable_by_trees`, the level's dice in the crop, the soil, the loot and the Air potion, the camouflage
+  renderer's own dice; sections 2.3, 2.4, 2.6, 2.7, 2.8, 2.11). New checks: the GameTests `aTreeGrowsThroughTheGases`,
+  `thePlatformHoldsBackWaterAndLava` and `anOutOfRangeSeedStackCannotHangTheHarvest`, more assertions in
+  `tagsOfTheGroupAreBound` and `theSetCropTendencyCommandMergesATendencyAndTrimsTheSum` (a negative count is refused), the
+  JUnit checks `everyAmountOutsideZeroToFiftyIsClampedOnTheWayInAndOut`, `theCodecsOfTheTendenciesClampAndHandOutUnmodifiableMaps`
+  and `theGasesMayBeReplacedByTrees`. Runs of 2026-11-01 (one Gradle call: `tinkererTest runTinkererGameTest :neoforge:runGameTest` with the filter `simpleblocksgametests.*,recipeviewersgametests.*`): add-on JUnit 420 tests, 0 failures (`SimpleBlocksLogicTest` and `SimpleBlocksResourcesTest` 19 each); the Fabric GameTest server 57 of 57 passed and the NeoForge one 57 of 57 (the 51 checks of the group and the 6 of the recipe viewers, which read the crop loot table). The renderer's random source is client code that no check reaches; it
+  was compiled, not looked at.
 
 Not seen in a running game by the engineer of the group (apart from the seed icons above): the look of every model, the crop colours (the tint of the generic crop reads the block entity,
 which must have reached the client before the chunk section is meshed), the camouflage renderer, the particles (the

@@ -6,11 +6,17 @@ package thaumic.tinkerer.machines;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
@@ -22,11 +28,13 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.IEssentiaTransport;
 import thaumic.tinkerer.common.block.tile.TileMagnet;
 import thaumic.tinkerer.common.block.tile.TileRepairer;
+import thaumic.tinkerer.common.block.tile.TileSummon;
+import thaumic.tinkerer.common.core.helper.EnumMobAspect;
 import thaumic.tinkerer.common.item.ItemMobAspect;
 
 /**
  * <p>The plain rules of the machines: the magnet's range and motion, what the repairer accepts, the names of the
- * soul aspect items.</p>
+ * soul aspect items, the search of the necromancy tablet against the 1.7.10 loop.</p>
  */
 class MachinesLogicTest {
     @BeforeAll
@@ -196,5 +204,78 @@ class MachinesLogicTest {
     @Test
     void theResearchPageShowsTheLastRecipeLikeInTheOriginal() {
         assertEquals("summon1", ItemMobAspect.CONDENSE_RECIPE_NAME);
+    }
+
+    // ---- Tablet of Necromancy: the search ------------------------------------------------------------------------
+
+    /** The 1.7.10 loop: every ordered triple of distinct pedestals; {i, j, k, row} of the first whose aspect set is a row. */
+    private static int[] orderedFirstMatch(List<Aspect> aspects) {
+        int n = aspects.size();
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                for (int k = 0; k < n; k++) {
+                    if (i == j || j == k || i == k) continue;
+                    List<Aspect> set = new ArrayList<>(List.of(aspects.get(i), aspects.get(j), aspects.get(k)));
+                    for (EnumMobAspect row : EnumMobAspect.values()) {
+                        if (row.matchesAspectSet(set)) return new int[] { i, j, k, row.ordinal() };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    @Test
+    void theUnorderedTriplesFindTheFirstOrderedTripleOfTheOriginal() {
+        Aspect[] small = { Aspect.BEAST, Aspect.EARTH, Aspect.TRAVEL, Aspect.CROP, Aspect.FLESH, Aspect.UNDEAD };
+        Random random = new Random(1710L);
+        int matched = 0;
+        int runs = 1500;
+        for (int run = 0; run < runs; run++) {
+            int n = random.nextInt(13);
+            // mostly a small pool, so that many sets match; now and then all seventeen soul aspects
+            boolean all = run % 5 == 0;
+            List<Aspect> aspects = new ArrayList<>();
+            List<TileSummon.SoulPedestal> pedestals = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                Aspect aspect = all ? ItemMobAspect.ASPECTS.get(random.nextInt(ItemMobAspect.ASPECTS.size()))
+                        : small[random.nextInt(small.length)];
+                aspects.add(aspect);
+                pedestals.add(new TileSummon.SoulPedestal(new BlockPos(run, 64, i), null, aspect));
+            }
+            int[] expected = orderedFirstMatch(aspects);
+            TileSummon.Match actual = TileSummon.firstMatch(pedestals);
+            if (expected == null) {
+                assertNull(actual, "run " + run + " " + aspects);
+                continue;
+            }
+            matched++;
+            String what = "run " + run + " " + aspects;
+            assertEquals(EnumMobAspect.values()[expected[3]], actual.recipe(), what);
+            assertSame(pedestals.get(expected[0]), actual.first(), what);
+            assertSame(pedestals.get(expected[1]), actual.second(), what);
+            assertSame(pedestals.get(expected[2]), actual.third(), what);
+        }
+        assertTrue(matched > runs / 2, "most runs have a match: " + matched);
+    }
+
+    @Test
+    void eachSquareTakenFromTheScanHasTheOrderOfTheOriginalScanOfThatSquare() {
+        BlockPos tablet = new BlockPos(10, 64, -7);
+        List<TileSummon.SoulPedestal> scanned = new ArrayList<>();
+        int r = TileSummon.MAX_RADIUS;
+        for (int x = tablet.getX() - r; x <= tablet.getX() + r; x++) {
+            for (int z = tablet.getZ() - r; z <= tablet.getZ() + r; z++) {
+                scanned.add(new TileSummon.SoulPedestal(new BlockPos(x, tablet.getY(), z), null, Aspect.AIR));
+            }
+        }
+        for (int radius = 1; radius <= r; radius++) {
+            List<BlockPos> original = new ArrayList<>();
+            for (int x = tablet.getX() - radius; x <= tablet.getX() + radius; x++) {
+                for (int z = tablet.getZ() - radius; z <= tablet.getZ() + radius; z++) original.add(new BlockPos(x, tablet.getY(), z));
+            }
+            List<BlockPos> taken = TileSummon.within(scanned, tablet, radius).stream().map(TileSummon.SoulPedestal::pos).toList();
+            assertEquals(original, taken, "radius " + radius);
+        }
     }
 }

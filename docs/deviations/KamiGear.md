@@ -20,7 +20,9 @@ test; a pouch menu is opened for the *selected* hotbar slot; the target of a pig
 side was looked at once in a Fabric dev client under software rendering (`docs/CLIENT_VERIFICATION.md`, 2026-10-30): every Kami item and the Ichor Pouch screen (also in
 ru_ru) were drawn without an exception and the pictures were read. The Ghost blocks, the wings layer, the tool-mode tooltip (needs a key press) and anything that needs input
 were **not seen**. On NeoForge (2026-10-31) the group's 36 GameTests passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9); nothing of the group has been
-seen in a NeoForge client yet.
+seen in a NeoForge client yet. The review fixes of 2026-11-01 (the reach of the left-click handlers, the Placement Mirror's state and protection, the
+pouch in container items, Soul Mode, the Gem Boots' step) added one JUnit test (36 in `KamiGearLogicTest` and `KamiGearResourcesTest`) and ten
+GameTests (46); what was run of them is said where each fix is described.
 
 ## 1. Identity: registry paths, components, models
 
@@ -148,7 +150,11 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   own copy of the master flag, synchronised by `PacketToggleArmor` and `PacketArmorStatus`; the piece's switch is in the stack), and touch nothing in
   the world. The step height is still an attribute modifier that the server sets (`STEP_HEIGHT` +0.4, -0.1 while sneaking); the walking boost
   (speed 0.075, a quarter in water, half while sneaking) is added to the **local player's** motion on the client, because a 1.21.1 server cannot push
-  a client-driven player. As in the original, the speed boost and the step height while moving ignore the disable switches. Dirt turns to grass
+  a client-driven player. As in the original, the speed boost and the step height while moving ignore the disable switches. "Moving" (1.7.10:
+  `moveForward != 0 || moveStrafing != 0`, the walking keys) is decided on the server from the movement the client last reported
+  (`ServerPlayer.getKnownMovement()`, horizontal, more than 0.01 blocks a tick: `ItemGemBoots.isMoving`), because the server never sees the
+  walking keys of a player who does not ride (`xxa`/`zza` stay 0 there); the first port read those and so never gave switched-off boots the step
+  (review finding, fixed 2026-11-01; GameTest `switchedOffGemBootsGiveTheStepWhileThePlayerWalks`, written, not yet run). Dirt turns to grass
   under the wearer only while the piece is switched on and `shouldKamiBootsDoGrass` is on. The Thaumic Boots mod's tags `jump`, `speed`, `omni` and
   `inertiacanceling` are not ported (that mod does not exist for 1.21.1): the jump modifier is 1.
   - **Order against Ascent Boost: the original's, pinned by a GameTest.** Both are `LIVING_JUMP` listeners and run in the order they were registered.
@@ -198,7 +204,8 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
 - **`onBlockStartBreak` is `BlockEvent.BREAK`** (Architectury). The extra blocks of the square, line and column modes are broken
   with `ServerPlayerGameMode.destroyBlock`, which gives them the player's normal break (drops, experience, claims and other
   mods' break events) instead of the hand-made copy of `ItemInWorldManager.tryHarvestBlock`; a thread-local flag keeps those inner
-  breaks from starting the mode again. `destroyBlock` asks only for the game mode's restrictions, so every extra block is first
+  breaks from starting the mode again (and a break event that `BlockProtection` posts only to ask a claim mod, `isProbing()`, starts no mode
+  either). `destroyBlock` asks only for the game mode's restrictions, so every extra block is first
   checked with `Level.mayInteract` (spawn protection, world border), which vanilla asks only for the block the player hits; a
   block it refuses is left standing (1.7.10 had no such protection). The items on the ground in the box are moved to the player
   as before, and once more at the end of the server tick (`TickEvent.SERVER_POST`), because the clicked block is part of the
@@ -218,6 +225,20 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   the clicked block in the loops). The click is cancelled afterwards (the bedrock has nothing left to break; in creative the
   normal break would repeat the mode). Differences: the portal is made in the Overworld only (1.7.10: in any "surface world"),
   and the bedrock dimension counts as available when the portal block is registered (1.7.10: `bedrockDimensionID != 0`).
+  **Reach and protection (new, review finding, fixed 2026-11-01).** Both loaders post `LEFT_CLICK_BLOCK` *before* the game checks the click
+  (NeoForge's `LeftClickBlock` and Fabric's `AttackBlockCallback` come first in `ServerPlayerGameMode.handleBlockBreakAction`; 1.7.10's
+  `PlayerInteractEvent` came after the reach check), so the position is whatever the client sent: a modified client could convert or mine
+  bedrock anywhere and load or generate chunks at will. The handler now does nothing, and reads no block, unless `ToolHandler.mayClick` holds:
+  the player reaches the block as the game asks it (`canInteractWithBlock(pos, 1.0)`) and `BlockProtection.gameAllows` (the chunk is loaded,
+  inside the world border, no spawn protection, a game mode that may break blocks). The conversion itself (`convertBedrock`) asks
+  `BlockProtection.mayBreak` (the game's rules and the loader's break event, which claim mods answer) and changes nothing when it says no.
+  The same guard is in the Protoclay's left-click handler and in the Hoe of Growth's click handler (`core/helper/BonemealEventHandler`, both
+  clicks; the right click passes the game's checks first anyway). GameTests (written, not yet run):
+  `awakenedPickaxeIgnoresBedrockClicksThePlayerCannotMake`, `bedrockTurnsIntoAirOnlyWhereThePlayerMayBreakIt`,
+  `protoclayIgnoresClicksThePlayerCannotMake`, `hoeOfGrowthIgnoresClicksThePlayerCannotMake`: out of reach, adventure mode and a chunk that is
+  not loaded (which must stay unloaded) do nothing. Spawn protection is the same rule (`Level.mayInteract`) but cannot be shown in a GameTest:
+  `MinecraftServer.isUnderSpawnProtection` answers false on every server but a dedicated one, and the GameTest servers of both loaders are
+  `GameTestServer`s; adventure mode stands in for "the game says no".
   Mining speed on bedrock is the maximum, as in 1.7.10.
 - **Sneaking and the vanilla abilities.** The awakened pickaxe, shovel, axe and sword cycle the mode on a sneak-click (`use`, as 1.7.10
   `onItemRightClick`). In 1.21.1 the shovel (flattening grass to a path) and the axe (stripping logs, scraping copper) have a vanilla
@@ -225,13 +246,23 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   sneaking. Those two vanilla abilities themselves are new (1.7.10 had neither) and are inherited by all four shovels and axes.
 - **Tree mode** is the 1.7.10 loop over Thaumcraft's own two helpers (now API, request A6): while the clicked cell is not air, break
   the furthest block of the walk that starts there. Their rules apply: oak logs are not logs for them (the original's rule), no tool
-  wear, no protection check (spawn protection included) and no break event for the felled logs, a walk limited to 24 blocks sideways and 48 up or down. Two
+  wear, no break event for the felled logs, a walk limited to 24 blocks sideways and 48 up or down. The game's own rules are checked for every
+  felled log by the API itself (`ThaumcraftApiHelper.breakFurthestBlock` asks `mayBreakFar` about the cell it breaks: inside the world border,
+  `Level.mayInteract`, so spawn protection, and `blockActionRestricted`, so adventure and spectator; read in the API source of
+  `thaumcraft:Thaumcraft-fabric:0.1.0-alpha.7`); a claims or protection mod is not asked (the API says so: a caller on claimed land would ask
+  `findFurthestBlock` first; the port does not). Two
   small differences: the loop stops after 1024 blocks or when the helper breaks nothing (1.7.10 would loop forever if a break was
   vetoed), and the gathered items keep their normal pickup delay (1.7.10 added 20 ticks to their age, which has no counterpart).
 - **Sword, area mode.** 1.7.10 had no attack cooldown; without a fast attack speed every hit after the first would deal a fifth
   of its damage, so the attack speed gets a temporary huge modifier while the area strike runs. The mode is started from
   `PlayerEvent.ATTACK_ENTITY`, before the hit, like `onLeftClickEntity`. Soul mode gives the target Resistance II for one tick and
-  asks the Soul Heart hook (`KamiHooks.soulHeartSink`, see `docs/api-requests/KamiGear.md` section 5).
+  asks the Soul Heart hook (`KamiHooks.soulHeartSink`, see `docs/api-requests/KamiGear.md` section 5). **Only for a hit that lands (new,
+  review finding, fixed 2026-11-01):** 1.7.10 gave the heart at the click, before the hit, for anything living that showed no hurt animation,
+  so an armour stand (which never shows one) or an invulnerable target gave a heart per click. The heart is now given at the end of the server
+  tick (`ToolHandler.afterTick`), and only when the target took the hit (`ItemIchorSwordAdv.soulHitLanded`: its hurt animation started and its
+  attacker is the wielder, which `LivingEntity.hurt` records only for a hit it takes): an armour stand, an invulnerable mob, a creative player,
+  a player that the server's PvP rule protects, and a click whose blow never came give none; a hit that a shield blocks still counts (the
+  game counts it as taken). GameTest `soulModeGivesAHeartOnlyForAHitThatLands` (written, not yet run).
 
 ## 5. Black Hole Ring
 
@@ -255,8 +286,27 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
 ## 6. Worldshaper's Looking Glass
 
 - The square, the cost and the range (5 blocks) are those of 1.7.10 (`squareOffsets` is the original arithmetic as a pure method, tested for every side, pitch, rotation and size 3 to 11).
-- **Protection.** Every placement asks `Level.mayInteract` and `Player.mayBuild` (spawn protection, world border and adventure mode);
-  1.7.10 placed wherever the square reached. Blocks outside the build height are skipped.
+- **Protection.** Every position of the square is asked `BlockProtection.mayPlace` before anything is paid or placed (the game's rules: a
+  loaded chunk, the world border, spawn protection, adventure and spectator mode; and the loader's place event, which claim mods answer, through
+  the loader backend of `BlockProtection`); 1.7.10 placed wherever the square reached. A refused position is skipped and costs nothing; the
+  blocks the player must have are those of the allowed positions (1.7.10: of the whole square, there being no refusal). Blocks outside the
+  build height are skipped. The first port asked `Level.mayInteract` and `Player.mayBuild` only, so a claim on Fabric was not asked at all, and
+  on NeoForge a placement that the snapshot-captured place event cancelled was undone after the block had been paid for (review finding, fixed
+  2026-11-01; GameTest `mirrorPlacesNothingWhereThePlayerMayNotBuild`, adventure mode standing in for spawn protection, which a GameTest server
+  never applies; written, not yet run; whether a claim mod's refusal arrives depends on the loader backends, which were written by another group
+  of the fix and are not tested here).
+- **What is remembered: what one item is worth (new, review finding, fixed 2026-11-01).** 1.7.10 stored the block and its metadata and placed
+  that for one item a block, so a double slab, eight layers of snow or a waterlogged slab (a water source) came out of a single item.
+  `ItemPlacementMirror.placedState` makes the placed state: the block's default state with the properties that only turn it (`axis`, `facing`,
+  `half`, `orientation`, `rotation`) taken over; a double slab is a bottom slab (a top slab stays one), snow is one layer, leaves are persistent (as
+  a player's hand places them, so they do not decay; the default would decay), and everything else is the default (not waterlogged, not lit, not
+  powered, the note block's note, mushroom faces, snowy grass...). A block whose contents differ from the default (`honey_level`, `charges`,
+  `has_record`, `has_book`, the bottles, the chiseled bookshelf's slots, `level`, `eggs`, `pickles`, `candles`, `bites`, `flower_amount`: a hive with honey, a
+  charged respawn anchor) is not remembered at all; the mirror keeps what it had. The rule is applied when the block is remembered and again when
+  the stored state is read, so a mirror saved before it places the single block too. JUnit `theMirrorPlacesWhatOneItemIsWorth` (run, see below),
+  GameTests `mirrorPlacesASingleSlabForADoubleOne`, `mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks` (written, not yet run). Still as before: the
+  block entity of a placed block is new and empty (a furnace, a hive without bees), and the item taken from the inventory is the first stack of the
+  block's item, whatever components it carries (a filled shulker box would be spent for an empty one).
 - **Payment.** The blocks must be in the inventory or in Black Hole Rings in it; a creative player always has them and the
   placing takes nothing from them (1.7.10 `hasBlocks`: `if (player.capabilities.isCreativeMode) return true`), the ghost blocks included.
   The inventory is paid first, then the rings; the first ring that really gives a block pays (1.7.10 stopped at the first ring bound
@@ -282,6 +332,9 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   off hand key) or shift-clicked, and the menu closes when that stack leaves its inventory slot (1.7.10's duplication hole) or when
   something else writes the pouch's contents behind the open menu (the wand's focus selector does; the menu then does not write
   its stale cells over it). Pouches (Thaumcraft's and this one) cannot be put in. The dimensions of `ConfigHandler.forbiddenDimensions` keep it shut.
+- **Not into container items (new, review finding, fixed 2026-11-01).** `canFitInsideContainerItems()` is false, as for a shulker box: a shulker box's
+  slots and its hopper face and a bundle refuse the pouch, so 117 cells cannot be nested inside a box inside a pouch without limit (1.7.10 had
+  neither container). GameTest `pouchDoesNotGoIntoShulkerBoxesOrBundles` (written, not yet run).
 - It is an `IFocusPouch` (request A2, now API) and a belt `IBauble`, so the wand's focus selector offers the foci in it. The selector
   lists at most the first 128 cells (the pouch has 117).
 - The screen title key `container.thaumictinkerer.ichor_pouch` is new (the screen draws no title, as in 1.7.10).

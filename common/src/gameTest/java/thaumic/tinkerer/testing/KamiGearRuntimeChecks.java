@@ -4,11 +4,15 @@
  */
 package thaumic.tinkerer.testing;
 
+import com.mojang.authlib.GameProfile;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -21,6 +25,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.CombatRules;
 import net.minecraft.world.damagesource.DamageSource;
@@ -31,15 +36,19 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.animal.Sheep;
+import net.minecraft.world.entity.animal.Pig;
 import net.minecraft.world.entity.monster.Creeper;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ShulkerBoxSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
+import net.minecraft.world.item.component.BundleContents;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -47,13 +56,20 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.baubles.IBauble;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchCategories;
 import thaumcraft.api.wands.IFocusPouch;
 import thaumcraft.api.wands.WandCap;
@@ -63,7 +79,9 @@ import thaumic.tinkerer.common.block.tile.container.kami.ContainerIchorPouch;
 import thaumic.tinkerer.common.block.tile.container.slot.kami.SlotNoPouches;
 import thaumic.tinkerer.common.content.KamiGear;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
+import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
 import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
+import thaumic.tinkerer.common.core.helper.BonemealEventHandler;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
 import thaumic.tinkerer.common.item.kami.ItemBlockTalisman;
 import thaumic.tinkerer.common.item.kami.ItemIchorPouch;
@@ -72,12 +90,16 @@ import thaumic.tinkerer.common.item.kami.ItemProtoclay;
 import thaumic.tinkerer.common.item.kami.ItemSkyPearl;
 import thaumic.tinkerer.common.item.kami.KamiComponents;
 import thaumic.tinkerer.common.item.kami.KamiComponents.TalismanStore;
+import thaumic.tinkerer.common.item.kami.KamiHooks;
+import thaumic.tinkerer.common.item.kami.armor.ItemGemBoots;
 import thaumic.tinkerer.common.item.kami.armor.ItemGemChest;
 import thaumic.tinkerer.common.item.kami.armor.ItemIchorclothArmorAdv;
 import thaumic.tinkerer.common.item.kami.foci.ItemFocusXPDrain;
 import thaumic.tinkerer.common.item.kami.foci.ShadowBeam;
 import thaumic.tinkerer.common.item.kami.tool.ItemIchorPickAdv;
+import thaumic.tinkerer.common.item.kami.tool.ItemIchorSwordAdv;
 import thaumic.tinkerer.common.item.kami.tool.ToolHandler;
+import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
@@ -1600,6 +1622,420 @@ public final class KamiGearRuntimeChecks {
             test.assertTrue(test.getBlockState(new BlockPos(3, y, 4)).is(Blocks.DIRT), "y=" + y + " is beyond the seven above");
         }
         test.assertTrue(test.getBlockState(new BlockPos(2, 2, 4)).is(Blocks.DIRT), "the neighbouring column stays");
+        test.succeed();
+    }
+
+    // ---- the review fixes of the port: clicks the player cannot reach, the mirror's state, the pouch, Soul Mode, the boots -------
+
+    /**
+     * A position in a chunk that is not loaded, about a million blocks east of the test (inside the world border: the tests lie
+     * within 15 million of the centre).
+     */
+    private static BlockPos unloadedPos(GameTestHelper test) {
+        BlockPos origin = test.absolutePos(new BlockPos(3, 1, 3));
+        for (int i = 0; i < 16; i++) {
+            BlockPos far = origin.offset(1_000_000 + i * 4096, 0, 0);
+            if (!test.getLevel().hasChunkAt(far)) return far;
+        }
+        throw new IllegalStateException("no unloaded chunk east of " + origin);
+    }
+
+    /**
+     * A player next to {@code far} (a position in a chunk that is not loaded) that is never added to the level, so putting it
+     * there moves nothing in the level's entity or chunk tracking.
+     */
+    private static TinkererFakePlayer fakeNextTo(GameTestHelper test, BlockPos far) {
+        TinkererFakePlayer fake = new TinkererFakePlayer(test.getLevel(), new GameProfile(UUID.randomUUID(), "[TTKamiReach]"));
+        fake.placeAt(far.getX() + 0.5, far.getY(), far.getZ() - 1.5, 0, 0);
+        return fake;
+    }
+
+    /**
+     * The loaders post {@code LEFT_CLICK_BLOCK} before the game checks the click, so the awakened pickaxe's bedrock handler asks
+     * the reach, the chunk and the game's rules itself before it reads the block: a click from eight blocks away, a click in
+     * adventure mode and a click in a chunk that is not loaded leave everything alone (and the chunk stays unloaded); the same
+     * click within reach in survival breaks the square, as {@link #leftClickingBedrockWithTheAwakenedPickaxeBreaksTheSurroundings}.
+     * (Spawn protection is the same rule, {@code Level.mayInteract}, which a GameTest server never applies:
+     * {@code MinecraftServer.isUnderSpawnProtection} answers false outside a dedicated server.)
+     */
+    public static void awakenedPickaxeIgnoresBedrockClicksThePlayerCannotMake(GameTestHelper test) {
+        ItemStack pick = TTRegistry.stack(LibItemNames.ICHOR_PICK_GEM);
+        ToolHandler.changeMode(pick);
+        ServerPlayer player = wallAndMiner(test, pick);
+        BlockPos bedrock = new BlockPos(3, 2, 4);
+        test.setBlock(bedrock, Blocks.BEDROCK);
+
+        player.moveTo(test.absoluteVec(new Vec3(3.5, 1, -4.5)));
+        test.assertTrue(!player.canInteractWithBlock(test.absolutePos(bedrock), 1.0), "eight blocks away is out of reach");
+        var far = ItemIchorPickAdv.onLeftClickBlock(player, InteractionHand.MAIN_HAND, test.absolutePos(bedrock), Direction.NORTH);
+        test.assertTrue(far.isEmpty(), "a click out of reach is left to the game");
+        test.assertTrue(stoneInWall(test) == 48, "and the wall is whole: " + stoneInWall(test));
+
+        player.moveTo(test.absoluteVec(new Vec3(3.5, 1, 1.5)));
+        player.setGameMode(GameType.ADVENTURE);
+        var adventure = ItemIchorPickAdv.onLeftClickBlock(player, InteractionHand.MAIN_HAND, test.absolutePos(bedrock), Direction.NORTH);
+        test.assertTrue(adventure.isEmpty() && stoneInWall(test) == 48, "adventure mode: nothing, " + stoneInWall(test) + " stone");
+        player.setGameMode(GameType.SURVIVAL);
+
+        BlockPos away = unloadedPos(test);
+        TinkererFakePlayer fake = fakeNextTo(test, away);
+        try {
+            fake.setItemInHand(InteractionHand.MAIN_HAND, pick.copy());
+            test.assertTrue(fake.canInteractWithBlock(away, 1.0), "the stand-in is next to the far block");
+            var unloaded = ItemIchorPickAdv.onLeftClickBlock(fake, InteractionHand.MAIN_HAND, away, Direction.NORTH);
+            test.assertTrue(unloaded.isEmpty(), "a click in a chunk that is not loaded is left to the game");
+            test.assertTrue(!test.getLevel().hasChunkAt(away), "and the chunk was not loaded by it");
+        } finally {
+            fake.discard();
+        }
+
+        var near = ItemIchorPickAdv.onLeftClickBlock(player, InteractionHand.MAIN_HAND, test.absolutePos(bedrock), Direction.NORTH);
+        test.assertTrue(near.interruptsFurtherEvaluation() && stoneInWall(test) == 48 - 24, "within reach the square goes: "
+                + stoneInWall(test) + " stone left");
+        test.succeed();
+    }
+
+    /**
+     * Sneaking on bedrock: {@code ItemIchorPickAdv.convertBedrock} asks {@code BlockProtection.mayBreak}. In the Bedrock dimension
+     * (below its top two layers) a survival player turns the bedrock into air; an adventure player, whom the game does not let
+     * break blocks, changes nothing (1.7.10 asked nothing). The level of the bedrock is given to the method, so the player can
+     * stay in the test's level.
+     */
+    public static void bedrockTurnsIntoAirOnlyWhereThePlayerMayBreakIt(GameTestHelper test) {
+        ServerLevel bedrockLevel = test.getLevel().getServer().getLevel(KamiHooks.BEDROCK_DIMENSION);
+        test.assertTrue(bedrockLevel != null && KamiHooks.bedrockDimensionAvailable(), "the Bedrock dimension and the portal exist");
+        floor(test);
+        ServerPlayer player = player(test, 3.5, 1, 3.5, 0, 0);
+        player.setShiftKeyDown(true);
+        // A chunk of its own, far from the chunks the KamiWorld checks generate.
+        BlockPos pos = new BlockPos(-48_000, 100, -48_000);
+        bedrockLevel.getChunk(pos);
+        try {
+            bedrockLevel.setBlock(pos, Blocks.BEDROCK.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_ALL);
+            player.setGameMode(GameType.ADVENTURE);
+            test.assertTrue(!ItemIchorPickAdv.convertBedrock(player, bedrockLevel, pos), "adventure mode: not converted");
+            test.assertTrue(bedrockLevel.getBlockState(pos).is(Blocks.BEDROCK), "the bedrock stays");
+            player.setGameMode(GameType.SURVIVAL);
+            test.assertTrue(ItemIchorPickAdv.convertBedrock(player, bedrockLevel, pos), "survival: converted");
+            test.assertTrue(bedrockLevel.getBlockState(pos).isAir(), "into air, below the top two layers");
+        } finally {
+            bedrockLevel.setBlock(pos, Blocks.BEDROCK.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_ALL);
+            player.setShiftKeyDown(false);
+        }
+        test.succeed();
+    }
+
+    /** The Protoclay swaps nothing for a click out of reach, in adventure mode or in a chunk that is not loaded (which stays unloaded). */
+    public static void protoclayIgnoresClicksThePlayerCannotMake(GameTestHelper test) {
+        floor(test);
+        BlockPos stone = new BlockPos(3, 1, 2);
+        test.setBlock(stone, Blocks.STONE);
+        ServerPlayer player = player(test, 3.5, 1, 4.5, 180, 0);
+        ItemStack axe = TTRegistry.stack(LibItemNames.ICHOR_AXE_GEM);
+        ItemStack pick = TTRegistry.stack(LibItemNames.ICHOR_PICK_GEM);
+        player.getInventory().selected = 0;
+        player.getInventory().setItem(0, axe);
+        player.getInventory().setItem(5, pick);
+        player.getInventory().setItem(7, TTRegistry.stack(LibItemNames.PROTOCLAY));
+
+        player.moveTo(test.absoluteVec(new Vec3(3.5, 1, 10.5)));
+        test.assertTrue(!player.canInteractWithBlock(test.absolutePos(stone), 1.0), "out of reach");
+        var far = ItemProtoclay.onLeftClickBlock(player, InteractionHand.MAIN_HAND, test.absolutePos(stone), Direction.SOUTH);
+        test.assertTrue(far.isEmpty() && player.getMainHandItem() == axe, "out of reach: no swap");
+
+        player.moveTo(test.absoluteVec(new Vec3(3.5, 1, 4.5)));
+        player.setGameMode(GameType.ADVENTURE);
+        var adventure = ItemProtoclay.onLeftClickBlock(player, InteractionHand.MAIN_HAND, test.absolutePos(stone), Direction.SOUTH);
+        test.assertTrue(adventure.isEmpty() && player.getMainHandItem() == axe, "adventure mode: no swap");
+        player.setGameMode(GameType.SURVIVAL);
+
+        BlockPos away = unloadedPos(test);
+        TinkererFakePlayer fake = fakeNextTo(test, away);
+        try {
+            fake.getInventory().selected = 0;
+            fake.getInventory().setItem(0, axe.copy());
+            fake.getInventory().setItem(5, pick.copy());
+            fake.getInventory().setItem(7, TTRegistry.stack(LibItemNames.PROTOCLAY));
+            var unloaded = ItemProtoclay.onLeftClickBlock(fake, InteractionHand.MAIN_HAND, away, Direction.SOUTH);
+            test.assertTrue(unloaded.isEmpty() && fake.getMainHandItem().is(axe.getItem()), "a chunk that is not loaded: no swap");
+            test.assertTrue(!test.getLevel().hasChunkAt(away), "and the chunk was not loaded by it");
+        } finally {
+            fake.discard();
+        }
+
+        var near = ItemProtoclay.onLeftClickBlock(player, InteractionHand.MAIN_HAND, test.absolutePos(stone), Direction.SOUTH);
+        test.assertTrue(near.interruptsFurtherEvaluation() && player.getMainHandItem() == pick, "within reach the pickaxe comes");
+        test.succeed();
+    }
+
+    /**
+     * The Hoe of Growth's click on an infused crop ({@code BonemealEventHandler}, both clicks; the left one comes before the game's
+     * checks): it grows the crop within reach, and does nothing out of reach, in adventure mode or in a chunk that is not loaded.
+     */
+    public static void hoeOfGrowthIgnoresClicksThePlayerCannotMake(GameTestHelper test) {
+        test.assertTrue(!ConfigHandler.cropsAllowBonemeal, "the default configuration: the hoe's own path");
+        Item hoeItem = ItemsTC.get("elemental_hoe");
+        test.assertTrue(hoeItem != null, "Thaumcraft's Hoe of Growth exists");
+        floor(test);
+        BlockPos crop = new BlockPos(3, 1, 3);
+        test.setBlock(crop.below(), Blocks.FARMLAND);
+        test.setBlock(crop, TTRegistry.block(LibBlockNames.INFUSED_GRAIN_BLOCK).defaultBlockState());
+        test.assertTrue(test.getBlockState(crop).getValue(CropBlock.AGE) == 0, "a young infused crop");
+        ServerPlayer player = player(test, 3.5, 1, 5.5, 180, 0);
+        ItemStack hoe = new ItemStack(hoeItem);
+        player.setItemInHand(InteractionHand.MAIN_HAND, hoe);
+
+        player.moveTo(test.absoluteVec(new Vec3(3.5, 1, 12.5)));
+        test.assertTrue(!player.canInteractWithBlock(test.absolutePos(crop), 1.0), "out of reach");
+        BonemealEventHandler.onInteract(player, InteractionHand.MAIN_HAND, test.absolutePos(crop), Direction.UP);
+        test.assertTrue(test.getBlockState(crop).getValue(CropBlock.AGE) == 0 && hoe.getDamageValue() == 0, "out of reach: nothing");
+
+        player.moveTo(test.absoluteVec(new Vec3(3.5, 1, 5.5)));
+        player.setGameMode(GameType.ADVENTURE);
+        BonemealEventHandler.onInteract(player, InteractionHand.MAIN_HAND, test.absolutePos(crop), Direction.UP);
+        test.assertTrue(test.getBlockState(crop).getValue(CropBlock.AGE) == 0 && hoe.getDamageValue() == 0, "adventure mode: nothing");
+        player.setGameMode(GameType.SURVIVAL);
+
+        BlockPos away = unloadedPos(test);
+        TinkererFakePlayer fake = fakeNextTo(test, away);
+        try {
+            fake.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(hoeItem));
+            BonemealEventHandler.onInteract(fake, InteractionHand.MAIN_HAND, away, Direction.UP);
+            test.assertTrue(!test.getLevel().hasChunkAt(away) && fake.getMainHandItem().getDamageValue() == 0,
+                    "a chunk that is not loaded: nothing, and the chunk was not loaded by it");
+        } finally {
+            fake.discard();
+        }
+
+        BonemealEventHandler.onInteract(player, InteractionHand.MAIN_HAND, test.absolutePos(crop), Direction.UP);
+        test.assertTrue(test.getBlockState(crop).getValue(CropBlock.AGE) >= 2, "within reach the crop grows: " + test.getBlockState(crop));
+        test.assertTrue(hoe.getDamageValue() == 25, "for 25 uses of the hoe: " + hoe.getDamageValue());
+        test.succeed();
+    }
+
+    /**
+     * The mirror places what one item is worth: a remembered double slab places single (bottom) slabs at one slab each, and a
+     * mirror saved with a double slab before the rule does the same.
+     */
+    public static void mirrorPlacesASingleSlabForADoubleOne(GameTestHelper test) {
+        ItemStack mirror = TTRegistry.stack(LibItemNames.PLACEMENT_MIRROR);
+        ServerPlayer player = mirrorHolder(test, mirror);
+        ItemPlacementMirror item = (ItemPlacementMirror) mirror.getItem();
+        BlockState doubleSlab = Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.DOUBLE);
+        test.setBlock(new BlockPos(0, 1, 1), doubleSlab);
+        player.setShiftKeyDown(true);
+        click(test, player, new BlockPos(0, 1, 1), Direction.UP);
+        player.setShiftKeyDown(false);
+        BlockState stored = mirror.get(KamiComponents.MIRROR_STATE.get());
+        test.assertTrue(stored != null && stored.is(Blocks.STONE_SLAB) && stored.getValue(SlabBlock.TYPE) == SlabType.BOTTOM,
+                "a double slab is remembered as a bottom slab: " + stored);
+
+        player.getInventory().add(new ItemStack(Items.STONE_SLAB, 9));
+        item.placeAllBlocks(mirror, player);
+        for (int x = 2; x <= 4; x++) {
+            for (int y = 2; y <= 4; y++) {
+                BlockState placed = test.getBlockState(new BlockPos(x, y, 3));
+                test.assertTrue(placed.is(Blocks.STONE_SLAB) && placed.getValue(SlabBlock.TYPE) == SlabType.BOTTOM,
+                        "a single slab at " + x + "," + y + ": " + placed);
+            }
+        }
+        test.assertTrue(count(player, Items.STONE_SLAB) == 0, "nine slabs for nine slabs, " + count(player, Items.STONE_SLAB) + " left");
+
+        // A mirror saved with the whole state (before the rule) places a single slab too.
+        for (int x = 2; x <= 4; x++) for (int y = 2; y <= 4; y++) test.setBlock(new BlockPos(x, y, 3), Blocks.AIR);
+        mirror.set(KamiComponents.MIRROR_STATE.get(), doubleSlab);
+        test.assertTrue(ItemPlacementMirror.getBlockState(mirror).getValue(SlabBlock.TYPE) == SlabType.BOTTOM, "read as a bottom slab");
+        player.getInventory().add(new ItemStack(Items.STONE_SLAB, 9));
+        item.placeAllBlocks(mirror, player);
+        BlockState middle = test.getBlockState(new BlockPos(3, 3, 3));
+        test.assertTrue(middle.is(Blocks.STONE_SLAB) && middle.getValue(SlabBlock.TYPE) == SlabType.BOTTOM, "placed single: " + middle);
+        test.assertTrue(count(player, Items.STONE_SLAB) == 0, "one slab each");
+        test.succeed();
+    }
+
+    /**
+     * Snow is remembered as one layer whatever the clicked snow held, and placed as one layer per snow item; a beehive with honey
+     * and a charged respawn anchor are not remembered (the mirror keeps what it had), an empty hive is.
+     */
+    public static void mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test, 3.5, 1, 3.5, 0, 90);
+        ItemStack mirror = TTRegistry.stack(LibItemNames.PLACEMENT_MIRROR);
+        player.setItemInHand(InteractionHand.MAIN_HAND, mirror);
+        ItemPlacementMirror item = (ItemPlacementMirror) mirror.getItem();
+        test.setBlock(new BlockPos(0, 1, 0), Blocks.SNOW.defaultBlockState().setValue(SnowLayerBlock.LAYERS, 8));
+        player.setShiftKeyDown(true);
+        click(test, player, new BlockPos(0, 1, 0), Direction.UP);
+        BlockState snow = ItemPlacementMirror.getBlockState(mirror);
+        test.assertTrue(snow != null && snow.is(Blocks.SNOW) && snow.getValue(SnowLayerBlock.LAYERS) == 1, "one layer: " + snow);
+
+        test.setBlock(new BlockPos(7, 1, 0), Blocks.BEEHIVE.defaultBlockState().setValue(BlockStateProperties.LEVEL_HONEY, 5));
+        click(test, player, new BlockPos(7, 1, 0), Direction.UP);
+        test.assertTrue(ItemPlacementMirror.getBlockState(mirror).is(Blocks.SNOW), "a hive full of honey is not remembered");
+        test.setBlock(new BlockPos(7, 1, 0), Blocks.RESPAWN_ANCHOR.defaultBlockState().setValue(BlockStateProperties.RESPAWN_ANCHOR_CHARGES, 2));
+        click(test, player, new BlockPos(7, 1, 0), Direction.UP);
+        test.assertTrue(ItemPlacementMirror.getBlockState(mirror).is(Blocks.SNOW), "nor a charged respawn anchor");
+        test.setBlock(new BlockPos(7, 1, 0), Blocks.BEEHIVE);
+        click(test, player, new BlockPos(7, 1, 0), Direction.UP);
+        test.assertTrue(ItemPlacementMirror.getBlockState(mirror).is(Blocks.BEEHIVE), "an empty hive is");
+        mirror.set(KamiComponents.MIRROR_STATE.get(), Blocks.SNOW.defaultBlockState().setValue(SnowLayerBlock.LAYERS, 8));
+        player.setShiftKeyDown(false);
+
+        // Looking straight down at the floor block (3, 0, 3): the 3 x 3 square on top of the floor.
+        player.getInventory().add(new ItemStack(Items.SNOW, 9));
+        item.placeAllBlocks(mirror, player);
+        for (int x = 2; x <= 4; x++) {
+            for (int z = 2; z <= 4; z++) {
+                BlockState placed = test.getBlockState(new BlockPos(x, 1, z));
+                test.assertTrue(placed.is(Blocks.SNOW) && placed.getValue(SnowLayerBlock.LAYERS) == 1, "one layer at " + x + "," + z + ": " + placed);
+            }
+        }
+        test.assertTrue(count(player, Items.SNOW) == 0, "nine snow for nine layers");
+        test.succeed();
+    }
+
+    /**
+     * Every position of the square is asked {@code BlockProtection.mayPlace} before anything is paid or placed: an adventure
+     * player, whom the game does not let build, places nothing and keeps the blocks; the same player in survival places the square.
+     * (Spawn protection, the same rule, does not exist on a GameTest server; the claim mods are asked by the loader backend.)
+     */
+    public static void mirrorPlacesNothingWhereThePlayerMayNotBuild(GameTestHelper test) {
+        ItemStack mirror = TTRegistry.stack(LibItemNames.PLACEMENT_MIRROR);
+        ServerPlayer player = mirrorHolder(test, mirror);
+        ItemPlacementMirror item = (ItemPlacementMirror) mirror.getItem();
+        player.getInventory().add(new ItemStack(Items.COBBLESTONE, 9));
+        player.setGameMode(GameType.ADVENTURE);
+        item.placeAllBlocks(mirror, player);
+        player.setGameMode(GameType.SURVIVAL);
+        for (int x = 2; x <= 4; x++) {
+            for (int y = 2; y <= 4; y++) test.assertTrue(test.getBlockState(new BlockPos(x, y, 3)).isAir(), "adventure: nothing at " + x + "," + y);
+        }
+        test.assertTrue(count(player, Items.COBBLESTONE) == 9, "and nothing paid");
+        item.placeAllBlocks(mirror, player);
+        test.assertTrue(test.getBlockState(new BlockPos(3, 3, 3)).is(Blocks.COBBLESTONE) && count(player, Items.COBBLESTONE) == 0,
+                "survival: the square, nine blocks paid");
+        test.succeed();
+    }
+
+    /** The Bottomless Pouch stays out of the containers that are items: a shulker box (its slot and its hopper face) and a bundle. */
+    public static void pouchDoesNotGoIntoShulkerBoxesOrBundles(GameTestHelper test) {
+        ItemStack pouch = TTRegistry.stack(LibItemNames.ICHOR_POUCH);
+        ItemStack stick = new ItemStack(Items.STICK);
+        test.assertTrue(!pouch.getItem().canFitInsideContainerItems(), "the pouch does not fit inside container items");
+        ShulkerBoxSlot slot = new ShulkerBoxSlot(new SimpleContainer(27), 0, 0, 0);
+        test.assertTrue(!slot.mayPlace(pouch) && slot.mayPlace(stick), "a shulker box slot refuses the pouch and takes a stick");
+        ShulkerBoxBlockEntity box = new ShulkerBoxBlockEntity(test.absolutePos(BlockPos.ZERO), Blocks.SHULKER_BOX.defaultBlockState());
+        test.assertTrue(!box.canPlaceItemThroughFace(0, pouch, Direction.UP) && box.canPlaceItemThroughFace(0, stick, Direction.UP),
+                "so does its hopper face");
+        BundleContents.Mutable bundle = new BundleContents.Mutable(BundleContents.EMPTY);
+        test.assertTrue(bundle.tryInsert(pouch.copy()) == 0, "a bundle takes none of it");
+        test.assertTrue(bundle.tryInsert(stick.copy()) == 1, "and a stick");
+        test.succeed();
+    }
+
+    /**
+     * Soul Mode gives the heart only for a hit the target really takes, at the end of the tick: a pig that is hit gives one; an
+     * armour stand (which shows no hurt animation), an invulnerable pig, a creative player and a click whose blow never came give
+     * none (1.7.10 gave one for every click on anything living). The Soul Heart hook is replaced for the check and set back.
+     */
+    public static void soulModeGivesAHeartOnlyForAHitThatLands(GameTestHelper test) {
+        floor(test);
+        ItemStack sword = TTRegistry.stack(LibItemNames.ICHOR_SWORD_GEM);
+        ToolHandler.changeMode(sword);
+        ToolHandler.changeMode(sword);
+        test.assertTrue(ToolHandler.getMode(sword) == 2, "soul mode");
+        ItemIchorSwordAdv item = (ItemIchorSwordAdv) sword.getItem();
+        ServerPlayer onPig = player(test, 1.5, 1, 1.5, 0, 0);
+        ServerPlayer onStand = player(test, 2.5, 1, 1.5, 0, 0);
+        ServerPlayer onInvulnerable = player(test, 3.5, 1, 1.5, 0, 0);
+        ServerPlayer onCreative = player(test, 4.5, 1, 1.5, 0, 0);
+        ServerPlayer noBlow = player(test, 5.5, 1, 1.5, 0, 0);
+        ServerPlayer creative = player(test, 6.5, 1, 6.5, 0, 0);
+        creative.setGameMode(GameType.CREATIVE);
+        Pig pig = test.spawn(EntityType.PIG, new Vec3(1.5, 1, 3.5));
+        ArmorStand stand = test.spawn(EntityType.ARMOR_STAND, new Vec3(2.5, 1, 3.5));
+        Pig invulnerable = test.spawn(EntityType.PIG, new Vec3(3.5, 1, 3.5));
+        Pig untouched = test.spawn(EntityType.PIG, new Vec3(5.5, 1, 3.5));
+        for (Pig each : List.of(pig, invulnerable, untouched)) each.setNoAi(true);
+        invulnerable.setInvulnerable(true);
+
+        List<ServerPlayer> granted = new ArrayList<>();
+        Consumer<ServerPlayer> realSink = KamiHooks.soulHeartSink;
+        KamiHooks.soulHeartSink = granted::add;
+        try {
+            item.onLeftClickEntity(sword, onPig, pig);
+            pig.hurt(onPig.damageSources().playerAttack(onPig), 2F);
+            item.onLeftClickEntity(sword, onStand, stand);
+            stand.hurt(onStand.damageSources().playerAttack(onStand), 2F);
+            item.onLeftClickEntity(sword, onInvulnerable, invulnerable);
+            invulnerable.hurt(onInvulnerable.damageSources().playerAttack(onInvulnerable), 2F);
+            item.onLeftClickEntity(sword, onCreative, creative);
+            creative.hurt(onCreative.damageSources().playerAttack(onCreative), 2F);
+            item.onLeftClickEntity(sword, noBlow, untouched);
+            test.assertTrue(granted.isEmpty(), "nothing is given before the end of the tick");
+            test.assertTrue(stand.hurtTime == 0 && invulnerable.hurtTime == 0 && creative.hurtTime == 0 && pig.hurtTime > 0,
+                    "only the pig took the hit");
+        } catch (RuntimeException | AssertionError e) {
+            KamiHooks.soulHeartSink = realSink;
+            throw e;
+        }
+        test.runAfterDelay(2, () -> {
+            try {
+                test.assertTrue(granted.equals(List.of(onPig)), "one heart, for the hit on the pig: " + granted.size() + " given");
+            } finally {
+                KamiHooks.soulHeartSink = realSink;
+                for (ServerPlayer each : List.of(onPig, onStand, onInvulnerable, onCreative, noBlow, creative)) each.discard();
+            }
+            test.succeed();
+        });
+    }
+
+    /**
+     * Switched-off Gem Boots give the 0.4 step of 1.7.10 while the player walks and does not sneak. The server never sees the
+     * walking keys ({@code xxa}/{@code zza} stay 0 for a player who does not ride), so walking is the movement the client last
+     * reported ({@code ServerPlayer.getKnownMovement()}); standing, falling straight down and the last tiny moves of a stop do not
+     * count. Switched on, the boots give the step (sneaking: a lower one) whatever the movement.
+     */
+    public static void switchedOffGemBootsGiveTheStepWhileThePlayerWalks(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test, 6.5, 1, 6.5, 0, 0);
+        double base = player.getAttributeBaseValue(Attributes.STEP_HEIGHT);
+        ItemStack boots = TTRegistry.stack(LibItemNames.ICHOR_BOOTS_GEM);
+        boots.set(KamiComponents.PIECE_DISABLED.get(), true);
+        player.setItemSlot(EquipmentSlot.FEET, boots);
+        try {
+            player.setKnownMovement(Vec3.ZERO);
+            KamiArmorHandler.onPlayerTick(player);
+            near(test, player.getAttributeValue(Attributes.STEP_HEIGHT), base, "switched off, standing: the plain step");
+            player.setKnownMovement(new Vec3(0.2, 0, 0.05));
+            KamiArmorHandler.onPlayerTick(player);
+            test.assertTrue(player.xxa == 0F && player.zza == 0F, "the server sees no walking keys");
+            near(test, player.getAttributeValue(Attributes.STEP_HEIGHT), base + 0.4, "switched off, walking: the 0.4 step");
+            player.setShiftKeyDown(true);
+            KamiArmorHandler.onPlayerTick(player);
+            near(test, player.getAttributeValue(Attributes.STEP_HEIGHT), base, "switched off, walking while sneaking: the plain step");
+            player.setShiftKeyDown(false);
+            player.setKnownMovement(new Vec3(0, -0.5, 0));
+            KamiArmorHandler.onPlayerTick(player);
+            near(test, player.getAttributeValue(Attributes.STEP_HEIGHT), base, "falling straight down is not walking");
+            player.setKnownMovement(new Vec3(0.005, 0, 0));
+            KamiArmorHandler.onPlayerTick(player);
+            near(test, player.getAttributeValue(Attributes.STEP_HEIGHT), base, "nor the last tiny move of a stop");
+            test.assertTrue(!ItemGemBoots.isMoving(player), "isMoving agrees");
+
+            boots.set(KamiComponents.PIECE_DISABLED.get(), false);
+            player.setKnownMovement(Vec3.ZERO);
+            KamiArmorHandler.onPlayerTick(player);
+            near(test, player.getAttributeValue(Attributes.STEP_HEIGHT), base + 0.4, "switched on, standing: the step");
+            player.setShiftKeyDown(true);
+            KamiArmorHandler.onPlayerTick(player);
+            near(test, player.getAttributeValue(Attributes.STEP_HEIGHT), base - 0.1, "switched on, sneaking: the lower step");
+        } finally {
+            player.setShiftKeyDown(false);
+            player.setItemSlot(EquipmentSlot.FEET, ItemStack.EMPTY);
+            KamiArmorHandler.onPlayerTick(player);
+            player.discard();
+        }
         test.succeed();
     }
 }

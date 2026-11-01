@@ -55,7 +55,7 @@ public class ItemFocusFlight extends ItemModFocus {
 
     @Override
     public ItemStack onFocusRightClick(ItemStack wandstack, Level level, Player player, InteractionHand hand) {
-        if (!ConfigHandler.enableFlight) {
+        if (!ConfigHandler.flightEnabled(level)) {
             return wandstack;
         }
         ItemStack focus = WandHelper.getFocusItem(wandstack);

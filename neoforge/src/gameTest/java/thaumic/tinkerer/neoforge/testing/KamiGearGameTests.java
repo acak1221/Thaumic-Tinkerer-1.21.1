@@ -199,4 +199,54 @@ public final class KamiGearGameTests {
     public void ichorclothPiecesShowTheOriginalArmourAndNeverWear(GameTestHelper test) {
         KamiGearRuntimeChecks.ichorclothPiecesShowTheOriginalArmourAndNeverWear(test);
     }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void awakenedPickaxeIgnoresBedrockClicksThePlayerCannotMake(GameTestHelper test) {
+        KamiGearRuntimeChecks.awakenedPickaxeIgnoresBedrockClicksThePlayerCannotMake(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void bedrockTurnsIntoAirOnlyWhereThePlayerMayBreakIt(GameTestHelper test) {
+        KamiGearRuntimeChecks.bedrockTurnsIntoAirOnlyWhereThePlayerMayBreakIt(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void protoclayIgnoresClicksThePlayerCannotMake(GameTestHelper test) {
+        KamiGearRuntimeChecks.protoclayIgnoresClicksThePlayerCannotMake(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void hoeOfGrowthIgnoresClicksThePlayerCannotMake(GameTestHelper test) {
+        KamiGearRuntimeChecks.hoeOfGrowthIgnoresClicksThePlayerCannotMake(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void mirrorPlacesASingleSlabForADoubleOne(GameTestHelper test) {
+        KamiGearRuntimeChecks.mirrorPlacesASingleSlabForADoubleOne(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks(GameTestHelper test) {
+        KamiGearRuntimeChecks.mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void mirrorPlacesNothingWhereThePlayerMayNotBuild(GameTestHelper test) {
+        KamiGearRuntimeChecks.mirrorPlacesNothingWhereThePlayerMayNotBuild(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void pouchDoesNotGoIntoShulkerBoxesOrBundles(GameTestHelper test) {
+        KamiGearRuntimeChecks.pouchDoesNotGoIntoShulkerBoxesOrBundles(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void soulModeGivesAHeartOnlyForAHitThatLands(GameTestHelper test) {
+        KamiGearRuntimeChecks.soulModeGivesAHeartOnlyForAHitThatLands(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void switchedOffGemBootsGiveTheStepWhileThePlayerWalks(GameTestHelper test) {
+        KamiGearRuntimeChecks.switchedOffGemBootsGiveTheStepWhileThePlayerWalks(test);
+    }
 }

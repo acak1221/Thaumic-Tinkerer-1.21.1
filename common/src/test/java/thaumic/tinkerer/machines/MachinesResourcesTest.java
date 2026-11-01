@@ -19,8 +19,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import thaumcraft.api.aspects.Aspect;
+import thaumic.tinkerer.client.MachinesClient;
 import thaumic.tinkerer.common.item.ItemMobAspect;
 
 /**
@@ -134,16 +136,30 @@ class MachinesResourcesTest {
     }
 
     @Test
-    void theBloodSwordShowsItsActiveIconThroughTheCustomModelData() {
+    void theBloodSwordShowsItsActiveIconThroughItsItemProperty() {
         JsonObject sword = json("/assets/" + NS + "/models/item/blood_sword.json");
+        assertEquals(1, sword.getAsJsonArray("overrides").size(), "one override");
         JsonObject override = sword.getAsJsonArray("overrides").get(0).getAsJsonObject();
-        assertEquals(1, override.getAsJsonObject("predicate").get("custom_model_data").getAsInt());
+        JsonObject predicate = override.getAsJsonObject("predicate");
+        assertEquals(Set.of(NS + ":" + MachinesClient.PREDICATE_ACTIVATED), predicate.keySet(),
+                "the item property MachinesClient registers, no custom_model_data");
+        assertEquals(1, predicate.get(NS + ":" + MachinesClient.PREDICATE_ACTIVATED).getAsInt());
         String active = stripNamespace(override.get("model").getAsString(), NS);
         JsonObject activeModel = json("/assets/" + NS + "/models/" + active + ".json");
         assertEquals(NS + ":item/blood_sword_1", activeModel.getAsJsonObject("textures").get("layer0").getAsString());
         assertEquals(NS + ":item/blood_sword_0", sword.getAsJsonObject("textures").get("layer0").getAsString());
         assertTrue(exists("/assets/" + NS + "/models/item/soul_mould.json"));
         assertTrue(exists("/assets/" + NS + "/models/item/mob_display.json"));
+    }
+
+    @Test
+    void theRestorerBlacklistHoldsTheSpellbindingCloth() {
+        // 1.7.10 setNoRepair(): the cloth and the Kami foci (which have no durability) were the add-on's unrepairable items
+        JsonObject tag = json("/data/" + NS + "/tags/item/repairer_blacklist.json");
+        assertEquals(false, tag.get("replace").getAsBoolean(), "a pack may add to it");
+        List<String> values = new ArrayList<>();
+        for (JsonElement value : tag.getAsJsonArray("values")) values.add(value.getAsString());
+        assertEquals(List.of(NS + ":spell_cloth"), values);
     }
 
     @Test

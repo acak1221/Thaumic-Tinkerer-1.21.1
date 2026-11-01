@@ -107,12 +107,15 @@ public final class FociFx {
         }
     }
 
-    /** {@code wispFX2(world, x, y, z, random / 2F, 4, true, true, -random / 10F)}: a flame wisp that rises, through blocks. */
+    /**
+     * {@code wispFX2(world, x, y, z, random / 2F, 4, true, true, -random / 10F)}: a flame wisp that rises, through blocks. The
+     * random numbers are the level's ({@code level.random}), where 1.7.10 asked {@code Math.random()}.
+     */
     public static void flameWisp(Level level, double x, double y, double z) {
         if (!level.isClientSide) return;
-        // The size must be above zero; Math.random() can in theory be zero.
-        float size = Math.max(1.0E-3F, (float) Math.random() / 2F);
-        ThaumcraftClientFX.wisp(level, x, y, z, size, WISP_FLAME, true, true, (float) -Math.random() / 10F);
+        // The size must be above zero; the random number can be zero.
+        float size = Math.max(1.0E-3F, level.random.nextFloat() / 2F);
+        ThaumcraftClientFX.wisp(level, x, y, z, size, WISP_FLAME, true, true, -level.random.nextFloat() / 10F);
     }
 
     /**
@@ -127,12 +130,12 @@ public final class FociFx {
     /**
      * The eight bursts of the Focus of Dislocation over a block, sent by the server to the players around
      * ({@code burst(world, pos.x + random, pos.y + random + lift, pos.z + random, 0.2F)}). 1.7.10 drew them on the client
-     * of the caster after the pickup (lift 0) and the placing (lift 0.65).
+     * of the caster after the pickup (lift 0) and the placing (lift 0.65). The random numbers are the level's.
      */
     public static void dislocationBursts(ServerLevel level, BlockPos pos, float lift) {
         for (int i = 0; i < BURSTS; i++) {
-            ThaumcraftFX.burst(level, (float) (pos.getX() + Math.random()), (float) (pos.getY() + Math.random()) + lift,
-                    (float) (pos.getZ() + Math.random()), BURST_SIZE);
+            ThaumcraftFX.burst(level, pos.getX() + level.random.nextFloat(), pos.getY() + level.random.nextFloat() + lift,
+                    pos.getZ() + level.random.nextFloat(), BURST_SIZE);
         }
     }
 }

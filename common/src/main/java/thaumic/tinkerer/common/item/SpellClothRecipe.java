@@ -13,14 +13,17 @@
  */
 package thaumic.tinkerer.common.item;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.Level;
 import thaumic.tinkerer.api.INoRemoveEnchant;
@@ -33,6 +36,9 @@ import thaumic.tinkerer.common.content.BasicItems;
  *
  * <p>Only the enchantments of the item count, as in 1.7.10 ({@code ench}); the enchantments a book stores are not wiped
  * (and 1.21.1's {@code ItemStack.isEnchanted} agrees).</p>
+ *
+ * <p>Curses ({@code #minecraft:curse}) stay on the item, as the grindstone keeps them, and an item whose only enchantments
+ * are curses is not accepted (there would be nothing to wipe). 1.7.10 had no curses.</p>
  */
 public class SpellClothRecipe extends CustomRecipe {
 
@@ -40,8 +46,13 @@ public class SpellClothRecipe extends CustomRecipe {
         super(category);
     }
 
+    /** An item with at least one enchantment that is no curse, and whose class does not forbid the wipe. */
     private static boolean isWipeable(ItemStack stack) {
-        return stack.isEnchanted() && !(stack.getItem() instanceof INoRemoveEnchant);
+        if (!stack.isEnchanted() || stack.getItem() instanceof INoRemoveEnchant) return false;
+        for (Holder<Enchantment> enchantment : stack.getEnchantments().keySet()) {
+            if (!enchantment.is(EnchantmentTags.CURSE)) return true;
+        }
+        return false;
     }
 
     @Override
@@ -66,7 +77,11 @@ public class SpellClothRecipe extends CustomRecipe {
             if (isWipeable(stack)) {
                 // One item comes out for the one the grid gives up (a stack of enchanted items is not wiped as a whole).
                 ItemStack result = stack.copyWithCount(1);
-                result.set(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);
+                // The curses stay, as the grindstone keeps them (GrindstoneMenu.removeNonCursesFrom); unlike the grindstone
+                // the repair cost is left alone, since 1.7.10 removed the key "ench" and nothing else.
+                ItemEnchantments.Mutable kept = new ItemEnchantments.Mutable(result.getEnchantments());
+                kept.removeIf(enchantment -> !enchantment.is(EnchantmentTags.CURSE));
+                result.set(DataComponents.ENCHANTMENTS, kept.keySet().isEmpty() ? ItemEnchantments.EMPTY : kept.toImmutable());
                 return result;
             }
         }

@@ -53,8 +53,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * Feature group: devices: animation tablet, remote placer, levitation locomotive and relay, golem connector, transvector
  * interface and dislocator (and the Transvector Binder that links them).
  *
- * <p>Registers the seven blocks with their block entity types, the two menus, the binder and the two client-to-server
- * packets of the menus. Block entity types and menus are reached through the accessors below; the block entities, menus
+ * <p>Registers the seven blocks with their block entity types, the two menus, the binder with its data component (the
+ * remembered device) and the two client-to-server packets of the menus. Block entity types and menus are reached through the accessors below; the block entities, menus
  * and blocks use them, not the other way round, so the registrations are the only place that names the pairs.</p>
  */
 public final class TileBlocks implements ContentGroup {
@@ -123,6 +123,7 @@ public final class TileBlocks implements ContentGroup {
                 () -> BlockEntityType.Builder.of(TileTransvectorDislocator::new, dislocator.get()).build(null));
 
         connector = TTRegistry.item(LibItemNames.CONNECTOR, ItemConnector::new);
+        ItemConnector.registerComponents();
 
         PacketTabletButton.register();
         PacketPlacerButton.register();

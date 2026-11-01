@@ -29,6 +29,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.GameMasterBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -51,6 +52,7 @@ import thaumcraft.api.wands.WandHelper;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.item.foci.FociComponents.DislocationData;
+import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
@@ -66,8 +68,17 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  * <p>The cost is 5 Perditio, 5 Ordo and 1 Terra for a block, five times that for a block with a block entity, and
  * 100 Perditio, 100 Ordo and 50 Terra for a spawner. Blocks of the piston family, those on the blacklist of the config
  * ({@code focusOfDislocationBlacklist}), those of Thaumcraft's portable-hole blacklist
- * ({@code #thaumcraft:portable_hole_blacklist}), those that cannot be broken, flowing water and lava, and the halves of
- * two-part blocks ({@link #isTwoPart}) cannot be taken.</p>
+ * ({@code #thaumcraft:portable_hole_blacklist}), those of the add-on's own {@code #thaumictinkerer:dislocation_blacklist}
+ * (reinforced deepslate and budding amethyst, which no piston moves either), those that cannot be broken (a destroy time
+ * below zero, the game master blocks, and, new, whatever the casting player cannot break: Thaumcraft's warded glass, arcane
+ * door and arcane pressure plate), flowing water and lava, and the halves of two-part blocks ({@link #isTwoPart}) cannot be
+ * taken. A load is put down only if it is one the focus could have taken by its state ({@link #canCarry}), so a load written
+ * by hand into the component cannot place bedrock or a command block.</p>
+ *
+ * <p>New: the server asks {@link ItemModFocus#mayBreak} before it takes a block and {@link ItemModFocus#mayPlace} before it
+ * puts one down (spawn protection, adventure mode, the protection mods). The data of a block entity that only an operator may
+ * set ({@code onlyOpCanSetNbt}: spawners, signs, lecterns) is put back only for a player who may use the game master blocks or
+ * when the load carries this server's seal ({@link DislocationSeal}), that is when the focus took it itself.</p>
  *
  * <p>Where the 1.21.1 block system differs from 1.7.10: the block's metadata is its state; the contents of a container are
  * not dropped when the block is taken (the block entity is removed first, as in 1.7.10); a block is placed only where the
@@ -93,6 +104,8 @@ public class ItemFocusDislocation extends ItemModFocus {
 
     private static final TagKey<Block> PORTABLE_HOLE_BLACKLIST = TagKey.create(Registries.BLOCK,
             ResourceLocation.fromNamespaceAndPath("thaumcraft", "portable_hole_blacklist"));
+    /** New: the add-on's own blacklist (reinforced deepslate and budding amethyst, which vanilla lets no piston move). */
+    public static final TagKey<Block> DISLOCATION_BLACKLIST = TagKey.create(Registries.BLOCK, LibMisc.id("dislocation_blacklist"));
 
     public ItemFocusDislocation(Item.Properties properties) {
         super(properties);
@@ -148,12 +161,38 @@ public class ItemFocusDislocation extends ItemModFocus {
         return state.getBlock() instanceof LiquidBlock && !state.getFluidState().isSource();
     }
 
-    /** Whether this block may be taken (everything the 1.7.10 condition checked except the vis). */
-    public static boolean canTake(BlockGetter level, BlockPos pos, BlockState state) {
-        return !state.isAir() && !state.is(Blocks.MOVING_PISTON) && !state.is(Blocks.PISTON_HEAD)
-                && !isTwoPart(state) && !isFlowingFluid(state)
-                && isBlockAllowed(state) && !state.is(PORTABLE_HOLE_BLACKLIST)
-                && state.getDestroySpeed(level, pos) != -1.0F;
+    /**
+     * A state that no cast of this focus puts into it, whatever the config and the tags say: air, the moving parts of a piston,
+     * a half of a two-part block, flowing fluid, a block that cannot be broken (a destroy time below zero) and the blocks of
+     * the game master ({@link GameMasterBlock}: command, structure and jigsaw blocks). A load of that kind was written by hand
+     * (a command, a creative player's component); the focus drops it.
+     */
+    public static boolean isImpossibleLoad(BlockGetter level, BlockPos pos, BlockState state) {
+        return state.isAir() || state.is(Blocks.MOVING_PISTON) || state.is(Blocks.PISTON_HEAD) || isTwoPart(state)
+                || isFlowingFluid(state) || state.getDestroySpeed(level, pos) < 0F || state.getBlock() instanceof GameMasterBlock;
+    }
+
+    /** On a blacklist: the config's, Thaumcraft's portable-hole tag (with the pistons) or the add-on's own tag. */
+    public static boolean isBlacklisted(BlockState state) {
+        return !isBlockAllowed(state) || state.is(PORTABLE_HOLE_BLACKLIST) || state.is(DISLOCATION_BLACKLIST);
+    }
+
+    /**
+     * Whether the focus may carry a block of this state at all, judged by the state alone (everything the 1.7.10 condition
+     * checked except the vis and the player): asked of the block to take and of the load to put down.
+     */
+    public static boolean canCarry(BlockGetter level, BlockPos pos, BlockState state) {
+        return !isImpossibleLoad(level, pos, state) && !isBlacklisted(state);
+    }
+
+    /**
+     * Whether this player may take this block: {@link #canCarry}, and the player can break it at all. New: the mining progress
+     * of the player on the block ({@code getDestroyProgress}) must be above zero, which refuses what 1.7.10's hardness test
+     * let through, Thaumcraft's warded glass, arcane door and arcane pressure plate (unbreakable for everybody while the
+     * warded stone option is on, by a progress of zero); a progress that is not a number counts as none.
+     */
+    public static boolean canTake(Player player, BlockGetter level, BlockPos pos, BlockState state) {
+        return canCarry(level, pos, state) && state.getDestroyProgress(player, level, pos) > 0F;
     }
 
     /** Whether the carried block can be put at the target: replaceable, able to stand there, free of entities, not protected. */
@@ -201,8 +240,8 @@ public class ItemFocusDislocation extends ItemModFocus {
         return String.format("%s-%d", data.state(), data.tileHash());
     }
 
-    private static void storePickedBlock(ItemStack wand, ItemStack focus, BlockState state, CompoundTag tile) {
-        focus.set(FociComponents.DISLOCATION.get(), new DislocationData(state, tile));
+    private static void storePickedBlock(ItemStack wand, ItemStack focus, BlockState state, CompoundTag tile, String seal) {
+        focus.set(FociComponents.DISLOCATION.get(), new DislocationData(state, tile, seal));
         WandHelper.setFocus(wand, focus);
     }
 
@@ -240,19 +279,31 @@ public class ItemFocusDislocation extends ItemModFocus {
     private void place(ItemStack wand, ItemStack focus, Level level, Player player, InteractionHand hand, BlockPos target,
             DislocationData carried) {
         BlockState state = carried.state();
-        if (isTwoPart(state)) {
-            // A load that no cast of this focus makes (a command or a data pack made it): placing it would build its other half
-            // over whatever stands above, and it could never be put down anywhere, so the focus would stay full for good.
+        if (isImpossibleLoad(level, target, state)) {
+            // A load that no cast of this focus makes (a command or a creative player's component made it): bedrock, a command
+            // block, flowing water... A half of a two-part block would build its other half over whatever stands above, and it
+            // could never be put down anywhere, so the focus would stay full for good. The focus drops it.
             if (!level.isClientSide) clearPickedBlock(wand, focus);
+            return;
+        }
+        if (isBlacklisted(state)) {
+            // Taken before the blacklist named it: it stays in the focus (it would be lost if dropped) until the list changes.
+            if (!level.isClientSide) {
+                player.displayClientMessage(Component.translatable("ttmisc.focusDislocation.blacklisted"), true);
+            }
             return;
         }
         if (!canPlaceAt(level, target, state, player)) return;
 
         if (!level.isClientSide) {
+            if (!mayPlace(player, level, target, state)) {
+                resync(player);
+                return;
+            }
             if (!level.setBlock(target, state, Block.UPDATE_ALL)) return;
             BlockState placed = level.getBlockState(target);
             placed.getBlock().setPlacedBy(level, target, placed, player, new ItemStack(placed.getBlock()));
-            restoreTile(level, target, carried);
+            restoreTile(level, target, carried, player);
             clearPickedBlock(wand, focus);
             FociFx.dislocationBursts((ServerLevel) level, target, FociFx.PLACE_BURST_LIFT);
         } else {
@@ -262,8 +313,23 @@ public class ItemFocusDislocation extends ItemModFocus {
         FociFx.thaumcraftSound(level, player, ThaumcraftSoundIds.WAND, 0.5F, 1F);
     }
 
-    /** Gives the block just placed the block entity it carried: the saved tag, loaded into the one the block made, or a new one. */
-    private static void restoreTile(Level level, BlockPos pos, DislocationData carried) {
+    /**
+     * Whether the saved data may go into a block entity of this kind for this player. Vanilla's rule for the block entity data
+     * of an item ({@code BlockItem.updateCustomBlockEntityTag}): a block entity that only an operator may set
+     * ({@code onlyOpCanSetNbt}: spawners, the command block, signs, lecterns) takes it only from a player who may use the game
+     * master blocks. And the port's: or when the load carries this server's seal ({@link DislocationSeal}), that is when the
+     * focus took it from the world itself.
+     */
+    private static boolean mayLoad(BlockEntity entity, Player player, Level level, DislocationData carried) {
+        if (!entity.onlyOpCanSetNbt() || player.canUseGameMasterBlocks()) return true;
+        return level.getServer() != null && DislocationSeal.isGenuine(level.getServer(), carried);
+    }
+
+    /**
+     * Gives the block just placed the block entity it carried: the saved tag, loaded into the one the block made, or a new one.
+     * A block entity that may not take the data for this player ({@link #mayLoad}) keeps what the placed block gave it.
+     */
+    private static void restoreTile(Level level, BlockPos pos, DislocationData carried, Player player) {
         if (!carried.hasTile()) return;
         CompoundTag tag = carried.tile();
         tag.putInt("x", pos.getX());
@@ -274,10 +340,12 @@ public class ItemFocusDislocation extends ItemModFocus {
             BlockEntity existing = level.getBlockEntity(pos);
             ResourceLocation id = ResourceLocation.tryParse(tag.getString("id"));
             if (existing != null && id != null && id.equals(BlockEntityType.getKey(existing.getType()))) {
+                if (!mayLoad(existing, player, level, carried)) return;
                 existing.loadWithComponents(tag, level.registryAccess());
             } else {
                 BlockEntity loaded = BlockEntity.loadStatic(pos, state, tag, level.registryAccess());
-                if (loaded != null && loaded.getType().isValid(state)) level.setBlockEntity(loaded);
+                if (loaded == null || !loaded.getType().isValid(state) || !mayLoad(loaded, player, level, carried)) return;
+                level.setBlockEntity(loaded);
             }
         } catch (RuntimeException e) {
             ThaumicTinkerer.LOG.warn("Focus of Dislocation: the block entity at {} could not be restored: {}", pos, e.toString());
@@ -290,15 +358,21 @@ public class ItemFocusDislocation extends ItemModFocus {
 
     private void take(ItemStack wand, ItemStack focus, Level level, Player player, InteractionHand hand, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
-        if (!canTake(level, pos, state) || !level.mayInteract(player, pos)) return;
+        if (!canTake(player, level, pos, state) || !level.mayInteract(player, pos)) return;
 
         BlockEntity tile = level.getBlockEntity(pos);
         AspectList cost = getCost(tile);
 
         if (!level.isClientSide) {
+            // What only the server knows (the protection mods, the size of the data) undoes the client's prediction.
+            if (!mayBreak(player, level, pos, state)) {
+                resync(player);
+                return;
+            }
             CompoundTag saved = tile == null ? new CompoundTag() : tile.saveWithFullMetadata(level.registryAccess());
             if (saved.sizeInBytes() > MAX_TILE_BYTES) {
                 player.displayClientMessage(Component.translatable("ttmisc.focusDislocation.tooBig"), true);
+                resync(player);
                 return;
             }
             if (!WandHelper.consumeAllVis(wand, player, cost, true, false)) return;
@@ -306,7 +380,9 @@ public class ItemFocusDislocation extends ItemModFocus {
             // The block entity goes first, so that a container does not drop what it holds: it travels in the focus.
             level.removeBlockEntity(pos);
             level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-            storePickedBlock(wand, focus, normalize(state), saved);
+            BlockState carried = normalize(state);
+            String seal = saved.isEmpty() ? "" : DislocationSeal.seal(level.getServer(), carried, saved);
+            storePickedBlock(wand, focus, carried, saved, seal);
             FociFx.dislocationBursts((ServerLevel) level, pos, 0F);
         } else {
             // The client only predicts: the server decides, takes the block and sends the changed wand back.

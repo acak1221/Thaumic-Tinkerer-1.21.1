@@ -21,8 +21,9 @@ import net.minecraft.world.item.ItemStack;
 import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
 
 /**
- * The fake player of one Animation Tablet: it stands in the middle of the tablet, looks the way the tablet faces and
- * holds the tablet's item in the first hotbar slot (1.7.10 {@code TabletFakePlayer extends FakePlayer}).
+ * The fake player of one Animation Tablet: it stands in the middle of the tablet (its eye there too, the point the
+ * tablet's own ray starts from), looks the way the tablet faces and holds the tablet's item in the first hotbar slot
+ * (1.7.10 {@code TabletFakePlayer extends FakePlayer}).
  */
 public final class TabletFakePlayer extends TinkererFakePlayer {
     /** The profile of the original tablet player. */
@@ -42,9 +43,11 @@ public final class TabletFakePlayer extends TinkererFakePlayer {
 
     /**
      * {@code onUpdate}: put the player in the middle of the tablet, facing the way the tablet faces, drop everything but
-     * the held item, and keep the held item in slot zero.
+     * the held item, and keep the held item in slot zero. The item cooldowns run on (new in the port: 1.7.10 had none,
+     * and a fake player is not ticked, see {@link TinkererFakePlayer#advanceCooldowns()}).
      */
     public void onUpdate() {
+        advanceCooldowns();
         BlockPos pos = tablet.getBlockPos();
         Direction facing = tablet.getFacing();
         // yaw 180 faces north, 0 south, 90 west, -90 east, as in 1.7.10 (and as Direction.toYRot).

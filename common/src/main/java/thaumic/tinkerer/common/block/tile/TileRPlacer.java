@@ -24,6 +24,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -39,21 +40,27 @@ import thaumic.tinkerer.common.block.camo.RedstonePulseReceiver;
 import thaumic.tinkerer.common.block.tile.container.ContainerRemotePlacer;
 import thaumic.tinkerer.common.content.TileBlocks;
 import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
-
-import com.mojang.authlib.GameProfile;
-import java.util.UUID;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 
 /**
  * The Remote Placer: on a redstone pulse it uses the item in its slot on the empty block one to four blocks away in the
  * direction it faces (1.7.10 {@code TileRPlacer}). A fake player does the placing, first as a click on the block
  * ({@code onItemUse}) and, when that does nothing, as a click into the air ({@code onItemRightClick}).
+ *
+ * <p>New in the port: the fake player asks {@link BlockProtection#mayPlace} for the target first (the world border, spawn
+ * protection, the protection mods), and nothing happens when the answer is no.</p>
  */
 public class TileRPlacer extends CamoDeviceBlockEntity implements Container, ExtendedMenuProvider, RedstonePulseReceiver {
 
     private static final String TAG_BLOCKS = "blocks";
 
-    /** The profile of Forge's {@code FakePlayerFactory.getMinecraft} player, which the original placer used. */
-    private static final GameProfile PROFILE = new GameProfile(UUID.fromString("41C82C87-7AfB-4024-BA57-13D2C99CAE77"), "[Minecraft]");
+    /**
+     * How far the fake player reaches when the item looks for a block along the player's view (see {@link #aimPlayer}):
+     * from just inside the target to just inside the block beyond it.
+     */
+    private static final double REACH = 1.0D;
+    /** How far inside the target the fake player's eye stands, from the target's face toward the placer. */
+    private static final double EYE_INSIDE = 0.05D;
 
     /**
      * The original aimed an east-facing placer to the west: orientation 5 used {@code x - blocks}, a copy of the case
@@ -113,9 +120,17 @@ public class TileRPlacer extends CamoDeviceBlockEntity implements Container, Ext
         BlockPos target = getTargetPos();
         if (!serverLevel.isLoaded(target) || !serverLevel.getBlockState(target).isAir()) return;
 
-        if (player == null) player = new TinkererFakePlayer(serverLevel, PROFILE);
+        if (player == null) {
+            // The profile of Forge's FakePlayerFactory.getMinecraft player, which the original placer used.
+            player = new TinkererFakePlayer(serverLevel, TinkererFakePlayer.MINECRAFT_PROFILE);
+            player.getAttribute(Attributes.BLOCK_INTERACTION_RANGE).setBaseValue(REACH);
+        }
         Direction orientation = getOrientation();
-        aimPlayer(player, orientation);
+        aimPlayer(player, target, orientation);
+        BlockState placing = stack.getItem() instanceof BlockItem blockItem ? blockItem.getBlock().defaultBlockState()
+                : serverLevel.getBlockState(target);
+        if (!BlockProtection.mayPlace(player, serverLevel, target, placing)) return;
+        player.advanceCooldowns();
         player.getInventory().selected = 0;
         player.getInventory().setItem(0, stack);
 
@@ -135,11 +150,27 @@ public class TileRPlacer extends CamoDeviceBlockEntity implements Container, Ext
         syncToClients();
     }
 
-    /** The fake player stands in the placer and looks the way it faces. */
-    private void aimPlayer(TinkererFakePlayer fake, Direction orientation) {
+    /**
+     * The fake player stands at the target and looks the way the placer faces, its eye just inside the face of the target
+     * through which that look enters it (the face toward the placer; for an east-facing placer, which works on the block to
+     * its west, see {@link #EAST_AIMS_WEST_AS_IN_1_7_10}, the face away from it), and it reaches {@link #REACH}: one block.
+     * An item that looks for a block along the player's view on a click into the air (a bucket, a glass bottle, a boat, a
+     * lily pad, a spawn egg) therefore finds the target and the face of the block beyond it and nothing else: a water bucket
+     * pours into the target when there is a block beyond it and does nothing when there is none, and a thrown item leaves
+     * from the target. What is placed is turned by the look and the clicked face, both the same as before.
+     *
+     * <p>An earlier revision stood the player in the middle of the placer. Its eye was 1.62 above that (the entity type's
+     * eye height, see the constructor of {@link TinkererFakePlayer}), so a bucket looked for a block from the second block
+     * above the placer, four and a half blocks along the facing (straight down onto the placer's top for a placer facing
+     * down: the water landed behind it); with the eye in the middle of the placer the look would have started inside the
+     * placer's own cube, which a ray reports as hit on its back face.</p>
+     */
+    private static void aimPlayer(TinkererFakePlayer fake, BlockPos target, Direction orientation) {
         float yaw = orientation.getAxis().isHorizontal() ? orientation.toYRot() : 0F;
         float pitch = orientation == Direction.DOWN ? 90F : orientation == Direction.UP ? -90F : 0F;
-        fake.placeAt(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5, yaw, pitch);
+        double back = 0.5D - EYE_INSIDE;
+        fake.placeAt(target.getX() + 0.5 - orientation.getStepX() * back, target.getY() + 0.5 - orientation.getStepY() * back,
+                target.getZ() + 0.5 - orientation.getStepZ() * back, yaw, pitch);
     }
 
     @Override

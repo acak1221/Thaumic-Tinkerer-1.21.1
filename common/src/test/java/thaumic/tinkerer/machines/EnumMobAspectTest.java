@@ -12,8 +12,16 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import net.minecraft.SharedConstants;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.world.entity.EntityType;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import thaumcraft.api.aspects.Aspect;
+import thaumcraft.api.entities.ThaumcraftEntities;
 import thaumic.tinkerer.common.core.helper.EnumMobAspect;
 import thaumic.tinkerer.common.item.ItemMobAspect;
 
@@ -21,6 +29,11 @@ import thaumic.tinkerer.common.item.ItemMobAspect;
  * <p>The necromancy table: thirty mobs, each made of an unordered set of the seventeen soul aspects.</p>
  */
 class EnumMobAspectTest {
+    @BeforeAll
+    static void bootstrap() {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+    }
 
     private static List<Aspect> list(Aspect... aspects) {
         return new ArrayList<>(List.of(aspects));
@@ -124,5 +137,27 @@ class EnumMobAspectTest {
         for (EnumMobAspect row : EnumMobAspect.values()) assertEquals(row, EnumMobAspect.get(row.name()));
         assertEquals(null, EnumMobAspect.get(""));
         assertEquals(null, EnumMobAspect.get("Dragon"));
+    }
+
+    @Test
+    void everyRowHoldsTheRegistryKeyOfItsEntityType() {
+        Set<ResourceKey<EntityType<?>>> keys = new HashSet<>();
+        for (EnumMobAspect row : EnumMobAspect.values()) {
+            ResourceKey<EntityType<?>> key = row.getEntityTypeKey();
+            assertTrue(key.isFor(Registries.ENTITY_TYPE), row.name() + " has an entity type key: " + key);
+            assertTrue(keys.add(key), row.name() + ": a second row of " + key);
+            if (key.location().getNamespace().equals("minecraft")) {
+                // the vanilla types are registered in a JUnit run too (Thaumcraft's are not)
+                assertTrue(BuiltInRegistries.ENTITY_TYPE.containsKey(key), row.name() + ": " + key + " is a vanilla entity type");
+                assertEquals(BuiltInRegistries.ENTITY_TYPE.get(key), row.getEntityType(), row.name());
+            }
+        }
+        assertEquals(ThaumcraftEntities.WISP, EnumMobAspect.Wisp.getEntityTypeKey());
+        assertEquals(ThaumcraftEntities.FIREBAT, EnumMobAspect.Firebat.getEntityTypeKey());
+        assertEquals(ThaumcraftEntities.BRAINY_ZOMBIE, EnumMobAspect.BrainyZombie.getEntityTypeKey());
+        assertEquals(BuiltInRegistries.ENTITY_TYPE.getResourceKey(EntityType.ZOMBIFIED_PIGLIN).orElseThrow(),
+                EnumMobAspect.PigZombie.getEntityTypeKey());
+        assertEquals(BuiltInRegistries.ENTITY_TYPE.getResourceKey(EntityType.MOOSHROOM).orElseThrow(),
+                EnumMobAspect.MushroomCow.getEntityTypeKey());
     }
 }

@@ -7,7 +7,6 @@ package thaumic.tinkerer.basicitems;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.JsonElement;
@@ -30,7 +29,6 @@ import org.junit.jupiter.api.Test;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumic.tinkerer.common.core.helper.ExperienceHelper;
-import thaumic.tinkerer.common.core.helper.ItemNBTHelper;
 import thaumic.tinkerer.common.core.helper.MiscHelper;
 import thaumic.tinkerer.common.item.BasicItemComponents.ShareData;
 import thaumic.tinkerer.common.item.CleansingLogic;
@@ -305,70 +303,6 @@ class BasicItemsLogicTest {
         } catch (UnsupportedOperationException expected) {
             // expected
         }
-    }
-
-    // ---- the stack tag helper --------------------------------------------------------------------------------------
-
-    @Test
-    void theNbtHelperReadsDefaultsAndKeepsWhatIsWritten() {
-        ItemStack stack = new ItemStack(Items.STICK);
-        assertFalse(ItemNBTHelper.detectNBT(stack), "a fresh stack has no tag");
-        assertEquals(7, ItemNBTHelper.getInt(stack, "n", 7), "the default of a missing key");
-        assertEquals("d", ItemNBTHelper.getString(stack, "s", "d"));
-        assertTrue(ItemNBTHelper.getBoolean(stack, "b", true));
-        assertNull(ItemNBTHelper.getCompound(stack, "c", true), "nullify on fail");
-        assertTrue(ItemNBTHelper.getCompound(stack, "c", false).isEmpty(), "an empty tag otherwise");
-
-        ItemNBTHelper.setInt(stack, "n", 42);
-        ItemNBTHelper.setString(stack, "s", "text");
-        ItemNBTHelper.setBoolean(stack, "b", false);
-        ItemNBTHelper.setLong(stack, "l", 1L << 40);
-        ItemNBTHelper.setDouble(stack, "d", 2.5);
-        ItemNBTHelper.setFloat(stack, "f", 1.5F);
-        ItemNBTHelper.setShort(stack, "sh", (short) 9);
-        ItemNBTHelper.setByte(stack, "by", (byte) 3);
-        assertTrue(ItemNBTHelper.detectNBT(stack));
-        assertEquals(42, ItemNBTHelper.getInt(stack, "n", 0));
-        assertEquals("text", ItemNBTHelper.getString(stack, "s", ""));
-        assertFalse(ItemNBTHelper.getBoolean(stack, "b", true));
-        assertEquals(1L << 40, ItemNBTHelper.getLong(stack, "l", 0));
-        assertEquals(2.5, ItemNBTHelper.getDouble(stack, "d", 0));
-        assertEquals(1.5F, ItemNBTHelper.getFloat(stack, "f", 0));
-        assertEquals((short) 9, ItemNBTHelper.getShort(stack, "sh", (short) 0));
-        assertEquals((byte) 3, ItemNBTHelper.getByte(stack, "by", (byte) 0));
-
-        CompoundTag inner = new CompoundTag();
-        inner.putInt("x", 5);
-        ItemNBTHelper.setCompound(stack, "c", inner);
-        inner.putInt("x", 6);
-        assertEquals(5, ItemNBTHelper.getCompound(stack, "c", true).getInt("x"), "the compound was copied in");
-
-        ItemNBTHelper.removeTag(stack, "n");
-        assertFalse(ItemNBTHelper.verifyExistance(stack, "n"));
-        assertEquals("text", ItemNBTHelper.getString(stack, "s", ""), "the other keys stay");
-    }
-
-    @Test
-    void theNbtOfAStackIsACopyAndACopiedStackIsIndependent() {
-        ItemStack stack = new ItemStack(Items.STICK);
-        ItemNBTHelper.setInt(stack, "n", 1);
-
-        CompoundTag copy = ItemNBTHelper.getNBT(stack);
-        copy.putInt("n", 99);
-        assertEquals(1, ItemNBTHelper.getInt(stack, "n", 0), "getNBT does not hand out the live tag");
-
-        ItemStack other = stack.copy();
-        ItemNBTHelper.setInt(other, "n", 2);
-        assertEquals(1, ItemNBTHelper.getInt(stack, "n", 0), "a copy of the stack does not share its tag");
-        assertEquals(2, ItemNBTHelper.getInt(other, "n", 0));
-
-        ItemNBTHelper.update(stack, tag -> tag.putInt("m", 8));
-        assertEquals(8, ItemNBTHelper.getInt(stack, "m", 0), "update keeps the change");
-
-        ItemStack empty = new ItemStack(Items.STICK);
-        ItemNBTHelper.initNBT(empty);
-        assertTrue(ItemNBTHelper.detectNBT(empty));
-        assertNotSame(ItemNBTHelper.getNBT(empty), ItemNBTHelper.getNBT(empty));
     }
 
     // ---- the odds and ends of MiscHelper ---------------------------------------------------------------------------

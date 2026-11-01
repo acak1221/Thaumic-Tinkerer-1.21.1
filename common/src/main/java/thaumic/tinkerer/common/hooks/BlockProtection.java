@@ -74,22 +74,25 @@ public final class BlockProtection {
     /** May {@code player} break (or take away, or turn into something else) the block {@code state} at {@code pos}? */
     public static boolean mayBreak(ServerPlayer player, ServerLevel level, BlockPos pos, BlockState state) {
         if (!gameAllows(player, level, pos)) return false;
+        Boolean outer = PROBING.get();
         PROBING.set(Boolean.TRUE);
         try {
             return backend.mayBreak(player, level, pos, state);
         } finally {
-            PROBING.set(Boolean.FALSE);
+            // a listener that asks again inside the question must not end the outer question's flag
+            PROBING.set(outer);
         }
     }
 
     /** May {@code player} place {@code state} at {@code pos}? */
     public static boolean mayPlace(ServerPlayer player, ServerLevel level, BlockPos pos, BlockState state) {
         if (!gameAllows(player, level, pos)) return false;
+        Boolean outer = PROBING.get();
         PROBING.set(Boolean.TRUE);
         try {
             return backend.mayPlace(player, level, pos, state);
         } finally {
-            PROBING.set(Boolean.FALSE);
+            PROBING.set(outer);
         }
     }
 }

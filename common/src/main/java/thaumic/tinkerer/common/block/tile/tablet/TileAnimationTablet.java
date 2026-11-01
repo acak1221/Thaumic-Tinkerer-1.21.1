@@ -50,6 +50,7 @@ import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.block.BlockAnimationTablet;
 import thaumic.tinkerer.common.block.tile.container.ContainerAnimationTablet;
 import thaumic.tinkerer.common.content.TileBlocks;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 
 /**
  * The block entity of the Animation Tablet (Tool Dynamism Tablet): it holds one item, swings it on the block or entity
@@ -60,6 +61,12 @@ import thaumic.tinkerer.common.content.TileBlocks;
  * places blocks, seeds, redstone and till soil in the block in front of it by clicking the top of the block below it;
  * in redstone mode a swing starts only while the tablet or the block above it is powered. The client animates the swing
  * (the 1.7.10 tile did, from the same counters).</p>
+ *
+ * <p>New in the port: before a click on a block the fake player asks {@link BlockProtection} (the world border, spawn
+ * protection and the protection mods of the server), and the tablet leaves the block alone when the answer is no: a
+ * break asks {@code mayBreak} for the block; a right click asks {@code mayPlace} for the block in front, or, with nothing
+ * in front, {@code mayPlace} for the empty block in front (a block item, which goes there) or {@code mayBreak} for the
+ * block below it (a hoe, which tills it). Attacks and uses on entities ask nothing (the question is about blocks).</p>
  */
 public class TileAnimationTablet extends BlockEntity implements Container, ExtendedMenuProvider {
     private static final String TAG_LEFT_CLICK = "leftClick";
@@ -234,7 +241,7 @@ public class TileAnimationTablet extends BlockEntity implements Container, Exten
                 if (!isBreaking) {
                     BlockPos pos = ((BlockHitResult) hit).getBlockPos();
                     BlockState state = level.getBlockState(pos);
-                    if (!state.isAir() && state.getDestroySpeed(level, pos) >= 0) {
+                    if (!state.isAir() && state.getDestroySpeed(level, pos) >= 0 && mayBreak(player, pos, state)) {
                         isBreaking = true;
                         startBreaking(player, pos);
                         updateState(player);
@@ -247,6 +254,7 @@ public class TileAnimationTablet extends BlockEntity implements Container, Exten
                 return;
             }
             // The block hit, or the top of the block below (a MISS in the original): the right click of a player.
+            if (!mayRightClick(player, stack, (BlockHitResult) hit)) return;
             InteractionResult used = player.useItemOnBlock((BlockHitResult) hit);
             if (used.consumesAction()) {
                 updateState(player);
@@ -254,6 +262,29 @@ public class TileAnimationTablet extends BlockEntity implements Container, Exten
             }
             if (player.useItemInAir().consumesAction()) updateState(player);
         }
+    }
+
+    /** {@link BlockProtection#mayBreak} for the fake player. */
+    private boolean mayBreak(TabletFakePlayer player, BlockPos pos, BlockState state) {
+        return BlockProtection.mayBreak(player, (ServerLevel) level, pos, state);
+    }
+
+    /**
+     * May the right click on {@code hit} change the world? On a block in front: {@code mayPlace} there, with its present
+     * state. On the top of the block below an empty target (a MISS, see {@link #calculateHit}): a block item goes into the
+     * target, so {@code mayPlace} there with the item's block; a hoe tills the block below, so {@code mayBreak} that.
+     */
+    private boolean mayRightClick(TabletFakePlayer player, ItemStack stack, BlockHitResult hit) {
+        ServerLevel serverLevel = (ServerLevel) level;
+        if (hit.getType() != HitResult.Type.MISS) {
+            BlockPos pos = hit.getBlockPos();
+            return BlockProtection.mayPlace(player, serverLevel, pos, serverLevel.getBlockState(pos));
+        }
+        if (stack.getItem() instanceof BlockItem blockItem) {
+            return BlockProtection.mayPlace(player, serverLevel, getTargetPos(), blockItem.getBlock().defaultBlockState());
+        }
+        BlockPos below = hit.getBlockPos();
+        return BlockProtection.mayBreak(player, serverLevel, below, serverLevel.getBlockState(below));
     }
 
     public final boolean isIdle() {
@@ -306,6 +337,11 @@ public class TileAnimationTablet extends BlockEntity implements Container, Exten
      */
     private void updateBlockRemoving(TabletFakePlayer player, BlockPos pos) {
         if (breakingPos == null || !breakingPos.equals(pos)) {
+            // Another block is in front now (the tablet was turned): it is asked about like the first one.
+            if (!mayBreak(player, pos, level.getBlockState(pos))) {
+                stopBreaking();
+                return;
+            }
             startBreaking(player, pos);
             return;
         }

@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -27,16 +28,14 @@ import thaumic.tinkerer.common.block.camo.CamoDeviceBlockEntity;
  * A block entity that is bound to another block by the Transvector Binder (the Transvector Interface and the Dislocator).
  *
  * <p>1.7.10 marked "not bound" with {@code y == -1}, which is a real height in 1.21.1 (the world reaches down to -64), so
- * the binding is an optional position and a flag in the saved data. The binding is dropped when the target is further
- * away than {@link #getMaxDistance()} (unless the "cheaty" flag of the saved data is set), or when the target block
- * entity is gone and the device needs one.</p>
+ * the binding is an optional position in the saved data ({@code target}, the vanilla position format of
+ * {@link NbtUtils#writeBlockPos}; absent when not bound). The binding is dropped when the target is further away than
+ * {@link #getMaxDistance()} (unless the "cheaty" flag of the saved data is set), when the target block entity is gone and
+ * the device needs one, or when the device may not stand in for the block entity there ({@link #mayBindTo}).</p>
  */
 public abstract class TileTransvector extends CamoDeviceBlockEntity {
 
-    private static final String TAG_X_TARGET = "xt";
-    private static final String TAG_Y_TARGET = "yt";
-    private static final String TAG_Z_TARGET = "zt";
-    private static final String TAG_LINKED = "linked";
+    private static final String TAG_TARGET = "target";
     private static final String TAG_CHEATY_MODE = "cheatyMode";
 
     /** Told after the binding of a device changed (see {@link #setBindingListener}); nothing by default. */
@@ -81,12 +80,7 @@ public abstract class TileTransvector extends CamoDeviceBlockEntity {
     protected void writeCustomData(CompoundTag tag, HolderLookup.Provider registries) {
         super.writeCustomData(tag, registries);
 
-        tag.putBoolean(TAG_LINKED, target != null);
-        if (target != null) {
-            tag.putInt(TAG_X_TARGET, target.getX());
-            tag.putInt(TAG_Y_TARGET, target.getY());
-            tag.putInt(TAG_Z_TARGET, target.getZ());
-        }
+        if (target != null) tag.put(TAG_TARGET, NbtUtils.writeBlockPos(target));
         tag.putBoolean(TAG_CHEATY_MODE, cheaty);
     }
 
@@ -94,16 +88,15 @@ public abstract class TileTransvector extends CamoDeviceBlockEntity {
     protected void readCustomData(CompoundTag tag, HolderLookup.Provider registries) {
         super.readCustomData(tag, registries);
 
-        target = tag.getBoolean(TAG_LINKED)
-                ? new BlockPos(tag.getInt(TAG_X_TARGET), tag.getInt(TAG_Y_TARGET), tag.getInt(TAG_Z_TARGET))
-                : null;
+        // An update packet carries the whole custom data, so a missing position also unbinds a client.
+        target = NbtUtils.readBlockPos(tag, TAG_TARGET).orElse(null);
         cheaty = tag.getBoolean(TAG_CHEATY_MODE);
     }
 
     /**
      * The block entity the device is bound to, or null. A target outside the loaded chunks answers null and keeps the
-     * binding; a target that is too far, or missing when it is required, ends the binding (on the server; a client
-     * that has not received the target yet keeps it).
+     * binding; a target that is too far, missing when it is required, or refused by {@link #mayBindTo} ends the binding
+     * (on the server; a client that has not received the target yet keeps it, and is answered null for a refused one).
      */
     @Nullable
     public final BlockEntity getTile() {
@@ -112,17 +105,26 @@ public abstract class TileTransvector extends CamoDeviceBlockEntity {
 
         BlockEntity tile = level.getBlockEntity(target);
 
+        boolean refused = tile != null && !mayBindTo(tile);
         boolean tooFar = Math.abs(target.getX() - worldPosition.getX()) > getMaxDistance()
                 || Math.abs(target.getY() - worldPosition.getY()) > getMaxDistance()
                 || Math.abs(target.getZ() - worldPosition.getZ()) > getMaxDistance();
-        if (!level.isClientSide && (tile == null && tileRequiredAtLink() || tooFar && !cheaty)) {
+        if (!level.isClientSide && (refused || tile == null && tileRequiredAtLink() || tooFar && !cheaty)) {
             target = null;
             setChanged();
             bindingListener.accept(this);
             return null;
         }
 
-        return tile;
+        return refused ? null : tile;
+    }
+
+    /**
+     * May the device stand in for this block entity, the one at its target? Yes by default (the Dislocator needs none);
+     * the Interface refuses itself and other Interfaces, which would forward to each other without end.
+     */
+    protected boolean mayBindTo(BlockEntity tile) {
+        return true;
     }
 
     public abstract int getMaxDistance();

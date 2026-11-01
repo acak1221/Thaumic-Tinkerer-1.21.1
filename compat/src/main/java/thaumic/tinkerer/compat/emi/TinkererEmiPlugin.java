@@ -15,7 +15,6 @@ import dev.emi.emi.api.stack.Comparison;
 import dev.emi.emi.api.stack.EmiStack;
 import java.util.List;
 import java.util.function.Supplier;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +56,7 @@ public final class TinkererEmiPlugin implements EmiPlugin {
         // One item each, told apart by data: without these EMI takes every Mob Display for the same stack (the uses and
         // recipes of a zombie would list all thirty mobs) and every Infused Seeds for the same seed.
         registry.setDefaultComparison(TinkererRecipeViews.mobDisplayItem(),
-                Comparison.compareData(stack -> TinkererRecipeViews.mobDisplayKey(stack.get(DataComponents.CUSTOM_DATA))));
+                Comparison.compareData(stack -> TinkererRecipeViews.mobDisplayKey(stack.get(TinkererRecipeViews.mobDisplayComponent()))));
         registry.setDefaultComparison(TinkererRecipeViews.seedItem(),
                 Comparison.compareData(stack -> stack.get(InfusedSeedComponents.aspectType())));
 

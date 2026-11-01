@@ -9,7 +9,6 @@ import mezz.jei.api.ingredients.subtypes.UidContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -41,21 +40,22 @@ final class JeiPages {
     }
 
     /**
-     * Mob Displays are one item; the mob is the custom data key {@code type}. Without this JEI takes all thirty for one
-     * ingredient: the item list would show one, and the recipes of a zombie would list every mob.
+     * Mob Displays are one item; the mob is the component of the display ({@code MachineComponents.DISPLAYED_MOB}). Without
+     * this JEI takes all thirty for one ingredient: the item list would show one, and the recipes of a zombie would list
+     * every mob.
      */
     static final class MobDisplaySubtypes implements ISubtypeInterpreter<ItemStack> {
         @Override
         @Nullable
         public Object getSubtypeData(ItemStack stack, UidContext context) {
-            String type = TinkererRecipeViews.mobDisplayKey(stack.get(DataComponents.CUSTOM_DATA));
+            String type = TinkererRecipeViews.mobDisplayKey(stack.get(TinkererRecipeViews.mobDisplayComponent()));
             return type.isEmpty() ? null : type;
         }
 
         @Override
         @SuppressWarnings("deprecation")
         public String getLegacyStringSubtypeInfo(ItemStack stack, UidContext context) {
-            return TinkererRecipeViews.mobDisplayKey(stack.get(DataComponents.CUSTOM_DATA));
+            return TinkererRecipeViews.mobDisplayKey(stack.get(TinkererRecipeViews.mobDisplayComponent()));
         }
     }
 

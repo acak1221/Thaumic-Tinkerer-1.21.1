@@ -40,7 +40,8 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import thaumcraft.api.ThaumcraftSoundIds;
-import thaumic.tinkerer.common.core.helper.ItemNBTHelper;
+import thaumic.tinkerer.common.enchantment.EnchantmentComponents.StrikeMemory;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
 
 /**
@@ -54,7 +55,8 @@ import thaumic.tinkerer.common.hooks.TinkererEvents;
  *   <li>{@code PlayerEvent.BreakSpeed} ({@link #onGetHarvestSpeed}): {@code TinkererEvents.BREAK_SPEED}. Shatter, Tunnel,
  *       Disintegrate and Flaming Touch, on both sides; a fake player that is never ticked gets them too.</li>
  *   <li>{@code BlockEvent.BreakEvent} ({@link #onBreakBlock}): Architectury's {@code BlockEvent.BREAK}. Tunnel remembers the
- *       way the player looked; the wear of Disintegrate and Flaming Touch.</li>
+ *       way the player looked; the wear of Disintegrate and Flaming Touch. Not while the event is only a question of
+ *       {@link BlockProtection} (a focus or a device asking the protection mods whether a block may go).</li>
  *   <li>{@code LivingJumpEvent} ({@link #onPlayerJump}): {@code TinkererEvents.LIVING_JUMP}. Ascent Boost, on both sides.</li>
  *   <li>{@code LivingFallEvent}: {@code TinkererEvents.LIVING_FALL}. Slow Fall ({@link #onSlowFallLanding}, both sides) and
  *       Shockwave ({@link #onFall}, the server only), in that order, so that Shockwave sees the distance that is left.</li>
@@ -65,14 +67,6 @@ import thaumic.tinkerer.common.hooks.TinkererEvents;
  */
 public final class ModEnchantmentHandler {
     private static final Logger LOG = LoggerFactory.getLogger("ThaumicTinkerer");
-
-    /** The keys of the strike counter on the weapon, as in 1.7.10. */
-    public static final String NBT_LAST_TARGET = "TTEnchantLastTarget";
-    public static final String NBT_LAST_TARGET_2 = "TTEnchantLastTarget2";
-    public static final String NBT_SUCCESSIVE_STRIKE = "TTEnchantSuccessiveStrike";
-
-    /** The key of the direction that Tunnel remembers on the tool, as in 1.7.10 ({@code NBTTunnelDirection}). */
-    public static final String NBT_TUNNEL_DIRECTION = "TTEnchantTunnelDir";
 
     private ModEnchantmentHandler() {}
 
@@ -146,16 +140,11 @@ public final class ModEnchantmentHandler {
 
         int successiveStrikes = 0;
         if (focusedStrikes > 0 || dispersedStrikes > 0) {
-            UUID lastTarget = new UUID(ItemNBTHelper.getLong(heldItem, NBT_LAST_TARGET, 0L),
-                    ItemNBTHelper.getLong(heldItem, NBT_LAST_TARGET_2, 0L));
+            // The tag keys of 1.7.10 (TTEnchantLastTarget, TTEnchantLastTarget2, TTEnchantSuccessiveStrike) are one component.
+            StrikeMemory memory = heldItem.getOrDefault(EnchantmentComponents.STRIKE_MEMORY.get(), StrikeMemory.NONE);
             UUID entityId = victim.getUUID();
-            successiveStrikes = EnchantmentFormulas.nextSuccessiveStrikes(lastTarget, ItemNBTHelper.getInt(heldItem,
-                    NBT_SUCCESSIVE_STRIKE, 0), entityId);
-            if (!lastTarget.equals(entityId)) {
-                ItemNBTHelper.setLong(heldItem, NBT_LAST_TARGET, entityId.getMostSignificantBits());
-                ItemNBTHelper.setLong(heldItem, NBT_LAST_TARGET_2, entityId.getLeastSignificantBits());
-            }
-            ItemNBTHelper.setInt(heldItem, NBT_SUCCESSIVE_STRIKE, successiveStrikes);
+            successiveStrikes = EnchantmentFormulas.nextSuccessiveStrikes(memory.target(), memory.strikes(), entityId);
+            heldItem.set(EnchantmentComponents.STRIKE_MEMORY.get(), new StrikeMemory(entityId, successiveStrikes));
         }
 
         float result = EnchantmentFormulas.modifyDamage(amount, new EnchantmentFormulas.Attack(pounce, pounceInAir, finalStrike,
@@ -200,10 +189,11 @@ public final class ModEnchantmentHandler {
         // The original asked the hardness at (0, 0, 0) for Shatter and read the field for the others: both are the hardness
         // of the block, which the poster gives with the position (BlockPos.ZERO if a poster does not know it).
         float hardness = state.getDestroySpeed(player.level(), pos != null ? pos : BlockPos.ZERO);
-        boolean hasDirection = ItemNBTHelper.verifyExistance(heldItem, NBT_TUNNEL_DIRECTION);
+        // The tag key TTEnchantTunnelDir of 1.7.10 is a component.
+        Float oldDirection = heldItem.get(EnchantmentComponents.TUNNEL_DIRECTION.get());
+        boolean hasDirection = oldDirection != null;
         float angleDifference = 0F;
         if (hasDirection) {
-            float oldDirection = ItemNBTHelper.getFloat(heldItem, NBT_TUNNEL_DIRECTION, 0F);
             angleDifference = Math.abs(Mth.wrapDegrees(oldDirection - player.getYRot()));
         }
         return EnchantmentFormulas.breakSpeed(speed, shatter, tunnel, desintegrate, autoSmelt, hardness, isWooden(state),
@@ -216,13 +206,17 @@ public final class ModEnchantmentHandler {
      * that was theirs (every tick of the dig, the speed being {@code Float.MAX_VALUE}, so once or twice per block); the speed
      * event here is also asked by the client and by everything that wants a dig time, so the wear is taken once, when the
      * block is broken. A block that is not theirs cannot be dug at all (the speed is zero), so it does not get here.
+     *
+     * <p>New: nothing happens while the event is only a question ({@link BlockProtection#isProbing()}: a focus or a device of
+     * the add-on asks the protection mods whether a block may go, and the player's tool breaks nothing).</p>
      */
     static EventResult onBreakBlock(Level level, BlockPos pos, BlockState state, ServerPlayer player, IntValue xp) {
+        if (BlockProtection.isProbing()) return EventResult.pass();
         ItemStack held = player.getMainHandItem();
         if (held.isEmpty()) return EventResult.pass();
 
         if (ModEnchantments.level(held, ModEnchantments.tunnel) > 0) {
-            ItemNBTHelper.setFloat(held, NBT_TUNNEL_DIRECTION, player.getYRot());
+            held.set(EnchantmentComponents.TUNNEL_DIRECTION.get(), player.getYRot());
         }
 
         int desintegrate = ModEnchantments.level(held, ModEnchantments.desintegrate);

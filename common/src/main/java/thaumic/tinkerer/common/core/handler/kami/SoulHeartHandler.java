@@ -52,8 +52,11 @@ import thaumic.tinkerer.common.network.packet.kami.PacketSoulHearts;
  * the pool swallowed still started the frames and a source that hits every tick (lava, fire, cactus) cost the pool once
  * per ten ticks; here a cancelled hit starts none (docs/HOOKS.md section 3), the same hit would be posted again on the next
  * tick and the pool would be gone ten times faster. The handler therefore keeps the frames of the original itself, per
- * player ({@link Frames}), for every hit it handles (docs/deviations/KamiWorld.md section 5). The NeoForge poster of the
- * event does not exist yet: until it does the Soul Hearts do not act there.</p>
+ * player ({@link Frames}), for every hit it handles (docs/deviations/KamiWorld.md section 5). The event is posted on both
+ * loaders (docs/HOOKS.md section 3): on Fabric by the mixin {@code LivingEntityHurtMixin}, on NeoForge by
+ * {@code NeoForgeEventPosters} from {@code LivingIncomingDamageEvent}, which a hit the pool swallows cancels (the
+ * {@code DamageContainer} NeoForge pushed for that hit is taken away again by the NeoForge mixin
+ * {@code LivingEntityDamageContainerMixin}).</p>
  */
 public final class SoulHeartHandler {
     private static final String DATA_NAME = LibMisc.MOD_ID + "_soul_hearts";

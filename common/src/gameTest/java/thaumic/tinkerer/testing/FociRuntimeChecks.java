@@ -1,11 +1,13 @@
 package thaumic.tinkerer.testing;
 
 import io.netty.buffer.Unpooled;
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -24,12 +26,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
+import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.ChestType;
@@ -41,6 +45,7 @@ import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.blocks.BlocksTC;
 import thaumcraft.api.crafting.IArcaneRecipe;
 import thaumcraft.api.crafting.InfusionRecipe;
 import thaumcraft.api.research.ResearchCategories;
@@ -53,6 +58,7 @@ import thaumcraft.api.wands.WandRod;
 import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.helper.ProjectileHelper;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.hooks.FloatingTicks;
 import thaumic.tinkerer.common.item.foci.FociComponents;
 import thaumic.tinkerer.common.item.foci.FociHooks;
@@ -1277,6 +1283,276 @@ public final class FociRuntimeChecks {
         String keyEmpty = WandHelper.getFocus(empty).getSortingHelper(WandHelper.getFocusItem(empty));
         test.assertTrue(keyFirst.startsWith("TTDL") && keySecond.startsWith("TTDL") && keyEmpty.startsWith("TTDL"), "prefixes: " + keyFirst);
         test.assertTrue(!keyFirst.equals(keySecond) && !keyFirst.equals(keyEmpty) && !keySecond.equals(keyEmpty), "three different keys");
+        test.succeed();
+    }
+
+    // ---- what the casting player may break, forged loads, the protection of the server --------------------------------
+
+    /**
+     * Thaumcraft's warded glass, arcane door and arcane pressure plate cannot be broken while the warded stone option is on
+     * (a mining progress of zero for everybody), and 1.7.10's hardness test let the focus take them; reinforced deepslate and
+     * budding amethyst, which no piston moves, are on the add-on's own blacklist tag.
+     */
+    public static void dislocationRefusesWhatThePlayerCannotBreak(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test, 6.5, 1, 6.5, 0.0F, 0.0F);
+        player.setGameMode(GameType.SURVIVAL);
+        ItemStack wand = wand(test, LibItemNames.FOCUS_DISLOCATION, true);
+        player.setItemInHand(InteractionHand.MAIN_HAND, wand);
+        AspectList before = WandHelper.getAllVis(wand);
+        test.assertTrue(ThaumcraftApi.isWardedStoneAllowed(), "the warded stone option is on (its default)");
+
+        // The warded glass (1.7.10 blockCosmeticOpaque:2) is a block of its own in Thaumcraft 4 Reload.
+        BlockState wardedGlass = BlocksTC.require("cosmetic_opaque_warded").defaultBlockState();
+        BlockState plate = BlocksTC.require("arcane_pressure_plate").defaultBlockState();
+        BlockState door = BlocksTC.require("arcane_door").defaultBlockState();
+        BlockPos spot = new BlockPos(2, 1, 2);
+        for (BlockState refused : List.of(wardedGlass, plate, door, Blocks.REINFORCED_DEEPSLATE.defaultBlockState(),
+                Blocks.BUDDING_AMETHYST.defaultBlockState())) {
+            test.setBlock(spot, refused);
+            BlockPos absolute = test.absolutePos(spot);
+            if (!refused.is(Blocks.REINFORCED_DEEPSLATE) && !refused.is(Blocks.BUDDING_AMETHYST)) {
+                test.assertTrue(refused.getDestroySpeed(test.getLevel(), absolute) >= 0F,
+                        refused + " has a hardness, so the 1.7.10 test alone would take it");
+                test.assertTrue(test.getLevel().getBlockState(absolute).getDestroyProgress(player, test.getLevel(), absolute) == 0F,
+                        refused + " cannot be broken by the player");
+            }
+            dislocation().dislocate(wand, test.getLevel(), player, InteractionHand.MAIN_HAND, hit(test, spot, Direction.UP));
+            test.assertTrue(test.getBlockState(spot).is(refused.getBlock()), refused + " stays");
+            test.assertTrue(ItemFocusDislocation.getData(wand) == null, refused + " is not carried");
+        }
+        assertNothingSpent(test, wand, before, "the blocks the player cannot break or move");
+
+        test.setBlock(spot, Blocks.STONE);
+        dislocation().dislocate(wand, test.getLevel(), player, InteractionHand.MAIN_HAND, hit(test, spot, Direction.UP));
+        test.assertTrue(ItemFocusDislocation.getData(wand) != null, "plain stone is carried by the same player");
+        test.succeed();
+    }
+
+    /** The wand of {@link #wand} with a load written by hand into the focus (no cast took it, so it carries no seal). */
+    private static ItemStack forged(GameTestHelper test, BlockState state, CompoundTag tile) {
+        ItemStack wand = wand(test, LibItemNames.FOCUS_DISLOCATION, true);
+        ItemStack focus = WandHelper.getFocusItem(wand);
+        focus.set(FociComponents.DISLOCATION.get(), new DislocationData(state, tile));
+        test.assertTrue(WandHelper.setFocus(wand, focus), "the forged load can be set");
+        return wand;
+    }
+
+    /** The saved data of a spawner of zombies at the position, and the spawner taken away again. */
+    private static CompoundTag zombieSpawnerData(GameTestHelper test, BlockPos relative) {
+        test.setBlock(relative, Blocks.SPAWNER);
+        SpawnerBlockEntity spawner = test.getBlockEntity(relative);
+        spawner.setEntityId(EntityType.ZOMBIE, test.getLevel().random);
+        CompoundTag saved = spawner.saveWithFullMetadata(test.getLevel().registryAccess());
+        test.assertTrue(saved.toString().contains("minecraft:zombie"), "the spawner spawns zombies: " + saved);
+        test.setBlock(relative, Blocks.AIR);
+        return saved;
+    }
+
+    private static String savedAt(GameTestHelper test, BlockPos relative) {
+        return test.getLevel().getBlockEntity(test.absolutePos(relative)).saveWithoutMetadata(test.getLevel().registryAccess()).toString();
+    }
+
+    /**
+     * A creative player who is no operator can give his stacks any component: a load written by hand is put down only when
+     * the focus could have taken the block by its state (no bedrock, no command block), and the data of a block entity that
+     * only an operator may set (a spawner) does not go into the placed block, vanilla's rule for the block entity data of an
+     * item. A block on the blacklist stays in the focus.
+     */
+    public static void dislocationPutsDownOnlyWhatItCouldHaveTaken(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test, 6.5, 1, 6.5, 0.0F, 0.0F);
+        player.setGameMode(GameType.CREATIVE);
+        test.assertTrue(!player.canUseGameMasterBlocks(), "the mock player is no operator");
+        ServerLevel level = test.getLevel();
+
+        // States no cast makes: nothing is put down, and the load is dropped (it could never be put down).
+        for (BlockState impossible : List.of(Blocks.COMMAND_BLOCK.defaultBlockState(), Blocks.BEDROCK.defaultBlockState(),
+                Blocks.STRUCTURE_BLOCK.defaultBlockState(), Blocks.BARRIER.defaultBlockState())) {
+            ItemStack wand = forged(test, impossible, new CompoundTag());
+            dislocation().dislocate(wand, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(2, 0, 2), Direction.UP));
+            test.assertTrue(test.getBlockState(new BlockPos(2, 1, 2)).isAir(), impossible + " is not put down");
+            test.assertTrue(ItemFocusDislocation.getData(wand) == null, "the forged " + impossible + " is dropped");
+        }
+
+        // A spawner of zombies written by hand: the spawner is put down, the zombies are not.
+        CompoundTag zombies = zombieSpawnerData(test, new BlockPos(5, 1, 5));
+        ItemStack wand = forged(test, Blocks.SPAWNER.defaultBlockState(), zombies);
+        dislocation().dislocate(wand, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(2, 0, 2), Direction.UP));
+        test.assertBlockPresent(Blocks.SPAWNER, new BlockPos(2, 1, 2));
+        test.assertTrue(!savedAt(test, new BlockPos(2, 1, 2)).contains("minecraft:zombie"),
+                "the forged data does not reach the spawner: " + savedAt(test, new BlockPos(2, 1, 2)));
+        test.assertTrue(ItemFocusDislocation.getData(wand) == null, "the focus is empty");
+
+        // A chest written by hand is an ordinary block entity: its data goes in.
+        test.setBlock(new BlockPos(5, 1, 5), Blocks.CHEST);
+        ChestBlockEntity source = test.getBlockEntity(new BlockPos(5, 1, 5));
+        source.setItem(0, new ItemStack(Items.DIAMOND, 3));
+        CompoundTag chest = source.saveWithFullMetadata(level.registryAccess());
+        test.setBlock(new BlockPos(5, 1, 5), Blocks.AIR);
+        ItemStack chestWand = forged(test, Blocks.CHEST.defaultBlockState(), chest);
+        dislocation().dislocate(chestWand, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(3, 0, 3), Direction.UP));
+        ChestBlockEntity placed = test.getBlockEntity(new BlockPos(3, 1, 3));
+        test.assertTrue(placed.getItem(0).is(Items.DIAMOND), "the chest's items go in");
+
+        // A load on the blacklist (taken before the list named it) stays in the focus and is not put down.
+        String[] blacklist = ConfigHandler.blockBlacklist;
+        try {
+            ConfigHandler.blockBlacklist = new String[] { "minecraft:glass" };
+            ItemStack glass = forged(test, Blocks.GLASS.defaultBlockState(), new CompoundTag());
+            dislocation().dislocate(glass, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(4, 0, 4), Direction.UP));
+            test.assertTrue(test.getBlockState(new BlockPos(4, 1, 4)).isAir(), "the blacklisted glass is not put down");
+            test.assertTrue(ItemFocusDislocation.getData(glass) != null, "and stays in the focus");
+        } finally {
+            ConfigHandler.blockBlacklist = blacklist;
+        }
+        test.succeed();
+    }
+
+    /**
+     * A spawner the focus took itself carries the seal of the server: a player who is no operator puts it down with its mob.
+     * The same seal on other data (a load edited by hand) does not count.
+     */
+    public static void dislocationMovesASpawnerItTookWithItsMob(GameTestHelper test) {
+        floor(test);
+        ServerPlayer player = player(test, 6.5, 1, 6.5, 0.0F, 0.0F);
+        player.setGameMode(GameType.SURVIVAL);
+        test.assertTrue(!player.canUseGameMasterBlocks(), "the mock player is no operator");
+        ServerLevel level = test.getLevel();
+        BlockPos pos = new BlockPos(2, 1, 2);
+        test.setBlock(pos, Blocks.SPAWNER);
+        SpawnerBlockEntity spawner = test.getBlockEntity(pos);
+        spawner.setEntityId(EntityType.ZOMBIE, level.random);
+        ItemStack wand = wand(test, LibItemNames.FOCUS_DISLOCATION, true);
+        player.setItemInHand(InteractionHand.MAIN_HAND, wand);
+        dislocation().dislocate(wand, level, player, InteractionHand.MAIN_HAND, hit(test, pos, Direction.UP));
+        DislocationData carried = ItemFocusDislocation.getData(wand);
+        test.assertTrue(carried != null && carried.hasTile() && !carried.seal().isEmpty(), "the spawner is carried, sealed: " + carried);
+        test.assertTrue(ItemFocusDislocation.getData(roundTrip(test, wand)).seal().equals(carried.seal())
+                && ItemFocusDislocation.getData(wire(test, wand)).seal().equals(carried.seal()), "the seal survives saving and the network");
+
+        // The load edited by hand with the genuine seal: a skeleton instead of the zombie. Refused, the spawner comes empty.
+        CompoundTag skeleton = carried.tile();
+        skeleton.getCompound("SpawnData").getCompound("entity").putString("id", "minecraft:skeleton");
+        test.assertTrue(skeleton.toString().contains("minecraft:skeleton"), "the data is edited: " + skeleton);
+        ItemStack tampered = wand(test, LibItemNames.FOCUS_DISLOCATION, true);
+        ItemStack tamperedFocus = WandHelper.getFocusItem(tampered);
+        tamperedFocus.set(FociComponents.DISLOCATION.get(), new DislocationData(carried.state(), skeleton, carried.seal()));
+        test.assertTrue(WandHelper.setFocus(tampered, tamperedFocus), "the tampered load can be set");
+        dislocation().dislocate(tampered, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(4, 0, 4), Direction.UP));
+        test.assertBlockPresent(Blocks.SPAWNER, new BlockPos(4, 1, 4));
+        test.assertTrue(!savedAt(test, new BlockPos(4, 1, 4)).contains("minecraft:skeleton"),
+                "an edited load does not match its seal: " + savedAt(test, new BlockPos(4, 1, 4)));
+
+        // The genuine load: the zombies come along.
+        dislocation().dislocate(wand, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(5, 0, 5), Direction.UP));
+        test.assertBlockPresent(Blocks.SPAWNER, new BlockPos(5, 1, 5));
+        test.assertTrue(savedAt(test, new BlockPos(5, 1, 5)).contains("minecraft:zombie"),
+                "the spawner the focus took keeps its mob: " + savedAt(test, new BlockPos(5, 1, 5)));
+        test.assertTrue(ItemFocusDislocation.getData(wand) == null, "the focus is empty");
+        test.succeed();
+    }
+
+    /** Runs the check with another protection backend and puts back the one the loader installed. */
+    private static void withProtection(GameTestHelper test, BlockProtection.Backend backend, Runnable check) {
+        BlockProtection.Backend installed;
+        try {
+            // BlockProtection has no getter for its backend; the check reads the field so that it can put it back.
+            Field field = BlockProtection.class.getDeclaredField("backend");
+            field.setAccessible(true);
+            installed = (BlockProtection.Backend) field.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new GameTestAssertException("the backend of BlockProtection cannot be read: " + e);
+        }
+        BlockProtection.setBackend(backend);
+        try {
+            check.run();
+        } finally {
+            BlockProtection.setBackend(installed);
+        }
+    }
+
+    /**
+     * The Dislocation asks the server before it takes and before it puts down, and Efreet's Flame before it turns a block into
+     * another: a protection mod that says no (here a backend of {@link BlockProtection} that refuses everything) and adventure
+     * mode keep the block, and nothing is paid. Spawn protection is not checked here: the GameTest server has none.
+     */
+    public static void dislocationAndEfreetsFlameAskTheProtectionOfTheServer(GameTestHelper test) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        ServerPlayer player = player(test, 2.5, 1, 1.5, 0.0F, 0.0F);
+        player.setGameMode(GameType.SURVIVAL);
+        boolean[] asked = new boolean[3];
+        BlockProtection.Backend refusing = new BlockProtection.Backend() {
+            @Override
+            public boolean mayBreak(ServerPlayer who, ServerLevel where, BlockPos pos, BlockState state) {
+                asked[0] = true;
+                asked[2] = BlockProtection.isProbing();
+                return false;
+            }
+
+            @Override
+            public boolean mayPlace(ServerPlayer who, ServerLevel where, BlockPos pos, BlockState state) {
+                asked[1] = true;
+                return false;
+            }
+        };
+        BlockPos spot = new BlockPos(2, 1, 3);
+        withProtection(test, refusing, () -> {
+            // Take: refused, the block stays and nothing is paid.
+            test.setBlock(spot, Blocks.DIRT);
+            ItemStack wand = wand(test, LibItemNames.FOCUS_DISLOCATION, true);
+            player.setItemInHand(InteractionHand.MAIN_HAND, wand);
+            AspectList before = WandHelper.getAllVis(wand);
+            dislocation().dislocate(wand, level, player, InteractionHand.MAIN_HAND, hit(test, spot, Direction.UP));
+            test.assertTrue(asked[0] && asked[2], "the backend was asked whether the block may go, as a question (probing)");
+            test.assertBlockPresent(Blocks.DIRT, spot);
+            test.assertTrue(ItemFocusDislocation.getData(wand) == null, "nothing is carried");
+            assertNothingSpent(test, wand, before, "a refused take");
+
+            // Place: refused, the load stays in the focus.
+            ItemStack loaded = forged(test, Blocks.COBBLESTONE.defaultBlockState(), new CompoundTag());
+            dislocation().dislocate(loaded, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(5, 0, 5), Direction.UP));
+            test.assertTrue(asked[1], "the backend was asked whether the block may be put down");
+            test.assertTrue(test.getBlockState(new BlockPos(5, 1, 5)).isAir(), "nothing is put down");
+            test.assertTrue(ItemFocusDislocation.getData(loaded) != null, "the load stays in the focus");
+
+            // Efreet's Flame: the cobblestone stays cobblestone, for as long as the player holds the beam, and nothing is paid.
+            BlockPos block = new BlockPos(2, 2, 4);
+            test.setBlock(block, Blocks.COBBLESTONE);
+            ItemStack flame = wand(test, LibItemNames.FOCUS_SMELT, true);
+            player.setItemInHand(InteractionHand.MAIN_HAND, flame);
+            ItemFocusSmelt smelt = (ItemFocusSmelt) TTRegistry.item(LibItemNames.FOCUS_SMELT);
+            AspectList beforeFlame = WandHelper.getAllVis(flame);
+            asked[0] = false;
+            for (int i = 0; i < 45; i++) smelt.onUsingFocusTick(flame, player, Integer.MAX_VALUE - i);
+            test.assertTrue(asked[0], "Efreet's Flame asked before it changed the block");
+            test.assertBlockPresent(Blocks.COBBLESTONE, block);
+            assertNothingSpent(test, flame, beforeFlame, "a refused smelting");
+            ItemFocusSmelt.forget(player.getUUID());
+        });
+        test.assertTrue(!BlockProtection.isProbing(), "the question is over");
+
+        // Adventure mode: the game's own rule, without any protection mod.
+        player.setGameMode(GameType.ADVENTURE);
+        test.setBlock(spot, Blocks.DIRT);
+        ItemStack wand = wand(test, LibItemNames.FOCUS_DISLOCATION, true);
+        player.setItemInHand(InteractionHand.MAIN_HAND, wand);
+        dislocation().dislocate(wand, level, player, InteractionHand.MAIN_HAND, hit(test, spot, Direction.UP));
+        test.assertBlockPresent(Blocks.DIRT, spot);
+        test.assertTrue(ItemFocusDislocation.getData(wand) == null, "an adventurer takes nothing");
+        ItemStack loaded = forged(test, Blocks.COBBLESTONE.defaultBlockState(), new CompoundTag());
+        dislocation().dislocate(loaded, level, player, InteractionHand.MAIN_HAND, hit(test, new BlockPos(5, 0, 5), Direction.UP));
+        test.assertTrue(test.getBlockState(new BlockPos(5, 1, 5)).isAir() && ItemFocusDislocation.getData(loaded) != null,
+                "and puts nothing down");
+        BlockPos block = new BlockPos(2, 2, 4);
+        test.setBlock(block, Blocks.COBBLESTONE);
+        ItemStack flame = wand(test, LibItemNames.FOCUS_SMELT, true);
+        player.setItemInHand(InteractionHand.MAIN_HAND, flame);
+        ItemFocusSmelt smelt = (ItemFocusSmelt) TTRegistry.item(LibItemNames.FOCUS_SMELT);
+        for (int i = 0; i < 45; i++) smelt.onUsingFocusTick(flame, player, Integer.MAX_VALUE - i);
+        test.assertBlockPresent(Blocks.COBBLESTONE, block);
+        ItemFocusSmelt.forget(player.getUUID());
         test.succeed();
     }
 

@@ -54,6 +54,9 @@ import thaumic.tinkerer.common.research.TTResearchItem;
  *
  * <p>The progress of each player is kept per side (see {@link ItemFocusHeal}): the client counts for its particles and
  * sounds and the server for the block.</p>
+ *
+ * <p>New: the server asks {@link ItemModFocus#mayBreak} (spawn protection, adventure mode, the protection mods) before it
+ * turns the block into another; a refused block stays and nothing is paid.</p>
  */
 public class ItemFocusSmelt extends ItemModFocus {
     /** The cost of a cast (or of a tick), in centivis. */
@@ -139,9 +142,13 @@ public class ItemFocusSmelt extends ItemModFocus {
                     data.progress--;
                     decremented = true;
                     if (data.progress <= 0) {
+                        boolean melted = true;
                         if (!level.isClientSide) {
-                            level.setBlock(pos, ((BlockItem) result.getItem()).getBlock().defaultBlockState(), 3);
-                            WandHelper.consumeAllVis(wandstack, player, VIS_USAGE, true, false);
+                            melted = mayBreak(player, level, pos, state);
+                            if (melted) {
+                                level.setBlock(pos, ((BlockItem) result.getItem()).getBlock().defaultBlockState(), 3);
+                                WandHelper.consumeAllVis(wandstack, player, VIS_USAGE, true, false);
+                            }
                         }
                         // 1.7.10 forgot the block on the server only, and the client went on counting below zero
                         // (a sound and a burst on every tick) until the server's block arrived. A block that melts
@@ -149,16 +156,18 @@ public class ItemFocusSmelt extends ItemModFocus {
                         // whole second, so the client starts afresh too.
                         players.remove(player.getUUID());
                         decremented = false;
-                        // Sound
-                        ////////////////////
-                        FociFx.sound(level, player, SoundEvents.FLINTANDSTEEL_USE, 0.6F, 1F);
-                        FociFx.sound(level, player, SoundEvents.FIRE_AMBIENT, 1F, 1F);
-                        // Particle
-                        ////////////////////
-                        if (level.isClientSide) {
-                            for (int i = 0; i < 25; i++) {
-                                FociFx.flameWisp(level, pos.getX() + Math.random(), pos.getY() + Math.random(),
-                                        pos.getZ() + Math.random());
+                        if (melted) {
+                            // Sound
+                            ////////////////////
+                            FociFx.sound(level, player, SoundEvents.FLINTANDSTEEL_USE, 0.6F, 1F);
+                            FociFx.sound(level, player, SoundEvents.FIRE_AMBIENT, 1F, 1F);
+                            // Particle
+                            ////////////////////
+                            if (level.isClientSide) {
+                                for (int i = 0; i < 25; i++) {
+                                    FociFx.flameWisp(level, pos.getX() + level.random.nextDouble(),
+                                            pos.getY() + level.random.nextDouble(), pos.getZ() + level.random.nextDouble());
+                                }
                             }
                         }
                     }
@@ -175,8 +184,8 @@ public class ItemFocusSmelt extends ItemModFocus {
                     ////////////////////
                     if (level.isClientSide) {
                         for (int i = 0; i < 2; i++) {
-                            FociFx.flameWisp(level, pos.getX() + Math.random(), pos.getY() + Math.random(),
-                                    pos.getZ() + Math.random());
+                            FociFx.flameWisp(level, pos.getX() + level.random.nextDouble(), pos.getY() + level.random.nextDouble(),
+                                    pos.getZ() + level.random.nextDouble());
                         }
                     }
                 }

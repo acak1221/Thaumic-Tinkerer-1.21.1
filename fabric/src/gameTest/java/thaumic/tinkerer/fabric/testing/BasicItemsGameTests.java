@@ -42,6 +42,11 @@ public final class BasicItemsGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void spellClothKeepsTheCurses(GameTestHelper test) {
+        BasicItemsRuntimeChecks.spellClothKeepsTheCurses(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void cleansingTalismanSneakClickTogglesAndKeepsTheSwitch(GameTestHelper test) {
         BasicItemsRuntimeChecks.cleansingTalismanSneakClickTogglesAndKeepsTheSwitch(test);
     }

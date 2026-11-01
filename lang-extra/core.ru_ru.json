@@ -1,3 +1,5 @@
 {
-  "itemGroup.thaumictinkerer": "Thaumic Tinkerer"
+  "itemGroup.thaumictinkerer": "Thaumic Tinkerer",
+  "thaumictinkerer.config.mismatch": "Настройки Thaumic Tinkerer на этом сервере отличаются от ваших в параметрах, которые определяют, что регистрирует игра, и не могут меняться во время игры: %s. Задайте их в config/thaumictinkerer.json так же, как на сервере, перезапустите игру и подключитесь снова.",
+  "thaumictinkerer.config.mismatch.option": "%1$s (на сервере: %2$s, у вас: %3$s)"
 }

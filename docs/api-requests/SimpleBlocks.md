@@ -26,20 +26,20 @@ Air and Water potions (`burst` from the server). `SimpleBlockFx` is the one plac
 
 **Until then.** The look is Thaumcraft's, apart from those two; the counts and places are the original's.
 
-## 2. Codecs of aspects (A4, P2)
+## 2. Codecs of aspects (A4, done by the API)
 
-**Need.** The infused seeds carry an aspect and a list of tendencies. A data component wants a `Codec` and a `StreamCodec`
-for them; neither `Aspect` nor `AspectList` has one.
+**Done.** `Aspect.CODEC` / `Aspect.STREAM_CODEC` and `AspectList.CODEC` / `AspectList.STREAM_CODEC` exist now.
 
-**Proposed signature.** `Aspect.CODEC` / `Aspect.STREAM_CODEC` (by tag, resolved against the live registry so add-on aspects
-work) and `AspectList.CODEC` / `AspectList.STREAM_CODEC` (a list of tag and amount, order kept).
+**What the add-on does with them: nothing yet (decision).** `InfusedSeedComponents` keeps the aspect as a `String` component
+(the tag) and the tendencies as a `Map<String, Integer>` component, converted by `toMap` / `toList`. An `AspectList`
+compares by identity, so a component that held one would keep two stacks with equal tendencies from stacking; its codecs
+drop amounts of zero (1.7.10 kept them) and refuse the whole list for one unknown tag, which would lose a stack whose add-on
+aspect is no longer registered (the map drops only that tag). The stored form is unchanged. The component clamps every
+amount to `0..50` on disk, on the network and on the way into an aspect list (`docs/deviations/SimpleBlocks.md` 2.6), which
+a plain `AspectList` codec would not do either.
 
-**Stub in the add-on.** `InfusedSeedComponents`: the aspect is a `String` component (the tag), the tendencies a
-`Map<String, Integer>` component, converted by `toMap` / `toList` (order and zero amounts kept; tags of unknown aspects
-are dropped on the way in, which is also what `AspectList.readFromNBT` does). With the codecs the two components would be an
-`Aspect` and an `AspectList` and the conversion and the second registration of the types would go.
-
-**Until then.** The stack data is correct; only the type of the components is not the natural one.
+**Not needed.** A value type for aspect lists that compares by value (the API guide shows how to write one) would let the
+component use the API codecs; it is not requested, the map does the job.
 
 ## 3. Flammability of other mods' blocks (loader modules, P3)
 
@@ -102,6 +102,9 @@ add-on does not need anything else.
   are two designs for one 1.7.10 class; they could be merged (`docs/deviations/SimpleBlocks.md` 2.4).
 * Other groups can use: `ItemBrightNitor.setBlock(level, pos, strength)` / `placeNear(level, entity, strength)` (the Kami
   leggings), `NumericAspectHelper` (the soul aspects), `BlockGas.isAirLike(state)` (1.7.10 `isAirBlock` for the gases),
-  `AspectCropLootManager.getAllLoot()` (recipe viewers).
+  `AspectCropLootManager.getAllLoot()` (recipe viewers; it needs no level). `AspectCropLootManager.getLootForAspect` takes
+  a `RandomSource` now (the level's); the static `Random` of the class is gone.
+* New vanilla tag file: `data/minecraft/tags/block/replaceable_by_trees.json` (the three gases, so trees grow through a
+  gas cloud).
 * The GameTest file `fabric/src/gameTest/.../SimpleBlocksGameTests.java` was filled with one wrapper per check of
   `SimpleBlocksRuntimeChecks`. The two checks that count the victims of the potion handler have batches of their own.

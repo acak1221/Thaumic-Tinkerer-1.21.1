@@ -12,19 +12,24 @@
 package thaumic.tinkerer.common.item.foci;
 
 import java.util.Objects;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.ItemApi;
 import thaumcraft.api.wands.ItemFocusBasic;
 import thaumcraft.api.wands.WandHelper;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
 
 /**
@@ -114,6 +119,33 @@ public abstract class ItemModFocus extends ItemFocusBasic implements ITTinkererR
         return player.level().clip(new ClipContext(eye, end,
                 collidable ? ClipContext.Block.COLLIDER : ClipContext.Block.OUTLINE,
                 fluids ? ClipContext.Fluid.SOURCE_ONLY : ClipContext.Fluid.NONE, player));
+    }
+
+    /**
+     * New in the port: may the player take away the block, or turn it into another ({@link BlockProtection#mayBreak}: the game's
+     * own rules and the protection mods of the server)? 1.7.10 asked nobody. Only the server can know; on a client the answer
+     * is true (the client only predicts, the server decides). A player on the server that is not a {@code ServerPlayer} is
+     * refused.
+     */
+    public static boolean mayBreak(Player player, Level level, BlockPos pos, BlockState state) {
+        if (level.isClientSide) return true;
+        return player instanceof ServerPlayer serverPlayer && level instanceof ServerLevel serverLevel
+                && BlockProtection.mayBreak(serverPlayer, serverLevel, pos, state);
+    }
+
+    /** New in the port: may the player put {@code state} at {@code pos} ({@link BlockProtection#mayPlace})? As {@link #mayBreak}. */
+    public static boolean mayPlace(Player player, Level level, BlockPos pos, BlockState state) {
+        if (level.isClientSide) return true;
+        return player instanceof ServerPlayer serverPlayer && level instanceof ServerLevel serverLevel
+                && BlockProtection.mayPlace(serverPlayer, serverLevel, pos, state);
+    }
+
+    /**
+     * The server refused a cast that the caster's client predicted (it paid the vis and swung): sends the player's inventory to
+     * his client again, so that the wand there holds what it holds on the server.
+     */
+    protected static void resync(Player player) {
+        if (player instanceof ServerPlayer serverPlayer) serverPlayer.containerMenu.sendAllDataToRemote();
     }
 
     /** {@code ItemApi.getItem(field, meta)}: a stack of the Thaumcraft item the 1.7.10 field and metadata named. */

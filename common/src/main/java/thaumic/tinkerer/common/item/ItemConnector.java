@@ -12,9 +12,10 @@
  */
 package thaumic.tinkerer.common.item;
 
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -31,7 +32,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.item.component.CustomData;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.entities.ThaumcraftEntities;
@@ -39,8 +39,10 @@ import thaumic.tinkerer.common.block.tile.TileGolemConnector;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvector;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorInterface;
 import thaumic.tinkerer.common.content.TileBlocks;
+import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererArcaneRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
 import thaumic.tinkerer.common.research.IRegisterableResearch;
@@ -50,66 +52,57 @@ import thaumic.tinkerer.common.research.IRegisterableResearch;
  * click on the block it should be bound to (up to the device's range) binds it; sneaking and right-clicking a golem binds
  * a remembered Golem Connector to that golem.
  *
- * <p>1.7.10 kept the remembered position in the stack's NBT ({@code posx}, {@code posy}, {@code posz}) and used
- * {@code posy == -1} for "nothing remembered"; here the keys live in the custom-data component, and "nothing remembered"
- * is the absence of {@code posy}.</p>
+ * <p>1.7.10 kept the remembered position in the stack's NBT ({@code posx}, {@code posy}, {@code posz}, no dimension) and
+ * used {@code posy == -1} for "nothing remembered". Here it is the typed component {@link #REMEMBERED_DEVICE}, a
+ * {@link GlobalPos} (dimension and position); "nothing remembered" is its absence. A device remembered in another
+ * dimension is not present in this one, and its dimension is compared before the level is asked for the block entity,
+ * so no chunk at those coordinates of the wrong dimension is loaded. (1.7.10 also had a {@code ConnectingGolem} flag
+ * that nothing set; it is gone.)</p>
  */
 public class ItemConnector extends Item implements ITTinkererRegisterable {
 
-    private static final String TAG_POS_X = "posx";
-    private static final String TAG_POS_Y = "posy";
-    private static final String TAG_POS_Z = "posz";
-    private static final String TAG_CONNECTING_GOLEM = "ConnectingGolem";
+    /**
+     * The device the binder remembers ({@code thaumictinkerer:connector_device}, registered by {@link #registerComponents()}).
+     * Built here so that the type exists before registration (the unit tests use it on stacks without a registry).
+     */
+    public static final DataComponentType<GlobalPos> REMEMBERED_DEVICE = DataComponentType.<GlobalPos>builder()
+            .persistent(GlobalPos.CODEC).networkSynchronized(GlobalPos.STREAM_CODEC).build();
 
     public ItemConnector() {
         super(new Item.Properties().stacksTo(1));
     }
 
-    private static CompoundTag read(ItemStack stack) {
-        return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-    }
-
-    private static void write(ItemStack stack, CompoundTag tag) {
-        if (tag.isEmpty()) stack.remove(DataComponents.CUSTOM_DATA);
-        else stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-    }
-
-    public static boolean getConnectingGolem(ItemStack stack) {
-        return read(stack).getBoolean(TAG_CONNECTING_GOLEM);
-    }
-
-    public static void setConnectingGolem(ItemStack stack, boolean connecting) {
-        CompoundTag tag = read(stack);
-        tag.putBoolean(TAG_CONNECTING_GOLEM, connecting);
-        write(stack, tag);
+    /** Registers {@link #REMEMBERED_DEVICE}; called once by {@code TileBlocks.register()}. */
+    public static void registerComponents() {
+        TTRegistry.DATA_COMPONENT_TYPES.register(LibItemNames.CONNECTOR + "_device", () -> REMEMBERED_DEVICE);
     }
 
     /** True while the binder remembers a device. */
     public static boolean hasTarget(ItemStack stack) {
-        return read(stack).contains(TAG_POS_Y);
+        return stack.has(REMEMBERED_DEVICE);
     }
 
-    /** The remembered device; only meaningful while {@link #hasTarget} is true. */
-    public static BlockPos getTarget(ItemStack stack) {
-        CompoundTag tag = read(stack);
-        return new BlockPos(tag.getInt(TAG_POS_X), tag.getInt(TAG_POS_Y), tag.getInt(TAG_POS_Z));
+    /** The remembered device, or null. */
+    @Nullable
+    public static GlobalPos getTarget(ItemStack stack) {
+        return stack.get(REMEMBERED_DEVICE);
     }
 
-    public static void setTarget(ItemStack stack, BlockPos pos) {
-        CompoundTag tag = read(stack);
-        tag.putInt(TAG_POS_X, pos.getX());
-        tag.putInt(TAG_POS_Y, pos.getY());
-        tag.putInt(TAG_POS_Z, pos.getZ());
-        write(stack, tag);
+    public static void setTarget(ItemStack stack, GlobalPos device) {
+        stack.set(REMEMBERED_DEVICE, device);
     }
 
     /** 1.7.10 {@code setY(stack, -1)}: forget the device. */
     public static void clearTarget(ItemStack stack) {
-        CompoundTag tag = read(stack);
-        tag.remove(TAG_POS_X);
-        tag.remove(TAG_POS_Y);
-        tag.remove(TAG_POS_Z);
-        write(stack, tag);
+        stack.remove(REMEMBERED_DEVICE);
+    }
+
+    /** The block entity of the remembered device, or null when it is in another dimension than {@code level}. */
+    @Nullable
+    private static BlockEntity rememberedTile(Level level, GlobalPos device) {
+        // Like 1.7.10 this asks for the block entity at the remembered place, which loads its chunk: a device the player
+        // walked away from is found (and then "too far"), not forgotten. The dimension is compared first.
+        return device.dimension() == level.dimension() ? level.getBlockEntity(device.pos()) : null;
     }
 
     @Override
@@ -146,20 +139,18 @@ public class ItemConnector extends Item implements ITTinkererRegisterable {
         BlockPos pos = context.getClickedPos();
         BlockEntity tile = level.getBlockEntity(pos);
 
-        if (!hasTarget(stack)) {
+        GlobalPos remembered = getTarget(stack);
+        if (remembered == null) {
             if (tile instanceof TileTransvector || tile instanceof TileGolemConnector) {
-                setTarget(stack, pos);
+                setTarget(stack, GlobalPos.of(level.dimension(), pos));
 
                 playSound(level, pos);
                 if (tile instanceof TileTransvector) player.sendSystemMessage(Component.translatable("ttmisc.connector.set"));
                 else player.sendSystemMessage(Component.translatable("ttmisc.golemconnector.set"));
             } else player.sendSystemMessage(Component.translatable("ttmisc.connector.notinterf"));
         } else {
-            BlockPos origin = getTarget(stack);
-
-            // Like 1.7.10 this asks for the block entity at the remembered place, which loads its chunk: a device the player
-            // walked away from is found (and then "too far"), not forgotten.
-            BlockEntity tile1 = level.getBlockEntity(origin);
+            BlockPos origin = remembered.pos();
+            BlockEntity tile1 = rememberedTile(level, remembered);
             if (!(tile1 instanceof TileTransvector trans)) {
                 clearTarget(stack);
 
@@ -201,13 +192,13 @@ public class ItemConnector extends Item implements ITTinkererRegisterable {
         if (!player.isShiftKeyDown() || !isGolem(target)) return InteractionResult.PASS;
         Level level = target.level();
 
-        if (!hasTarget(stack)) {
+        GlobalPos remembered = getTarget(stack);
+        if (remembered == null) {
             if (level.isClientSide) return InteractionResult.PASS;
             player.sendSystemMessage(Component.translatable("ttmisc.golemconnector.notinterf"));
             return InteractionResult.CONSUME;
         }
-        BlockPos origin = getTarget(stack);
-        BlockEntity tile1 = level.getBlockEntity(origin); // loads the chunk, as 1.7.10 did (see useOn)
+        BlockEntity tile1 = rememberedTile(level, remembered); // loads the chunk, as 1.7.10 did (see useOn)
         if (!(tile1 instanceof TileGolemConnector trans)) {
             clearTarget(stack);
             if (level.isClientSide) return InteractionResult.PASS;

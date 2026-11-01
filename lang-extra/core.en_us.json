@@ -1,3 +1,5 @@
 {
-  "itemGroup.thaumictinkerer": "Thaumic Tinkerer"
+  "itemGroup.thaumictinkerer": "Thaumic Tinkerer",
+  "thaumictinkerer.config.mismatch": "This server's Thaumic Tinkerer config differs from yours in options that decide what the game registers, and these cannot change while the game runs: %s. Set them in config/thaumictinkerer.json as the server has them, restart the game and join again.",
+  "thaumictinkerer.config.mismatch.option": "%1$s (server: %2$s, yours: %3$s)"
 }
