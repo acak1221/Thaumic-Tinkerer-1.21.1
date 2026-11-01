@@ -1122,12 +1122,16 @@ public final class KamiWorldRuntimeChecks {
             test.assertTrue(now[0] != first && SoulHeartHandler.getHP(now[0]) == 0, "a death costs the pool: " + SoulHeartHandler.getHP(now[0]));
             SoulHeartHandler.setHP(now[0], 11);
             ServerPlayer beforeTheEnd = now[0];
+            int toldBefore = PlayerDataSync.valuesSent(beforeTheEnd, SoulHeartHandler.HEARTS).size();
             now[0] = PlayerDataSync.respawn(beforeTheEnd, true);
             test.assertTrue(now[0] != beforeTheEnd && SoulHeartHandler.getHP(now[0]) == 0,
                     "the way back from the End costs it too, as in 1.7.10: " + SoulHeartHandler.getHP(now[0]));
-            List<java.util.Optional<Integer>> sent = PlayerDataSync.valuesSent(now[0], SoulHeartHandler.HEARTS);
-            test.assertTrue(!sent.isEmpty() && sent.get(sent.size() - 1).isEmpty(),
-                    "and the client is told that the pool is gone (the copy of the End was synced first): " + sent);
+            // The client's new player starts without the pool (NeoForge copies nothing to it; Fabric copies the old player's and is told of
+            // the copy and of its removal), so whatever the client is told after the respawn must end without a pool.
+            List<java.util.Optional<Integer>> all = PlayerDataSync.valuesSent(now[0], SoulHeartHandler.HEARTS);
+            List<java.util.Optional<Integer>> after = all.subList(toldBefore, all.size());
+            test.assertTrue(after.isEmpty() || after.get(after.size() - 1).isEmpty(),
+                    "the client is not left with a pool after the respawn: " + after);
         });
         cleanup.run();
         test.succeed();
