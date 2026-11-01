@@ -243,8 +243,10 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   (`new ItemStack(ConfigBlocks.blockHole, 1, 15)`) has no item in 1.21.1, so the two gaps are `ItemStack.EMPTY`, which
   Thaumcraft 4 Reload draws as that block (nothing visible, "Empty Space" on hover). Thaumcraft draws the page as TC4 did, all
   layers at once in its isometric layout over the ground plate, with the item names on hover, from the version that draws
-  compound pages (Thaumcraft branch `compound-pages`, 2026-11-01); an older Thaumcraft skips a page it cannot draw, so the
-  entry then shows the three pages of the original. The parity check allows this one difference (`pages.count` 3 to 4,
+  compound pages (Thaumcraft branch `compound-pages`, 2026-11-01); a Thaumcraft without it skips a page it cannot draw, so the
+  entry then shows the three pages of the original. **The Thaumcraft this add-on is pinned to** (`thaumcraft_ref`, main 299724f,
+  0.1.0-alpha.11) draws its own construct pages with its own `ConstructBlueprintDisplay` and skips an add-on's compound page: with it the
+  diagram page is registered but not shown, until Thaumcraft draws add-on compound pages too. The parity check allows this one difference (`pages.count` 3 to 4,
   `known_differences.json`); the first three pages are still compared and match. The GameTest
   `locomotiveResearchShowsItsDiagram` pins the page, its size and its five blocks.
 
