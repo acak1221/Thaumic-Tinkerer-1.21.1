@@ -85,6 +85,11 @@ group documents say what changed (`deviations/SimpleBlocks.md` 1.2, 2.3, 2.4, 2.
 | Wall clock in the Animation Tablet's renderer | `System.currentTimeMillis()` | Game time + partial tick at 50 ms a tick | client smoke (renderer close-up) |
 | Thaumcraft content by 1.7.10 field + metadata | `ItemApi.getItem/getBlock`, `TileBlocks.legacyItem/legacyBlock/anyOfLegacyBlocks` in the package's 20 files | Native ids (`ItemsTC.stack("earth_shard")`, ...; `BlockRPlacer.STONE_DEVICES`); the legacy helpers are deleted. Kept: `BlocksTC.state("blockAiry", 4)`, a variant of a native block the API names no other way (api request) | the recipe parity GameTests; `theRemotePlacerTakesAnyStoneDevice`; `aWardSlabSealsTheTwoCellsAbove` (the glimmer) |
 
+Verified (one run of each, branch `modernize-b`, 2026-11-01): `check runTinkererGameTest :neoforge:runGameTest assemble :neoforge:assemble
+--continue`: JUnit 433 tests, 0 failures; Fabric "All 366 required tests passed"; NeoForge "All 375 required tests passed"; both loaders
+assembled. Client smoke: Fabric 747 PASS / NeoForge 750 PASS, 0 FAIL, 0 HARNESS_ERROR, 1 NOT_RUN, 82 pictures each (`CLIENT_VERIFICATION.md`).
+Earlier focused runs (`simpleblocksgametests.*,tileblocksgametests.*`): 105 of 105 on each loader.
+
 Not done (optional findings of the package): the fire transmutation tables as block tags (L1; same members, extensibility only), the live
 flammability of the loaders (L2; it would change which blocks the fires count as flammable, a gameplay change), the default translation keys
 instead of the 1.7.10 families (P4; it touches the Machines group's Mob Aspects and the generated language files of both packages, better

@@ -530,6 +530,15 @@ Written without being able to run Gradle or the game; the GameTests were run lat
   and `theGasesMayBeReplacedByTrees`. Runs of 2026-11-01 (one Gradle call: `tinkererTest runTinkererGameTest :neoforge:runGameTest` with the filter `simpleblocksgametests.*,recipeviewersgametests.*`): add-on JUnit 420 tests, 0 failures (`SimpleBlocksLogicTest` and `SimpleBlocksResourcesTest` 19 each); the Fabric GameTest server 57 of 57 passed and the NeoForge one 57 of 57 (the 51 checks of the group and the 6 of the recipe viewers, which read the crop loot table). The renderer's random source is client code that no check reaches; it
   was compiled, not looked at.
 
+* **Modernization, 2026-11-01 (branch `modernize-b`).** The camouflage as wrapped models, the relocation tags, the Water Imbued effect tick,
+  the glint component, the native Thaumcraft ids and the deleted 1.7.10 leftovers (`docs/AUDIT.md`, "Modernization (package B)"). New checks:
+  JUnit `CamoModelsTest`, `theSeventeenSoulAspectsKeepTheirOriginalOrder`; GameTests `theCamouflageIsDrawnFromThePlatformsModel`,
+  `theInfusedPotionsGlintByTheirComponent`, `whatMustNotBeRelocatedStaysWhereItIs`, `theRemotePlacerTakesAnyStoneDevice` and new assertions in
+  `aWaterImbuedPlayerTurnsNearbyLavaIntoObsidian`, `aWardSlabSealsTheTwoCellsAbove`, `camouflageIsSetAndCleared` and
+  `camouflagedDevicesLeaveTheFacesOfTheirNeighbours`. Runs: the 105 GameTests of SimpleBlocks and TileBlocks passed on Fabric and on NeoForge;
+  the full suite afterwards (JUnit 433 tests, 0 failures; Fabric 366 and NeoForge 375 required tests passed); the client smoke's camouflage
+  phase on both loaders (`docs/CLIENT_VERIFICATION.md`).
+
 Not seen in a running game by the engineer of the group (apart from the seed icons above): the look of every model, the crop colours (the tint of the generic crop reads the block entity,
 which must have reached the client before the chunk section is meshed), the camouflage on a GPU (since 2026-11-01 the platform's
 wrapped model, seen in the client smoke's camouflage phase on a software renderer, section 2.4), the particles (the

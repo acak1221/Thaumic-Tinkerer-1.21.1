@@ -620,6 +620,15 @@ original" is by reading the original code, not by running both; the claims about
 Forge's call order of `onItemUseFirst`) are from memory of that code, whose engine source is not on disk here.
 
 
+* **Modernization, 2026-11-01 (branch `modernize-b`).** The camouflage as wrapped models, the relocation tags, the Water Imbued effect tick,
+  the glint component, the native Thaumcraft ids and the deleted 1.7.10 leftovers (`docs/AUDIT.md`, "Modernization (package B)"). New checks:
+  JUnit `CamoModelsTest`, `theSeventeenSoulAspectsKeepTheirOriginalOrder`; GameTests `theCamouflageIsDrawnFromThePlatformsModel`,
+  `theInfusedPotionsGlintByTheirComponent`, `whatMustNotBeRelocatedStaysWhereItIs`, `theRemotePlacerTakesAnyStoneDevice` and new assertions in
+  `aWaterImbuedPlayerTurnsNearbyLavaIntoObsidian`, `aWardSlabSealsTheTwoCellsAbove`, `camouflageIsSetAndCleared` and
+  `camouflagedDevicesLeaveTheFacesOfTheirNeighbours`. Runs: the 105 GameTests of SimpleBlocks and TileBlocks passed on Fabric and on NeoForge;
+  the full suite afterwards (JUnit 433 tests, 0 failures; Fabric 366 and NeoForge 375 required tests passed); the client smoke's camouflage
+  phase on both loaders (`docs/CLIENT_VERIFICATION.md`).
+
 ## Research cell of the Remote Placer (lead decision)
 
 The Remote Placer is registered although the pinned fork disabled it (`shouldRegister() == false`). Its research sat at
