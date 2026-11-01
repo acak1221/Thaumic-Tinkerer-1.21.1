@@ -14,9 +14,14 @@ import net.fabricmc.fabric.api.attachment.v1.AttachmentRegistry;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentSyncPredicate;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentTarget;
 import net.fabricmc.fabric.api.attachment.v1.AttachmentType;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.Event;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 import thaumic.tinkerer.common.hooks.PlayerData;
+import thaumic.tinkerer.common.lib.LibMisc;
 
 /**
  * The Fabric backend of {@link PlayerData} (docs/HOOKS.md, section "PlayerData"), installed by {@code ThaumicTinkererFabric}: one
@@ -29,7 +34,10 @@ import thaumic.tinkerer.common.hooks.PlayerData;
  *   ({@code ServerPlayerEvents.COPY_FROM}), on a death only those with the flag, and does the same on the client for the new
  *   {@code LocalPlayer};</li>
  *   <li>synced to the owner: {@code Builder.syncWith(codec, AttachmentSyncPredicate.targetOnly())}; every {@code setAttached} on the
- *   server sends the change to the player it belongs to, and the join sends what the player loaded with.</li>
+ *   server sends the change to the player it belongs to, and the join sends what the player loaded with;</li>
+ *   <li>not copied on any respawn: Fabric API copies the attachments in its own {@code ServerPlayerEvents.AFTER_RESPAWN} listener (the
+ *   default phase), every one after the End; a listener in a phase ordered after it takes these keys away from the new player again
+ *   (Architectury's {@code PLAYER_RESPAWN} is a mixin of its own at the same point, whose order against that copy is not fixed).</li>
  * </ul>
  */
 public final class FabricPlayerData implements PlayerData.Backend {
@@ -37,8 +45,20 @@ public final class FabricPlayerData implements PlayerData.Backend {
 
     private FabricPlayerData() {}
 
+    /** The phase of {@code AFTER_RESPAWN} after Fabric API's copy of the attachments (its default phase). */
+    private static final ResourceLocation AFTER_ATTACHMENT_COPY = LibMisc.id("after_attachment_copy");
+
     public static void install() {
-        PlayerData.install(new FabricPlayerData());
+        FabricPlayerData backend = new FabricPlayerData();
+        PlayerData.install(backend);
+        ServerPlayerEvents.AFTER_RESPAWN.addPhaseOrdering(Event.DEFAULT_PHASE, AFTER_ATTACHMENT_COPY);
+        ServerPlayerEvents.AFTER_RESPAWN.register(AFTER_ATTACHMENT_COPY, (oldPlayer, newPlayer, alive) -> backend.dropOnRespawn(newPlayer));
+    }
+
+    private void dropOnRespawn(ServerPlayer player) {
+        for (PlayerData.Key<?> key : PlayerData.keys()) {
+            if (key.notCopiedOnRespawn() && getExisting(player, key) != null) set(player, key, null);
+        }
     }
 
     @Override

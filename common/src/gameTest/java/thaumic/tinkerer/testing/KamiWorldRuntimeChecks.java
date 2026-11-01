@@ -1109,8 +1109,8 @@ public final class KamiWorldRuntimeChecks {
     /**
      * 1.7.10 kept the pool in the player's entity data, which the new entity of a respawn did not get: the hearts are lost on death, and
      * on the way back from the End as well (Forge 1.7.10 copied only the {@code PlayerPersisted} part of the entity data, which the add-on
-     * did not use). Here the attachment is not copied on death, and the loaders' copy of every attachment after the End is undone by the
-     * respawn listener ({@code SoulHeartHandler.register}). The respawns are the player list's own.
+     * did not use). Here the key is "not copied on any respawn": the backend undoes its loader's copy after the End (Fabric: a phase of
+     * {@code AFTER_RESPAWN} after Fabric API's copy; NeoForge: a copy handler that copies nothing). The respawns are the player list's own.
      */
     public static void soulHeartsAreLostOnDeathAndOnTheWayBackFromTheEnd(GameTestHelper test) {
         ServerPlayer first = PlayerDataSync.login(test, new GameProfile(UUID.randomUUID(), "tt-soul-death"));

@@ -43,8 +43,8 @@ import thaumic.tinkerer.common.lib.LibMisc;
  * <p>1.7.10 kept the number in the player's entity data, which a respawn does not copy (so the hearts are lost on death),
  * and spent it in {@code LivingHurtEvent}, before armour: the damage {@code (int) amount} is taken off the pool and the rest
  * (an int) is the damage that goes on. Here the number is the player data attachment {@link #HEARTS} ({@link PlayerData}): saved
- * with the player, not copied on death, synced to the player's own client (which draws it), and taken away on the respawn after
- * the End as well, where 1.7.10 lost its entity data too. Worlds of the earlier port kept it in the world's
+ * with the player, not copied on death, synced to the player's own client (which draws it), and not given to the new entity of the respawn after
+ * the End either, where 1.7.10 lost its entity data too. Worlds of the earlier port kept it in the world's
  * {@code thaumictinkerer_soul_hearts.dat} ({@link SoulHeartData}); a player's entry there is moved into the attachment the first
  * time the player joins ({@link #migrate}), and the file is not written any more.</p>
  *
@@ -77,13 +77,14 @@ public final class SoulHeartHandler {
 
     /** The pool of a player, in points (half hearts): saved, synced to the owner's client, lost on death (see the class comment). */
     public static final PlayerData.Key<Integer> HEARTS = PlayerData.Key.<Integer>builder(LibMisc.id("soul_hearts"), () -> 0)
-            .persistent(Codec.intRange(0, MAX_HP)).syncedToOwner(ByteBufCodecs.VAR_INT).build();
+            .persistent(Codec.intRange(0, MAX_HP)).syncedToOwner(ByteBufCodecs.VAR_INT).notCopiedOnRespawn().build();
 
     /**
      * The frames of the last hit that the pool saw ({@link Frames}): on the server player only, never saved, gone with the entity (a
      * logout, a respawn) as the game's own invulnerability frames are.
      */
-    private static final PlayerData.Key<Frames> FRAMES = PlayerData.Key.builder(LibMisc.id("soul_heart_frames"), Frames::new).build();
+    private static final PlayerData.Key<Frames> FRAMES = PlayerData.Key.builder(LibMisc.id("soul_heart_frames"), Frames::new)
+            .notCopiedOnRespawn().build();
 
     /** The name of the old save file in the overworld's data folder, and of its migration ({@link PlayerData#migrateOnce}). */
     public static final String LEGACY_DATA_NAME = LibMisc.MOD_ID + "_soul_hearts";
@@ -182,13 +183,8 @@ public final class SoulHeartHandler {
         TinkererEvents.LIVING_DAMAGE.register(SoulHeartHandler::onLivingDamage);
         PlayerEvent.PLAYER_JOIN.register(player -> PlayerData.migrateOnce(player, LEGACY_DATA_NAME,
                 joined -> migrate(joined, legacyData(joined.server))));
-        // A respawn is a new entity: after a death the pool is not copied (1.7.10 lost it with the entity data), after the End the loaders
-        // copy every attachment, and 1.7.10 lost the hearts there too, so the pool is taken away here, after the copy. The frames are new
-        // as the game's are.
-        PlayerEvent.PLAYER_RESPAWN.register((newPlayer, conqueredEnd, reason) -> {
-            setHP(newPlayer, 0);
-            PlayerData.remove(newPlayer, FRAMES);
-        });
+        // A respawn is a new entity, which gets neither the pool nor the frames, after a death or after the End (both keys are "not copied
+        // on any respawn": 1.7.10 lost its entity data both times, and the game's frames are new as well).
     }
 
     /**

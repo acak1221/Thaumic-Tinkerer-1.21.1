@@ -44,7 +44,9 @@ import thaumic.tinkerer.common.lib.LibMisc;
  *   player tag in single player), so it survives logout and server restarts; without a codec the value lives as long as the entity
  *   object;</li>
  *   <li><b>copied on death</b>: a respawn after death creates a new entity, which gets the value only with this flag (1.7.10 lost its
- *   entity data there). A respawn that is not a death (leaving the End through the poem) copies every value on both loaders;</li>
+ *   entity data there). A respawn that is not a death (leaving the End through the poem) copies every value (Fabric) or every saved
+ *   value (NeoForge), unless the key is <b>not copied on any respawn</b>: then the new entity of either respawn starts without it, as
+ *   1.7.10's entity data did;</li>
  *   <li><b>synced to the owner</b> (a {@link StreamCodec}): the server sends every change, and the whole value on join, respawn and
  *   change of dimension, to the client of the player it belongs to, and to nobody else; the client reads the same key on its
  *   {@code LocalPlayer}.</li>
@@ -88,6 +90,7 @@ public final class PlayerData {
         @Nullable
         private final StreamCodec<? super RegistryFriendlyByteBuf, T> syncCodec;
         private final boolean copyOnDeath;
+        private final boolean notCopiedOnRespawn;
 
         private Key(Builder<T> builder) {
             this.id = builder.id;
@@ -95,6 +98,7 @@ public final class PlayerData {
             this.codec = builder.codec;
             this.syncCodec = builder.syncCodec;
             this.copyOnDeath = builder.copyOnDeath;
+            this.notCopiedOnRespawn = builder.notCopiedOnRespawn;
         }
 
         public static <T> Builder<T> builder(ResourceLocation id, Supplier<T> initial) {
@@ -134,10 +138,15 @@ public final class PlayerData {
             return copyOnDeath;
         }
 
+        /** Not given to the new entity of any respawn, the one after the End included. */
+        public boolean notCopiedOnRespawn() {
+            return notCopiedOnRespawn;
+        }
+
         @Override
         public String toString() {
             return "PlayerData.Key[" + id + (persistent() ? ", persistent" : "") + (copyOnDeath ? ", copied on death" : "")
-                    + (synced() ? ", synced to the owner" : "") + "]";
+                    + (notCopiedOnRespawn ? ", not copied on any respawn" : "") + (synced() ? ", synced to the owner" : "") + "]";
         }
     }
 
@@ -149,6 +158,7 @@ public final class PlayerData {
         @Nullable
         private StreamCodec<? super RegistryFriendlyByteBuf, T> syncCodec;
         private boolean copyOnDeath;
+        private boolean notCopiedOnRespawn;
 
         private Builder(ResourceLocation id, Supplier<T> initial) {
             this.id = Objects.requireNonNull(id);
@@ -173,7 +183,18 @@ public final class PlayerData {
             return this;
         }
 
+        /**
+         * Not given to the new entity of any respawn: not after a death (as without {@link #copyOnDeath}) and not on the way back from the
+         * End either, where both loaders copy what they copy for a change of dimension. The backend takes the value away after its
+         * loader's own copy.
+         */
+        public Builder<T> notCopiedOnRespawn() {
+            this.notCopiedOnRespawn = true;
+            return this;
+        }
+
         public Key<T> build() {
+            if (copyOnDeath && notCopiedOnRespawn) throw new IllegalStateException(id + ": copied on death and not copied on any respawn");
             return new Key<>(this);
         }
     }

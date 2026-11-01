@@ -328,14 +328,15 @@ class KamiWorldLogicTest {
 
     /**
      * What the game does with the pool (docs/deviations/KamiWorld.md section 5): a player data attachment, saved with the player, told to
-     * its owner's client, not copied on death (1.7.10 lost its entity data there); empty by default; the saved form takes 0 to 20 only.
+     * its owner's client, not given to the new entity of any respawn (1.7.10 lost its entity data there); empty by default; the saved form
+     * takes 0 to 20 only.
      */
     @Test
     void thePoolIsPlayerDataThatIsSavedSyncedAndLostOnDeath() {
         PlayerData.Key<Integer> hearts = SoulHeartHandler.HEARTS;
         assertEquals("thaumictinkerer:soul_hearts", hearts.id().toString());
         assertEquals(0, hearts.initial());
-        assertTrue(hearts.persistent() && hearts.synced() && !hearts.copyOnDeath(), hearts.toString());
+        assertTrue(hearts.persistent() && hearts.synced() && !hearts.copyOnDeath() && hearts.notCopiedOnRespawn(), hearts.toString());
         for (int value : new int[] { 1, 7, 20 }) {
             assertEquals(value, hearts.codec().parse(NbtOps.INSTANCE, hearts.codec().encodeStart(NbtOps.INSTANCE, value).getOrThrow()).getOrThrow());
             RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);

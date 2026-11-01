@@ -37,7 +37,10 @@ import thaumic.tinkerer.common.lib.LibMisc;
  *   nothing ({@code write} returns null: never saved) and a copy handler that hands the new player the same object;</li>
  *   <li>synced to the owner: {@code Builder.sync((holder, to) -> holder == to, codec)}; {@code setData}/{@code removeData} send the
  *   change, and NeoForge sends the player's own attachments on login, respawn and change of dimension
- *   ({@code AttachmentSync.syncInitialPlayerAttachments}).</li>
+ *   ({@code AttachmentSync.syncInitialPlayerAttachments});</li>
+ *   <li>not copied on any respawn: NeoForge copies on {@code PlayerEvent.Clone} only what has a serializer (the copy after the End takes
+ *   every such type), through the type's copy handler; a saved key of this kind gets a copy handler that answers null (nothing copied),
+ *   and a key that is not saved is not copied by NeoForge in the first place.</li>
  * </ul>
  */
 public final class NeoForgePlayerData implements PlayerData.Backend {
@@ -70,6 +73,7 @@ public final class NeoForgePlayerData implements PlayerData.Backend {
         if (key.codec() != null) {
             builder.serialize(key.codec());
             if (key.copyOnDeath()) builder.copyOnDeath();
+            if (key.notCopiedOnRespawn()) builder.copyHandler((attachment, holder, provider) -> null);
         } else if (key.copyOnDeath()) {
             builder.serialize(new IAttachmentSerializer<CompoundTag, T>() {
                 @Override

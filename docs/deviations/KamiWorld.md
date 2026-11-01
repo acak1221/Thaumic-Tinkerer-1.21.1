@@ -223,9 +223,9 @@ bedrock and the click goes on (a held block is placed against it), as in `onBloc
 - **The pool.** Up to 20 points (ten hearts). `addHearts` adds 1 point (the hook of the Awakened Sword's Soul Mode,
   `KamiHooks.soulHeartSink`), `addHP` clamps to 20 and refuses a full pool, `removeHP` returns the overflow, `setHP`/`getHP`.
   1.7.10 stored the number in the player's entity data, which a respawn does not copy; here it is the player data attachment
-  `thaumictinkerer:soul_hearts` (`SoulHeartHandler.HEARTS`, section 11): saved with the player, **not copied on death**, and taken
-  away on the respawn after the End as well (`PLAYER_RESPAWN`; both loaders copy every attachment there, and 1.7.10 lost its entity
-  data there too), so the hearts are still lost on death. It survives logout and dimension changes as before. (The earlier port
+  `thaumictinkerer:soul_hearts` (`SoulHeartHandler.HEARTS`, section 11): saved with the player and **not copied on any respawn**, after a
+  death or on the way back from the End (where both loaders copy their attachments otherwise, and 1.7.10 lost its entity data too), so the
+  hearts are still lost on death. It survives logout and dimension changes as before. (The earlier port
   saved it with the world by UUID, `SoulHeartData`; that file is read once per player and never written again, section 11.)
 - **The client.** The attachment is synced to the player's own client and to nobody else: every change, and the whole value on login,
   respawn and change of dimension, by the loader (1.7.10 sent nothing on login, so the bar was empty until the next change; a client
@@ -537,14 +537,16 @@ What was a 1.7.10 technique in the earlier port and what it is now; the gameplay
 
 - **The pool is a player data attachment** (`thaumictinkerer:soul_hearts`, an `Integer` 1 to 20, absent for an empty pool), through the
   add-on's loader-neutral accessor `common/hooks/PlayerData` (`docs/HOOKS.md`, section "PlayerData"; Fabric API's Data Attachment API and
-  NeoForge's `AttachmentType`, since Architectury has none): saved with the player (codec `Codec.intRange(0, 20)`), not copied on death,
-  synced to the owner (`ByteBufCodecs.VAR_INT`). The world file `thaumictinkerer_soul_hearts.dat`, the S2C payload `soul_hearts`
+  NeoForge's `AttachmentType`, since Architectury has none): saved with the player (codec `Codec.intRange(0, 20)`), not copied on any
+  respawn (the backends take it away after their loader's own copy: Fabric in a phase of `AFTER_RESPAWN` after Fabric API's copy, NeoForge by
+  a copy handler that copies nothing; a first wiring reset it from Architectury's `PLAYER_RESPAWN`, whose order against Fabric's copy is not
+  fixed, and the full GameTest run caught the hearts kept after the End), synced to the owner (`ByteBufCodecs.VAR_INT`). The world file `thaumictinkerer_soul_hearts.dat`, the S2C payload `soul_hearts`
   (`PacketSoulHearts`), its two registrations and the client's static `SoulHeartClientHandler.clientPlayerHP` are gone; the HUD reads the
   local player's attachment. The attachment type is registered whatever `kami.forceenabled` says, because both loaders drop an unregistered
   attachment when the player loads: a server that switches Kami off for a while keeps its players' pools.
 - **The frames of section 5** (`SoulHeartHandler.Frames`) are a transient attachment of the server's player entity
-  (`thaumictinkerer:soul_heart_frames`: never saved or synced, not copied on death) instead of a static map by UUID that three listeners
-  emptied (logout, respawn, server stop); the respawn listener still drops them after the End, where Fabric copies every attachment.
+  (`thaumictinkerer:soul_heart_frames`: never saved or synced, not copied on any respawn) instead of a static map by UUID that three
+  listeners emptied (logout, respawn, server stop).
 - **Existing worlds keep their pools.** When a player joins, its entry of the earlier port's `data/thaumictinkerer_soul_hearts.dat` (format
   `{hearts: [{player: <UUID>, hp: <int>}]}`) becomes the attachment, unless the player has a pool there already; a persistent marker
   (`thaumictinkerer:migrated_legacy_data`, kept through death) records per player that the file was read, so a stale entry never overwrites

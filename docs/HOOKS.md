@@ -875,7 +875,10 @@ JUnit tests) an in-memory backend answers and logs once that nothing is saved.
 
 *A key* (`PlayerData.Key.builder(id, initial)`) says per value what the game does with it: `persistent(codec)` (saved with the player),
 `copyOnDeath()` (given to the new entity of a respawn after death; a respawn that is not a death, the way back from the End, copies every value
-on Fabric and every saved value on NeoForge), `syncedToOwner(streamCodec)` (every change, and the whole value on join, respawn and change of
+on Fabric and every saved value on NeoForge), `notCopiedOnRespawn()` (not given to the new entity of either respawn: the Fabric backend takes
+it away in a phase of `ServerPlayerEvents.AFTER_RESPAWN` ordered after Fabric API's own copy, which runs in the default phase; the NeoForge
+backend gives a saved key a copy handler that copies nothing, and NeoForge copies no unsaved key; Architectury's `PLAYER_RESPAWN` cannot do it,
+its order against Fabric's copy is not fixed), `syncedToOwner(streamCodec)` (every change, and the whole value on join, respawn and change of
 dimension, is sent to the player it belongs to and to nobody else; Fabric `syncWith(codec, AttachmentSyncPredicate.targetOnly())`, NeoForge
 `sync((holder, to) -> holder == to, codec)`). A value that is neither saved nor synced belongs to the entity object, so the client's
 `LocalPlayer` and the server's `ServerPlayer` of a single-player game have one each. On NeoForge a value that is copied on death but not saved
@@ -888,8 +891,8 @@ save file once per player and records it in the saved key `thaumictinkerer:migra
 
 | Key | Group | Saved | Copied on death | Synced to the owner |
 |---|---|---|---|---|
-| `thaumictinkerer:soul_hearts` | KamiWorld | yes (`Codec.intRange(0, 20)`) | no (1.7.10 lost it) | yes |
-| `thaumictinkerer:soul_heart_frames` | KamiWorld | no | no | no |
+| `thaumictinkerer:soul_hearts` | KamiWorld | yes (`Codec.intRange(0, 20)`) | no, not on any respawn (1.7.10 lost it) | yes |
+| `thaumictinkerer:soul_heart_frames` | KamiWorld | no | no, not on any respawn | no |
 | `thaumictinkerer:kami_armor_on` | KamiGear | yes | yes | yes |
 | `thaumictinkerer:robe_flight_granted` | KamiGear | no | no | no |
 | `thaumictinkerer:focus_heal_progress`, `focus_smelt_progress` | Foci | no | yes (1.7.10's maps by name kept them) | no |
