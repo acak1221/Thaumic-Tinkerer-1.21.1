@@ -90,8 +90,11 @@ import thaumic.tinkerer.compat.computer.cc.FumeTool;
  * </ul>
  */
 public final class ComputerCraftRuntimeChecks {
-    /** How long a test waits for its computers (they boot, then each main-thread call takes a server tick). */
-    public static final int ANSWER_TICKS = 560;
+    /**
+     * How many seconds of real time a test waits for its computers (they boot, then each main-thread call takes a server tick);
+     * see {@link LuaComputer#whenAnswered}. The wrappers' tick timeout (60000) is far above it at any speed the server ticks.
+     */
+    public static final int ANSWER_SECONDS = 120;
 
     private ComputerCraftRuntimeChecks() {}
 
@@ -262,7 +265,7 @@ public final class ComputerCraftRuntimeChecks {
                 r.triggerWhileBusy = { p.trigger() }
                 return r
                 """);
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(computer), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(computer), answers -> {
             JsonObject r = answers.get(0);
             expectTypeAndMethods(test, r, "tt_animationTablet", TABLET);
             expectValues(test, r, "getRedstone", false);
@@ -319,7 +322,7 @@ public final class ComputerCraftRuntimeChecks {
                 """;
         LuaComputer kinetic = LuaComputer.computer(test, kineticPos.below(), body);
         LuaComputer corporeal = LuaComputer.computer(test, corporealPos.below(), body);
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(kinetic, corporeal), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(kinetic, corporeal), answers -> {
             JsonObject k = answers.get(0);
             JsonObject c = answers.get(1);
             expectTypeAndMethods(test, k, "tt_magnet", KINETIC);
@@ -371,7 +374,7 @@ public final class ComputerCraftRuntimeChecks {
                 """;
         LuaComputer withItem = LuaComputer.computer(test, fullPos.below(), body);
         LuaComputer without = LuaComputer.computer(test, emptyPos.below(), body);
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(withItem, without), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(withItem, without), answers -> {
             JsonObject f = answers.get(0);
             JsonObject e = answers.get(1);
             expectTypeAndMethods(test, f, "tt_aspectanalyzer", ANALYZER);
@@ -432,7 +435,7 @@ public final class ComputerCraftRuntimeChecks {
                 r.getMarkerNotANumber = { pcall(p.getMarker, "first") }
                 return r
                 """);
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(computer), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(computer), answers -> {
             JsonObject r = answers.get(0);
             expectTypeAndMethods(test, r, "tt_golemconnector", GOLEM_CONNECTOR);
             BlockPos at = test.absolutePos(connectorPos);
@@ -498,7 +501,7 @@ public final class ComputerCraftRuntimeChecks {
         LuaComputer underJar = LuaComputer.computer(test, jarPos.below(), body);
         LuaComputer underInterface = LuaComputer.computer(test, ifacePos.below(), body);
         LuaComputer underLabelled = LuaComputer.computer(test, labelledPos.below(), body);
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(underJar, underInterface, underLabelled), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(underJar, underInterface, underLabelled), answers -> {
             for (JsonObject r : answers) {
                 expectTypeAndMethods(test, r, "tt_aspectContainer", ASPECT_CONTAINER);
                 expectValues(test, r, "countAqua", 0);
@@ -550,7 +553,7 @@ public final class ComputerCraftRuntimeChecks {
                 """;
         LuaComputer underTube = LuaComputer.computer(test, tubePos.below(), body);
         LuaComputer underBase = LuaComputer.computer(test, basePos.below(), body);
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(underTube, underBase), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(underTube, underBase), answers -> {
             List<BlockPos> positions = List.of(tubePos, basePos);
             boolean sawSuctionType = false;
             for (int i = 0; i < 2; i++) {
@@ -644,7 +647,7 @@ public final class ComputerCraftRuntimeChecks {
         LuaComputer underJar = LuaComputer.computer(test, jarPos.below(), reader);
         LuaComputer underEar = LuaComputer.computer(test, earPos.below(), reader);
         LuaComputer overBore = LuaComputer.computer(test, borePos.above(), reader.replace("\"top\"", "\"bottom\""));
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(underFull, underEmpty, underJar, underEar, overBore), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(underFull, underEmpty, underJar, underEar, overBore), answers -> {
             JsonObject f = answers.get(0);
             JsonObject e = answers.get(1);
             JsonObject j = answers.get(2);
@@ -739,7 +742,7 @@ public final class ComputerCraftRuntimeChecks {
                 r.getMarkerCountAfterSet = { p.getMarkerCount() }
                 return r
                 """.formatted(newHome.getX(), newHome.getY(), newHome.getZ()));
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(computer), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(computer), answers -> {
             JsonObject r = answers.get(0);
             BlockPos at = test.absolutePos(connectorPos);
             String dimension = level.dimension().location().toString();
@@ -774,7 +777,9 @@ public final class ComputerCraftRuntimeChecks {
             expectError(test, r, "addMarkerNoField", "bad field 'posY' (number expected, got nil)");
             expectValues(test, r, "deleteMarker");
             expectValues(test, r, "getMarkerCountAfterDelete", 0);
-            expectValues(test, r, "setMarkers", true);
+            JsonArray set = values(r, "setMarkers");
+            test.assertTrue(set.size() == 2 && set.get(0).getAsBoolean() && entries(set.get(1)) == 2,
+                    "setMarkers answers the golem's new markers, as 1.7.10 (getMarkers after the write): " + set);
             expectValues(test, r, "getMarkerCountAfterSet", 2);
             GolemView after = GolemApi.view(golem).orElseThrow();
             test.assertTrue(after.home().equals(newHome) && after.homeFacing() == Direction.NORTH,
@@ -851,7 +856,7 @@ public final class ComputerCraftRuntimeChecks {
                 r.attack = { turtle.attack() }
                 return r
                 """);
-        LuaComputer.whenAnswered(test, ANSWER_TICKS, List.of(turtle), answers -> {
+        LuaComputer.whenAnswered(test, ANSWER_SECONDS, List.of(turtle), answers -> {
             JsonObject r = answers.get(0);
             if (r.has("equipped")) {
                 JsonArray equipped = values(r, "equipped");
@@ -905,6 +910,12 @@ public final class ComputerCraftRuntimeChecks {
         JsonArray got = values(r, key);
         test.assertTrue(got.size() == 1 && (got.get(0).isJsonObject() && got.get(0).getAsJsonObject().size() == 0
                 || got.get(0).isJsonArray() && got.get(0).getAsJsonArray().size() == 0), key + " answered an empty table: " + got);
+    }
+
+    /** How many entries a Lua table (a JSON array or object) has. */
+    private static int entries(JsonElement table) {
+        if (table.isJsonArray()) return table.getAsJsonArray().size();
+        return table.isJsonObject() ? table.getAsJsonObject().size() : -1;
     }
 
     private static Map<String, Integer> amountsOf(JsonElement table) {

@@ -44,7 +44,7 @@ import org.jetbrains.annotations.Nullable;
  * {@code {"error": "..."}}.</p>
  */
 final class LuaComputer {
-    static final ResourceLocation ADVANCED_COMPUTER = ResourceLocation.fromNamespaceAndPath("computercraft", "computer_advanced");
+    static final ResourceLocation NORMAL_COMPUTER = ResourceLocation.fromNamespaceAndPath("computercraft", "computer_normal");
     static final ResourceLocation NORMAL_TURTLE = ResourceLocation.fromNamespaceAndPath("computercraft", "turtle_normal");
     private static final String RESULT = "result.json";
     private static final String PROGRAM = """
@@ -69,9 +69,9 @@ final class LuaComputer {
         this.mount = mount;
     }
 
-    /** An advanced computer at {@code pos} (relative) that runs {@code body}, the body of a Lua function returning a table. */
+    /** A computer at {@code pos} (relative) that runs {@code body}, the body of a Lua function returning a table. */
     static LuaComputer computer(GameTestHelper test, BlockPos pos, String body) {
-        return place(test, pos, ADVANCED_COMPUTER, new CompoundTag(), body);
+        return place(test, pos, NORMAL_COMPUTER, new CompoundTag(), body);
     }
 
     /** A turtle at {@code pos} with the extra saved fields {@code turtle} (its upgrades) that runs {@code body}. */
@@ -128,33 +128,41 @@ final class LuaComputer {
 
     /**
      * Waits for every computer's answer, then runs {@code check} on them (in the order given) and succeeds. A program that
-     * failed with a Lua error fails the test with that error; a computer that has not answered after {@code ticks} ticks fails it
-     * too.
+     * failed with a Lua error fails the test with that error; a computer that has not answered after {@code seconds} seconds of
+     * wall-clock time fails it too.
+     *
+     * <p>The wait is measured in real time, not in ticks: a GameTest server runs its ticks as fast as it can (a batch of fifteen
+     * tests with 560-tick waits took 4.4 seconds), while a computer boots and runs its program on CC: Tweaked's own threads at
+     * the speed of the machine, so a tick budget was too short on a busy machine. The wrappers give these tests a tick timeout far
+     * above the wait.</p>
      */
-    static void whenAnswered(GameTestHelper test, int ticks, List<LuaComputer> computers, Consumer<List<JsonObject>> check) {
+    static void whenAnswered(GameTestHelper test, int seconds, List<LuaComputer> computers, Consumer<List<JsonObject>> check) {
         boolean[] done = { false };
+        long deadline = System.nanoTime() + seconds * 1_000_000_000L;
         test.onEachTick(() -> {
             if (done[0]) return;
             List<JsonObject> answers = new ArrayList<>();
+            List<Integer> silent = new ArrayList<>();
             for (LuaComputer computer : computers) {
                 JsonObject answer = computer.result();
-                if (answer == null) return;
+                if (answer == null) {
+                    silent.add(computer.id);
+                    continue;
+                }
                 if (answer.has("error")) {
                     done[0] = true;
                     test.fail("the Lua program of computer " + computer.id + " failed: " + answer.get("error").getAsString());
                 }
                 answers.add(answer);
             }
+            if (!silent.isEmpty()) {
+                if (System.nanoTime() < deadline) return;
+                done[0] = true;
+                test.fail("no answer after " + seconds + " seconds from the computers " + silent);
+            }
             done[0] = true;
             check.accept(answers);
             test.succeed();
-        });
-        test.runAfterDelay(ticks, () -> {
-            if (done[0]) return;
-            List<Integer> silent = new ArrayList<>();
-            for (LuaComputer computer : computers) if (computer.result() == null) silent.add(computer.id);
-            done[0] = true;
-            test.fail("no answer after " + ticks + " ticks from the computers " + silent);
         });
     }
 

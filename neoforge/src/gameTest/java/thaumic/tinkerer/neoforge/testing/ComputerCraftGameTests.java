@@ -44,42 +44,42 @@ public final class ComputerCraftGameTests {
         ComputerCraftNeoForgeChecks.thaumcraftMachinesAreFoundAtTheirBlocks(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaDrivesTheDynamismTablet(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaDrivesTheDynamismTablet(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaDrivesTheAttractors(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaDrivesTheAttractors(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaReadsTheAspectalyzer(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsTheAspectalyzer(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaAsksTheGolemConnectorWithoutAGolem(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaAsksTheGolemConnectorWithoutAGolem(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaReadsAspectContainers(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsAspectContainers(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaReadsEssentiaTransports(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsEssentiaTransports(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaReadsThaumcraftMachines(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsThaumcraftMachines(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaReadsAndSteersAGolem(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsAndSteersAGolem(test);
     }
@@ -89,7 +89,7 @@ public final class ComputerCraftGameTests {
         ComputerCraftRuntimeChecks.fumeDissipatorIsATurtleUpgrade(test);
     }
 
-    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 600)
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer", timeoutTicks = 60000)
     public void luaTurtleDissipatesGas(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaTurtleDissipatesGas(test);
     }

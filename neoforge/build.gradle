@@ -46,10 +46,8 @@ dependencies {
  // runtime only (configuration modGameTestRuntimeOnly below), `-PwithComputerCraft` adds it to the development clients too.
  modCompileOnly "cc.tweaked:cc-tweaked-1.21.1-forge-api:$rootProject.cc_tweaked_version"
  if (providers.gradleProperty('withComputerCraft').isPresent()) {
+  // the libraries its jar nests with JarJar are on every run already (forgeRuntimeLibrary, see the GameTest runtime below)
   modLocalRuntime "cc.tweaked:cc-tweaked-1.21.1-forge:$rootProject.cc_tweaked_version"
-  // the libraries its jar nests with JarJar, which the development runs do not unpack (see the GameTest runtime below)
-  localRuntime 'cc.tweaked:cobalt:0.9.6'
-  localRuntime 'com.jcraft:jzlib:1.1.3'
  }
 }
 
@@ -103,12 +101,15 @@ sourceSets {
 }
 // CC: Tweaked on the GameTest server only, as on Fabric (fabric.gradle): the peripherals and the turtle upgrade are checked with the real mod.
 // Its NeoForge jar nests the Lua VM (Cobalt) and jzlib with JarJar (META-INF/jarjar/metadata.json), which this development run does not
-// unpack (the server crashed with NoClassDefFoundError: org/squiddev/cobalt/LuaValue), so the two libraries are added as they are nested.
+// unpack (the server crashed with NoClassDefFoundError: org/squiddev/cobalt/LuaValue). The two libraries are added as they are nested, as
+// forgeRuntimeLibrary: Loom's list of libraries that FML puts where the mods see them (on the plain runtime classpath CC: Tweaked's layer
+// does not see them, NoClassDefFoundError: org/squiddev/cobalt/LuaError). That list is shared by every run of this project, so the client
+// smoke and the multiplayer check have the two plain libraries on their classpath too, without CC: Tweaked itself.
 loom.createRemapConfigurations(sourceSets.gameTest)
 dependencies {
  modGameTestRuntimeOnly "cc.tweaked:cc-tweaked-1.21.1-forge:$rootProject.cc_tweaked_version"
- gameTestRuntimeOnly 'cc.tweaked:cobalt:0.9.6'
- gameTestRuntimeOnly 'com.jcraft:jzlib:1.1.3'
+ forgeRuntimeLibrary 'cc.tweaked:cobalt:0.9.6'
+ forgeRuntimeLibrary 'com.jcraft:jzlib:1.1.3'
 }
 
 def tinkererGameTestFilter = providers.gradleProperty('tinkererGameTestFilter').getOrElse('')

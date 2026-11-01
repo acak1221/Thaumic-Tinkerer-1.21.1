@@ -1238,9 +1238,12 @@ public final class TileBlocksRuntimeChecks {
         test.assertTrue(golem.getUUID().equals(connector.golemConnected), "the connector knows the golem");
         test.assertTrue(connector.golem == golem, "and found it");
         test.assertTrue(!ItemConnector.hasTarget(binder), "the binder forgot the connector");
-        // The API has no golem view yet: the peripheral answers as a connector without a golem.
-        test.assertTrue(!connector.golemAccess().exists(), "stub: the golem cannot be read (API request A11)");
-        test.assertTrue(connector.peripheral().call("getType").length == 0, "stub: getType answers nothing");
+        // The golem is read through thaumcraft.api.golems (A11): the connector's methods answer for it.
+        var view = thaumcraft.api.golems.GolemApi.view(golem).orElseThrow();
+        test.assertTrue(connector.golemAccess().exists(), "the connector reads its golem through the API");
+        Object[] type = connector.peripheral().call("getType");
+        test.assertTrue(type.length == 1 && view.material() != null && view.material().displayName().equals(type[0]),
+                "getType answers the golem's material " + view.material() + ": " + java.util.Arrays.toString(type));
         test.succeed();
     }
 

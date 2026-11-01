@@ -161,8 +161,44 @@ The turtle upgrade: the Fume Dissipator as a turtle tool, "Dissipating Turtle" (
 
 ## 6. What was verified
 
-To be filled in with the runs of this work.
+- **JUnit** (`common/src/test/java/thaumic/tinkerer/computer/`): `PeripheralTablesTest` (the type and the method names of every
+  peripheral against the 1.7.10 sources; the answers of `tt_aspectContainer` and `tt_aspectTransport` for fake Thaumcraft blocks: the
+  sorted tags from key 1, the amounts, the side numbers, the errors; the four machine tables against fakes of the API: no aspect, the
+  note range, the bore's hole width; the order of `PeripheralHandler`; the marker conversion of `ApiGolemAccess` and its "bad field"
+  errors; CC: Tweaked's "bad argument" texts) and `ComputerCraftIsOptionalTest` (only `compat/.../computer/cc` and the four glue classes
+  name CC: Tweaked, only the three entrypoints name the glue, each behind `Computers.ccTweakedLoaded()`; the mod files declare
+  CC: Tweaked optional; the turtle upgrade's data file). `TinkererApiOnlyTest` allows `dan200.computercraft.api.` and nothing else of
+  CC: Tweaked. The parity unit tests and the GameTest assert 12 documented differences (`PERIPHERALS` pages).
+- **GameTests with CC: Tweaked 1.116.1 on the GameTest servers of both loaders** (`ComputerCraftRuntimeChecks`, wrappers
+  `ComputerCraftGameTests`; on NeoForge generated, the lookups through `ComputerCraftNeoForgeChecks`):
+  - `addonPeripheralsAreFoundAtTheirBlocks`, `genericPeripheralsAreFoundAtThaumcraftBlocks`, `thaumcraftMachinesAreFoundAtTheirBlocks`:
+    each block (Tablet, both Attractors, Aspectalyzer, Golem Connector, a jar, the Interface, the Essentia Funnel, an essentia tube, the
+    bore's base, the Deconstruction Table, the Brain in a Jar, the Arcane Ear, the Arcane Bore) is looked up from all six sides through the
+    loader's own lookup (Fabric `PeripheralLookup.get().find`, NeoForge `level.getCapability(PeripheralCapability.get(), ...)`): the type
+    and the method names in their order are those of 1.7.10, the target is the block entity, two lookups give equal peripherals; a stone
+    block and a chest are none of the add-on's.
+  - Real Lua on real computers (`LuaComputer`: a `computer_normal` with the program as `startup.lua`, booted by itself; the program
+    calls `peripheral.wrap`, `peripheral.getType`, `peripheral.getMethods` and the methods, and writes its answers as JSON):
+    `luaDrivesTheDynamismTablet` (every method, the setters' effects on the block entity and the block, `setRotation` errors, a wrong
+    argument type, `trigger` while busy), `luaDrivesTheAttractors` (two computers: polarity, signal 15 from a redstone block, adult search),
+    `luaReadsTheAspectalyzer` (a diamond and an empty slot), `luaAsksTheGolemConnectorWithoutAGolem` (the 1.7.10 answers without a golem
+    and its error messages), `luaReadsAndSteersAGolem` (a real Thaumcraft golem: every reading against `GolemApi.view`, a new home and
+    markers set from Lua and read back through the API, the "bad field" errors), `luaReadsAspectContainers` (a jar with five Ignis, the
+    Interface bound to it, a labelled empty jar), `luaReadsEssentiaTransports` (a tube and the bore's base, every method for every side
+    against `IEssentiaTransport`), `luaReadsThaumcraftMachines` (five computers: two Deconstruction Tables, a Brain in a Jar with 123
+    points, an Arcane Ear tuned from Lua, an Arcane Bore with a worn Fortune III pickaxe, against `thaumcraft.api.machines`).
+  - The turtle: `fumeDissipatorIsATurtleUpgrade` (the data file made the upgrade with the add-on's type, a tool with the 1.7.10
+    adjective and item; a turtle and a Fume Dissipator in a crafting grid give a turtle with it) and `luaTurtleDissipatesGas` (a real
+    turtle with the tool runs `turtle.dig()`: the gases in reach are gone, those one block further stay; `turtle.attack()` fails).
+  - `computerCraftIsLoadedAndTheGlueRegistered`: CC: Tweaked is on the server and no registration of the add-on failed.
+- Runs: RUNS_DETAIL
 
 ## 7. What was not verified
 
-To be filled in.
+- **A client with CC: Tweaked.** The client smoke and the multiplayer check run without CC: Tweaked (on purpose, see section 2), so the
+  turtle tool's model (`TurtleUpgradeModeller.flatItem()`, registered on both loaders), the turtle's name ("Dissipating Turtle") and a
+  computer's screen were not seen; `-PwithComputerCraft` adds CC: Tweaked to the development clients for a look by hand.
+- **A dedicated server with CC: Tweaked and players**, wired and wireless modems, several computers on one peripheral, a peripheral
+  that is broken while a call waits for its tick.
+- **Other versions of CC: Tweaked** than 1.116.1 (the API the add-on uses is unchanged in 1.120.2, by source; not run).
+- The OpenComputers drivers are not ported.

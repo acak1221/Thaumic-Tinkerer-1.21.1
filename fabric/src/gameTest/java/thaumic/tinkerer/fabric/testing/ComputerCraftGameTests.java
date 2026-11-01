@@ -38,42 +38,42 @@ public final class ComputerCraftGameTests implements FabricGameTest {
         ComputerCraftRuntimeChecks.thaumcraftMachinesAreFoundAtTheirBlocks(test, LOOKUP);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaDrivesTheDynamismTablet(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaDrivesTheDynamismTablet(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaDrivesTheAttractors(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaDrivesTheAttractors(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaReadsTheAspectalyzer(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsTheAspectalyzer(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaAsksTheGolemConnectorWithoutAGolem(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaAsksTheGolemConnectorWithoutAGolem(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaReadsAspectContainers(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsAspectContainers(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaReadsEssentiaTransports(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsEssentiaTransports(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaReadsThaumcraftMachines(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsThaumcraftMachines(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaReadsAndSteersAGolem(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaReadsAndSteersAGolem(test);
     }
@@ -83,7 +83,7 @@ public final class ComputerCraftGameTests implements FabricGameTest {
         ComputerCraftRuntimeChecks.fumeDissipatorIsATurtleUpgrade(test);
     }
 
-    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 600)
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 60000)
     public void luaTurtleDissipatesGas(GameTestHelper test) {
         ComputerCraftRuntimeChecks.luaTurtleDissipatesGas(test);
     }
