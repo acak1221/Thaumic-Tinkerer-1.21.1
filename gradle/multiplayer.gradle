@@ -1,0 +1,274 @@
+// SPDX-License-Identifier: MIT
+// The multiplayer check of Thaumic Tinkerer (docs/MULTIPLAYER_VERIFICATION.md), shared by fabric.gradle (the root project) and
+// neoforge/build.gradle. New in the 1.21.1 port; MIT like the other build scripts (LICENSE-MIT, NOTICE.md); it contains no Thaumic
+// Tinkerer code.
+//
+// ONE Gradle task starts real dedicated servers and real clients, each in its own JVM, so that everything between them crosses a real
+// socket. First the server (the add-on plus the server test mod of common/src/multiplayerServer) with the lead client and the second
+// client at the same time (the client harness of common/src/clientSmoke in its multiplayer mode), then, one after the other, two clients
+// whose own config differs from the server's in an option that decides registration; then a second server whose config has
+// kami.forceenabled=false, with one client that has it on. The JVMs cannot be Gradle tasks of their own: Gradle runs the tasks of one
+// project one after the other, and the machine this was written on serialises whole Gradle invocations. So the task builds each JVM's
+// command line from the Loom run that describes it (the run tasks are configured, never executed) and starts it with a ProcessBuilder:
+// it can then wait for each with a time limit, stop a server with the `stop` command on its console, and kill whatever does not end.
+//
+//   registerTinkererMultiplayer(task: 'runTinkererMultiplayer', loader: 'fabric', outDir: file(...), port: 25591, timeout: 1200,
+//       runs: [server: 'runTinkererMpServer', lead: ..., peer: ..., mismatch: ..., 'mismatch-kami': ..., 'kami-on': ...],
+//       dirs: [server: file(...), lead: file(...), peer: file(...), mismatch: file(...), 'mismatch-kami': file(...), 'kami-on': file(...)])
+//
+// The results (outDir): server-report.json, server-kami-off-report.json, <role>/report.json of every client (with its screenshots/),
+// the console output, latest.log and command line of every JVM, summary.txt. The task fails when a report is missing, a harness did not
+// complete, or any check is FAIL, HARNESS_ERROR or NOT_RUN.
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
+
+/** The player names (the server harness knows them too: Scenes.LEAD, PEER, MISMATCH, MISMATCH_KAMI, KAMI_ON, OPERATOR). */
+ext.tinkererMultiplayerPlayers = [lead: 'TTAlpha', peer: 'TTBravo', mismatch: 'TTMismatch', 'mismatch-kami': 'TTMismatchKami', 'kami-on': 'TTKamiOn',
+                                  operator: 'TTServerOp']
+/** The clients that run one after the other once the lead and the second player are done. */
+ext.tinkererMultiplayerLateClients = ['mismatch', 'mismatch-kami']
+
+ext.registerTinkererMultiplayer = { Map cfg ->
+    def offlineUuid = { String name -> UUID.nameUUIDFromBytes(('OfflinePlayer:' + name).getBytes(StandardCharsets.UTF_8)).toString() }
+    // A getter of Loom's AbstractRunTask that is protected (Groovy calls it; reflection if it does not).
+    def internal = { Object task, String getter ->
+        try {
+            return task."$getter"()
+        } catch (MissingMethodException | IllegalAccessException ignored) {
+            for (Class<?> type = task.getClass(); type != null; type = type.superclass) {
+                def method = type.declaredMethods.find { it.name == getter && it.parameterCount == 0 }
+                if (method != null) { method.accessible = true; return method.invoke(task) }
+            }
+            throw new GradleException("Loom's run task ${task.name} has no ${getter}")
+        }
+    }
+    // What net.fabricmc.loom.task.AbstractRunTask.exec() (Loom 1.11) and JavaExec.exec() put together: the JVM arguments of the task
+    // (Gradle's own, then Loom's: the dev launch properties, the run's vmArgs and the @arg file that holds the class path on Java 9+), the
+    // class path on the command line when there is no arg file, the main class, the program arguments; the run directory and the run's
+    // environment variables on top of the environment Gradle gives a JavaExec.
+    def commandOf = { Task run ->
+        boolean argFile = internal(run, 'getUseArgFile').get()
+        List<String> line = [run.javaLauncher.get().executablePath.asFile.absolutePath]
+        line.addAll(run.allJvmArgs)
+        line.addAll(run.jvmArguments.get())
+        if (!argFile) line.addAll(['-cp', internal(run, 'getInternalClasspath').asPath])
+        line.add(run.mainClass.get())
+        line.addAll(run.args ?: [])
+        run.argumentProviders.each { line.addAll(it.asArguments()) }
+        Map<String, String> env = [:]
+        run.environment.each { k, v -> env[k] = String.valueOf(v) }
+        internal(run, 'getInternalEnvironmentVars').get().each { k, v -> env[k] = String.valueOf(v) }
+        File dir = new File(internal(run, 'getProjectDir').get(), internal(run, 'getInternalRunDir').get())
+        [line: line, env: env, dir: dir]
+    }
+
+    tasks.register(cfg.task) {
+        group = 'verification'
+        description = "The multiplayer check of Thaumic Tinkerer on ${cfg.loader}: a dedicated server and real clients (docs/MULTIPLAYER_VERIFICATION.md)."
+        // Everything the runs need (classes, Loom's launch configuration, the assets), as if they were executed.
+        dependsOn { cfg.runs.values().collect { tasks.named(it).get().taskDependencies } }
+        outputs.upToDateWhen { false }
+        doLast {
+            File out = cfg.outDir
+            project.delete(out)
+            out.mkdirs()
+            int port = cfg.port as int
+            int timeout = cfg.timeout as int
+            def players = tinkererMultiplayerPlayers
+            def log = { String text -> logger.lifecycle("multiplayer: " + text) }
+
+            try {
+                new ServerSocket(port, 1, InetAddress.getByName('127.0.0.1')).close()
+            } catch (IOException e) {
+                throw new GradleException("Port ${port} on 127.0.0.1 is in use (an earlier server still running?); set -PtinkererMultiplayerPort", e)
+            }
+
+            // ---- the run directories (git-ignored), rewritten every run ----
+            File serverDir = cfg.dirs.server
+            // The server's config: flight off and a Dislocation blacklist entry that only the server has; the second server also has Kami off.
+            def prepareServer = { boolean kami ->
+                serverDir.mkdirs()
+                project.delete(new File(serverDir, 'world'), new File(serverDir, 'logs'), new File(serverDir, 'crash-reports'))
+                new File(serverDir, 'eula.txt').setText('eula=true\n', 'UTF-8')
+                new File(serverDir, 'server.properties').setText([
+                        'online-mode=false', "server-port=${port}", 'server-ip=127.0.0.1', 'spawn-protection=16', 'level-type=minecraft\\:flat',
+                        'generate-structures=false', 'level-seed=20261101', 'difficulty=peaceful', 'gamemode=survival', 'spawn-monsters=false',
+                        'spawn-animals=false', 'spawn-npcs=false', 'view-distance=6', 'simulation-distance=5', 'allow-flight=true',
+                        'max-tick-time=-1', 'enforce-secure-profile=false', 'sync-chunk-writes=false', 'player-idle-timeout=0', 'white-list=false',
+                        'enable-command-block=false', 'motd=Thaumic Tinkerer multiplayer check'].join('\n') + '\n', 'UTF-8')
+                // Vanilla has no spawn protection while the operator list is empty, so one operator who never joins is listed.
+                new File(serverDir, 'ops.json').setText(JsonOutput.prettyPrint(JsonOutput.toJson([[uuid: offlineUuid(players.operator),
+                        name: players.operator, level: 4, bypassesPlayerLimit: false]])), 'UTF-8')
+                new File(serverDir, 'config').mkdirs()
+                new File(serverDir, 'config/thaumictinkerer.json').setText(JsonOutput.prettyPrint(JsonOutput.toJson(
+                        [general: ['modFlight.enabled': false, 'focusOfDislocationBlacklist': ['minecraft:gold_block']],
+                         kami: ['kami.forceenabled': kami]])), 'UTF-8')
+            }
+            def clientConfig = [
+                    lead: [general: ['modFlight.enabled': true, 'focusOfDislocationBlacklist': []]],
+                    peer: [general: ['modFlight.enabled': true, 'focusOfDislocationBlacklist': []]],
+                    // An option that decides what is registered differs from the server's (true there): research and recipes only,
+                    mismatch: [general: ['modFlight.enabled': true, 'focusOfDislocationBlacklist': [], 'imbuedFire.enabled': false]],
+                    // ... or every Kami item and block (the loader's registry sync sees that first),
+                    'mismatch-kami': [general: ['modFlight.enabled': true, 'focusOfDislocationBlacklist': []], kami: ['kami.forceenabled': false]],
+                    // ... or the other way round: Kami on here, off on the second server.
+                    'kami-on': [general: ['modFlight.enabled': true, 'focusOfDislocationBlacklist': []], kami: ['kami.forceenabled': true]]]
+            List<String> clients = ['lead', 'peer'] + tinkererMultiplayerLateClients + ['kami-on']
+            clients.each { role ->
+                File dir = cfg.dirs[role]
+                dir.mkdirs()
+                project.delete(new File(dir, 'logs'), new File(dir, 'crash-reports'), new File(dir, 'screenshots'))
+                new File(dir, 'options.txt').setText('onboardAccessibility:false\nlang:en_us\nguiScale:2\npauseOnLostFocus:false\n' +
+                        'renderDistance:6\nsimulationDistance:5\nmaxFps:30\nenableVsync:false\ntutorialStep:none\nnarrator:0\n' +
+                        'soundCategory_master:0.0\nskipMultiplayerWarning:true\njoinedFirstServer:true\nhideBundleTutorial:true\n' +
+                        'realmsNotifications:false\n', 'UTF-8')
+                new File(dir, 'config').mkdirs()
+                new File(dir, 'config/thaumictinkerer.json').setText(JsonOutput.prettyPrint(JsonOutput.toJson(clientConfig[role])), 'UTF-8')
+            }
+
+            Map<String, Process> processes = [:]
+            Map<String, Object> exits = [:]
+            List<String> problems = []
+            // Starts the JVM of a run; `name` names its files (the second server is the run `server` with one more JVM argument).
+            def start = { String name, String run, List<String> extraJvmArgs ->
+                def command = commandOf(tasks.named(cfg.runs[run]).get())
+                List<String> line = command.line
+                line.addAll(line.indexOf(tasks.named(cfg.runs[run]).get().mainClass.get()), extraJvmArgs)
+                new File(out, "${name}-command.txt").setText(line.join('\n') + '\n', 'UTF-8')
+                def builder = new ProcessBuilder(line).directory(command.dir).redirectErrorStream(true)
+                        .redirectOutput(new File(out, "${name}-console.log"))
+                builder.environment().clear()
+                builder.environment().putAll(command.env)
+                Process process = builder.start()
+                processes[name] = process
+                log("started the ${name} (pid ${process.pid()}) in ${command.dir}")
+                process
+            }
+            def stopProcess = { String role, Process process ->
+                if (!process.alive) return
+                log("${role} still running: destroying it")
+                process.destroy()
+                if (!process.waitFor(20, TimeUnit.SECONDS)) process.destroyForcibly()
+                process.waitFor(20, TimeUnit.SECONDS)
+            }
+            // Waits for the given processes until the deadline (System.nanoTime()); what is still running then is a problem and is stopped.
+            def waitAll = { List<String> roles, long deadline ->
+                roles.each { role ->
+                    Process process = processes[role]
+                    long left = deadline - System.nanoTime()
+                    if (left > 0) process.waitFor(left, TimeUnit.NANOSECONDS)
+                    if (process.alive) {
+                        problems << "the ${role} did not end in time".toString()
+                        stopProcess(role, process)
+                    }
+                    exits[role] = process.alive ? 'running' : process.exitValue()
+                    log("the ${role} ended with exit code ${exits[role]}")
+                }
+            }
+            // Starts a server and waits for its harness's ready file; null (and a problem) when it does not get ready.
+            def startServer = { String name, List<String> extraJvmArgs ->
+                Process server = start(name, 'server', extraJvmArgs)
+                File ready = new File(out, "${name}-ready")
+                long readyBy = System.nanoTime() + TimeUnit.SECONDS.toNanos(600)
+                while (!ready.exists() && server.alive && System.nanoTime() < readyBy) Thread.sleep(1000)
+                if (ready.exists()) return server
+                problems << (server.alive ? "the ${name} was not ready after 600 s" : "the ${name} ended before it was ready (exit ${server.exitValue()})").toString()
+                null
+            }
+            // The stop command on the server's console; then its log is kept (the second server writes the same run directory).
+            def stopServer = { String name ->
+                Process server = processes[name]
+                if (server == null) return
+                if (server.alive) {
+                    log("stopping the ${name} (the stop command on its console)")
+                    try {
+                        server.outputStream.write('stop\n'.getBytes(StandardCharsets.UTF_8))
+                        server.outputStream.flush()
+                    } catch (IOException ignored) {
+                        // it is ending already
+                    }
+                    if (!server.waitFor(180, TimeUnit.SECONDS)) {
+                        problems << "the ${name} did not stop within 180 s".toString()
+                        stopProcess(name, server)
+                    }
+                }
+                exits[name] = server.alive ? 'running' : server.exitValue()
+                File latest = new File(serverDir, 'logs/latest.log')
+                if (latest.isFile()) project.copy { from latest; into out; rename { "${name}-latest.log" } }
+                File crashes = new File(serverDir, 'crash-reports')
+                if (crashes.isDirectory()) project.copy { from crashes; into new File(out, "crash-reports/${name}") }
+            }
+
+            try {
+                prepareServer(true)
+                if (startServer('server', []) != null) {
+                    log('the server is ready; starting the second player and the lead')
+                    start('peer', 'peer', [])
+                    Thread.sleep(5000)
+                    start('lead', 'lead', [])
+                    waitAll(['lead', 'peer'], System.nanoTime() + TimeUnit.SECONDS.toNanos(timeout + 120))
+                    tinkererMultiplayerLateClients.each { role ->
+                        if (processes.server.alive) {
+                            log("starting the ${role} client (a registration option differs from the server's)")
+                            start(role, role, [])
+                            waitAll([role], System.nanoTime() + TimeUnit.SECONDS.toNanos(720))
+                        } else {
+                            problems << "the server ended before the ${role} client could join".toString()
+                        }
+                    }
+                }
+                stopServer('server')
+                // The second server: Kami off in its config, for the client that has it on.
+                prepareServer(false)
+                if (startServer('server-kami-off', ['-Dthaumictinkerer.mpServer.variant=kami-off']) != null) {
+                    log('the second server (kami.forceenabled=false) is ready; starting the kami-on client')
+                    start('kami-on', 'kami-on', [])
+                    waitAll(['kami-on'], System.nanoTime() + TimeUnit.SECONDS.toNanos(720))
+                }
+                stopServer('server-kami-off')
+            } finally {
+                clients.each { role -> if (processes[role] != null) stopProcess(role, processes[role]) }
+                ['server', 'server-kami-off'].each { name -> if (processes[name]?.alive) stopServer(name) }
+                clients.each { role ->
+                    File dir = cfg.dirs[role]
+                    File latest = new File(dir, 'logs/latest.log')
+                    if (latest.isFile()) project.copy { from latest; into out; rename { "${role}-latest.log" } }
+                    File crashes = new File(dir, 'crash-reports')
+                    if (crashes.isDirectory()) project.copy { from crashes; into new File(out, "crash-reports/${role}") }
+                }
+            }
+
+            // ---- the reports ----
+            def slurper = new JsonSlurper()
+            List<String> lines = []
+            Map<String, File> reports = [server: new File(out, 'server-report.json'), 'server-kami-off': new File(out, 'server-kami-off-report.json')]
+            clients.each { role -> reports[role] = new File(out, "${role}/report.json") }
+            reports.each { role, File file ->
+                if (!file.isFile()) {
+                    problems << "no report from the ${role} (${file})".toString()
+                    lines << "${role}: NO REPORT (exit ${exits[role]})".toString()
+                    return
+                }
+                def report = slurper.parse(file, 'UTF-8')
+                String status = report.harness?.status
+                lines << "${role}: harness ${status}, exit ${exits[role]}, ${report.summary.findAll { k, v -> !(v instanceof Map) }}".toString()
+                if (status != 'COMPLETED') problems << "the ${role} harness ended ${status}: ${report.harness?.detail}".toString()
+                report.checks.each { check ->
+                    String result = check.result
+                    if (result == 'INFO') return
+                    String scenario = check.scenario ?: check.phase
+                    String detail = String.valueOf(check.detail).replace('\n', ' ')
+                    if (detail.length() > 600) detail = detail.substring(0, 600) + '...'
+                    lines << "  ${result.padRight(13)} ${scenario}/${check.name}: ${detail}".toString()
+                    if (result in ['FAIL', 'HARNESS_ERROR', 'NOT_RUN']) problems << "${role}: ${result} ${scenario}/${check.name}".toString()
+                }
+            }
+            new File(out, 'summary.txt').setText(lines.join('\n') + '\n' + (problems ? 'PROBLEMS:\n  ' + problems.join('\n  ') + '\n' : 'no problems\n'), 'UTF-8')
+            lines.each { log(it) }
+            if (problems) throw new GradleException("The multiplayer check on ${cfg.loader} found problems:\n  " + problems.join('\n  ') + "\nSee ${out}")
+            log("passed on ${cfg.loader}; results in ${out}")
+        }
+    }
+}

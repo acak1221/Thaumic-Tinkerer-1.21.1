@@ -21,7 +21,7 @@ Which files are under which licence:
   `README.md`, `README.ru.md` and this `NOTICE.md`. It must not be sold or
   used commercially, and further adaptations must carry the same licence.
 - **MIT** (`LICENSE-MIT`, the licence of Thaumcraft 4 Reload, from which these files come): the files that build and check the add-on and
-  contain no Thaumic Tinkerer code: `settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `neoforge/build.gradle`,
+  contain no Thaumic Tinkerer code: `settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `gradle/multiplayer.gradle`, `neoforge/build.gradle`,
   `neoforge/gradle.properties`, `.gitignore`, `.gitattributes`, `.github/` (the CI workflow), `tools/` (with `tools/neoforge_gametests.py`, which
   generates the NeoForge GameTest wrappers from the Fabric ones and writes no Thaumic Tinkerer code of its own) and `scripts/porting/` (the Python tools that produced the resources and the parity
   oracle from the 1.7.10 source; they carry no Thaumic Tinkerer text). The scripts, the Gradle files and the workflow say so in an

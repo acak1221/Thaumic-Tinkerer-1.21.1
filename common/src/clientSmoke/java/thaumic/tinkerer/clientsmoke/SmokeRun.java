@@ -39,23 +39,19 @@ final class SmokeRun {
     private boolean finished;
     private boolean worldFailed;
 
+    /** The singleplayer run: the phases of the client smoke. */
     SmokeRun(Path outDir, Path sourceRoot) {
+        this(outDir, sourceRoot, List.of(new ResourcesPhase(), new WorldPhase(), new BlockRowsPhase(), new ItemGridPhase(""),
+                new MenusPhase(""), new RendererPhase(), new HudPhase(), new IntegrationsPhase(), new CreativeTabPhase(),
+                new LanguagePhase("ru_ru"), new ItemGridPhase("ru_ru"), new MenusPhase("ru_ru"), new FinishPhase()));
+    }
+
+    /** A run of other phases (the multiplayer mode, {@link MultiplayerClient#phases}); the last must be {@link FinishPhase}. */
+    SmokeRun(Path outDir, Path sourceRoot, List<Phase> phases) {
         this.sourceRoot = sourceRoot;
         this.report = new SmokeReport(outDir);
         this.shots = new Shots(report);
-        phases.add(new ResourcesPhase());
-        phases.add(new WorldPhase());
-        phases.add(new BlockRowsPhase());
-        phases.add(new ItemGridPhase(""));
-        phases.add(new MenusPhase(""));
-        phases.add(new RendererPhase());
-        phases.add(new HudPhase());
-        phases.add(new IntegrationsPhase());
-        phases.add(new CreativeTabPhase());
-        phases.add(new LanguagePhase("ru_ru"));
-        phases.add(new ItemGridPhase("ru_ru"));
-        phases.add(new MenusPhase("ru_ru"));
-        phases.add(new FinishPhase());
+        this.phases.addAll(phases);
     }
 
     Minecraft client() {

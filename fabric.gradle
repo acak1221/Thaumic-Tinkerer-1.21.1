@@ -38,6 +38,17 @@ sourceSets {
   compileClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.compileClasspath
   runtimeClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.runtimeClasspath
  }
+ // The server half of the multiplayer check (docs/MULTIPLAYER_VERIFICATION.md): a test mod for a real dedicated server that builds the
+ // scenarios, answers the clients' /ttmp commands and writes the server's report. Compiled by check, loaded only by the tinkererMpServer
+ // run; no jar task includes its output. common/...: the loader-neutral harness (package thaumic.tinkerer.mpserver, shared with
+ // neoforge/build.gradle); fabric/...: the Fabric entrypoint and the test mod's fabric.mod.json. The clients of the check are the client
+ // smoke harness above in its multiplayer mode.
+ thaumicTinkererMultiplayerServer {
+  java.srcDirs = [new File(ttDir, 'common/src/multiplayerServer/java'), new File(ttDir, 'fabric/src/multiplayerServer/java')]
+  resources.srcDirs = [new File(ttDir, 'fabric/src/multiplayerServer/resources')]
+  compileClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.compileClasspath
+  runtimeClasspath += sourceSets.thaumicTinkerer.output + sourceSets.thaumicTinkerer.runtimeClasspath
+ }
  // JUnit tests of the add-on's plain logic.
  thaumicTinkererTest {
   // The plain-Java comparison logic of the parity check lives in the GameTest tree (common/src/gameTest/java/.../testing/parity)
@@ -63,7 +74,7 @@ tasks.named('processThaumicTinkererResources') {
  // The licence travels with every artifact of the add-on.
  from(ttDir) { include 'LICENSE'; into 'META-INF' }
 }
-tasks.named('check') { dependsOn 'compileThaumicTinkererJava', 'compileThaumicTinkererGameTestJava', 'compileThaumicTinkererClientSmokeJava' }
+tasks.named('check') { dependsOn 'compileThaumicTinkererJava', 'compileThaumicTinkererGameTestJava', 'compileThaumicTinkererClientSmokeJava', 'compileThaumicTinkererMultiplayerServerJava' }
 
 // Mixin refmap of the add-on (the mixins are in fabric/src/main/java/thaumic/tinkerer/fabric/mixin, the config is
 // fabric/src/main/resources/thaumictinkerer.mixins.json, listed under "mixins" of its fabric.mod.json).
@@ -173,6 +184,63 @@ tasks.named('runTinkererClientSmoke') {
   logger.lifecycle("Thaumic Tinkerer client smoke: harness completed, results in ${report}")
  }
 }
+
+// ---- The multiplayer check (docs/MULTIPLAYER_VERIFICATION.md) ------------------------------------------------------------------------
+// Real dedicated servers and real clients, started and stopped by ONE task, runTinkererMultiplayer (gradle/multiplayer.gradle; the runs
+// below are only its description of each JVM, never run by themselves): the server with the add-on and the server test mod
+// (thaumicTinkererMultiplayerServer), the lead client TTAlpha and the second client TTBravo at the same time, then TTMismatch and
+// TTMismatchKami, whose own config differs in imbuedFire.enabled and in kami.forceenabled; then the same server run again with
+// kami.forceenabled=false and the client TTKamiOn. The clients are the client smoke harness in its multiplayer mode; they join with
+// --quickPlayMultiplayer. Started by tools/multiplayer-smoke.sh under Xvfb; the results go to build/tinkerer-multiplayer.
+def tinkererMpOut = layout.buildDirectory.dir('tinkerer-multiplayer').get().asFile
+def tinkererMpPort = providers.gradleProperty('tinkererMultiplayerPort').getOrElse('25591')
+// The watchdog of the lead and the second client, in seconds; the server's is an hour longer.
+def tinkererMpTimeout = providers.gradleProperty('tinkererMultiplayerTimeout').getOrElse('1200')
+def tinkererMpServerGroups = tinkererModRoots.asPath + File.pathSeparator + File.pathSeparator + files(sourceSets.thaumicTinkererMultiplayerServer.output).asPath
+def tinkererMpPlayers = [lead: 'TTAlpha', peer: 'TTBravo', mismatch: 'TTMismatch', 'mismatch-kami': 'TTMismatchKami', 'kami-on': 'TTKamiOn']
+def tinkererMpClient = { settings, String role ->
+ settings.client()
+ // Two clients run at the same time next to the server and the Gradle daemon (4 CPUs, 15 GB): 2 GB of heap each.
+ settings.vmArg '-Xmx2G'
+ settings.source sourceSets.thaumicTinkererClientSmoke
+ settings.name "Thaumic Tinkerer multiplayer check: ${role} client"
+ settings.runDir "run-tinkerer-mp-${role}"
+ settings.vmArg "-Dfabric.classPathGroups=${tinkererClientSmokeGroups}"
+ settings.vmArg '-Dthaumictinkerer.clientSmoke=true'
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.mode=multiplayer-${role}"
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.outDir=${new File(tinkererMpOut, role).absolutePath}"
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.sourceRoot=${ttDir.absolutePath}"
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.timeoutSeconds=${role in ['lead', 'peer'] ? tinkererMpTimeout : 600}"
+ settings.programArgs '--username', tinkererMpPlayers[role], '--quickPlayMultiplayer', "127.0.0.1:${tinkererMpPort}".toString(), '--width', '1280', '--height', '720'
+}
+loom.runs {
+ tinkererMpServer {
+  server()
+  vmArg '-Xmx2G'
+  source sourceSets.thaumicTinkererMultiplayerServer
+  name 'Thaumic Tinkerer multiplayer check: dedicated server'
+  runDir 'run-tinkerer-mp-server'
+  vmArg "-Dfabric.classPathGroups=${tinkererMpServerGroups}"
+  vmArg '-Dthaumictinkerer.mpServer=true'
+  vmArg "-Dthaumictinkerer.mpServer.outDir=${tinkererMpOut.absolutePath}"
+  vmArg "-Dthaumictinkerer.mpServer.timeoutSeconds=${(tinkererMpTimeout as int) + 3600}"
+  programArgs '--nogui'
+ }
+ tinkererMpLead { tinkererMpClient(delegate, 'lead') }
+ tinkererMpPeer { tinkererMpClient(delegate, 'peer') }
+ tinkererMpMismatch { tinkererMpClient(delegate, 'mismatch') }
+ tinkererMpMismatchKami { tinkererMpClient(delegate, 'mismatch-kami') }
+ tinkererMpKamiOn { tinkererMpClient(delegate, 'kami-on') }
+}
+apply from: new File(ttDir, 'gradle/multiplayer.gradle')
+registerTinkererMultiplayer(task: 'runTinkererMultiplayer', loader: 'fabric', outDir: tinkererMpOut, port: tinkererMpPort,
+  timeout: tinkererMpTimeout,
+  runs: [server: 'runTinkererMpServer', lead: 'runTinkererMpLead', peer: 'runTinkererMpPeer', mismatch: 'runTinkererMpMismatch',
+         'mismatch-kami': 'runTinkererMpMismatchKami', 'kami-on': 'runTinkererMpKamiOn'],
+  dirs: [server: file('run-tinkerer-mp-server'), lead: file('run-tinkerer-mp-lead'), peer: file('run-tinkerer-mp-peer'),
+         mismatch: file('run-tinkerer-mp-mismatch'),
+         'mismatch-kami': file('run-tinkerer-mp-mismatch-kami'),
+         'kami-on': file('run-tinkerer-mp-kami-on')])
 
 tasks.register('tinkererTest', Test) {
  group = 'verification'

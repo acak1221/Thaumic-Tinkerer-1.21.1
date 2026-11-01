@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "thaumictinkerer_mpserver",
+  "version": "1.0.0",
+  "name": "Thaumic Tinkerer multiplayer check (server)",
+  "description": "Development-only test mod of the Thaumic Tinkerer add-on: builds the scenarios of the multiplayer check on a real dedicated server, answers the clients' /ttmp commands and writes a report. Never part of a release jar.",
+  "license": "CC-BY-NC-SA-3.0",
+  "environment": "server",
+  "entrypoints": {
+    "server": [
+      "thaumic.tinkerer.fabric.mpserver.TinkererMultiplayerServer"
+    ]
+  },
+  "depends": {
+    "thaumictinkerer": "*",
+    "thaumcraft": "*",
+    "fabricloader": ">=0.16.14",
+    "fabric-api": "*",
+    "architectury": ">=13.0.11",
+    "minecraft": "1.21.1",
+    "java": ">=21"
+  }
+}

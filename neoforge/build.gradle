@@ -211,3 +211,74 @@ tasks.named('runClientSmoke') {
   logger.lifecycle("Thaumic Tinkerer NeoForge client smoke: harness completed, results in ${report}")
  }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// The multiplayer check on NeoForge (docs/MULTIPLAYER_VERIFICATION.md): the counterpart of runTinkererMultiplayer of fabric.gradle. A real
+// dedicated server with the add-on and the server test mod thaumictinkerer_mpserver (common/src/multiplayerServer and its NeoForge entry
+// in neoforge/src/multiplayerServer; the source set multiplayerServer below, compiled by check, loaded only by the mpServer run, in no
+// jar), and real clients, the client smoke harness above in its multiplayer mode, all started and stopped by ONE task,
+// runMultiplayer (gradle/multiplayer.gradle; the runs are only its description of each JVM). Started by tools/multiplayer-smoke.sh:
+//
+//   tools/multiplayer-smoke.sh --neoforge          results in neoforge/build/tinkerer-multiplayer
+sourceSets {
+ multiplayerServer {
+  java.srcDirs = [rootProject.file('common/src/multiplayerServer/java'), file('src/multiplayerServer/java')]
+  resources.srcDirs = [file('src/multiplayerServer/resources')]
+  compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+  runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+ }
+}
+tasks.named('check') { dependsOn tasks.named('multiplayerServerClasses') }
+
+def tinkererMpOut = layout.buildDirectory.dir('tinkerer-multiplayer').get().asFile
+def tinkererMpPort = providers.gradleProperty('tinkererMultiplayerPort').getOrElse('25592')
+// The watchdog of the lead and the second client, in seconds; the server's is an hour longer.
+def tinkererMpTimeout = providers.gradleProperty('tinkererMultiplayerTimeout').getOrElse('1200')
+def tinkererMpPlayers = [lead: 'TTAlpha', peer: 'TTBravo', mismatch: 'TTMismatch', 'mismatch-kami': 'TTMismatchKami', 'kami-on': 'TTKamiOn']
+def tinkererMpClient = { settings, String role ->
+ settings.client()
+ settings.name "Thaumic Tinkerer NeoForge multiplayer check: ${role} client"
+ // Two clients run at the same time next to the server and the Gradle daemon: 2 GB of heap each.
+ settings.vmArg '-Xmx2G'
+ settings.source sourceSets.clientSmoke
+ settings.mods {
+  thaumictinkerer { sourceSet sourceSets.main }
+  thaumictinkerer_clientsmoke { sourceSet sourceSets.clientSmoke }
+ }
+ settings.vmArg '-Dthaumictinkerer.clientSmoke=true'
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.mode=multiplayer-${role}"
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.outDir=${new File(tinkererMpOut, role).absolutePath}"
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.sourceRoot=${rootProject.projectDir.absolutePath}"
+ settings.vmArg "-Dthaumictinkerer.clientSmoke.timeoutSeconds=${role in ['lead', 'peer'] ? tinkererMpTimeout : 600}"
+ settings.programArgs '--username', tinkererMpPlayers[role], '--quickPlayMultiplayer', "127.0.0.1:${tinkererMpPort}".toString(), '--width', '1280', '--height', '720'
+ settings.runDir "run-mp-${role}"
+}
+loom.runs {
+ mpServer {
+  server()
+  name 'Thaumic Tinkerer NeoForge multiplayer check: dedicated server'
+  vmArg '-Xmx2G'
+  source sourceSets.multiplayerServer
+  mods {
+   thaumictinkerer { sourceSet sourceSets.main }
+   thaumictinkerer_mpserver { sourceSet sourceSets.multiplayerServer }
+  }
+  vmArg '-Dthaumictinkerer.mpServer=true'
+  vmArg "-Dthaumictinkerer.mpServer.outDir=${tinkererMpOut.absolutePath}"
+  vmArg "-Dthaumictinkerer.mpServer.timeoutSeconds=${(tinkererMpTimeout as int) + 3600}"
+  programArgs '--nogui'
+  runDir 'run-mp-server'
+ }
+ mpLead { tinkererMpClient(delegate, 'lead') }
+ mpPeer { tinkererMpClient(delegate, 'peer') }
+ mpMismatch { tinkererMpClient(delegate, 'mismatch') }
+ mpMismatchKami { tinkererMpClient(delegate, 'mismatch-kami') }
+ mpKamiOn { tinkererMpClient(delegate, 'kami-on') }
+}
+apply from: rootProject.file('gradle/multiplayer.gradle')
+registerTinkererMultiplayer(task: 'runMultiplayer', loader: 'neoforge', outDir: tinkererMpOut, port: tinkererMpPort, timeout: tinkererMpTimeout,
+  runs: [server: 'runMpServer', lead: 'runMpLead', peer: 'runMpPeer', mismatch: 'runMpMismatch',
+         'mismatch-kami': 'runMpMismatchKami', 'kami-on': 'runMpKamiOn'],
+  dirs: [server: file('run-mp-server'), lead: file('run-mp-lead'), peer: file('run-mp-peer'), mismatch: file('run-mp-mismatch'),
+         'mismatch-kami': file('run-mp-mismatch-kami'),
+         'kami-on': file('run-mp-kami-on')])
