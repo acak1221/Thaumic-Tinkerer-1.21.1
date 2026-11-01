@@ -81,3 +81,21 @@ the game's own seed changes nothing (the same cells), so it is not a defect and 
   feature in a world with mods that add features to every biome (the test runs had none: the biome's steps held only the clusters) and in
   a world made before the change (reasoned, not tried: its generated chunks keep their ores, chunks generated afterwards get the
   feature's positions); the Bedrock dimension in a client.
+
+## Modernization (packages C and D, 2026-11-01, branch `modernize-c`)
+
+1.7.10 technique replaced by the 1.21.1 one, gameplay kept (the read-only audit of that day, its package C: machines, enchantments, core
+constants; package D: the config handshake). Details in `deviations/Machines.md` section 13 and `deviations/Enchantments.md` section 14.
+
+| Finding | Was | Now | Test |
+|---|---|---|---|
+| Thaumcraft content by 1.7.10 field + metadata (machines and enchantments) | `ItemApi.getItem("itemResource", 2)`, `BlocksTC.state("blockAiry", 1)` | native ids: `ItemsTC.stack("thaumium_ingot")`, `BlocksTC.get("nitor")`, … (the Obsidian Totem stays `BlocksTC.state("blockCosmeticSolid", 0)`: `cosmetic_solid_tough[variant=0]` has no name in the API, `api-requests/Enchantments.md` section 7) | the recipe parity GameTests; the Enchanter's pillar GameTests |
+| The Corporeal Attractor's wand sound | a new, unregistered `SoundEvent` of `thaumcraft:key` per click | `ThaumcraftSoundIds.event(KEY)`, the registered event | `aWandOpensTheCorporealAttractorWithThaumcraftsRegisteredKeySound` (reads the sound packet) |
+| The Funnel's jar identity | registry id strings `thaumcraft:jar` / `jar_void` | `stack.is(BlocksTC.jar().asItem())` / `voidJar()` | `theFunnelKnowsTheTwoJarsOfTheApiAndNoOtherHolderOfEssentia` |
+| The Enchanter's packet | a bare `ResourceLocation` | `ResourceKey<Enchantment>` (`ResourceKey.streamCodec`; the same bytes) | `onTheWireTheEnchantmentIsItsIdAsBefore` |
+| Shears in the Enchanter's digger rule | `instanceof ShearsItem` only | also `#c:tools/shear` (both loaders fill it) | `anItemOfTheConventionShearsTagIsShearsForTheDiggingEnchantments` |
+| The infused soul aspect's glint | `isFoil` override | the item's default `enchantment_glint_override` | `theInfusedSoulAspectsGlintByTheirItemsDefaultComponent` |
+| The attractor rings' clock | `System.currentTimeMillis() / 500F` (float: the rings jumped every 131 s instead of bobbing, in 1.7.10 too) | game time + partial tick in double | visual only, client smoke |
+| Unused constants | `LibResources` (lang prefix, empty texture, NEI arrow, model paths, armour layers, three enchantment icons), `LibBlockNames.*_SLAB_FULL`, `LibItemNames.KAMI_RESOURCE`, `SWORD` | deleted; `tt_oracle/provenance.json` regenerated (the oracle's tables unchanged) | compile, the parity tests |
+| Duplicated enchantment keys | `LibEnchantIDs.idAscentBoost` … and copies in `ModEnchantments` | one set in `ModEnchantments` | `theFourteenKeysAreThoseOfTheRegistryPathsOfTheEnchantments` |
+| `KamiResearchItem.Blacklist` | a public mutable list filled in a static block | `private static final List.of("MINILITH")` | the Kami parity check |

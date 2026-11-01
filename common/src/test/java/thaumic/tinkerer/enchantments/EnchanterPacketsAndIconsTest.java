@@ -29,7 +29,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import thaumic.tinkerer.client.gui.EnchantIcons;
 import thaumic.tinkerer.common.enchantment.ModEnchantments;
-import thaumic.tinkerer.common.lib.LibEnchantIDs;
 import thaumic.tinkerer.common.network.packet.PacketEnchanterAddEnchant;
 import thaumic.tinkerer.common.network.packet.PacketEnchanterStartWorking;
 
@@ -107,7 +106,7 @@ class EnchanterPacketsAndIconsTest {
     void aLevelIsReadOffTheEnchantmentsComponentOfAStack() {
         // standalone holders are enough: the level is found by the registry key of the holder
         HolderOwner<Enchantment> owner = new HolderOwner<>() {};
-        Holder<Enchantment> shatter = Holder.Reference.createStandAlone(owner, LibEnchantIDs.shatter);
+        Holder<Enchantment> shatter = Holder.Reference.createStandAlone(owner, ModEnchantments.shatter);
         Holder<Enchantment> sharpness = Holder.Reference.createStandAlone(owner, Enchantments.SHARPNESS);
 
         ItemStack pickaxe = new ItemStack(Items.DIAMOND_PICKAXE);
