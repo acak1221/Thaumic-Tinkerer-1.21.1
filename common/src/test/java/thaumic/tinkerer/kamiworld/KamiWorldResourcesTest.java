@@ -319,6 +319,37 @@ class KamiWorldResourcesTest {
         }
     }
 
+    /**
+     * The HUD draws the Soul Hearts as GUI sprites (`textures/gui/sprites/hud/`): the full heart is the 9 by 9 and the half heart the 7 by 9 at
+     * the top left of the 1.7.10 sheet `soulHearts.png` (`textures/gui/soul_hearts.png`), pixel for pixel.
+     */
+    @Test
+    void theHudSpritesAreTheTopLeftOfTheOriginalSheet() throws IOException {
+        java.awt.image.BufferedImage sheet;
+        try (InputStream in = KamiWorldResourcesTest.class.getResourceAsStream("/assets/" + NS + "/textures/gui/soul_hearts.png")) {
+            sheet = ImageIO.read(in);
+        }
+        int[][] cuts = { { 0, 9 }, { 9, 7 } };
+        String[] names = { "soul_heart_full", "soul_heart_half" };
+        for (int i = 0; i < 2; i++) {
+            try (InputStream in = KamiWorldResourcesTest.class.getResourceAsStream("/assets/" + NS + "/textures/gui/sprites/hud/" + names[i] + ".png")) {
+                assertTrue(in != null, names[i] + " exists");
+                var sprite = ImageIO.read(in);
+                assertEquals(cuts[i][1], sprite.getWidth(), names[i]);
+                assertEquals(9, sprite.getHeight(), names[i]);
+                for (int x = 0; x < sprite.getWidth(); x++) {
+                    for (int y = 0; y < 9; y++) {
+                        int a = sprite.getRGB(x, y);
+                        int b = sheet.getRGB(cuts[i][0] + x, y);
+                        // a fully transparent pixel may carry any colour
+                        if ((a >>> 24) == 0 && (b >>> 24) == 0) continue;
+                        assertEquals(b, a, names[i] + " at " + x + "," + y);
+                    }
+                }
+            }
+        }
+    }
+
     @Test
     void theHudAndScreenTexturesHaveTheSizesTheCodeAssumes() throws IOException {
         try (InputStream in = KamiWorldResourcesTest.class.getResourceAsStream("/assets/" + NS + "/textures/gui/soul_hearts.png")) {
