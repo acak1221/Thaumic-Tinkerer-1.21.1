@@ -96,6 +96,16 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
   (`Enchantments.ready()`, through `ModEnchantments.initJump()`), as the original's `preInit` and `init` did: `(0.42 + 0.3) × factor`, 1.08 for Ascent Boost I and
   1.80 for III, pinned by `gemBootsAndAscentBoostLeggingsComposeTheirJumps` (the first wiring had it reversed, 0.93 and 1.35). Shockwave's `LOW` priority of 1.7.10 is
   **not** reproduced against the listeners of other groups; it has no live effect, because the boot tags of Slow Fall and Shockwave exclude the Gem Boots.
+* **Modernization of 2026-11-01, package A (player data; KamiGear, KamiWorld, Foci, BasicItems).** The Soul Hearts, the Kami armour's master
+  switch, the Robes' flight grant, the progress of Mending and Efreet's Flame and the Talisman of Remedium's memory are data attachments of the player
+  (`HOOKS.md` section 17) instead of world files, static maps and packets; each is saved, copied on death and synced to its owner as the original's
+  value behaved (the group documents say how per value), and the world files of the earlier port (Soul Hearts, armour switch) are read once per
+  player when it joins and never written again, so **existing worlds keep their data**. What a player can notice: the Focus of Dislocation refuses
+  the blocks other mods put in the convention tag `#c:relocation_not_supported` (a fix; vanilla puts none there, `Foci.md` section 8); the Robes of the
+  Stratosphere leave alone what a pack adds to the Distortion blacklist tag, as the focus does (`KamiGear.md` section 15); the Experience Drain no
+  longer hangs the server for an experience total beyond the int range (a fix); two HSB colours (the Spellbinding Cloth, the Celestial Gateway map's
+  background) can differ by one step of 255 per channel (AWT rounded, `Mth` truncates). The audit expected a stale Robe flight after a relog; it does
+  not exist (the login gives a player its game mode's abilities on both loaders, `KamiGear.md` section 15).
 * **Licence split.** The port is CC BY-NC-SA 3.0 (`LICENSE`; `NOTICE.md` says which files are under which licence). It has its own repository
   (this one); the Thaumcraft mod stays MIT. The add-on's public-API additions in the mod (for example `IBauble.equipsOnUse`, `IFocusPouch`, `BaublesApi.getWorn`,
   `ThaumcraftApiHelper` scan and discovery helpers, `WarpEffects`) contain no Thaumic Tinkerer code.
@@ -199,8 +209,8 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 * The network behaviour of the packets between a real client and a real server beyond the scenarios of the multiplayer check (`MULTIPLAYER_VERIFICATION.md`).
   Since its second part every payload of the add-on has crossed a real connection in its main use, on both loaders (the config payload, the Enchanter's
   enchantment and start buttons, the Animation Tablet's and the Remote Placer's buttons, the Kami armour key, the Celestial Gateway's lock button and
-  teleport, Soul Hearts, the Shadowbeam, and the block-entity updates of the Enchanter, the tablet, the placer and the gateway); the Kami armour's
-  status packet only at login, with its default value.
+  teleport, Soul Hearts, the Shadowbeam, and the block-entity updates of the Enchanter, the tablet, the placer and the gateway). Since 2026-11-01 the
+  Soul Hearts and the Kami armour's switch reach the client as the loaders' attachment sync instead of the add-on's packets (section 2).
 * Claims mods other than Open Parties and Claims 0.33.0 (default configuration, on the server only), which the multiplayer check runs on both loaders
   (`MULTIPLAYER_VERIFICATION.md`, section h). **For the owner:** the Remote Placer and the Transvector Dislocator act as their fake player
   `[Minecraft]` (the shared machine player of 1.7.10), so a claims mod refuses them also in their owner's claim; whether they should act as the player

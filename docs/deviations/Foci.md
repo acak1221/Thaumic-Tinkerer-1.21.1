@@ -294,7 +294,9 @@ blacklist hooks (`BotaniaFunctions`, `BloodMagic`, `IManaBurst`), and the `canAp
 - **`#c:relocation_not_supported`** is part of the Dislocation's blacklist tag (section 8, a fix).
 - **Thaumcraft's ingredients by their native ids.** The foci's recipes name Thaumcraft's items by their native ids (`ItemsTC.stack("focus_pech")`)
   instead of the 1.7.10 field and metadata (`tc("itemFocusPech", 0)`; `ItemModFocus.tc`/`tcBlock` are deleted); the KamiGear GameTest
-  `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs` pins that each names the same stack.
+  `theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs` pins that each names the same stack. One pair stays: the Distortion's warding paving
+  stone, `ItemApi.getBlock("blockCosmeticSolid", 3)`, whose stack carries the block state `variant=3` that the native stack lacks (the check
+  found it; `docs/api-requests/Foci.md` section 5).
 - **Checks.** GameTest `healAndSmeltProgressBelongToThePlayerEntity` (two entities of one player count apart, a respawn after death keeps
   both, a logout ends them); `deflectShiftsForeignProjectilesAndSparesTheOwnAndTheBlacklisted` asks the tag. JUnit: the kinds of the two
   attachments, the tag files (`FociLogicTest`, `FociResourcesTest`). What ran is in `docs/AUDIT.md`, "Modernization (package A)".

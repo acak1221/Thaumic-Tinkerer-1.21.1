@@ -32,6 +32,7 @@ those of the files there).
 | Fabric helper of the drop capture, Fabric item renderer backend | `fabric/.../fabric/hooks/DropCapture.java`, `fabric/.../fabric/client/FabricItemRenderers.java` |
 | NeoForge posters | `neoforge/src/main/java/thaumic/tinkerer/neoforge/hooks/NeoForgeEventPosters.java` (the event handlers, subscribed by `ThaumicTinkererNeoForge`) and `LastHurtAccess.java`; mixins `neoforge/src/main/java/thaumic/tinkerer/neoforge/mixin/*`, config `neoforge/src/main/resources/thaumictinkerer-neoforge.mixins.json`, listed under `[[mixins]]` of `neoforge/src/main/resources/META-INF/neoforge.mods.toml` (section 9) |
 | May a player break or place here? (section 16) | `common/.../common/hooks/BlockProtection.java`; backends `fabric/.../fabric/hooks/FabricBlockProtection.java` and `neoforge/.../neoforge/hooks/NeoForgeBlockProtection.java`, installed by the loader entries |
+| Values a player carries: data attachments (section 17) | `common/.../common/hooks/PlayerData.java`; backends `fabric/.../fabric/hooks/FabricPlayerData.java` and `neoforge/.../neoforge/hooks/NeoForgePlayerData.java`, installed by the loader entries |
 | Runtime tests | `common/src/gameTest/.../testing/HooksRuntimeChecks.java` and `ProtectionRuntimeChecks.java`, Fabric wrappers `fabric/src/gameTest/.../testing/HooksGameTests.java`; NeoForge-only `neoforge/src/gameTest/.../testing/HooksNeoForgeTests.java`, the NeoForge body of the Fabric-native wrapper `HooksNeoForgeChecks.java`; JUnit `common/src/test/.../hooks/` |
 
 ## 1. Overview
@@ -863,3 +864,41 @@ this block" for a refused question as for a refused click). Checks: section 12 (
 Parties and Claims 0.33.0 in the multiplayer check (`MULTIPLAYER_VERIFICATION.md`, section h): it hears the break question on both loaders and the
 place question on NeoForge (`BlockEvent.EntityPlaceEvent`) and, since the change above, on Fabric. The devices (Remote Placer, Transvector
 Dislocator, Animation Tablet) ask as their fake player, whom such a mod treats as a stranger also in their owner's claim (same section).
+
+## 17. Player data (`PlayerData`)
+
+The values the add-on keeps on a player (1.7.10: the player's entity data, or static maps by player name) are **data attachments** of the
+player entity. Architectury 13 has no attachment API, so the common accessor `thaumic.tinkerer.common.hooks.PlayerData` is backed by the
+loader (the pattern of `BlockProtection`): Fabric API's Data Attachment API (`FabricPlayerData`, `fabric-data-attachment-api-v1` 1.4.7) and
+NeoForge's `AttachmentType`s in a `DeferredRegister` of `NeoForgeRegistries.ATTACHMENT_TYPES` (`NeoForgePlayerData`). Without a loader (the
+JUnit tests) an in-memory backend answers and logs once that nothing is saved.
+
+*A key* (`PlayerData.Key.builder(id, initial)`) says per value what the game does with it: `persistent(codec)` (saved with the player),
+`copyOnDeath()` (given to the new entity of a respawn after death; a respawn that is not a death, the way back from the End, copies every value
+on Fabric and every saved value on NeoForge), `syncedToOwner(streamCodec)` (every change, and the whole value on join, respawn and change of
+dimension, is sent to the player it belongs to and to nobody else; Fabric `syncWith(codec, AttachmentSyncPredicate.targetOnly())`, NeoForge
+`sync((holder, to) -> holder == to, codec)`). A value that is neither saved nor synced belongs to the entity object, so the client's
+`LocalPlayer` and the server's `ServerPlayer` of a single-player game have one each. On NeoForge a value that is copied on death but not saved
+gets a serializer that writes nothing and a copy handler that hands over the same object (NeoForge copies only serializable attachments).
+
+*Use:* `PlayerData.get` (the initial value when the player carries none; nothing is stored), `getOrCreate` (for a mutable transient value),
+`set`, `remove`, `has`. Register a key from a group's `register()` with `PlayerData.register(keys...)`, **whatever the config says**: both loaders
+drop an attachment whose type is unknown when the player loads. `PlayerData.migrateOnce(player, source, migration)` runs a migration of an old
+save file once per player and records it in the saved key `thaumictinkerer:migrated_legacy_data` (kept through death).
+
+| Key | Group | Saved | Copied on death | Synced to the owner |
+|---|---|---|---|---|
+| `thaumictinkerer:soul_hearts` | KamiWorld | yes (`Codec.intRange(0, 20)`) | no (1.7.10 lost it) | yes |
+| `thaumictinkerer:soul_heart_frames` | KamiWorld | no | no | no |
+| `thaumictinkerer:kami_armor_on` | KamiGear | yes | yes | yes |
+| `thaumictinkerer:robe_flight_granted` | KamiGear | no | no | no |
+| `thaumictinkerer:focus_heal_progress`, `focus_smelt_progress` | Foci | no | yes (1.7.10's maps by name kept them) | no |
+| `thaumictinkerer:cleansing_talisman_memory` | BasicItems | no | yes | no |
+| `thaumictinkerer:migrated_legacy_data` | the layer | yes | yes | no |
+
+The group documents say why per value (`deviations/KamiWorld.md` section 11, `KamiGear.md` section 15, `Foci.md` section 11,
+`BasicItems.md` section 11). Checks: the groups' GameTests log players out and in through the player list, respawn them through it, and read
+the loaders' sync payloads from a mock player's connection (`common/src/gameTest/.../testing/PlayerDataSync.java`: Fabric
+`fabric:attachment_sync_v1`, NeoForge `neoforge:sync_attachments`); a mock player has no configuration phase, so Fabric sends it changes but
+not the values it logged in with, which only a real client shows (the client smoke's Soul Hearts, the multiplayer check's Soul Hearts and armour key).
+
