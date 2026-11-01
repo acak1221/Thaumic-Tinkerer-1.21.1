@@ -15,13 +15,15 @@ sees, P3 only hardens something that works today).
 | A1 `IBauble.equipsOnUse(ItemStack, Player)` | `thaumcraft.api.baubles.IBauble.equipsOnUse` | `ItemBlockTalisman` (a sneak-click toggles the ring) and `ItemIchorPouch` (a click opens it) answer `false` |
 | A2 `IFocusPouch { getInventory, setInventory }` | `thaumcraft.api.wands.IFocusPouch` (128 cells at most) | `ItemIchorPouch implements IFocusPouch` (117 cells, `ItemContainerContents` component); `SlotNoPouches.isPouch` tests `instanceof IFocusPouch`, so Thaumcraft's own pouch is refused as in 1.7.10 |
 | A5 `isMirrorsAllowed()` | `ThaumcraftApi.isMirrorsAllowed()` | `KamiGear.ready()` queues the research of the Focus of Celestial Recall only while it is on (1.7.10 `getResearchItem` returned null otherwise) |
-| A6 `isWoodLog` / `breakFurthestBlock` | `ThaumcraftApiHelper.isWoodLog(Level, BlockPos)`, `breakFurthestBlock(Level, BlockPos, Block, Player)` | `ToolHandler.fellTree`, the tree mode of the Awakened Ichorium Axe, is the 1.7.10 loop over these two |
+| A6 `isWoodLog` / `breakFurthestBlock` | `ThaumcraftApiHelper.isWoodLog(Level, BlockPos)`, `breakFurthestBlock(Level, BlockPos, Block, Player)`, and the lookup `findFurthestBlock(Level, BlockPos, Block)` | `ToolHandler.fellTree`, the tree mode of the Awakened Ichorium Axe, is the 1.7.10 loop over the first two; since 2026-11-01 it finds every cell with the lookup first and asks `BlockProtection.mayBreak` about it |
 | K1 armour absorption (`ISpecialArmor`) | not the API: the add-on's loader event `TinkererEvents.LIVING_ARMOR_ABSORB` (section 1) | `IchorAbsorption`, registered by `KamiArmorHandler.register()` |
 
-Consequences of the API's own rules, kept as they are: `isWoodLog` is false for the plain oak log (the original's rule, so tree
-mode does not fell oak trees), `breakFurthestBlock` wears no tool, fires no loader break event and asks no claims or protection mod, but
-does check the game's own rules for the cell it breaks (`mayBreakFar`: the world border, `Level.mayInteract`, so spawn protection, and
-`blockActionRestricted`, so adventure and spectator mode; see `docs/deviations/KamiGear.md` section 4).
+Consequences of the API's own rules, kept as they are: `isWoodLog` is membership of `#minecraft:logs` (in `0.1.0-alpha.7` the plain oak
+log included; this note said before that it was not), `breakFurthestBlock` wears no tool, fires no loader break event and asks no claims or
+protection mod, but does check the game's own rules for the cell it breaks (`mayBreakFar`: the world border, `Level.mayInteract`, so spawn
+protection, and `blockActionRestricted`, so adventure and spectator mode). The protection mods are asked by the add-on: the API's lookup
+`findFurthestBlock` names the cell the next call breaks, and `ToolHandler.fellTree` asks `BlockProtection.mayBreak` about it first (see
+`docs/deviations/KamiGear.md` section 4).
 
 ## 1. Armour absorption (K1, answered by a loader event of the add-on)
 

@@ -16,12 +16,12 @@ package thaumic.tinkerer.common.dim;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -105,9 +105,10 @@ public enum EnumOreFrequency {
     /**
      * 1.7.10 {@code getRandomOre}: one draw {@code nextInt(sum)}, then the entries are walked in order, subtracting their
      * weights, until the draw goes negative. Returns the index of the entry picked, or -1 when there are no weights
-     * (the original would throw on {@code nextInt(0)}).
+     * (the original would throw on {@code nextInt(0)}). The random is the feature's ({@code BedrockOreClustersFeature}); 1.7.10
+     * passed the {@code java.util.Random} of the chunk.
      */
-    public static int pickIndex(int[] weights, Random rand) {
+    public static int pickIndex(int[] weights, RandomSource rand) {
         int sum = 0;
         for (int weight : weights) sum += weight;
         if (sum <= 0) return -1;
@@ -202,7 +203,7 @@ public enum EnumOreFrequency {
      * ore when the draw fell through; here that case and "no valid ore at all" answer null and the caller skips the cluster
      * (the original crashed on {@code nextInt(0)} without ores).
      */
-    public static BlockState getRandomOre(Random rand, String[] blacklist) {
+    public static BlockState getRandomOre(RandomSource rand, String[] blacklist) {
         List<EnumOreFrequency> valid = getValidOres(blacklist);
         int[] weights = new int[valid.size()];
         for (int i = 0; i < weights.length; i++) weights[i] = valid.get(i).freq;

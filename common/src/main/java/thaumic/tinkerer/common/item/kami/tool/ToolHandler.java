@@ -258,6 +258,13 @@ public final class ToolHandler {
      * ({@link ThaumcraftApiHelper#breakFurthestBlock}) until the clicked cell is air, which fells the connected logs and
      * ends with the clicked one; then the items around the foot of the tree are gathered at the clicked cell.
      *
+     * <p>New in the port: every log is asked about before it goes. The API's helper checks the game's rules for the cell it breaks
+     * but no protection mod, and that cell lies up to 24 blocks sideways and 48 up or down from the clicked one, so the loop first
+     * finds it with the API's own lookup ({@link ThaumcraftApiHelper#findFurthestBlock}, the same walk without breaking), asks
+     * {@link BlockProtection#mayBreak} about it (the game's rules and the loader's break event, which claim mods answer) and only
+     * then lets the helper break it. A refused log ends the felling: the walk would end on it again. Nothing else changes: the
+     * same blocks in the same order, broken by the API as before (its drops, no tool wear, no break event of their own).</p>
+     *
      * <p>The original looped while the clicked cell was not air. A break that something vetoes would leave it standing and
      * the loop endless, so the loop stops after {@value #TREE_LIMIT} blocks or when the helper breaks nothing.</p>
      */
@@ -266,7 +273,12 @@ public final class ToolHandler {
         for (int i = 0; i < TREE_LIMIT; i++) {
             BlockState state = level.getBlockState(origin);
             if (state.isAir()) break;
-            if (!ThaumcraftApiHelper.breakFurthestBlock(level, origin, state.getBlock(), player)) break;
+            Block block = state.getBlock();
+            BlockPos end = ThaumcraftApiHelper.findFurthestBlock(level, origin, block);
+            if (end == null || !BlockProtection.mayBreak(player, level, end, level.getBlockState(end))) break;
+            // A listener of the question that changed the tree would move the end of the walk: ask again about the new end.
+            if (!end.equals(ThaumcraftApiHelper.findFurthestBlock(level, origin, block))) continue;
+            if (!ThaumcraftApiHelper.breakFurthestBlock(level, origin, block, player)) break;
         }
 
         AABB box = new AABB(origin.getX() - 5, origin.getY() - 1, origin.getZ() - 5, origin.getX() + 5,

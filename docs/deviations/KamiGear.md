@@ -22,7 +22,8 @@ ru_ru) were drawn without an exception and the pictures were read. The Ghost blo
 were **not seen**. On NeoForge (2026-10-31) the group's 36 GameTests passed on a NeoForge GameTest server (`docs/HOOKS.md` section 9); nothing of the group has been
 seen in a NeoForge client yet. The review fixes of 2026-11-01 (the reach of the left-click handlers, the Placement Mirror's state and protection, the
 pouch in container items, Soul Mode, the Gem Boots' step) added one JUnit test (36 in `KamiGearLogicTest` and `KamiGearResourcesTest`) and ten
-GameTests (46); what was run of them is said where each fix is described.
+GameTests (46); what was run of them is said where each fix is described. The follow-up of the same day (tree mode asks the protection mods,
+section 4) added one GameTest (47).
 
 ## 1. Identity: registry paths, components, models
 
@@ -245,14 +246,29 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   `useOn` that runs before `use` and would swallow a sneak-click on a block, so the awakened shovel and axe pass `useOn` while
   sneaking. Those two vanilla abilities themselves are new (1.7.10 had neither) and are inherited by all four shovels and axes.
 - **Tree mode** is the 1.7.10 loop over Thaumcraft's own two helpers (now API, request A6): while the clicked cell is not air, break
-  the furthest block of the walk that starts there. Their rules apply: oak logs are not logs for them (the original's rule), no tool
-  wear, no break event for the felled logs, a walk limited to 24 blocks sideways and 48 up or down. The game's own rules are checked for every
-  felled log by the API itself (`ThaumcraftApiHelper.breakFurthestBlock` asks `mayBreakFar` about the cell it breaks: inside the world border,
-  `Level.mayInteract`, so spawn protection, and `blockActionRestricted`, so adventure and spectator; read in the API source of
-  `thaumcraft:Thaumcraft-fabric:0.1.0-alpha.7`); a claims or protection mod is not asked (the API says so: a caller on claimed land would ask
-  `findFurthestBlock` first; the port does not). Two
-  small differences: the loop stops after 1024 blocks or when the helper breaks nothing (1.7.10 would loop forever if a break was
-  vetoed), and the gathered items keep their normal pickup delay (1.7.10 added 20 ticks to their age, which has no counterpart).
+  the furthest block of the walk that starts there. Their rules apply: a log is a block of `#minecraft:logs` (the API's `isWoodLog`, oak
+  included; this text said before that oak logs were not logs for them, which the API of `0.1.0-alpha.7` no longer says), the walk
+  follows exactly the clicked block, no tool wear, no break event for the felled logs, a walk limited to 24 blocks sideways and 48 up or down.
+  The game's own rules are checked for every felled log by the API itself (`ThaumcraftApiHelper.breakFurthestBlock` asks `mayBreakFar` about
+  the cell it breaks: inside the world border, `Level.mayInteract`, so spawn protection, and `blockActionRestricted`, so adventure and
+  spectator; read in the API source of `thaumcraft:Thaumcraft-fabric:0.1.0-alpha.7`). **Protection mods (new, follow-up of the audit, fixed
+  2026-11-01):** the API's helper asks no claims or protection mod, and the cell it breaks is not the clicked one (up to 24 blocks sideways and
+  48 up or down from it), so the vanilla break event of the clicked log said nothing about the rest of the tree. `ToolHandler.fellTree` now does
+  what the API's documentation asks of a caller on claimed land: for every log it first finds the cell the next call will break with the API's
+  own lookup (`ThaumcraftApiHelper.findFurthestBlock`, the same walk without breaking; no copy of the walk in the add-on), asks
+  `BlockProtection.mayBreak(player, level, cell, state)` about it (the game's rules and the loader's break event as a question, which claim mods
+  answer: `docs/HOOKS.md`), and only then calls `breakFurthestBlock`, which breaks it as before (its drops, rolled with the held axe; no tool
+  wear; no break event of its own). A refused log ends the felling: the walk would end on it again. If a listener of the question changed the
+  tree, so that the walk now ends elsewhere, the new end is asked about before anything is broken. Nothing else changed: the same blocks in the
+  same order, at the same cost. What stays of a refused tree is what the player's own break leaves: the clicked log goes by the normal break
+  (which its own break event already asked), the rest stands. GameTest `awakenedAxeTreeModeAsksTheProtectionAboutEveryLog` (a trunk of six birch
+  logs clicked at its foot; passed on the Fabric and the NeoForge GameTest server, 2026-11-01): a backend that refuses everything is asked once,
+  about the top log, and only the clicked log falls (by the player's own break); a backend that refuses the third log is asked from the top
+  down to it, and the three above it fall; the installed backend fells the whole trunk, six logs on the ground. With the old loop (the mutation
+  run of that day) the check fails at its first step. A real claims mod was not run (the loader backends are what `docs/HOOKS.md` describes).
+  Two small differences from 1.7.10: the loop stops after 1024 blocks or when the helper breaks nothing or the protection refuses (1.7.10 would
+  loop forever if a break was vetoed), and the gathered items keep their normal pickup delay (1.7.10 added 20 ticks to their age, which has no
+  counterpart).
 - **Sword, area mode.** 1.7.10 had no attack cooldown; without a fast attack speed every hit after the first would deal a fifth
   of its damage, so the attack speed gets a temporary huge modifier while the area strike runs. The mode is started from
   `PlayerEvent.ATTACK_ENTITY`, before the hit, like `onLeftClickEntity`. Soul mode gives the target Resistance II for one tick and

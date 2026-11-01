@@ -31,6 +31,11 @@ public final class KamiWorldGameTests implements FabricGameTest {
         KamiWorldRuntimeChecks.bedrockOreConfigDecidesDensityAndBlacklist(test);
     }
 
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 1200)
+    public void bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable(GameTestHelper test) {
+        KamiWorldRuntimeChecks.bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable(test);
+    }
+
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE, timeoutTicks = 400)
     public void portalDestinationsFollowTheRules(GameTestHelper test) {
         KamiWorldRuntimeChecks.portalDestinationsFollowTheRules(test);

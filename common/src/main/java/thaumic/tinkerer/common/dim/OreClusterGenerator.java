@@ -9,14 +9,9 @@
  */
 package thaumic.tinkerer.common.dim;
 
-import java.util.Random;
 import java.util.function.Function;
-import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
-import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.util.RandomSource;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 
 /**
@@ -24,12 +19,14 @@ import thaumic.tinkerer.common.core.handler.ConfigHandler;
  * ({@link EnumOreFrequency}) and generated 200 times at random heights of the same column as a vein of 0 to 19 blocks
  * that replaces bedrock only.
  *
- * <p>1.7.10 ran this from {@code ChunkProviderBedrock.populate}, with Forge's {@code WorldGenMinable} for the veins. Here it
- * runs from {@code ChunkGeneratorBedrock.applyBiomeDecoration} on the {@code WorldGenLevel} of the chunk, and the vein is
- * the 1.7.10 {@code WorldGenMinable.generate} loop, unchanged (the lookup-table {@code sin}, the order of the random
- * draws, the ellipsoid test), behind the small {@link VeinTarget} interface so that it can be tested without a world.
- * A vein starts at 8 to 23 blocks into the chunk's own column and reaches at most four blocks beyond that, so it never
- * leaves the chunk it was started in or the one east and south of it ({@link #reaches}).</p>
+ * <p>1.7.10 ran this from {@code ChunkProviderBedrock.populate}, with a {@code java.util.Random} seeded from the world seed and
+ * the chunk, and Forge's {@code WorldGenMinable} for the veins. Here it is the work of the world-generation feature
+ * {@link BedrockOreClustersFeature} ({@code thaumictinkerer:bedrock_ore_clusters}, a feature of the Bedrock biome in the
+ * underground-ores step), which hands in the {@code RandomSource} that the game seeds for the feature, and the world. This
+ * class is the pure part: the cluster loop and the 1.7.10 {@code WorldGenMinable.generate} loop, unchanged (the lookup-table
+ * {@code sin}, the order of the random draws, the ellipsoid test), behind the small {@link VeinTarget} interface so that it can
+ * be tested without a world. A vein starts at 8 to 23 blocks into the chunk's own column and reaches at most four blocks beyond
+ * that, so it never leaves the chunk it was started in or the one east and south of it ({@link #reaches}).</p>
  */
 public final class OreClusterGenerator {
     /** The number of veins of one cluster (1.7.10: 200). */
@@ -60,48 +57,6 @@ public final class OreClusterGenerator {
         void place(int x, int y, int z);
     }
 
-    /**
-     * The random of a chunk (1.7.10 {@code ChunkProviderBedrock.populate}): seeded from the world seed alone, two odd
-     * multipliers drawn from it, then the chunk coordinates mixed in with the seed.
-     */
-    public static Random chunkRandom(long worldSeed, int chunkX, int chunkZ) {
-        Random random = new Random(worldSeed);
-        long i1 = random.nextLong() / 2L * 2L + 1L;
-        long j1 = random.nextLong() / 2L * 2L + 1L;
-        random.setSeed((long) chunkX * i1 + (long) chunkZ * j1 ^ worldSeed);
-        return random;
-    }
-
-    /**
-     * The clusters of a chunk on a world being generated. Only the area {@code chunkX..chunkX+1} by {@code chunkZ..chunkZ+1}
-     * is written (the generation region of the features step allows one chunk of overhang).
-     */
-    public static void populate(WorldGenLevel level, int chunkX, int chunkZ) {
-        int density = density();
-        if (density <= 0) return;
-        final int minY = level.getMinBuildHeight();
-        final int maxY = level.getMaxBuildHeight();
-        Random random = chunkRandom(level.getSeed(), chunkX, chunkZ);
-        // 1.7.10 drew three numbers here (the position of a lake generator that was never used) before the clusters.
-        random.nextInt(16);
-        random.nextInt(128);
-        random.nextInt(16);
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        String[] blacklist = blacklist();
-        generate(random, chunkX, chunkZ, density, rnd -> EnumOreFrequency.getRandomOre(rnd, blacklist), new ClusterWorld<BlockState>() {
-            @Override
-            public boolean isReplaceable(int x, int y, int z) {
-                if (y < minY || y >= maxY || !reaches(chunkX, chunkZ, x, z)) return false;
-                return level.getBlockState(pos.set(x, y, z)).is(Blocks.BEDROCK);
-            }
-
-            @Override
-            public void place(int x, int y, int z, BlockState ore) {
-                level.setBlock(pos.set(x, y, z), ore, Block.UPDATE_CLIENTS);
-            }
-        });
-    }
-
     /** What the clusters need from the world: like {@link VeinTarget}, but what is placed is the ore of the cluster. */
     public interface ClusterWorld<T> {
         boolean isReplaceable(int x, int y, int z);
@@ -114,7 +69,7 @@ public final class OreClusterGenerator {
      * ore, then 200 times a vein of random size at a random height in that column. The draw order is the original's:
      * x, z, the ore, then for each vein the height, the size and the vein's own draws.
      */
-    public static <T> void generate(Random random, int chunkX, int chunkZ, int density, Function<Random, T> orePicker,
+    public static <T> void generate(RandomSource random, int chunkX, int chunkZ, int density, Function<RandomSource, T> orePicker,
             ClusterWorld<T> world) {
         for (int k = 0; k < density; k++) {
             int firstBlockXCoord = 16 * chunkX + random.nextInt(16);
@@ -151,7 +106,7 @@ public final class OreClusterGenerator {
      * ellipsoids along a line of random direction through (x + 8, y, z + 8), the radius swelling in the middle of the line.
      * Nothing is placed for a size of 0.
      */
-    public static void generateVein(Random rand, int numberOfBlocks, int x, int y, int z, VeinTarget target) {
+    public static void generateVein(RandomSource rand, int numberOfBlocks, int x, int y, int z, VeinTarget target) {
         float f = rand.nextFloat() * (float) Math.PI;
         double d0 = (float) (x + 8) + Mth.sin(f) * (float) numberOfBlocks / 8.0F;
         double d1 = (float) (x + 8) - Mth.sin(f) * (float) numberOfBlocks / 8.0F;

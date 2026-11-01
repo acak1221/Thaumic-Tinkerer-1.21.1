@@ -240,4 +240,9 @@ public final class KamiGearGameTests implements FabricGameTest {
     public void switchedOffGemBootsGiveTheStepWhileThePlayerWalks(GameTestHelper test) {
         KamiGearRuntimeChecks.switchedOffGemBootsGiveTheStepWhileThePlayerWalks(test);
     }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void awakenedAxeTreeModeAsksTheProtectionAboutEveryLog(GameTestHelper test) {
+        KamiGearRuntimeChecks.awakenedAxeTreeModeAsksTheProtectionAboutEveryLog(test);
+    }
 }

@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -68,6 +69,7 @@ import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import thaumcraft.api.ThaumcraftApiHelper;
 import thaumcraft.api.baubles.IBauble;
 import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchCategories;
@@ -82,6 +84,7 @@ import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
 import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
 import thaumic.tinkerer.common.core.helper.BonemealEventHandler;
+import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
 import thaumic.tinkerer.common.item.kami.ItemBlockTalisman;
 import thaumic.tinkerer.common.item.kami.ItemIchorPouch;
@@ -2059,5 +2062,88 @@ public final class KamiGearRuntimeChecks {
             player.discard();
         }
         test.succeed();
+    }
+
+    /**
+     * Tree mode asks {@code BlockProtection.mayBreak} about every log before the API's helper breaks it (the helper asks the game's
+     * rules only, no protection mod). The walk breaks the furthest log first, so a trunk of six birch logs clicked at its foot falls
+     * from the top down and the clicked log comes last. A backend that refuses everything is asked once, about the top log, and
+     * nothing is felled: only the clicked log goes, by the player's own break. A backend that refuses the third log lets the three
+     * above it go, is asked about the third and stops there. The loader's own backend fells the whole trunk, as before: six logs,
+     * gathered at the foot, and the player's own break finds air.
+     */
+    public static void awakenedAxeTreeModeAsksTheProtectionAboutEveryLog(GameTestHelper test) {
+        floor(test);
+        ItemStack axe = TTRegistry.stack(LibItemNames.ICHOR_AXE_GEM);
+        ToolHandler.changeMode(axe);
+        ToolHandler.changeMode(axe);
+        test.assertTrue(ToolHandler.getMode(axe) == 2, "tree mode");
+        // The player looks at the trunk (its ray meets (3, 2, 3)): the awakened axe starts its mode only with a block in sight.
+        ServerPlayer player = player(test, 3.5, 1, 1.5, 0, 0);
+        player.setItemInHand(InteractionHand.MAIN_HAND, axe);
+        BlockPos foot = test.absolutePos(new BlockPos(3, 1, 3));
+        List<BlockPos> asked = new ArrayList<>();
+        BlockProtection.Backend installed = BlockProtection.backend();
+        try {
+            BlockProtection.setBackend(askedAbout(asked, pos -> true));
+            test.assertTrue(fellTrunk(test, player, foot) == 1, "refused: one log on the ground, the clicked one");
+            test.assertTrue(asked.equals(List.of(foot.above(5))), "asked about the furthest log only: " + asked);
+            for (int y = 1; y <= 5; y++) {
+                test.assertTrue(test.getLevel().getBlockState(foot.above(y)).is(Blocks.BIRCH_LOG), "a refused trunk stands, " + y + " above the foot");
+            }
+            test.assertTrue(test.getLevel().getBlockState(foot).isAir(), "the clicked log goes by the player's own break");
+
+            asked.clear();
+            BlockProtection.setBackend(askedAbout(asked, pos -> pos.equals(foot.above(2))));
+            test.assertTrue(fellTrunk(test, player, foot) == 4, "three felled logs and the clicked one on the ground");
+            test.assertTrue(asked.equals(List.of(foot.above(5), foot.above(4), foot.above(3), foot.above(2))),
+                    "asked from the top down to the refused log: " + asked);
+            for (int y = 0; y <= 5; y++) {
+                boolean standing = y == 1 || y == 2;
+                test.assertTrue(test.getLevel().getBlockState(foot.above(y)).is(Blocks.BIRCH_LOG) == standing,
+                        (standing ? "the refused log and the one below it stand, " : "gone, ") + y + " above the foot");
+            }
+        } finally {
+            BlockProtection.setBackend(installed);
+        }
+        test.assertTrue(fellTrunk(test, player, foot) == 6, "the installed backend: the whole trunk on the ground");
+        for (int y = 0; y <= 5; y++) test.assertTrue(test.getLevel().getBlockState(foot.above(y)).isAir(), "felled, " + y + " above the foot");
+        test.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(foot).inflate(8)).forEach(item -> item.discard());
+        player.discard();
+        test.succeed();
+    }
+
+    /** A protection backend that records what it is asked about and refuses the positions {@code refuse} names. */
+    private static BlockProtection.Backend askedAbout(List<BlockPos> asked, Predicate<BlockPos> refuse) {
+        return new BlockProtection.Backend() {
+            @Override
+            public boolean mayBreak(ServerPlayer player, ServerLevel level, BlockPos pos, BlockState state) {
+                asked.add(pos.immutable());
+                return !refuse.test(pos);
+            }
+
+            @Override
+            public boolean mayPlace(ServerPlayer player, ServerLevel level, BlockPos pos, BlockState state) {
+                return true;
+            }
+        };
+    }
+
+    /**
+     * Puts up a trunk of six birch logs on {@code foot} (a log for the API's walk), clears the items around it, lets the player
+     * break the foot and answers how many birch logs lie on the ground afterwards (the felled ones are gathered at the foot).
+     */
+    private static int fellTrunk(GameTestHelper test, ServerPlayer player, BlockPos foot) {
+        ServerLevel level = test.getLevel();
+        for (int y = 0; y <= 5; y++) level.setBlock(foot.above(y), Blocks.BIRCH_LOG.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_ALL);
+        test.assertTrue(ThaumcraftApiHelper.isWoodLog(level, foot), "birch is a log for the API's walk");
+        AABB around = new AABB(foot).inflate(8);
+        level.getEntitiesOfClass(ItemEntity.class, around).forEach(item -> item.discard());
+        player.gameMode.destroyBlock(foot);
+        int logs = 0;
+        for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, around)) {
+            if (item.isAlive() && item.getItem().is(Items.BIRCH_LOG)) logs += item.getItem().getCount();
+        }
+        return logs;
     }
 }

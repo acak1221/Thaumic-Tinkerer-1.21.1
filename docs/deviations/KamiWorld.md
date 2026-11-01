@@ -7,8 +7,8 @@ source is listed; everything else (numbers, ore weights, research keys and posit
 messages, config use) is ported as it is.
 
 How this was checked (honestly): the add-on compiles with `tools/compile.sh` (whole tree and with `-g`). The pure logic and the
-data files are covered by JUnit tests (`common/src/test/java/thaumic/tinkerer/kamiworld`, 38 checks) that were first **run with a
-hand-written stand-in for JUnit Jupiter** (the real one was not available offline then) and now run under the real one (below): they pass. The
+data files are covered by JUnit tests (`common/src/test/java/thaumic/tinkerer/kamiworld`, 38 checks then, 39 since the follow-up round
+below) that were first **run with a hand-written stand-in for JUnit Jupiter** (the real one was not available offline then) and now run under the real one (below): they pass. The
 dimension type and biome JSON were parsed with the game's own codecs (`DimensionType.DIRECT_CODEC`, `Biome.DIRECT_CODEC`,
 `ChunkGeneratorBedrock.CODEC` over the dimension file's generator object) in a throw-away program on the game classes, and the
 chunk fill, the ore selection with bound item tags and the ore clusters through `applyBiomeDecoration` (with a proxy world) were
@@ -16,8 +16,13 @@ run there as well. The GameTests (`KamiWorldRuntimeChecks`, 20 checks) run on a 
 (`runTinkererGameTest`, filter `kamiworldgametests.*`) and **pass there**: 17 of 17 in the integration round (section 10 says what
 that round changed in the tests and why), 19 of 19 after the hooks round (the groups moved from their workarounds to the real events of
 `docs/HOOKS.md`: the hooks-round bullet of section 10; run with the 12 `hooksgametests.*` of that day, 31 of 31) and 20 of 20 after the review round
-(the review-round bullet of section 10; run with the 13 `hooksgametests.*` that existed then, 33 of 33; `HooksGameTests` has 14 methods now, one more than in that run). The JUnit tests of the group
-(`KamiWorldLogicTest` 24, `KamiWorldResourcesTest` 14) pass under the real JUnit Jupiter (`tinkererTest --tests 'thaumic.tinkerer.kamiworld.*'`). The client side was looked at once in a Fabric dev client under software
+(the review-round bullet of section 10; run with the 13 `hooksgametests.*` that existed then, 33 of 33; `HooksGameTests` has 14 methods now, one more than in that run).
+**Follow-up round (2026-11-01, after the defect audit):** the ore clusters became a world-generation feature (section 2, "Ore clusters"); the
+check `bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable` is new (21 GameTests; all 21 passed on the Fabric and the NeoForge
+GameTest server in the full runs of that day), `KamiWorldLogicTest` lost the check of the 1.7.10 chunk seeding and gained one of the
+seeding contract, and `KamiWorldResourcesTest` gained the check of the feature's data. The chunk fill, the ore selection and the clusters
+were then run in the real server only (the throw-away program of the first round ran the old `applyBiomeDecoration`). The JUnit tests of the group
+(`KamiWorldLogicTest` 24, `KamiWorldResourcesTest` 15) pass under the real JUnit Jupiter (`tinkererTest --tests 'thaumic.tinkerer.kamiworld.*'`). The client side was looked at once in a Fabric dev client under software
 rendering (`docs/CLIENT_VERIFICATION.md`, 2026-10-30): the gateway block and item, its renderer close-up, the two gateway screens (the menu and the destinations
 screen, also in ru_ru) and the Soul Hearts row (a value written directly in survival mode) were drawn without an exception and the pictures were read. **Not seen:** clicks and
 keys on the gateway screens, a hit taken in the survival of a real client (the HUD row was fed a value, not damage), the Bedrock dimension itself (sky, light, the portal in use),
@@ -31,7 +36,7 @@ a GPU, multiplayer. **On NeoForge** (2026-10-31, the posters of `docs/HOOKS.md` 
 |---|---|
 | block `warpGate` (+ `ItemBlockWarpGate`, a plain item block that was never registered on its own) | block and item `thaumictinkerer:warp_gate` (`LibBlockNames.WARP_GATE`), block entity type and menu type of the same path |
 | block `portal` (`BlockBedrockPortal`; `getItemBlock()` returned null, so `GameRegistry` registered the default item block, and the block was in the creative tab) | block `thaumictinkerer:bedrock_portal` (`LibBlockNames.PORTAL`) with the default item, a creative tab entry and an item model, no block entity (section 3) |
-| dimension id -19 (`bedrockDimensionID`, config), `WorldProviderBedrock`, `ChunkProviderBedrock` | the dimension `thaumictinkerer:bedrock` (`WorldProviderBedrock.KEY`): `data/thaumictinkerer/dimension/bedrock.json`, `dimension_type/bedrock.json`, `worldgen/biome/bedrock.json`, generator type `thaumictinkerer:bedrock` (`ChunkGeneratorBedrock`, a `DeferredRegister` of `Registries.CHUNK_GENERATOR` in `KamiWorld`) |
+| dimension id -19 (`bedrockDimensionID`, config), `WorldProviderBedrock`, `ChunkProviderBedrock` | the dimension `thaumictinkerer:bedrock` (`WorldProviderBedrock.KEY`): `data/thaumictinkerer/dimension/bedrock.json`, `dimension_type/bedrock.json`, `worldgen/biome/bedrock.json`, generator type `thaumictinkerer:bedrock` (`ChunkGeneratorBedrock`, a `DeferredRegister` of `Registries.CHUNK_GENERATOR` in `KamiWorld`); the ore clusters of `populate`: feature type `thaumictinkerer:bedrock_ore_clusters` (`BedrockOreClustersFeature`, `Registries.FEATURE`) with `worldgen/configured_feature/bedrock_ore_clusters.json` and `worldgen/placed_feature/bedrock_ore_clusters.json` |
 | ore dictionary names of `EnumOreFrequency` | the same names, resolved to item tags by `OreDictionaryNames`; "first ore" is the member with the lowest registry id |
 | `PacketSoulHearts`, `PacketWarpGateButton`, `PacketWarpGateTeleport` (`SimpleNetworkWrapper`, ids 142+) | `CustomPacketPayload` records `soul_hearts` (S2C), `warp_gate_button`, `warp_gate_teleport` (C2S) |
 | `LibGuiIDs.GUI_ID_WARP_GATE`, `GUI_ID_WARP_GATE_DESTINATIONS` | menu type `warp_gate` (`ContainerWarpGate`); the destinations screen has no container and is opened by the block entity on the client (`TileWarpGate.setDestinationsOpener`) |
@@ -40,9 +45,11 @@ a GPU, multiplayer. **On NeoForge** (2026-10-31, the posters of `docs/HOOKS.md` 
 | `DimensionalShardDropHandler`, `SoulHeartHandler` (Forge event handlers) | `core.handler.kami.DimensionalShardDropHandler` (a listener of `TinkererEvents.LIVING_DROPS`) and `SoulHeartHandler` (a listener of `TinkererEvents.LIVING_DAMAGE`, Architectury events for the player's login, respawn and logout), registered by `KamiWorld.register()` |
 
 Everything of the group is registered only when `ConfigHandler.enableKami` is on (1.7.10: `shouldRegister() == enableKami` and
-the handlers registered in `if (enableKami)`), with **one exception**: the chunk generator type `thaumictinkerer:bedrock`. The
-dimension is a file of the data pack that names that type, and a data pack that cannot decode a dimension stops the world from
-loading; with Kami off the dimension exists but nothing leads there and nothing in the add-on touches it. The
+the handlers registered in `if (enableKami)`), with **two exceptions**: the chunk generator type `thaumictinkerer:bedrock` and the
+feature type `thaumictinkerer:bedrock_ore_clusters`. The dimension is a file of the data pack that names the generator type, its biome
+names the placed feature of the ore clusters and that feature's configured feature names the feature type, and a data pack that cannot
+decode a dimension, a biome or a feature stops the world from loading; with Kami off the dimension exists but nothing leads there and
+nothing in the add-on touches it. The
 `ThaumicTinkerer.preInit` registration of the provider type and the dimension (`DimensionManager`) and the config option
 `bedrockDimensionID` (0 disabled the dimension) are gone; `enableKami` is the switch.
 
@@ -67,18 +74,37 @@ KamiGear group as `ItemIchorPickAdv.onLeftClickBlock`, which the KamiGear docs s
   its own `DimensionSpecialEffects` in common code), and the biome carries `fog_color 0x181318`. Difference: the overworld
   effects scale the fog colour with the time of day (night fog is darker than the constant colour of 1.7.10), and the sky colour
   is that of the beach (`7907327`).
-- **Biome.** A data biome `thaumictinkerer:bedrock`: the beach's temperature and rain, no features, no carvers, the monsters of
+- **Biome.** A data biome `thaumictinkerer:bedrock`: the beach's temperature and rain, one feature (the ore clusters, in the
+  underground-ores step, below), no carvers, the monsters of
   the 1.7.10 default list (spider, zombie, skeleton, creeper, slime weight 100 in groups of 4; enderman 10, 1 to 4; witch 5), no
   animals (the beach cleared them), bats and squid. 1.7.10's zombie villagers and 1.21's other new mobs are not added.
 - **Terrain.** `ChunkGeneratorBedrock` fills every block of every chunk with bedrock (`fillFromNoise`) and primes the generation
   heightmaps; `applyCarvers`, `buildSurface`, `spawnOriginalMobs` do nothing; `getBaseHeight` is the top and `getBaseColumn` is
-  all bedrock; the sea level answers 1 (`getAverageGroundLevel`). No structures: the fixed biome source has no structure set.
-- **Ore clusters.** `OreClusterGenerator.populate` is `ChunkGeneratorBedrock.applyBiomeDecoration` (1.7.10: `populate`): the random is
-  seeded exactly like the original (`chunkRandom`: two odd multipliers drawn from the world seed, mixed with the chunk
-  coordinates, then the three unused draws of the lake generator), `ConfigHandler.bedrockOreDensity` clusters per chunk (a column,
-  one ore picked by weight), 200 veins of 0 to 19 blocks each at heights 6 to 250 that replace **bedrock only**
-  (`isReplaceableOreGen(bedrock)`). The vein is the 1.7.10 `WorldGenMinable.generate` loop line by line (the table `sin`, the
-  order of the draws), now `OreClusterGenerator.generateVein`. A vein reaches at most the chunk and the one east and south of it
+  all bedrock; the sea level answers 1 (`getAverageGroundLevel`). No structures: the fixed biome source has no structure set. The
+  decoration is the inherited `ChunkGenerator.applyBiomeDecoration` (the biome's features; until the follow-up round of 2026-11-01 the
+  class overrode it with the ore clusters). **Why not a data-only generator** (looked at in that round): `minecraft:flat` with 256 layers
+  of bedrock gives the same blocks, but `FlatLevelSource` answers a sea level of -63 (bytecode of 1.21.1), not 1; a `minecraft:noise`
+  generator with a constant density could keep both, but it runs the noise, surface and aquifer machinery for a solid block, can be
+  changed by mods that edit noise settings, and a saved world names `thaumictinkerer:bedrock` in its `level.dat` (the server writes every
+  level stem there). So the generator stays, without a decoration of its own.
+- **Ore clusters.** 1.7.10's `populate` is a world-generation feature (follow-up of the defect audit, 2026-11-01; until then it was a
+  hand-written decoration, an override of `ChunkGeneratorBedrock.applyBiomeDecoration` with the 1.7.10 random): the feature type
+  `thaumictinkerer:bedrock_ore_clusters` (`BedrockOreClustersFeature`), its configured feature (no configuration) and its placed feature
+  (only the biome filter: the feature does its chunk itself) in the data pack, listed by the Bedrock biome in the underground-ores step
+  (`GenerationStep.Decoration.UNDERGROUND_ORES`, index 6). The game runs it once per chunk at the features step, at the chunk's origin,
+  with the `RandomSource` it seeds for every feature (`WorldgenRandom.setDecorationSeed` from the world seed and the chunk, then
+  `setFeatureSeed` with the feature's index and step). One run is what `populate` did: `ConfigHandler.bedrockOreDensity` clusters per
+  chunk (a config option, so the count is read by the feature and is not a `count` placement of the data), each a column and one ore
+  picked by weight from the valid ores (`EnumOreFrequency`: the ore tags, without what `bedrockOreBlacklist` names), 200 veins of 0 to 19
+  blocks each at heights 6 to 250 that replace **bedrock only** (`isReplaceableOreGen(bedrock)`). The vein is the 1.7.10
+  `WorldGenMinable.generate` loop line by line (the table `sin`, the order of the draws), `OreClusterGenerator.generateVein`, now drawing
+  from a `RandomSource`. So the kind and the amount of ore are those of 1.7.10 and of the port before; **the positions are not** (they
+  were 1.7.10's for the same world seed while the 1.7.10 seeding was kept: two odd multipliers from the world seed, the chunk mixed in, and
+  three unused draws of a lake generator; all gone). The GameTest `bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable` measured
+  47,230 ore blocks in sixteen new chunks at density 2 with the three most common valid ores blacklisted (by name, by tag, by block id),
+  against about 47,387 that 32 clusters of the same loop make in plain bedrock (the check allows 0.55 to 1.45 of that; the spread of
+  sixteen chunks is about 8 percent, simulated offline), nine kinds of ore and none of the blacklisted ones. A vein reaches at most the
+  chunk and the one east and south of it
   (it starts 8 to 23 blocks into the chunk's column and swings at most four blocks), which the generation region of the features
   step allows; the written area is checked (`reaches`). The outer layers (y 0 and 1, 252 to 255) never hold ore: a vein starts at
   y 250 at most and its ellipsoids reach 251 at most. **The portal cavity is not safe from ore** (this document said so before
@@ -91,7 +117,9 @@ KamiGear group as `ItemIchorPickAdv.onLeftClickBlock`, which the KamiGear docs s
   Differences: (a) the veins are generated per chunk when it reaches the features step, in the order the server generates
   chunks, so a vein in a neighbour is shaped by what that neighbour already took (1.7.10 had the same order dependence through
   `populate`); (b) with no valid ore at all the cluster is skipped (1.7.10 threw on `nextInt(0)`); (c) the iron-ore fallback of
-  `getRandomOre` is not needed (the weight walk cannot fall through).
+  `getRandomOre` is not needed (the weight walk cannot fall through); (d) the positions, above; (e) since the biome's features run, a
+  feature that another mod adds to **every** biome now runs in the dimension too (the override ran none); an ore feature that replaces
+  stone finds nothing to replace there. In the GameTest runs of 2026-11-01 the biome had no other feature (the check logs the list).
 - **Ore names to blocks.** `OreDictionary.getOres(name).get(0)` is the member of the name's item tag with the lowest registry id
   (the vanilla ore before its deepslate variant; the infused Thaumcraft ores through `thaumcraft:original_ore/*`). A name is
   valid when its tag has members and that first member is a block item (the 1.7.10 `isValid` conditions), so ores that no mod of

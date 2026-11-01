@@ -8,18 +8,23 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.architectury.event.EventResult;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -31,11 +36,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.GenerationStep;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.ThaumcraftApi;
@@ -52,8 +60,10 @@ import thaumic.tinkerer.common.core.fakeplayer.TinkererFakePlayer;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.kami.DimensionalShardDropHandler;
 import thaumic.tinkerer.common.core.handler.kami.SoulHeartHandler;
+import thaumic.tinkerer.common.dim.BedrockOreClustersFeature;
 import thaumic.tinkerer.common.dim.ChunkGeneratorBedrock;
 import thaumic.tinkerer.common.dim.EnumOreFrequency;
+import thaumic.tinkerer.common.dim.OreClusterGenerator;
 import thaumic.tinkerer.common.dim.TeleporterBedrock;
 import thaumic.tinkerer.common.dim.WorldProviderBedrock;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
@@ -77,6 +87,8 @@ import thaumic.tinkerer.common.registry.TTRegistry;
  * porting session): the first run may show a wrong assumption of a check as well as a defect.</p>
  */
 public final class KamiWorldRuntimeChecks {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("ThaumicTinkerer/KamiWorldChecks");
+
     private KamiWorldRuntimeChecks() {}
 
     // ---- helpers ---------------------------------------------------------------------------------------------------
@@ -320,6 +332,103 @@ public final class KamiWorldRuntimeChecks {
             ConfigHandler.bedrockOreBlacklist = blacklist;
         }
         test.succeed();
+    }
+
+    /**
+     * The ore clusters are the world-generation feature {@code thaumictinkerer:bedrock_ore_clusters} of the Bedrock biome, in the
+     * underground-ores step, and new chunks get the ores of the table in the amount the config asks for. Registration: the feature
+     * type, the placed feature of the data pack (of that type) and its one place among the biome's steps. Generation: with a density
+     * of two and the three most common valid ores on the blacklist (one by its 1.7.10 name, one by its tag, one by its block id),
+     * sixteen new chunks hold only bedrock and the ores that are left, none of the blacklisted ones, at least two kinds, and an
+     * amount of ore between 0.55 and 1.45 times what 32 clusters of the generator make on average in plain bedrock (the spread of
+     * sixteen chunks is about 8 percent, measured offline with the same vein loop: clusters near the edge of the area put part of
+     * their ore into the next chunk, and the ring west and north of it into the area). The positions are the game's (the random of
+     * a feature comes from the world seed, the chunk and the feature's index and step), so the amount is compared, not the cells.
+     */
+    public static void bedrockOreClustersAreAFeatureOfTheBiomeWithTheOresOfTheTable(GameTestHelper test) {
+        ServerLevel level = bedrock(test);
+        test.assertTrue(BuiltInRegistries.FEATURE.get(LibMisc.id(BedrockOreClustersFeature.NAME)) instanceof BedrockOreClustersFeature,
+                "the feature type is registered");
+        PlacedFeature placed = level.registryAccess().registryOrThrow(Registries.PLACED_FEATURE).get(BedrockOreClustersFeature.PLACED);
+        test.assertTrue(placed != null && placed.feature().value().feature() instanceof BedrockOreClustersFeature,
+                "the data pack's placed feature is of that type: " + placed);
+        int ores = GenerationStep.Decoration.UNDERGROUND_ORES.ordinal();
+        var generator = level.getChunkSource().getGenerator();
+        for (Holder<Biome> biome : generator.getBiomeSource().possibleBiomes()) {
+            List<HolderSet<PlacedFeature>> steps = generator.getBiomeGenerationSettings(biome).features();
+            test.assertTrue(steps.size() > ores, "the biome has the underground-ores step: " + steps.size());
+            List<String> all = new ArrayList<>();
+            for (int step = 0; step < steps.size(); step++) {
+                boolean listed = steps.get(step).stream().anyMatch(feature -> feature.value() == placed);
+                test.assertTrue(listed == (step == ores), "the clusters are a feature of step " + ores + " only; step " + step + ": " + listed);
+                for (Holder<PlacedFeature> feature : steps.get(step)) {
+                    all.add(step + ":" + feature.unwrapKey().map(key -> key.location().toString()).orElse("(direct)"));
+                }
+            }
+            // Other mods may add features to every biome (the Bedrock biome is no longer skipped as a whole); the log says what is there.
+            LOG.info("The features of the biome {} (step:feature): {}", biome.unwrapKey().map(key -> key.location().toString()).orElse("?"), all);
+        }
+
+        int density = ConfigHandler.bedrockOreDensity;
+        String[] blacklist = ConfigHandler.bedrockOreBlacklist;
+        try {
+            List<EnumOreFrequency> valid = EnumOreFrequency.getValidOres(new String[0]);
+            test.assertTrue(valid.size() >= 5, "five or more ores are valid in the test world: " + valid);
+            List<EnumOreFrequency> common = new ArrayList<>(valid);
+            common.sort(Comparator.comparingInt((EnumOreFrequency ore) -> ore.freq).reversed());
+            List<EnumOreFrequency> refused = common.subList(0, 3);
+            String[] list = { refused.get(0).name, "#" + refused.get(1).tag().location(),
+                    BuiltInRegistries.BLOCK.getKey(refused.get(2).firstBlock()).toString() };
+            ConfigHandler.bedrockOreDensity = 2;
+            ConfigHandler.bedrockOreBlacklist = list;
+            List<EnumOreFrequency> left = EnumOreFrequency.getValidOres(list);
+            for (EnumOreFrequency ore : refused) test.assertTrue(!left.contains(ore), ore + " is kept out by " + List.of(list));
+            Set<Block> allowed = new HashSet<>();
+            allowed.add(Blocks.BEDROCK);
+            for (EnumOreFrequency ore : left) allowed.add(ore.firstBlock());
+            Set<Block> forbidden = new HashSet<>();
+            for (EnumOreFrequency ore : refused) forbidden.add(ore.firstBlock());
+            forbidden.removeAll(allowed);
+            test.assertTrue(!forbidden.isEmpty(), "the blacklisted ores have blocks of their own: " + refused);
+
+            Set<Block> found = new HashSet<>();
+            // Chunks no other check touches; every GameTest run starts on a new world (both build scripts delete it), so they are new.
+            int[] counts = scanChunks(test, level, 6300, 6300, 4, allowed, found);
+            for (Block block : forbidden) test.assertTrue(!found.contains(block), "a blacklisted ore was generated: " + block);
+            test.assertTrue(found.size() >= 2, "32 clusters give more than one kind of ore: " + found);
+            double expected = 16 * 2 * averageCluster();
+            LOG.info("Bedrock ore clusters: {} ore blocks in sixteen new chunks at density 2, about {} expected; ores found: {}; blacklist: {}",
+                    counts[0], Math.round(expected), found, List.of(list));
+            test.assertTrue(counts[0] > 0.55 * expected && counts[0] < 1.45 * expected,
+                    "ore blocks in sixteen chunks: " + counts[0] + ", about " + Math.round(expected) + " expected");
+        } finally {
+            ConfigHandler.bedrockOreDensity = density;
+            ConfigHandler.bedrockOreBlacklist = blacklist;
+        }
+        test.succeed();
+    }
+
+    /** The average number of blocks one cluster places in plain bedrock: the generator's own loop, 400 clusters, a random of its own. */
+    private static double averageCluster() {
+        RandomSource random = RandomSource.create(20140331L);
+        long total = 0;
+        int clusters = 400;
+        for (int i = 0; i < clusters; i++) {
+            Set<Long> cells = new HashSet<>();
+            OreClusterGenerator.generate(random, 0, 0, 1, rnd -> Boolean.TRUE, new OreClusterGenerator.ClusterWorld<Boolean>() {
+                @Override
+                public boolean isReplaceable(int x, int y, int z) {
+                    return y >= 0 && y < WorldProviderBedrock.HEIGHT && !cells.contains(BlockPos.asLong(x, y, z));
+                }
+
+                @Override
+                public void place(int x, int y, int z, Boolean ore) {
+                    cells.add(BlockPos.asLong(x, y, z));
+                }
+            });
+            total += cells.size();
+        }
+        return (double) total / clusters;
     }
 
     // ---- the portal ------------------------------------------------------------------------------------------------

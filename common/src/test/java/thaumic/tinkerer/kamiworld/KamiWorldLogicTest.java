@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
+import net.minecraft.util.RandomSource;
 import org.junit.jupiter.api.Test;
 import thaumic.tinkerer.common.core.handler.kami.SoulHeartHandler;
 import thaumic.tinkerer.common.dim.EnumOreFrequency;
@@ -25,7 +25,9 @@ import thaumic.tinkerer.common.dim.TeleporterBedrock;
  *
  * <p>The pure rules of the KamiWorld group: the ore table and the weighted pick of the Bedrock dimension, the ore veins
  * and clusters (the 1.7.10 {@code WorldGenMinable} loop and the order of the random draws), the Soul Heart arithmetic
- * (with the quirks of the original) and the scan for the ground of the Overworld. Nothing here needs a world.</p>
+ * (with the quirks of the original) and the scan for the ground of the Overworld. Nothing here needs a world. The randoms are
+ * {@code RandomSource}s (the world-generation feature gets the one the game seeds for it); the 1.7.10 seeding of a chunk's
+ * {@code java.util.Random} from the world seed is gone with {@code populate}.</p>
  */
 class KamiWorldLogicTest {
 
@@ -51,25 +53,25 @@ class KamiWorldLogicTest {
     void thePickWalksTheWeightsInOrderAfterOneDraw() {
         int[] weights = { 5, 3, 2 };
         for (long seed = 0; seed < 200; seed++) {
-            int draw = new Random(seed).nextInt(10);
+            int draw = RandomSource.create(seed).nextInt(10);
             int expected = draw < 5 ? 0 : draw < 8 ? 1 : 2;
-            assertEquals(expected, EnumOreFrequency.pickIndex(weights, new Random(seed)), "seed " + seed);
+            assertEquals(expected, EnumOreFrequency.pickIndex(weights, RandomSource.create(seed)), "seed " + seed);
         }
     }
 
     @Test
     void thePickUsesExactlyOneDraw() {
-        Random used = new Random(99);
+        RandomSource used = RandomSource.create(99);
         EnumOreFrequency.pickIndex(new int[] { 1, 2, 3 }, used);
-        Random reference = new Random(99);
+        RandomSource reference = RandomSource.create(99);
         reference.nextInt(6);
         assertEquals(reference.nextLong(), used.nextLong());
     }
 
     @Test
     void thePickOfNoWeightsIsMinusOne() {
-        assertEquals(-1, EnumOreFrequency.pickIndex(new int[0], new Random(1)));
-        assertEquals(-1, EnumOreFrequency.pickIndex(new int[] { 0, 0 }, new Random(1)));
+        assertEquals(-1, EnumOreFrequency.pickIndex(new int[0], RandomSource.create(1)));
+        assertEquals(-1, EnumOreFrequency.pickIndex(new int[] { 0, 0 }, RandomSource.create(1)));
     }
 
     @Test
@@ -78,7 +80,7 @@ class KamiWorldLogicTest {
         int total = Arrays.stream(weights).sum();
         int draws = 400_000;
         int[] counts = new int[weights.length];
-        Random random = new Random(20140331L);
+        RandomSource random = RandomSource.create(20140331L);
         for (int i = 0; i < draws; i++) counts[EnumOreFrequency.pickIndex(weights, random)]++;
         for (int i = 0; i < weights.length; i++) {
             double expected = (double) draws * weights[i] / total;
@@ -120,7 +122,7 @@ class KamiWorldLogicTest {
     void aVeinOfSizeZeroPlacesNothing() {
         for (long seed = 0; seed < 50; seed++) {
             Recorder target = new Recorder();
-            OreClusterGenerator.generateVein(new Random(seed), 0, 32, 100, 48, target);
+            OreClusterGenerator.generateVein(RandomSource.create(seed), 0, 32, 100, 48, target);
             assertTrue(target.placed.isEmpty(), "size 0, seed " + seed);
         }
     }
@@ -129,18 +131,18 @@ class KamiWorldLogicTest {
     void aVeinIsDeterministicForASeed() {
         Recorder a = new Recorder();
         Recorder b = new Recorder();
-        OreClusterGenerator.generateVein(new Random(5), 17, 16, 80, 16, a);
-        OreClusterGenerator.generateVein(new Random(5), 17, 16, 80, 16, b);
+        OreClusterGenerator.generateVein(RandomSource.create(5), 17, 16, 80, 16, a);
+        OreClusterGenerator.generateVein(RandomSource.create(5), 17, 16, 80, 16, b);
         assertEquals(a.placed, b.placed);
         Recorder c = new Recorder();
-        OreClusterGenerator.generateVein(new Random(6), 17, 16, 80, 16, c);
+        OreClusterGenerator.generateVein(RandomSource.create(6), 17, 16, 80, 16, c);
         assertFalse(a.placed.equals(c.placed), "another seed makes another vein");
     }
 
     @Test
     void aVeinStaysWithinFourBlocksOfTheCentreAndTheChunkAndItsEastAndSouthNeighbours() {
         for (long seed = 0; seed < 3000; seed++) {
-            Random random = new Random(seed);
+            RandomSource random = RandomSource.create(seed);
             int chunkX = random.nextInt(2000) - 1000;
             int chunkZ = random.nextInt(2000) - 1000;
             int x = 16 * chunkX + random.nextInt(16);
@@ -181,7 +183,7 @@ class KamiWorldLogicTest {
         int veins = 400;
         for (long seed = 0; seed < veins; seed++) {
             Recorder target = new Recorder();
-            OreClusterGenerator.generateVein(new Random(seed), 19, 0, 100, 0, target);
+            OreClusterGenerator.generateVein(RandomSource.create(seed), 19, 0, 100, 0, target);
             assertTrue(target.placed.size() <= 20 * 27, "a vein of 19 is a chain of 20 small ellipsoids, seed " + seed);
             total += target.placed.size();
         }
@@ -204,30 +206,17 @@ class KamiWorldLogicTest {
                 placed.add(Recorder.key(x, y, z));
             }
         };
-        OreClusterGenerator.generateVein(new Random(3), 19, 0, 60, 0, onlyEvenX);
+        OreClusterGenerator.generateVein(RandomSource.create(3), 19, 0, 60, 0, onlyEvenX);
         assertFalse(placed.isEmpty());
     }
 
     // ---- clusters ------------------------------------------------------------------------------------------------
 
     @Test
-    void theChunkRandomIsSeededLikeTheOriginalPopulate() {
-        long seed = 8675309L;
-        Random expected = new Random(seed);
-        long i1 = expected.nextLong() / 2L * 2L + 1L;
-        long j1 = expected.nextLong() / 2L * 2L + 1L;
-        expected.setSeed(4L * i1 + (-7L) * j1 ^ seed);
-        Random actual = OreClusterGenerator.chunkRandom(seed, 4, -7);
-        for (int i = 0; i < 20; i++) assertEquals(expected.nextInt(), actual.nextInt());
-        assertFalse(OreClusterGenerator.chunkRandom(seed, 4, -7).nextLong() == OreClusterGenerator.chunkRandom(seed, 5, -7).nextLong(),
-                "neighbouring chunks have different randoms");
-    }
-
-    @Test
     void theClustersDrawInTheOrderOfTheOriginal() {
         // Reference: the 1.7.10 loop written out with the same draws.
         Recorder expected = new Recorder();
-        Random reference = new Random(42);
+        RandomSource reference = RandomSource.create(42);
         for (int k = 0; k < 2; k++) {
             int x = 16 * 5 + reference.nextInt(16);
             int z = 16 * -3 + reference.nextInt(16);
@@ -240,7 +229,7 @@ class KamiWorldLogicTest {
         }
         final Recorder actual = new Recorder();
         final List<String> ores = new ArrayList<>();
-        OreClusterGenerator.generate(new Random(42), 5, -3, 2, rnd -> {
+        OreClusterGenerator.generate(RandomSource.create(42), 5, -3, 2, rnd -> {
             rnd.nextInt(100);
             return "ore" + ores.size();
         }, new OreClusterGenerator.ClusterWorld<String>() {
@@ -260,10 +249,37 @@ class KamiWorldLogicTest {
         assertEquals(2, ores.size(), "one ore per cluster");
     }
 
+    /**
+     * The clusters draw from the random they are given and from nothing else (the feature hands in the one the game seeds for it
+     * from the world seed, the chunk and the feature's index and step): the same seed gives the same cells, another seed others.
+     */
+    @Test
+    void theClustersOfAChunkFollowOnlyTheRandomTheyAreGiven() {
+        List<Set<Long>> runs = new ArrayList<>();
+        for (long seed : new long[] { 11L, 11L, 12L }) {
+            Recorder cells = new Recorder();
+            OreClusterGenerator.generate(RandomSource.create(seed), 2, 9, 3, rnd -> "ore", new OreClusterGenerator.ClusterWorld<String>() {
+                @Override
+                public boolean isReplaceable(int x, int y, int z) {
+                    return cells.isReplaceable(x, y, z);
+                }
+
+                @Override
+                public void place(int x, int y, int z, String ore) {
+                    cells.place(x, y, z);
+                }
+            });
+            runs.add(cells.placed);
+        }
+        assertFalse(runs.get(0).isEmpty(), "three clusters place ore");
+        assertEquals(runs.get(0), runs.get(1), "the same seed, the same cells");
+        assertFalse(runs.get(0).equals(runs.get(2)), "another seed, other cells");
+    }
+
     @Test
     void theClustersStayBetweenHeightTwoAndTwoHundredFiftyOne() {
         Recorder all = new Recorder();
-        OreClusterGenerator.generate(new Random(7), 0, 0, 5, rnd -> "ore", new OreClusterGenerator.ClusterWorld<String>() {
+        OreClusterGenerator.generate(RandomSource.create(7), 0, 0, 5, rnd -> "ore", new OreClusterGenerator.ClusterWorld<String>() {
             @Override
             public boolean isReplaceable(int x, int y, int z) {
                 return true;
@@ -293,9 +309,9 @@ class KamiWorldLogicTest {
                 placed[0]++;
             }
         };
-        OreClusterGenerator.generate(new Random(1), 0, 0, 0, rnd -> "ore", world);
+        OreClusterGenerator.generate(RandomSource.create(1), 0, 0, 0, rnd -> "ore", world);
         assertEquals(0, placed[0]);
-        OreClusterGenerator.generate(new Random(1), 0, 0, 3, rnd -> null, world);
+        OreClusterGenerator.generate(RandomSource.create(1), 0, 0, 3, rnd -> null, world);
         assertEquals(0, placed[0], "no valid ore: the cluster is skipped (1.7.10 crashed)");
     }
 
