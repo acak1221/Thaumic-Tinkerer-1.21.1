@@ -185,8 +185,10 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 * Particles over time, the Bedrock dimension in use (sky, light, the portal), the Placement Mirror's ghost blocks, the wings layer, the Mending and Ender Rift focus layers on a wand
   (their `_depth` sprites are now filtered out of the block atlas; that the wand renderer still loads them is argued from the code, not seen), break particles of the Mob Display,
   a Mob Display in a hand, on the ground or in an item frame, the camouflage devices with a camouflage block set (the block rows set none).
-* **Mob Display scale:** the Horse's head, the Witch's hat and the Mooshroom's mushrooms still overflow a 16x16 slot by up to about 2 slot pixels. The scale values are the original's;
-  changing them is a decision for the owner.
+* **Mob Display scale (settled 2026-11-01):** the Horse's head, the Witch's hat and the Mooshroom's mushrooms reached 4.75, 3.75 and 3 slot pixels above a 16x16 slot
+  (measured on the client harness's picture). On the owner's request these three are drawn smaller and lower in a slot only, and now lie inside it on both loaders (pictures
+  read); the `EnumMobAspect` scale values stay the original's and the other mobs are unchanged, among them some that reach up to 2 slot pixels past the slot's edge
+  (`Machines.md` section 7, "Slot fit of three mobs").
 * The network behaviour of the packets between a real client and a real server, beyond the scenarios of the multiplayer check (`MULTIPLAYER_VERIFICATION.md`:
   the config payload, `PacketEnchanterAddEnchant`, `PacketTabletButton`, the block-entity updates of the Enchanter and the Animation Tablet, and the
   registration of every payload of the add-on on both sides). The other packets (the Remote Placer's buttons, the Enchanter's start, the Kami armour

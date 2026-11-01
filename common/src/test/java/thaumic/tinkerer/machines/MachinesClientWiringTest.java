@@ -103,4 +103,33 @@ class MachinesClientWiringTest {
         }
         assertEquals(List.of("FabricItemRenderers.java"), users, "one registration point per item: the backend of ItemRenderers");
     }
+
+    /**
+     * The slot fit of the Mob Display (docs/DEVIATIONS.md section 5, "Mob Display scale"): the Horse, the Witch and the Mooshroom, in a
+     * slot only, every other mob and context as the original drew it; and the numbers put the extent the client harness measured before
+     * the change (slot pixels from the slot's top edge: the highest and the lowest point of the mob) inside the 16 x 16 slot, with half a
+     * pixel to spare at the top, when the mob is drawn smaller by the factor about the middle of the slot and lowered.
+     */
+    @Test
+    void onlyTheHorseTheWitchAndTheMooshroomAreFittedIntoASlot() {
+        java.util.Set<thaumic.tinkerer.common.core.helper.EnumMobAspect> fitted = java.util.EnumSet.of(
+                thaumic.tinkerer.common.core.helper.EnumMobAspect.EntityHorse, thaumic.tinkerer.common.core.helper.EnumMobAspect.Witch,
+                thaumic.tinkerer.common.core.helper.EnumMobAspect.MushroomCow);
+        for (thaumic.tinkerer.common.core.helper.EnumMobAspect aspect : thaumic.tinkerer.common.core.helper.EnumMobAspect.values()) {
+            for (ItemDisplayContext context : ItemDisplayContext.values()) {
+                float[] fit = thaumic.tinkerer.client.render.item.RenderMobDisplay.slotFit(aspect, context);
+                assertEquals(context == ItemDisplayContext.GUI && fitted.contains(aspect), fit != null, aspect + " in " + context);
+            }
+        }
+        java.util.Map<thaumic.tinkerer.common.core.helper.EnumMobAspect, float[]> measured = java.util.Map.of(
+                thaumic.tinkerer.common.core.helper.EnumMobAspect.EntityHorse, new float[] { -4.75F, 15.5F },
+                thaumic.tinkerer.common.core.helper.EnumMobAspect.Witch, new float[] { -3.75F, 16F },
+                thaumic.tinkerer.common.core.helper.EnumMobAspect.MushroomCow, new float[] { -3F, 15.75F });
+        for (var entry : measured.entrySet()) {
+            float[] fit = thaumic.tinkerer.client.render.item.RenderMobDisplay.slotFit(entry.getKey(), ItemDisplayContext.GUI);
+            float top = 8F + fit[0] * (entry.getValue()[0] - 8F) + fit[1];
+            float bottom = 8F + fit[0] * (entry.getValue()[1] - 8F) + fit[1];
+            assertTrue(top >= 0.5F - 1.0E-3F && bottom <= 16F, entry.getKey() + " fits: from " + top + " to " + bottom);
+        }
+    }
 }
