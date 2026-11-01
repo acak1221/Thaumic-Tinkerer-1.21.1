@@ -75,7 +75,8 @@ class HooksResourcesTest {
                 handlers++;
                 assertTrue(handler.group(2).startsWith("thaumictinkerer$"), name + "." + handler.group(2) + " is not prefixed with thaumictinkerer$");
             }
-            if (!name.equals("ServerGamePacketListenerFloatingMixin")) assertTrue(handlers > 0, name + " has a handler");
+            // a mixin without a handler adds an interface or overrides one's default method (FloatingTicks.Access, RenderDataBlockEntity)
+            if (!text.contains(" implements ")) assertTrue(handlers > 0, name + " has a handler");
         }
         List<String> offenders = new ArrayList<>();
         for (Path root : List.of(Path.of("common", "src"), Path.of("fabric", "src"))) {
