@@ -12,7 +12,9 @@ cannot do, or a reproducible crash/exploit, and is written down in `docs/deviati
    any existing file under `common/src/main/java/thaumic/tinkerer/common/lib`). A file that is new in the port (no
    1.7.10 counterpart: tests, 1.21.1 glue) says so in its header instead of claiming Vazkii as author.
 2. **API only.** The add-on imports `java.*`, `net.minecraft.*`, `com.mojang.*`, `dev.architectury.*`,
-   `net.fabricmc.*` (Fabric tree only), `net.neoforged.*` (NeoForge tree only), `com.google.*`, `org.slf4j.*` and `thaumcraft.api.*`. Never
+   `net.fabricmc.*` (Fabric tree only), `net.neoforged.*` (NeoForge tree only), `com.google.*`, `org.slf4j.*` and `thaumcraft.api.*`
+   (and the optional APIs: EMI, JEI and Jade in `compat/`; Team Reborn Energy's `team.reborn.energy.api.*` only in
+   `fabric/.../TileBlocksFabricEnergy.java`, loaded only when that mod is installed). Never
    `thaumcraft.common.*` or `thaumcraft.client.*`. If the API lacks something the original used, do **not** reach
    into the mod: write the need into `docs/api-requests/<group>.md` (what, proposed signature in 1.21.1 types, which
    class of the mod backs it) and stub the feature behind a clearly named method so it compiles; the lead extends the

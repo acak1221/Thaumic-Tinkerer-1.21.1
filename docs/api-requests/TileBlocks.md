@@ -82,10 +82,11 @@ played. Nothing to request.
   which NeoForge, unlike Fabric's Transfer API, does not wrap by itself (`docs/deviations/TileBlocks.md` 2.5, `docs/NEOFORGE.md`). The NeoForge
   side is checked by `interfaceForwardsFluids` and two NeoForge-only GameTests (the item handler, the cache invalidation), which passed on
   2026-10-31; other mods' pipes and tanks were not tried.
-* **Energy through the Transvector Interface (P2).** The 1.7.10 Interface forwarded CoFH RF and IC2 EU. 1.21.1 needs, per
-  loader, an energy capability (Fabric: Team Reborn Energy `EnergyStorage.SIDED`, which is not a dependency of the add-on
-  and is outside the import list of PORTING_RULES; NeoForge: `Capabilities.EnergyStorage.BLOCK`) that asks
-  `TileTransvector.getTile()` for the bound block's own energy storage. Not done on either loader.
+* **Energy through the Transvector Interface (P2): done for both loaders (2026-11-01).** The 1.7.10 Interface forwarded CoFH RF and IC2 EU.
+  NeoForge: `NeoForgeCapabilities` registers `Capabilities.EnergyStorage.BLOCK` like the fluid capability. Fabric: `TileBlocksFabricEnergy`
+  registers Team Reborn Energy's `EnergyStorage.SIDED`; that mod is an optional dependency (compiled against, not bundled, only loaded
+  when installed), and its API is allowed in that one class (`docs/PORTING_RULES.md`, `TinkererApiOnlyTest`). Both ask
+  `TileTransvectorInterface.bound()` for the block to forward to. IC2 EU has no 1.21.1 counterpart (`docs/deviations/TileBlocks.md` 2.5).
 * **Hook for loader glue (P3): answered.** Common code no longer reaches a loader class by name: each loader module installs its own
   glue from its entry (Fabric: `ThaumicTinkererFabric`, `ThaumicTinkererFabricClient`; NeoForge: `NeoForgeCapabilities`,
   `NeoForgeClientHooks`), through `ThaumicTinkerer.guard` where a failure must be recorded.

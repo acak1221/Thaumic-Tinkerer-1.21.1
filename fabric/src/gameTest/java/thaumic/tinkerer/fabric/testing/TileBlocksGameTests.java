@@ -9,6 +9,8 @@ import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;
 import net.fabricmc.fabric.api.transfer.v1.fluid.base.SingleFluidStorage;
 import net.fabricmc.fabric.api.transfer.v1.storage.Storage;
 import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.metadata.ModDependency;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -17,8 +19,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.material.Fluids;
+import thaumic.tinkerer.common.ThaumicTinkerer;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorInterface;
 import thaumic.tinkerer.common.content.TileBlocks;
+import thaumic.tinkerer.common.lib.LibMisc;
+import thaumic.tinkerer.fabric.TileBlocksFabric;
+import thaumic.tinkerer.fabric.TileBlocksFabricEnergy;
 import thaumic.tinkerer.testing.TileBlocksRuntimeChecks;
 
 /**
@@ -74,6 +80,50 @@ public final class TileBlocksGameTests implements FabricGameTest {
         }
         h.assertTrue(tank.amount == FluidConstants.BUCKET / 2, "and left the tank: " + tank.amount);
         h.succeed();
+    }
+
+    /** Set by {@code -PwithoutTeamRebornEnergy} (fabric.gradle): the run has no Team Reborn Energy. */
+    private static final String WITHOUT_TEAM_REBORN_ENERGY = "thaumictinkerer.withoutTeamRebornEnergy";
+
+    /**
+     * Team Reborn Energy, an optional mod, is on the GameTest run unless {@code -PwithoutTeamRebornEnergy} left it out, and the run must
+     * have what it says. Either way the add-on names it as a suggestion only, never as a dependency. With the mod the Interface's energy
+     * lookup ({@code TileBlocksFabricEnergy}) is registered and the energy check goes on (false). Without it, this is the check that the
+     * add-on runs without it: it started and recorded no failure, and the energy glue was not tried (true; the test has succeeded).
+     */
+    private static boolean withoutTeamRebornEnergy(GameTestHelper h) {
+        boolean expected = !Boolean.getBoolean(WITHOUT_TEAM_REBORN_ENERGY);
+        boolean loaded = TileBlocksFabric.teamRebornEnergyLoaded();
+        h.assertTrue(loaded == expected, "Team Reborn Energy is " + (loaded ? "" : "not ") + "installed, the run says it "
+                + (expected ? "is" : "is not") + " (-D" + WITHOUT_TEAM_REBORN_ENERGY + ")");
+        for (ModDependency dependency : FabricLoader.getInstance().getModContainer(LibMisc.MOD_ID).orElseThrow().getMetadata().getDependencies()) {
+            if (!TileBlocksFabric.TEAM_REBORN_ENERGY.equals(dependency.getModId())) continue;
+            h.assertTrue(dependency.getKind() == ModDependency.Kind.SUGGESTS, "the add-on only suggests Team Reborn Energy: " + dependency.getKind());
+        }
+        if (loaded) {
+            h.assertTrue(TileBlocksFabricEnergy.registered(), "with Team Reborn Energy the Interface's energy lookup is registered");
+            return false;
+        }
+        h.assertTrue(ThaumicTinkerer.failures().isEmpty(), "without Team Reborn Energy the add-on recorded no failure: " + ThaumicTinkerer.failures());
+        h.succeed();
+        return true;
+    }
+
+    /**
+     * The Interface hands on the energy storage of the bound block, through Team Reborn Energy ({@code TileBlocksFabricEnergy}): the shared
+     * check with that API ({@code TeamRebornEnergyTesting.PROBE}). Without the mod (-PwithoutTeamRebornEnergy): the add-on runs without it.
+     */
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void interfaceForwardsEnergy(GameTestHelper h) {
+        if (withoutTeamRebornEnergy(h)) return;
+        TileBlocksRuntimeChecks.interfaceForwardsEnergy(h, TeamRebornEnergyTesting.PROBE);
+    }
+
+    /** No energy through an unloaded, self-bound or looped binding, through Team Reborn Energy; without the mod, as above. */
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void interfaceMovesNoEnergyThroughABrokenBinding(GameTestHelper h) {
+        if (withoutTeamRebornEnergy(h)) return;
+        TileBlocksRuntimeChecks.interfaceMovesNoEnergyThroughABrokenBinding(h, TeamRebornEnergyTesting.PROBE);
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)

@@ -55,6 +55,7 @@
   "suggests": {
     "emi": "*",
     "jei": "*",
-    "jade": "*"
+    "jade": "*",
+    "team_reborn_energy": "*"
   }
 }

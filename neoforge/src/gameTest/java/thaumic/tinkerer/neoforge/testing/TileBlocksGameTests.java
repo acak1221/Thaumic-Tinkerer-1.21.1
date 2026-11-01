@@ -17,7 +17,7 @@ import thaumic.tinkerer.testing.TileBlocksRuntimeChecks;
  * {@code thaumic.tinkerer.fabric.testing.TileBlocksGameTests}: the same tests in the same order, under the same names and with
  * the same timeouts and batches, on the template {@code thaumictinkerer:tileblocksgametests.empty} (the class name prefixes the
  * template and the test names, which are then those of the Fabric run). Test-only, not distributed.
- * The Fabric-native wrappers (interfaceForwardsFluids) call their NeoForge counterparts in {@link TileBlocksNeoForgeChecks}.
+ * The Fabric-native wrappers (interfaceForwardsFluids, interfaceForwardsEnergy, interfaceMovesNoEnergyThroughABrokenBinding) call their NeoForge counterparts in {@link TileBlocksNeoForgeChecks}.
  */
 @PrefixGameTestTemplate(true)
 public final class TileBlocksGameTests {
@@ -25,6 +25,18 @@ public final class TileBlocksGameTests {
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void interfaceForwardsFluids(GameTestHelper h) {
         TileBlocksNeoForgeChecks.interfaceForwardsFluids(h);
+    }
+
+    /** Fabric-native on Fabric (its body uses the Fabric API): the NeoForge counterpart is {@link TileBlocksNeoForgeChecks#interfaceForwardsEnergy}. */
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void interfaceForwardsEnergy(GameTestHelper h) {
+        TileBlocksNeoForgeChecks.interfaceForwardsEnergy(h);
+    }
+
+    /** Fabric-native on Fabric (its body uses the Fabric API): the NeoForge counterpart is {@link TileBlocksNeoForgeChecks#interfaceMovesNoEnergyThroughABrokenBinding}. */
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void interfaceMovesNoEnergyThroughABrokenBinding(GameTestHelper h) {
+        TileBlocksNeoForgeChecks.interfaceMovesNoEnergyThroughABrokenBinding(h);
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")

@@ -12,6 +12,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stat;
 import net.minecraft.stats.Stats;
@@ -1031,9 +1032,19 @@ public final class TileBlocksRuntimeChecks {
 
     /** The binding of a saved world: {@code device} loads the data of an Interface bound to {@code absTarget}. */
     private static void bindAsSaved(GameTestHelper test, TileTransvectorInterface device, BlockPos absTarget) {
+        bindAsSaved(test, device, absTarget, false);
+    }
+
+    /**
+     * The same, and with {@code cheaty} the saved flag {@code cheatyMode} of {@code TileTransvector} set (1.7.10's "cheaty mode", which only
+     * saved data can set): a binding without a range, so its target may lie in a chunk that is not loaded.
+     */
+    private static void bindAsSaved(GameTestHelper test, TileTransvectorInterface device, BlockPos absTarget, boolean cheaty) {
         TileTransvectorInterface detached = new TileTransvectorInterface(device.getBlockPos(), device.getBlockState());
         detached.setTarget(absTarget);
-        device.loadWithComponents(detached.saveWithoutMetadata(test.getLevel().registryAccess()), test.getLevel().registryAccess());
+        CompoundTag saved = detached.saveWithoutMetadata(test.getLevel().registryAccess());
+        if (cheaty) saved.putBoolean("cheatyMode", true);
+        device.loadWithComponents(saved, test.getLevel().registryAccess());
         test.assertTrue(absTarget.equals(device.getTarget()), "bound as saved: " + device.getTarget());
     }
 
@@ -1115,6 +1126,144 @@ public final class TileBlocksRuntimeChecks {
 
         a.setTarget(test.absolutePos(bPos));
         test.assertTrue(!a.isBound(), "binding an interface to another by hand ends at once");
+        test.succeed();
+    }
+
+    /**
+     * The interface stands in for the energy storage of the bound block, face for face, as the 1.7.10 interface handed CoFH RF's
+     * {@code receiveEnergy}, {@code extractEnergy}, {@code getEnergyStored} and {@code getMaxEnergyStored} on with the side it was asked
+     * for. {@code energy} is the loader's energy API (Fabric: Team Reborn Energy; NeoForge: {@code Capabilities.EnergyStorage.BLOCK}),
+     * asked at the interface as a cable would ask it. Unbound, the interface has no storage. Bound to the test cell
+     * ({@link TestEnergyCell}: capacity 1000, at most 400 in and 250 out per call, no storage on its bottom face), what goes in or comes
+     * out through it goes into or out of the cell: the cell's limits and capacity hold, a simulation changes nothing, the amounts are the
+     * cell's own (no conversion); asked on its bottom face the interface asks the cell's bottom face and has no storage; asked for no
+     * face, the whole cell. Bound to a block without energy (a chest), or unbound again, it has none and moves none.
+     */
+    public static void interfaceForwardsEnergy(GameTestHelper test, EnergyProbe energy) {
+        floor(test);
+        BlockPos interfacePos = new BlockPos(3, 1, 3);
+        BlockPos cellPos = new BlockPos(3, 1, 5);
+        BlockPos chestPos = new BlockPos(1, 1, 3);
+        test.setBlock(interfacePos, TileBlocks.interfaceBlock());
+        test.setBlock(cellPos, TestEnergyCell.block());
+        test.setBlock(chestPos, Blocks.CHEST);
+        TileTransvectorInterface iface = tile(test, interfacePos, TileTransvectorInterface.class);
+        TestEnergyCell.Cell cell = tile(test, cellPos, TestEnergyCell.Cell.class);
+        ServerLevel level = test.getLevel();
+        BlockPos at = test.absolutePos(interfacePos);
+        BlockPos cellAt = test.absolutePos(cellPos);
+        Direction side = Direction.NORTH;
+        Direction closed = TestEnergyCell.CLOSED_FACE;
+
+        test.assertTrue(energy.has(level, cellAt, side) && energy.has(level, cellAt, null) && !energy.has(level, cellAt, closed),
+                "the cell, asked itself, has a storage on every face but its bottom");
+        test.assertTrue(!energy.has(level, at, side) && !energy.has(level, at, null), "an unbound interface has no energy storage");
+        test.assertTrue(energy.insert(level, at, side, 100, false) == 0 && energy.extract(level, at, side, 100, false) == 0
+                && energy.stored(level, at, side) == 0 && energy.capacity(level, at, side) == 0, "and moves and holds no energy");
+
+        iface.setTarget(cellAt);
+        test.assertTrue(energy.has(level, at, side), "bound to the cell, the interface has an energy storage");
+        test.assertTrue(energy.capacity(level, at, side) == TestEnergyCell.CAPACITY && energy.stored(level, at, side) == 0,
+                "the cell's: capacity " + energy.capacity(level, at, side) + ", stored " + energy.stored(level, at, side));
+        long moved = energy.insert(level, at, side, 100, true);
+        test.assertTrue(moved == 100 && cell.amount() == 0, "a simulated insert of 100 says 100 and changes nothing: " + moved + ", " + cell.amount());
+        moved = energy.insert(level, at, side, 300, false);
+        test.assertTrue(moved == 300 && cell.amount() == 300, "300 went in through the interface and are in the cell: " + moved + ", " + cell.amount());
+        moved = energy.insert(level, at, side, 1000, false);
+        test.assertTrue(moved == TestEnergyCell.MAX_INSERT && cell.amount() == 700,
+                "an insert of 1000 takes the cell's limit of 400: " + moved + ", " + cell.amount());
+        moved = energy.insert(level, at, side, 400, false);
+        test.assertTrue(moved == 300 && cell.amount() == TestEnergyCell.CAPACITY, "the capacity holds: 300 more fill the cell: " + moved + ", " + cell.amount());
+        test.assertTrue(energy.insert(level, at, side, 1, false) == 0 && cell.amount() == TestEnergyCell.CAPACITY, "a full cell takes nothing");
+        test.assertTrue(energy.stored(level, at, side) == TestEnergyCell.CAPACITY, "the interface reads the cell's amount: " + energy.stored(level, at, side));
+        moved = energy.extract(level, at, side, 100, true);
+        test.assertTrue(moved == 100 && cell.amount() == TestEnergyCell.CAPACITY, "a simulated extract says 100 and changes nothing: " + moved + ", " + cell.amount());
+        moved = energy.extract(level, at, side, 1000, false);
+        test.assertTrue(moved == TestEnergyCell.MAX_EXTRACT && cell.amount() == 750,
+                "an extract of 1000 gives the cell's limit of 250: " + moved + ", " + cell.amount());
+
+        test.assertTrue(!energy.has(level, at, closed), "asked on its bottom face, the interface asks the cell's bottom face: no storage");
+        test.assertTrue(energy.insert(level, at, closed, 10, false) == 0 && energy.extract(level, at, closed, 10, false) == 0 && cell.amount() == 750,
+                "and nothing goes in or out there: " + cell.amount());
+        test.assertTrue(energy.has(level, at, null) && energy.stored(level, at, null) == 750, "asked for no face, the whole cell");
+
+        iface.setTarget(test.absolutePos(chestPos));
+        test.assertTrue(iface.isBound() && !energy.has(level, at, side), "bound to a chest (no energy storage), the interface has none");
+        test.assertTrue(energy.insert(level, at, side, 10, false) == 0 && energy.extract(level, at, side, 10, false) == 0, "and moves none");
+        iface.setTarget(cellAt);
+        test.assertTrue(energy.extract(level, at, side, 50, false) == 50 && cell.amount() == 700, "bound to the cell again, 50 come out: " + cell.amount());
+        iface.setTarget(null);
+        test.assertTrue(!energy.has(level, at, side) && energy.extract(level, at, side, 50, false) == 0 && energy.insert(level, at, side, 50, false) == 0,
+                "unbound again, none");
+        test.assertTrue(cell.amount() == 700, "and the cell kept its 700: " + cell.amount());
+        test.succeed();
+    }
+
+    /**
+     * No energy moves through an interface whose binding cannot be forwarded, and asking does not crash the server or load a chunk: bound
+     * into a chunk that is not loaded (a saved "cheaty" binding, which has no range), it has no storage and keeps the binding; bound to
+     * itself, or two bound to each other (what a Dislocator can leave behind, loaded as saved), it has none, asks nobody back (the
+     * recursion of the self-bound interface was a crash) and the question ends the binding; bound to a cell that is then broken, it has
+     * none and lets the binding go. {@code energy} is the loader's energy API, as in {@link #interfaceForwardsEnergy}.
+     */
+    public static void interfaceMovesNoEnergyThroughABrokenBinding(GameTestHelper test, EnergyProbe energy) {
+        floor(test);
+        ServerLevel level = test.getLevel();
+        Direction side = Direction.NORTH;
+
+        BlockPos farPos = new BlockPos(1, 1, 1);
+        test.setBlock(farPos, TileBlocks.interfaceBlock());
+        TileTransvectorInterface far = tile(test, farPos, TileTransvectorInterface.class);
+        BlockPos farAt = test.absolutePos(farPos);
+        BlockPos unloaded = farAt.offset(100_000, 0, 0);
+        test.assertTrue(!level.isLoaded(unloaded), "the target lies in a chunk that is not loaded: " + unloaded);
+        bindAsSaved(test, far, unloaded, true);
+        test.assertTrue(!energy.has(level, farAt, side) && !energy.has(level, farAt, null), "bound into an unloaded chunk, the interface has no storage");
+        test.assertTrue(energy.insert(level, farAt, side, 100, false) == 0 && energy.extract(level, farAt, side, 100, false) == 0
+                && energy.stored(level, farAt, side) == 0, "and moves none");
+        test.assertTrue(far.isBound() && unloaded.equals(far.getTarget()), "it keeps the binding: " + far.getTarget());
+        test.assertTrue(!level.isLoaded(unloaded), "and asking it loaded no chunk");
+        far.setTarget(null);
+
+        BlockPos selfPos = new BlockPos(3, 1, 1);
+        test.setBlock(selfPos, TileBlocks.interfaceBlock());
+        TileTransvectorInterface self = tile(test, selfPos, TileTransvectorInterface.class);
+        BlockPos selfAt = test.absolutePos(selfPos);
+        bindAsSaved(test, self, selfAt);
+        test.assertTrue(!energy.has(level, selfAt, side), "an interface bound to itself has no energy storage");
+        test.assertTrue(!self.isBound(), "and the question ended the binding");
+        bindAsSaved(test, self, selfAt);
+        test.assertTrue(energy.insert(level, selfAt, side, 100, false) == 0 && energy.extract(level, selfAt, side, 100, false) == 0,
+                "bound to itself again, it moves none");
+        test.assertTrue(!self.isBound(), "and the insert ended the binding");
+
+        BlockPos aPos = new BlockPos(5, 1, 1);
+        BlockPos bPos = new BlockPos(5, 1, 4);
+        test.setBlock(aPos, TileBlocks.interfaceBlock());
+        test.setBlock(bPos, TileBlocks.interfaceBlock());
+        TileTransvectorInterface a = tile(test, aPos, TileTransvectorInterface.class);
+        TileTransvectorInterface b = tile(test, bPos, TileTransvectorInterface.class);
+        BlockPos aAt = test.absolutePos(aPos);
+        BlockPos bAt = test.absolutePos(bPos);
+        bindAsSaved(test, a, bAt);
+        bindAsSaved(test, b, aAt);
+        test.assertTrue(energy.insert(level, aAt, side, 100, false) == 0 && !energy.has(level, aAt, side), "a, bound to b, moves no energy");
+        test.assertTrue(!a.isBound(), "and a's binding to b ended");
+        test.assertTrue(energy.extract(level, bAt, side, 100, false) == 0 && !energy.has(level, bAt, null), "b, bound to a, moves none either");
+        test.assertTrue(!b.isBound(), "and b's binding to a ended");
+
+        BlockPos interfacePos = new BlockPos(3, 1, 3);
+        BlockPos cellPos = new BlockPos(3, 1, 5);
+        test.setBlock(interfacePos, TileBlocks.interfaceBlock());
+        test.setBlock(cellPos, TestEnergyCell.block());
+        TileTransvectorInterface iface = tile(test, interfacePos, TileTransvectorInterface.class);
+        TestEnergyCell.Cell cell = tile(test, cellPos, TestEnergyCell.Cell.class);
+        BlockPos at = test.absolutePos(interfacePos);
+        iface.setTarget(test.absolutePos(cellPos));
+        test.assertTrue(energy.insert(level, at, side, 100, false) == 100 && cell.amount() == 100, "bound to a cell, 100 go in: " + cell.amount());
+        test.setBlock(cellPos, Blocks.AIR);
+        test.assertTrue(energy.insert(level, at, side, 100, false) == 0 && !energy.has(level, at, side), "the cell is broken: nothing goes in");
+        test.assertTrue(!iface.isBound(), "and the interface let the binding go");
         test.succeed();
     }
 

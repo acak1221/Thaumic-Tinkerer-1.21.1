@@ -15,6 +15,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.energy.EmptyEnergyStorage;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.templates.EmptyFluidHandler;
@@ -30,8 +32,8 @@ import thaumic.tinkerer.common.lib.LibMisc;
 
 /**
  * The block capabilities of the add-on on NeoForge, the counterpart of the Fabric lookups ({@code TileBlocksFabric}): what
- * the Transvector Interface hands on of the block it is bound to (1.7.10: the interface was an {@code IFluidHandler} and an
- * {@code ISidedInventory} that forwarded every call to the bound tile entity, side for side).
+ * the Transvector Interface hands on of the block it is bound to (1.7.10: the interface was an {@code IFluidHandler}, an
+ * {@code ISidedInventory} and a CoFH {@code IEnergyHandler} that forwarded every call to the bound tile entity, side for side).
  *
  * <ul>
  *   <li><b>Fluids</b> ({@code Capabilities.FluidHandler.BLOCK}): present while the interface is bound to a block that has a
@@ -53,8 +55,13 @@ import thaumic.tinkerer.common.lib.LibMisc;
  *       ({@code InvWrapper}: {@code canPlaceItem} still decides what goes in), the convention of NeoForge's own furnace and brewing
  *       stand. A block entity that is no {@code Container} gets none. The types are taken from the registry (every type in the
  *       add-on's namespace but the Interface's), so a new device is covered without a change here.</li>
- *   <li><b>Not here: energy</b>, which the interface forwards on neither loader (docs/deviations/TileBlocks.md, 2.5).
- *       Essentia goes through the Thaumcraft interfaces, which need no loader glue.</li>
+ *   <li><b>Energy</b> ({@code Capabilities.EnergyStorage.BLOCK}; 1.7.10: CoFH RF, {@code receiveEnergy}, {@code extractEnergy},
+ *       {@code getEnergyStored}, {@code getMaxEnergyStored}, {@code canConnectEnergy}): exactly as the fluids, the same refusals, a
+ *       storage that asks the bound block's storage again on every call (an empty one while there is none) and the same
+ *       invalidation. The amounts go through as they are, without a conversion, as items and fluids do. Fabric:
+ *       {@code TileBlocksFabricEnergy} (Team Reborn Energy, optional there). IC2's EU and its energy net have no counterpart on
+ *       1.21.1 (docs/deviations/TileBlocks.md, 2.5).</li>
+ *   <li>Essentia goes through the Thaumcraft interfaces, which need no loader glue.</li>
  * </ul>
  */
 public final class NeoForgeCapabilities {
@@ -70,6 +77,7 @@ public final class NeoForgeCapabilities {
         ThaumicTinkerer.guard("NeoForgeCapabilities: the Transvector Interface", () -> {
             event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, TileBlocks.interfaceType(), NeoForgeCapabilities::interfaceFluids);
             event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, TileBlocks.interfaceType(), NeoForgeCapabilities::interfaceItems);
+            event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, TileBlocks.interfaceType(), NeoForgeCapabilities::interfaceEnergy);
         });
         ThaumicTinkerer.guard("NeoForgeCapabilities: the item handlers of the add-on's containers", () -> {
             for (BlockEntityType<?> type : BuiltInRegistries.BLOCK_ENTITY_TYPE) {
@@ -119,6 +127,25 @@ public final class NeoForgeCapabilities {
         return side == null ? new InvWrapper(device) : new SidedInvWrapper(device, side);
     }
 
+    /** The energy capability of an interface: a forwarding storage while the bound block has one for {@code side}, else none. */
+    @Nullable
+    static IEnergyStorage interfaceEnergy(TileTransvectorInterface device, @Nullable Direction side) {
+        return boundEnergy(device, side) == null ? null : new BoundEnergy(device, side);
+    }
+
+    /**
+     * The energy storage of the bound block for {@code side} (the side the interface was asked for, as 1.7.10 handed {@code from}
+     * on), or null while the interface is not bound, the bound block has none or is not loaded, or it is the interface itself or
+     * another interface ({@link TileTransvectorInterface#bound()}, which also ends such a binding on the server).
+     */
+    @Nullable
+    static IEnergyStorage boundEnergy(TileTransvectorInterface device, @Nullable Direction side) {
+        Level level = device.getLevel();
+        BlockEntity bound = device.bound();
+        if (level == null || bound == null) return null;
+        return level.getCapability(Capabilities.EnergyStorage.BLOCK, bound.getBlockPos(), bound.getBlockState(), bound, side);
+    }
+
     /** Hands every call to the bound block's handler of the moment; an empty handler while there is none. */
     private record BoundFluids(TileTransvectorInterface device, @Nullable Direction side) implements IFluidHandler {
         private IFluidHandler bound() {
@@ -159,6 +186,47 @@ public final class NeoForgeCapabilities {
         @Override
         public FluidStack drain(int maxDrain, FluidAction action) {
             return bound().drain(maxDrain, action);
+        }
+    }
+
+    /**
+     * Hands every call to the bound block's energy storage of the moment; an empty storage while there is none. The amounts are the
+     * bound storage's own (no conversion).
+     */
+    private record BoundEnergy(TileTransvectorInterface device, @Nullable Direction side) implements IEnergyStorage {
+        private IEnergyStorage bound() {
+            IEnergyStorage storage = boundEnergy(device, side);
+            return storage != null ? storage : EmptyEnergyStorage.INSTANCE;
+        }
+
+        @Override
+        public int receiveEnergy(int toReceive, boolean simulate) {
+            return bound().receiveEnergy(toReceive, simulate);
+        }
+
+        @Override
+        public int extractEnergy(int toExtract, boolean simulate) {
+            return bound().extractEnergy(toExtract, simulate);
+        }
+
+        @Override
+        public int getEnergyStored() {
+            return bound().getEnergyStored();
+        }
+
+        @Override
+        public int getMaxEnergyStored() {
+            return bound().getMaxEnergyStored();
+        }
+
+        @Override
+        public boolean canExtract() {
+            return bound().canExtract();
+        }
+
+        @Override
+        public boolean canReceive() {
+            return bound().canReceive();
         }
     }
 }

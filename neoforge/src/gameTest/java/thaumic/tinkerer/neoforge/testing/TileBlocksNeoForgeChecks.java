@@ -8,24 +8,33 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.neoforged.neoforge.registries.RegisterEvent;
+import org.jetbrains.annotations.Nullable;
 import thaumic.tinkerer.common.block.tile.transvector.TileTransvectorInterface;
 import thaumic.tinkerer.common.content.TileBlocks;
+import thaumic.tinkerer.testing.EnergyProbe;
+import thaumic.tinkerer.testing.TestEnergyCell;
+import thaumic.tinkerer.testing.TileBlocksRuntimeChecks;
 
 /**
- * The NeoForge counterparts of the Fabric-native wrappers of {@code TileBlocksGameTests}: the Fabric bodies use Fabric's transfer API,
- * these the NeoForge capabilities, and check the same things. tools/neoforge_gametests.py makes the generated
+ * The NeoForge counterparts of the Fabric-native wrappers of {@code TileBlocksGameTests}: the Fabric bodies use Fabric's transfer API
+ * and Team Reborn Energy, these the NeoForge capabilities, and check the same things (the energy checks are shared, with
+ * {@link #ENERGY} as the API). tools/neoforge_gametests.py makes the generated
  * {@link TileBlocksGameTests} call them under the Fabric names. The NeoForge-only scenarios are in {@link TileBlocksNeoForgeTests}.
  */
 public final class TileBlocksNeoForgeChecks {
@@ -38,6 +47,94 @@ public final class TileBlocksNeoForgeChecks {
     /** NeoForge registers block capabilities once, at start-up (Fabric's lookup is registered by the test itself). */
     static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, BlockEntityType.BARREL, (barrel, side) -> tankOf(barrel));
+        // The energy cell of the Interface's energy checks: a storage on every face but its bottom, and for no face.
+        event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, TestEnergyCell.type(), (cell, side) -> cell.hasStorage(side) ? new CellEnergy(cell) : null);
+    }
+
+    /** The energy cell's block and block entity type (Fabric: the harness's {@code TinkererGameTestSetup}). */
+    static void registerBlocks(RegisterEvent event) {
+        event.register(Registries.BLOCK, TestEnergyCell.ID, TestEnergyCell::block);
+        event.register(Registries.BLOCK_ENTITY_TYPE, TestEnergyCell.ID, TestEnergyCell::type);
+    }
+
+    /** {@code Capabilities.EnergyStorage.BLOCK}, asked anew (no cache) for every call; the amounts are NeoForge's ints. */
+    static final EnergyProbe ENERGY = new EnergyProbe() {
+        @Nullable
+        private IEnergyStorage find(ServerLevel level, BlockPos pos, @Nullable Direction side) {
+            return level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, side);
+        }
+
+        @Override
+        public boolean has(ServerLevel level, BlockPos pos, @Nullable Direction side) {
+            return find(level, pos, side) != null;
+        }
+
+        @Override
+        public long insert(ServerLevel level, BlockPos pos, @Nullable Direction side, long amount, boolean simulate) {
+            IEnergyStorage storage = find(level, pos, side);
+            return storage == null ? 0 : storage.receiveEnergy(Math.toIntExact(amount), simulate);
+        }
+
+        @Override
+        public long extract(ServerLevel level, BlockPos pos, @Nullable Direction side, long amount, boolean simulate) {
+            IEnergyStorage storage = find(level, pos, side);
+            return storage == null ? 0 : storage.extractEnergy(Math.toIntExact(amount), simulate);
+        }
+
+        @Override
+        public long stored(ServerLevel level, BlockPos pos, @Nullable Direction side) {
+            IEnergyStorage storage = find(level, pos, side);
+            return storage == null ? 0 : storage.getEnergyStored();
+        }
+
+        @Override
+        public long capacity(ServerLevel level, BlockPos pos, @Nullable Direction side) {
+            IEnergyStorage storage = find(level, pos, side);
+            return storage == null ? 0 : storage.getMaxEnergyStored();
+        }
+    };
+
+    /** The cell as a NeoForge energy storage, with the cell's rules (also for {@link TileBlocksNeoForgeTests}). */
+    record CellEnergy(TestEnergyCell.Cell cell) implements IEnergyStorage {
+        @Override
+        public int receiveEnergy(int toReceive, boolean simulate) {
+            return (int) cell.insert(toReceive, simulate);
+        }
+
+        @Override
+        public int extractEnergy(int toExtract, boolean simulate) {
+            return (int) cell.extract(toExtract, simulate);
+        }
+
+        @Override
+        public int getEnergyStored() {
+            return (int) cell.amount();
+        }
+
+        @Override
+        public int getMaxEnergyStored() {
+            return (int) TestEnergyCell.CAPACITY;
+        }
+
+        @Override
+        public boolean canExtract() {
+            return true;
+        }
+
+        @Override
+        public boolean canReceive() {
+            return true;
+        }
+    }
+
+    /** The shared check with NeoForge's energy capability ({@code NeoForgeCapabilities}). */
+    public static void interfaceForwardsEnergy(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfaceForwardsEnergy(h, ENERGY);
+    }
+
+    /** The shared check with NeoForge's energy capability. */
+    public static void interfaceMovesNoEnergyThroughABrokenBinding(GameTestHelper h) {
+        TileBlocksRuntimeChecks.interfaceMovesNoEnergyThroughABrokenBinding(h, ENERGY);
     }
 
     /** The tank of a barrel (made on the first query; also for {@link TileBlocksNeoForgeTests}). */

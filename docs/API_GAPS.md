@@ -171,7 +171,7 @@ SimpleBlocks, Enchantments).
 | 3 | NEI handlers (`client/nei/*`) | **done**: EMI and JEI plugins of the add-on (`compat/`, `deviations/RecipeViewers.md`); TC's arcane/crucible/infusion recipes show the add-on's through Thaumcraft's own plugins |
 | 4 | EnderIO planter (`EnderIO`, `InfusedSeedsPlanter`) | none |
 | 5 | EMT electric hoe (`EMTCompat`) | none |
-| 6 | IC2/CoFH energy on the Transvector Interface (`IndustrialcraftUnloadHelper`) | loader energy/fluid/item capabilities, per loader |
+| 6 | IC2/CoFH energy on the Transvector Interface (`IndustrialcraftUnloadHelper`) | **done** for RF's place: NeoForge `Capabilities.EnergyStorage.BLOCK`, Fabric Team Reborn Energy (optional), forwarded like the fluids (`deviations/TileBlocks.md` 2.5); IC2's EU and energy net: none |
 | 7 | AE2 `IMovableTile` | none |
 | 8 | Baubles Expanded (`IBaubleExpanded`, `BaubleItemHelper`) | TC4 Reload's own four slots |
 | 9 | ThaumicBoots omni mode (`@Optional` in `ItemGemBoots`) | none |

@@ -15,6 +15,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
 import net.neoforged.neoforge.gametest.GameTestHooks;
+import net.neoforged.neoforge.registries.RegisterEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,8 +32,8 @@ import org.slf4j.LoggerFactory;
  *   {@code thaumictinkerer}.</li>
  *   <li>The NeoForge-only scenarios ({@link TinkererGameTestCatalogue#NEOFORGE_ONLY}, hand-written classes {@code *NeoForgeTests}): the
  *   capabilities of the Transvector Interface ({@link TileBlocksNeoForgeTests}).</li>
- *   <li>The NeoForge-only fixtures: the fluid tank of the barrels that the fluid test of the Transvector Interface fills
- *   ({@link TileBlocksNeoForgeChecks}), the negotiated channels of the mock players (mixin {@code TinkererMockConnectionMixin}) and the
+ *   <li>The NeoForge-only fixtures: the fluid tank of the barrels that the fluid test of the Transvector Interface fills and the energy
+ *   cell of its energy tests (block, block entity type and energy capability; {@link TileBlocksNeoForgeChecks}), the negotiated channels of the mock players (mixin {@code TinkererMockConnectionMixin}) and the
  *   test filter (mixin {@code TinkererGameTestSelectionMixin}, the Fabric harness's {@code -PtinkererGameTestFilter}).</li>
  *   <li>The JUnit XML report, the file of {@code -Dthaumictinkerer.gameTestReportFile} (Fabric API writes the Fabric one from
  *   {@code -Dfabric-api.gametest.report-file}); every failure is logged with its stack trace too.</li>
@@ -51,6 +52,7 @@ public final class ThaumicTinkererGameTestMod {
             for (Class<?> wrappers : TinkererGameTestCatalogue.CLASSES) event.register(wrappers);
             for (Class<?> scenarios : TinkererGameTestCatalogue.NEOFORGE_ONLY) event.register(scenarios);
         });
+        bus.addListener(RegisterEvent.class, TileBlocksNeoForgeChecks::registerBlocks);
         bus.addListener(RegisterCapabilitiesEvent.class, TileBlocksNeoForgeChecks::registerCapabilities);
         String report = System.getProperty(REPORT_FILE_PROPERTY, "").trim();
         if (GameTestHooks.isGametestServer() && !report.isEmpty()) {

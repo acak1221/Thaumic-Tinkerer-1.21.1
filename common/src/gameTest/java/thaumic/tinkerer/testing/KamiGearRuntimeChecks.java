@@ -1986,7 +1986,13 @@ public final class KamiGearRuntimeChecks {
 
         List<ServerPlayer> granted = new ArrayList<>();
         Consumer<ServerPlayer> realSink = KamiHooks.soulHeartSink;
-        KamiHooks.soulHeartSink = granted::add;
+        // The hook is global, and other checks run in the same ticks (the Soul Hearts check of KamiWorld gives hearts through it): only
+        // the hearts of this check's players are recorded here, anyone else's go to the real hook.
+        List<ServerPlayer> mine = List.of(onPig, onStand, onInvulnerable, onCreative, noBlow, creative);
+        KamiHooks.soulHeartSink = each -> {
+            if (mine.contains(each)) granted.add(each);
+            else realSink.accept(each);
+        };
         try {
             item.onLeftClickEntity(sword, onPig, pig);
             pig.hurt(onPig.damageSources().playerAttack(onPig), 2F);

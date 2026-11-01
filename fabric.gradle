@@ -62,7 +62,14 @@ sourceSets {
  }
 }
 
+// The GameTest server runs with Team Reborn Energy (the energy checks of the Transvector Interface need it), as a mod of its own on the
+// classpath; no other run and no jar has it. -PwithoutTeamRebornEnergy leaves it out and tells the checks so
+// (-Dthaumictinkerer.withoutTeamRebornEnergy), which then check that the add-on runs without it.
+def withoutTeamRebornEnergy = providers.gradleProperty('withoutTeamRebornEnergy').isPresent()
+loom.createRemapConfigurations(sourceSets.thaumicTinkererGameTest)
+
 dependencies {
+ if (!withoutTeamRebornEnergy) modThaumicTinkererGameTestRuntimeOnly("teamreborn:energy:$team_reborn_energy_version") { transitive = false }
  thaumicTinkererTestImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
  thaumicTinkererTestImplementation 'org.junit.platform:junit-platform-launcher'
  thaumicTinkererTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -147,6 +154,7 @@ loom.runs {
   vmArg "-Dfabric.classPathGroups=${tinkererGameTestGroups}"
   vmArg '-Dfabric-api.gametest'
   if (!tinkererGameTestFilter.isBlank()) vmArg "-Dthaumictinkerer.gameTestFilter=${tinkererGameTestFilter}"
+  if (withoutTeamRebornEnergy) vmArg '-Dthaumictinkerer.withoutTeamRebornEnergy=true'
   vmArg "-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('tinkerer-gametest-results.xml').get().asFile.absolutePath}"
   runDir 'run-tinkerer-gametest'
  }

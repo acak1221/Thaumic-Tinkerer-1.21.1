@@ -452,8 +452,9 @@ GameTests pass on both loaders, the Mob Display drawn in the NeoForge client smo
   the ghost blocks through `RenderLevelStageEvent` at `AFTER_TRANSLUCENT_BLOCKS` (`api-requests/KamiGear.md` section 4, `deviations/KamiGear.md` section 10).
 * **Fluids through the Transvector Interface.** Fabric: `fabric/.../TileBlocksFabric.java` (`FluidStorage.SIDED`), which `ThaumicTinkererFabric.onThaumcraftReady()`
   calls through `ThaumicTinkerer.guard`. NeoForge: `neoforge/.../NeoForgeCapabilities.java`, `Capabilities.FluidHandler.BLOCK` and `Capabilities.ItemHandler.BLOCK`
-  registered in `RegisterCapabilitiesEvent` (rated P1 in `api-requests/TileBlocks.md` section 6). Energy through the Interface is written for **neither** loader
-  (the same section).
+  registered in `RegisterCapabilitiesEvent` (rated P1 in `api-requests/TileBlocks.md` section 6). Energy through the Interface (the same section): Fabric
+  `fabric/.../TileBlocksFabricEnergy.java` (Team Reborn Energy, optional, registered only when that mod is installed), NeoForge `Capabilities.EnergyStorage.BLOCK`
+  in `NeoForgeCapabilities`.
 * **Flammability of other mods' blocks for the elemental fires.** A platform hook (`api-requests/SimpleBlocks.md` section 3, P3), written for **neither**
   loader: the fires burn the vanilla blocks only.
 * **The special effects of the Bedrock dimension** (the constant fog of 1.7.10; `api-requests/KamiWorld.md` section 3, optional): not requested and written for

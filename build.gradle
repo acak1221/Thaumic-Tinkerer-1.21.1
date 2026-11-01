@@ -63,6 +63,10 @@ dependencies {
  if (providers.gradleProperty('withEmi').isPresent()) modLocalRuntime "dev.emi:emi-fabric:$emi_version"
  if (providers.gradleProperty('withJei').isPresent()) modLocalRuntime "mezz.jei:jei-1.21.1-fabric:$jei_version"
  if (providers.gradleProperty('withJade').isPresent()) modLocalRuntime "maven.modrinth:jade:$jade_version+fabric"
+ // Team Reborn Energy (fabric/.../TileBlocksFabricEnergy, the Transvector Interface's energy): optional in the same way, compiled against,
+ // never bundled or required. Only the GameTest run has it (fabric.gradle; -PwithoutTeamRebornEnergy leaves it out there too). Not transitive:
+ // its POM names an older fabric-transfer-api-v1 than the one in Fabric API.
+ modCompileOnly("teamreborn:energy:$team_reborn_energy_version") { transitive = false }
 }
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }

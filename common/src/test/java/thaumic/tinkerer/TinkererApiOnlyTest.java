@@ -26,16 +26,48 @@ class TinkererApiOnlyTest {
     private static final List<String> FABRIC_ALLOWED = List.of("net.fabricmc.", "org.spongepowered.", "com.llamalad7.");
     // The optional integrations: the APIs of EMI, JEI and Jade, and nothing of Thaumcraft's own plugins for them.
     private static final List<String> COMPAT_ALLOWED = List.of("dev.emi.emi.api.", "mezz.jei.api.", "snownee.jade.api.");
+    // Team Reborn Energy (optional, Fabric): its API, in the one class of the Fabric tree that may name it.
+    private static final String ENERGY_API = "team.reborn.energy.";
+    private static final Path ENERGY_GLUE = Path.of("fabric", "src", "main", "java", "thaumic", "tinkerer", "fabric", "TileBlocksFabricEnergy.java");
 
     @Test
     void thePluginSourcesImportOnlyThePublicApi() throws IOException {
         List<String> offending = new ArrayList<>();
         int files = scan(Path.of("common", "src", "main", "java"), COMMON_ALLOWED, offending)
-                + scan(Path.of("fabric", "src", "main", "java"), concat(COMMON_ALLOWED, FABRIC_ALLOWED), offending)
+                + scan(Path.of("fabric", "src", "main", "java"), concat(COMMON_ALLOWED, concat(FABRIC_ALLOWED, List.of(ENERGY_API + "api."))), offending)
                 + scan(Path.of("neoforge", "src", "main", "java"), concat(COMMON_ALLOWED, List.of("net.neoforged.", "org.objectweb.", "org.spongepowered.", "com.llamalad7.")), offending)
                 + scan(Path.of("compat", "src", "main", "java"), concat(COMMON_ALLOWED, COMPAT_ALLOWED), offending);
         assertTrue(files > 0, "the add-on has sources: " + Path.of(".").toAbsolutePath());
         assertEquals(List.of(), offending, "the add-on reaches past thaumcraft.api");
+    }
+
+    /**
+     * Team Reborn Energy is optional: only {@code TileBlocksFabricEnergy} names its API, and every line of code elsewhere that names that
+     * class asks {@code teamRebornEnergyLoaded()} on the same line, so the class (and with it the mod's API) is never loaded without the
+     * mod. The GameTest run without the mod ({@code -PwithoutTeamRebornEnergy}) checks the same at run time.
+     */
+    @Test
+    void teamRebornEnergyIsNamedOnlyByItsGuardedGlue() throws IOException {
+        List<String> offending = new ArrayList<>();
+        for (String tree : List.of("common", "fabric", "neoforge", "compat")) {
+            Path root = Path.of(tree, "src", "main", "java");
+            if (!Files.isDirectory(root)) continue;
+            try (Stream<Path> paths = Files.walk(root)) {
+                for (Path file : paths.filter(p -> p.toString().endsWith(".java")).toList()) {
+                    if (file.equals(ENERGY_GLUE)) continue;
+                    for (String line : Files.readAllLines(file)) {
+                        String code = line.trim();
+                        if (code.startsWith("*") || code.startsWith("/*") || code.startsWith("//")) continue;
+                        if (code.contains(ENERGY_API)) offending.add(file + ": names " + ENERGY_API + ": " + code);
+                        if (code.contains("TileBlocksFabricEnergy") && !code.contains("teamRebornEnergyLoaded()")) {
+                            offending.add(file + ": uses TileBlocksFabricEnergy without asking teamRebornEnergyLoaded(): " + code);
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(Files.readString(ENERGY_GLUE).contains("import " + ENERGY_API + "api."), "the glue " + ENERGY_GLUE + " uses the energy API");
+        assertEquals(List.of(), offending, "Team Reborn Energy must stay optional");
     }
 
     private static List<String> concat(List<String> a, List<String> b) {

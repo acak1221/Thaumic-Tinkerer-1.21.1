@@ -269,7 +269,7 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   is a `Container`; `getAspects`, `addToContainer`, ... when it is an `IAspectContainer`; the transport methods when it is
   an `IEssentiaTransport` (both are the API's interfaces, which the tubes and jars ask of any block entity). The face rules
   of a non-sided inventory (all slots, insert and extract allowed) are kept.
-* **Fluids are forwarded by loader glue (run on Fabric and on NeoForge GameTest servers); energy is not forwarded (forced).** The original implemented `IFluidHandler`, CoFH RF
+* **Fluids and energy are forwarded by loader glue (forced; run on Fabric and on NeoForge GameTest servers); IC2 EU is not.** The original implemented `IFluidHandler`, CoFH RF
   (`IEnergyHandler`, `IEnergyReceiver`, `IEnergyProvider`) and IC2 EU (`IEnergySink`, `IEnergySource`,
   `IEnergyConductor`) and forwarded them. 1.21.1 has no interface for these that common code can implement: fluid and
   energy storage are loader capabilities (Fabric Transfer API and Team Reborn Energy, NeoForge capabilities).
@@ -293,13 +293,40 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   `TileBlocksNeoForgeChecks.interfaceForwardsFluids`, asks `level.getCapability` without a cache), and two NeoForge-only checks,
   `interfaceItemHandlerReachesTheBoundChest` (the item handler, with and without a side, and a cache made while unbound) and
   `interfaceFluidCapabilityCacheFollowsTheBinding` (the invalidation on binding, on a broken tank and on unbinding); all passed. Not tried:
-  other mods' pipes and tanks. *Not done:* energy on either loader (Team Reborn Energy is not a dependency, and it is outside the import
-  list of PORTING_RULES; NeoForge's `Capabilities.EnergyStorage.BLOCK` is not registered either).
+  other mods' pipes and tanks.
+  *Energy* (since 2026-11-01). The original's RF methods (`receiveEnergy`, `extractEnergy`, `getEnergyStored`, `getMaxEnergyStored`,
+  `canConnectEnergy`) each handed the call to the bound tile entity with the side it was asked for, when that was an `IEnergyHandler`,
+  and answered 0 or `false` otherwise; the target was the one `getTile()` gives. The port does the same with each loader's energy API:
+  *NeoForge*: `NeoForgeCapabilities` registers `Capabilities.EnergyStorage.BLOCK` for the Interface exactly as its fluids: the bound
+  block's storage for the same side (`level.getCapability`), through a storage that asks again on every call (empty while there is none),
+  none (null) while the Interface is unbound, bound into an unloaded chunk, bound to itself or to another Interface
+  (`TileTransvectorInterface.bound()`, which also ends such a binding on the server) or bound to a block without a storage for that side,
+  and the same invalidation of the Interface's capabilities when the binding changes. *Fabric*: `TileBlocksFabricEnergy` (new) registers
+  Team Reborn Energy's `EnergyStorage.SIDED` for the Interface and answers with the bound block's storage for the same side, with the same
+  refusals (the shape of the Fabric fluids: Fabric's lookups ask the provider on every `find`). Team Reborn Energy (`teamreborn:energy`
+  4.1.0 from `maven.fabricmc.net`, MIT, the release for Minecraft 1.21 to 1.21.4; 4.2.0 needs 1.21.5) is an **optional** dependency: the
+  add-on compiles against it, never bundles it (it is not in the jar) and only `suggests` it in `fabric.mod.json`; `ThaumicTinkererFabric`
+  calls `TileBlocksFabricEnergy`, the one class that names its API, only when Fabric Loader reports the mod, so without it no class of the
+  mod is loaded and the Interface simply has no energy storage on Fabric (as a 1.7.10 Interface had no RF without CoFH).
+  `TinkererApiOnlyTest.teamRebornEnergyIsNamedOnlyByItsGuardedGlue` keeps that guard in place; the GameTest run has the mod, and
+  `-PwithoutTeamRebornEnergy` runs it without (section 4). **Units (decision):** none converted. The amounts pass as the bound storage
+  gives them, as items and fluids do: NeoForge's storages count in ints, Team Reborn Energy's in longs, and on each loader the Interface
+  stands between two storages of the same API. `canConnectEnergy` is NeoForge's `canReceive`/`canExtract` and Team Reborn Energy's
+  `supportsInsertion`/`supportsExtraction`, the bound storage's answers. **IC2 EU (forced, not ported):** the original also joined IC2's
+  energy net (`IndustrialcraftUnloadHelper`: a load event on its first tick, an unload event on `invalidate` and chunk unload) and forwarded
+  the sink, source and conductor calls; IC2 has no 1.21.1 release, and the 1.21.1 lookups need no registration in a net. Run: the shared
+  checks `interfaceForwardsEnergy` (unbound none; bound to the GameTest energy cell, inserts and extracts reach it with its limits per call
+  and its capacity, simulations change nothing, the closed face of the cell is closed at the Interface, no face is the whole cell; bound to a
+  chest or unbound, none) and `interfaceMovesNoEnergyThroughABrokenBinding` (a saved binding into an unloaded chunk: none, the binding kept,
+  no chunk loaded; bound to itself, or two bound to each other, as saved: none, and the question ends the binding; a broken cell: none, the
+  binding ends) on both loaders, and on NeoForge `interfaceEnergyCapabilityCacheFollowsTheBinding` (a `BlockCapabilityCache` through
+  binding, a broken cell and unbinding); results in section 4. Not tried: other mods' cables and machines.
   On Fabric items go through the Interface's `WorldlyContainer`, which the Transfer API wraps itself; essentia goes through the
   Thaumcraft interfaces on both loaders.
 * **The research text of the Interface says what it does (decision).** `INTERFACE.0` promised BuildCraft, TE3 and IC2
-  power; `lang-extra/tile_blocks.*.json` (all six languages) now says essentia, items and liquids and that power does not
-  pass through it in this version. `INTERFACE.1` still carries the 1.7.10 note about BuildCraft pipes, which is harmless.
+  power; `lang-extra/tile_blocks.*.json` (all six languages) now says power, essentia, items and liquids, that power passes
+  both ways and that on Fabric it needs the Team Reborn Energy mod (until 2026-11-01 it said that power did not pass through it).
+  `INTERFACE.1` still carries the 1.7.10 note about BuildCraft pipes, which is harmless.
 * **An unbound interface does not swallow essentia (fix).** The original `addToContainer` returned `0` (nothing left over)
   when the interface was not bound to an aspect container, so a tube or a phial that poured into an unbound interface lost
   the essentia. The port returns the whole amount (nothing was taken), `doesContainerAccept` is `false`, and `getAspects`
@@ -312,7 +339,8 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   `TileTransvectorInterface.bound()`, which answers null for the Interface itself and for another Interface, on both sides, and on the server
   `getTile()` ends such a binding (`TileTransvector.mayBindTo`, new), so a world saved with one repairs itself at the first question; a
   `setTarget` to itself or to another Interface ends at once. The loader glue (`TileBlocksFabric`, `NeoForgeCapabilities`) already refused
-  both. Run: `interfaceMovedOntoItsOwnTargetEndsTheBinding` (a Dislocator moves the Interface onto its chest; a hopper's push and a player's
+  both; the energy glue (`TileBlocksFabricEnergy`, the energy capability of `NeoForgeCapabilities`) asks `bound()` (checked by
+  `interfaceMovesNoEnergyThroughABrokenBinding`). Run: `interfaceMovedOntoItsOwnTargetEndsTheBinding` (a Dislocator moves the Interface onto its chest; a hopper's push and a player's
   click, each on the saved state, end the binding without a crash) and `interfacesBoundToEachOtherEndTheBinding`. Not run: the same against
   the code before the fix (the crash is worked out by reading).
 * **The two item rules of 1.21.1's `Container` are forwarded (fix).** `canTakeItem(Container, int, ItemStack)` (may a hopper take this
@@ -465,8 +493,8 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 ## 3. Not done (kept visible)
 
-* Energy forwarding of the Interface (2.5), on both loaders: needs the loader modules. (Fluids are forwarded on both, and on NeoForge
-  items through a capability as well; the GameTests of both loaders run them, 2.5.)
+* IC2 EU through the Interface (2.5): IC2 has no 1.21.1 release. (Fluids and energy are forwarded on both loaders, energy on Fabric with
+  the optional Team Reborn Energy, and on NeoForge items through a capability as well; the GameTests of both loaders run them, 2.5.)
 * ComputerCraft/OpenComputers peripherals of the Tablet, the Interface and the Golem Connector (2.1, 2.4, 2.5): the method
   tables exist as plain Java, nothing registers them.
 * Golem data of the Golem Connector (2.4): API request A11.
@@ -478,6 +506,26 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
   described in this document from those pictures.
 
 ## 4. Unverified
+
+Round of 2026-11-01, energy (2.5: the Interface's energy on NeoForge and, with the optional Team Reborn Energy 4.1.0, on Fabric): on a Fabric
+GameTest server `-PtinkererGameTestFilter='tileblocksgametests.*'` ran the group's 48 GameTests ("All 48 required tests passed"; the 46 before
+and the two new energy checks; the log lists `team_reborn_energy 4.1.0` among 48 mods), and on a NeoForge GameTest server
+`tileblocksgametests.*,tileblocksneoforgetests.*` ran 52 ("All 52 required tests passed": the same 48 and four NeoForge-only checks, one of
+them new, `interfaceEnergyCapabilityCacheFollowsTheBinding`). **Without Team Reborn Energy:** `runTinkererGameTest -PwithoutTeamRebornEnergy
+-PtinkererGameTestFilter='tileblocksgametests.*,coregametests.*'` ("All 51 required tests passed"; 47 mods loaded, none of them Team Reborn
+Energy, and the log names no class of it): the add-on started, recorded no failure, and the Interface's items and fluids passed as before,
+while the two energy checks checked the absence (the run says the mod is missing, the add-on only suggests it, no failure). **Mutation:** with
+the side passed on as `null` instead of the side asked (in `TileBlocksFabricEnergy` and in `NeoForgeCapabilities.boundEnergy`),
+`interfaceForwardsEnergy` failed on both loaders at "asked on its bottom face, the interface asks the cell's bottom face: no storage", so it
+sees the side; the glue was put back afterwards. **Full run** (`check runTinkererGameTest :neoforge:runGameTest assemble :neoforge:assemble
+--continue`, one run with the final tree): JUnit 425 tests, 0 failures (the new one: `teamRebornEnergyIsNamedOnlyByItsGuardedGlue`); Fabric "All
+358 required tests passed"; NeoForge "All 367 required tests passed"; both release jars built, neither holds a class of Team Reborn Energy or a
+nested jar. The first two full NeoForge runs of that tree failed `kamiworldgametests.soulHeartsAbsorbDamageBeforeHealth` and
+`kamigeargametests.soulModeGivesAHeartOnlyForAHitThatLands`: the KamiGear check replaced the global Soul Heart hook for two ticks and took the
+heart the KamiWorld check gave in the same ticks (on main both passed; that the three new tests changed which tests share those ticks is inferred, not seen); its stand-in now records only
+its own players and passes the others on (`KamiGear.md`), and the full run above includes that. **Not run:** another mod's cable, machine or
+generator on either loader (only the GameTest energy cell); a client; the self-bound crash of the code before the fix against the energy path
+(the energy glue was written with `bound()` from the start).
 
 Round of 2026-11-01 (the fixes of the review: the Interface's self-binding, the Dislocator's check, `BlockProtection` in the three devices,
 the Remote Placer's bucket, the fake player's cooldowns, size, statistics, rides, beds and menus, the Binder's dimension, the saved formats,
