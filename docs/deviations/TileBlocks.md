@@ -446,21 +446,25 @@ may overrule it). Nothing here was run in a game; see the end for what is unveri
 
 ### 2.8 Camouflage (the shared base of the Interface, Dislocator, Remote Placer and Golem Connector)
 
-* **Rendering (forced).** 1.7.10 asked the camouflaged block for the icon of each side from inside the device block. In
-  1.21.1 a block cannot answer for another block's model, so while a camouflage is set the device block is
-  `RenderShape.INVISIBLE` (`camo=true`) and a block entity renderer (`RenderTileCamoDevice`) draws the imitated state at the device's position **in the world**
-  (`BlockRenderDispatcher.renderBatched`, as the piston renderer draws a moving block, and as the SimpleBlocks camouflage
-  does). That lights the camouflage from its neighbours (an earlier revision used `renderSingleBlock` with the packed light
-  of the device's own cell, which is dark for the opaque Golem Connector), with ambient occlusion, the tint of the position
-  and the culling of faces against opaque neighbours. Still different from 1.7.10: the chunk mesh's batching, and the
-  chunk-rendering features of other mods do not see the device as the imitated block. **Seen once**, in the client smoke
-  harness (`docs/CLIENT_VERIFICATION.md`, run of 2026-10-30, Mesa software renderer, one frame): with oak planks set as the
-  camouflage, the close-ups `renderer-interface.png`, `renderer-dislocator.png`, `renderer-remote_placer.png` and
-  `renderer-golem_connector.png` each show an oak-planks cube at the device's place, shaded like the floor around it; a
-  one-off variant with glass on the Golem Connector shows a glass cube with the floor visible through it. **Not seen:** on a
-  GPU, in play, other camouflage blocks, the camouflage next to other camouflaged devices or lit by torches. (The first
-  harness run drew nothing for these four close-ups, because the harness set the camouflage only on the Ethereal Platform's
-  block entity: that was a harness fault, fixed in `RendererPhase`, not a defect of the renderer.)
+* **Rendering: the device's model draws the camouflage (1.21.1 technique, 2026-11-01).** 1.7.10 asked the camouflaged block for the
+  icon of each side from inside the device block. Until 2026-11-01 the port made the device `RenderShape.INVISIBLE` while `camo=true`
+  and drew the imitated state with a block entity renderer (`RenderTileCamoDevice`, `BlockRenderDispatcher.renderBatched` every frame,
+  "forced"). Now the device is always drawn from its model, which the loader glue wraps (Fabric `FabricCamoModels`: a Renderer API
+  model after baking that reads the block entity's render data; NeoForge `NeoForgeCamoModels`: a `BakedModelWrapper` in
+  `ModifyBakingResult` that reads its `ModelData`; `docs/HOOKS.md` section 17, the same as the Ethereal Platform's,
+  `SimpleBlocks.md` 2.4). While `camo=true` the wrapper puts the imitated state's model into the chunk mesh as the block renderer
+  would draw that state at the device's place: the faces that state culls against its neighbours, its tint, its render type (cut-out,
+  translucent), its own light when it emits light; otherwise the device's own model. A change of camouflage rebuilds the chunk section
+  on the client (`CamouflageHooks`). Kept as before: a device in the state `camo=true` whose camouflage has not arrived draws nothing; the
+  device occludes nothing while camouflaged (next point); its breaking particles are its own. New for a player: the cracks of a device
+  being broken are drawn on its camouflage (the block entity renderer drew none; 1.7.10 did). **Not changed, recorded:** a device is a full
+  cube for smooth lighting in both looks, so it darkens the floor next to it even when it imitates glass (a real glass block does not;
+  the client smoke's comparison shows exactly that and nothing else, see below); 1.7.10's camouflage blocks were not "normal cubes" and
+  cast no ambient occlusion. **Seen** in the client smoke's camouflage phase (`docs/CLIENT_VERIFICATION.md`, Mesa software renderer):
+  the Interface, Dislocator, Remote Placer and two Golem Connectors imitating grass (tinted), oak leaves (tinted, cut out), glass, ice
+  (translucent), glowstone and an oak log on its side, first camouflaged as stone and then changed, look like the real blocks in the same
+  places (`camo-devices.png` against `camo-real-blocks.png`). **Not seen:** a GPU, play, the camouflage lit by torches, other mods'
+  connected textures or animated models.
 * **A camouflaged device occludes nothing (fix, found by the first client run).** While `camo=true` the device's own model is
   not drawn (until 2026-11-01 the block was `RenderShape.INVISIBLE` and a block entity renderer drew the camouflage; now its wrapped
   model draws the camouflage, see the first point). The Golem
@@ -610,7 +614,7 @@ fixed: the relay fix above (a stale partner hung the server thread), and six che
 the relays of neighbouring checks found each other, see "keeps the last relay it finds"). **Still not run:** the Fabric glue
 `TileBlocksFabric` is only exercised through `interfaceForwardsFluids`; the NeoForge capabilities of the Interface
 (`NeoForgeCapabilities`, 2.5) had not run in that round (they have since, on a NeoForge GameTest server, above); the client ran only in the smoke harness (2.8: the
-camouflage renderer, `renderBatched`, drew in it on a software renderer); multiplayer, survival play and any run on a GPU
+camouflage, since 2026-11-01 the devices' wrapped models, drew in it on a software renderer); multiplayer, survival play and any run on a GPU
 have never happened. Every behaviour above that says "as the
 original" is by reading the original code, not by running both; the claims about 1.7.10 engine code (the break-speed rule,
 Forge's call order of `onItemUseFirst`) are from memory of that code, whose engine source is not on disk here.

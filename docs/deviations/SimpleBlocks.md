@@ -531,7 +531,8 @@ Written without being able to run Gradle or the game; the GameTests were run lat
   was compiled, not looked at.
 
 Not seen in a running game by the engineer of the group (apart from the seed icons above): the look of every model, the crop colours (the tint of the generic crop reads the block entity,
-which must have reached the client before the chunk section is meshed), the camouflage renderer, the particles (the
+which must have reached the client before the chunk section is meshed), the camouflage on a GPU (since 2026-11-01 the platform's
+wrapped model, seen in the client smoke's camouflage phase on a software renderer, section 2.4), the particles (the
 Thaumcraft sparkles, wisps, runes and bursts of the facade have not been looked at on a frame, nor have the vanilla
 stand-ins), the spreading of the gases against the light engine, the Nether tick rates, the speed of the crops, the
 behaviour of the fires over time (the checks drive the tick by hand, so the real rate of the random ticks is unseen), the
