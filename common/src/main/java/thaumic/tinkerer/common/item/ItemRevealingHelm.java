@@ -37,7 +37,6 @@ import thaumcraft.api.IGoggles;
 import thaumcraft.api.IRepairable;
 import thaumcraft.api.IRunicArmor;
 import thaumcraft.api.IVisDiscountGear;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.items.ItemsTC;
@@ -158,8 +157,8 @@ public class ItemRevealingHelm extends ArmorItem
                         .add(Aspect.ORDER, 5).add(Aspect.ENTROPY, 5),
                 "GH",
                 'G',
-                ItemApi.getItem("itemGoggles", 0),
+                ItemsTC.stack("goggles_revealing"),
                 'H',
-                ItemApi.getItem("itemHelmetThaumium", 0));
+                ItemsTC.stack("thaumium_helmet"));
     }
 }

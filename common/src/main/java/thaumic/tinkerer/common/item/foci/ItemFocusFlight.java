@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -117,6 +118,6 @@ public class ItemFocusFlight extends ItemModFocus {
                 new AspectList().add(Aspect.AIR, 15).add(Aspect.MOTION, 20).add(Aspect.TRAVEL, 10),
                 new ItemStack(Items.ENDER_PEARL), new ItemStack(Items.QUARTZ), new ItemStack(Items.QUARTZ),
                 new ItemStack(Items.QUARTZ), new ItemStack(Items.QUARTZ), new ItemStack(Items.FEATHER),
-                new ItemStack(Items.FEATHER), tc("itemShard", 0));
+                new ItemStack(Items.FEATHER), ItemsTC.stack("air_shard"));
     }
 }

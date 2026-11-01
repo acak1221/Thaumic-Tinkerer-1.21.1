@@ -981,6 +981,69 @@ public final class KamiGearRuntimeChecks {
         test.succeed();
     }
 
+    /**
+     * The groups KamiGear, KamiWorld, Foci and BasicItems name Thaumcraft's items by their native ids ({@code ItemsTC.stack("jar_void")})
+     * where they named them by the 1.7.10 field and metadata ({@code ItemApi.getBlock("blockJar", 3)}); the ids are the item forms of the
+     * API's own table ({@code data/thaumcraft/tc4/legacy_ids.json}). For every pair that was replaced, both name the same stack: the same
+     * item with the same components (the wand without {@code wand_data}, the foci without upgrades), so no recipe or research changed.
+     */
+    public static void theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs(GameTestHelper test) {
+        String[][] replaced = {
+            { "block", "blockChestHungry", "0", "hungry_chest" },
+            { "block", "blockCosmeticSolid", "2", "paving_stone_travel" },
+            { "block", "blockCosmeticSolid", "3", "paving_stone_warding" },
+            { "block", "blockJar", "0", "jar" },
+            { "block", "blockJar", "3", "jar_void" },
+            { "block", "blockMetalDevice", "8", "growth_lamp" },
+            { "block", "blockMirror", "0", "mirror" },
+            { "block", "blockWoodenDevice", "5", "arcane_bore" },
+            { "item", "itemAxeElemental", "0", "elemental_axe" },
+            { "item", "itemFocusExcavation", "0", "focus_excavation" },
+            { "item", "itemFocusFire", "0", "focus_fire" },
+            { "item", "itemFocusFrost", "0", "focus_frost" },
+            { "item", "itemFocusPech", "0", "focus_pech" },
+            { "item", "itemFocusPortableHole", "0", "focus_portable_hole" },
+            { "item", "itemFocusPouch", "0", "focus_pouch" },
+            { "item", "itemFocusPrimal", "0", "focus_primal" },
+            { "item", "itemFocusShock", "0", "focus_shock" },
+            { "item", "itemGoggles", "0", "goggles_revealing" },
+            { "item", "itemHelmetThaumium", "0", "thaumium_helmet" },
+            { "item", "itemHoverHarness", "0", "hover_harness" },
+            { "item", "itemInkwell", "0", "inkwell" },
+            { "item", "itemNugget", "16", "cluster_iron" },
+            { "item", "itemNugget", "21", "cluster_cinnabar" },
+            { "item", "itemNugget", "31", "cluster_gold" },
+            { "item", "itemPickElemental", "0", "elemental_pickaxe" },
+            { "item", "itemResource", "1", "nitor" },
+            { "item", "itemResource", "10", "mirrored_glass" },
+            { "item", "itemResource", "11", "tainted_goo" },
+            { "item", "itemResource", "14", "salis_mundus" },
+            { "item", "itemResource", "2", "thaumium_ingot" },
+            { "item", "itemResource", "3", "quick_silver" },
+            { "item", "itemResource", "6", "amber_gem" },
+            { "item", "itemResource", "7", "enchanted_fabric" },
+            { "item", "itemShard", "0", "air_shard" },
+            { "item", "itemShard", "4", "order_shard" },
+            { "item", "itemShovelElemental", "0", "elemental_shovel" },
+            { "item", "itemSwordElemental", "0", "elemental_sword" },
+            { "item", "itemThaumonomicon", "0", "thaumonomicon" },
+            { "item", "itemWandCap", "2", "wand_cap_thaumium" },
+            { "item", "itemWandCasting", "0", "wand" },
+            { "item", "itemWandRod", "2", "wand_rod_silverwood" },
+            { "item", "itemZombieBrain", "0", "zombie_brain" },
+        };
+        for (String[] pair : replaced) {
+            int meta = Integer.parseInt(pair[2]);
+            ItemStack legacy = pair[0].equals("block") ? thaumcraft.api.ItemApi.getBlock(pair[1], meta) : thaumcraft.api.ItemApi.getItem(pair[1], meta);
+            ItemStack nativeStack = thaumcraft.api.items.ItemsTC.stack(pair[3]);
+            test.assertTrue(legacy != null && !legacy.isEmpty(), pair[1] + ":" + meta + " names a stack");
+            test.assertTrue(ItemStack.isSameItemSameComponents(legacy, nativeStack) && legacy.getCount() == nativeStack.getCount(),
+                    pair[1] + ":" + meta + " is " + pair[3] + ": " + legacy + " " + legacy.getComponentsPatch() + " against " + nativeStack + " "
+                            + nativeStack.getComponentsPatch());
+        }
+        test.succeed();
+    }
+
     // ---- Gem Boots (jump, fall) and the Ichorcloth absorption, through the loader events ----------------------------------------
 
     private static final double PLAIN_JUMP = 0.42D;

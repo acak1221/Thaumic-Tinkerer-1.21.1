@@ -4,9 +4,7 @@
  */
 package thaumic.tinkerer.common.item.kami;
 
-import java.util.Objects;
 import net.minecraft.world.item.ItemStack;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.research.KamiResearchItem;
@@ -36,15 +34,5 @@ public final class KamiResearch {
 
     public static String[] of(String... keys) {
         return keys;
-    }
-
-    /** {@code ItemApi.getItem(field, meta)}: a stack of the Thaumcraft item the 1.7.10 field and metadata named. */
-    public static ItemStack tc(String field, int meta) {
-        return Objects.requireNonNull(ItemApi.getItem(field, meta), "Thaumcraft item " + field + ":" + meta);
-    }
-
-    /** {@code ItemApi.getBlock(field, meta)}: the block item of a Thaumcraft block named by its 1.7.10 field and metadata. */
-    public static ItemStack tcBlock(String field, int meta) {
-        return Objects.requireNonNull(ItemApi.getBlock(field, meta), "Thaumcraft block " + field + ":" + meta);
     }
 }

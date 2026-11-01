@@ -14,9 +14,11 @@ package thaumic.tinkerer.common.item.foci;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -29,7 +31,6 @@ import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
 import thaumic.tinkerer.common.research.IRegisterableResearch;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Wand Focus: Distortion. Held, it pushes every arrow and thrown object that comes near the player (and was not shot by
@@ -107,7 +108,7 @@ public class ItemFocusDeflect extends ItemModFocus {
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_FOCUS_DEFLECT, new ItemStack(this), 5,
                 new AspectList().add(Aspect.AIR, 15).add(Aspect.ARMOR, 5).add(Aspect.ORDER, 20),
-                TTRegistry.stack(LibItemNames.FOCUS_FLIGHT), tc("itemResource", 10), tc("itemResource", 10),
-                tcBlock("blockCosmeticSolid", 3), tc("itemShard", 4));
+                TTRegistry.stack(LibItemNames.FOCUS_FLIGHT), ItemsTC.stack("mirrored_glass"), ItemsTC.stack("mirrored_glass"),
+                ItemsTC.stack("paving_stone_warding"), ItemsTC.stack("order_shard"));
     }
 }

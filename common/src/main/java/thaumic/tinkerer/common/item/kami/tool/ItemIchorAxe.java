@@ -16,6 +16,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
 import thaumic.tinkerer.common.item.kami.KamiResearch;
@@ -40,6 +41,6 @@ public class ItemIchorAxe extends AxeItem implements ITTinkererRegisterable {
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHOR_AXE, LibResearch.KEY_ICHOR_TOOLS,
                 new ItemStack(this), new AspectList().add(Aspect.WATER, 75), "II ", "IR ", " R ", 'R',
-                KamiResearch.tc("itemWandRod", 2), 'I', ItemKamiResource.stack(ItemKamiResource.ICHORIUM));
+                ItemsTC.stack("wand_rod_silverwood"), 'I', ItemKamiResource.stack(ItemKamiResource.ICHORIUM));
     }
 }

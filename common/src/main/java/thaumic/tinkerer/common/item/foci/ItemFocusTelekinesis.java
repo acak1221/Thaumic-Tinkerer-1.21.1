@@ -21,6 +21,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -128,6 +129,6 @@ public class ItemFocusTelekinesis extends ItemModFocus {
                 new AspectList().add(Aspect.MOTION, 10).add(Aspect.AIR, 20).add(Aspect.ENTROPY, 20).add(Aspect.MIND, 10),
                 new ItemStack(Items.ENDER_PEARL), new ItemStack(Items.QUARTZ), new ItemStack(Items.QUARTZ),
                 new ItemStack(Items.QUARTZ), new ItemStack(Items.QUARTZ), new ItemStack(Items.IRON_INGOT),
-                new ItemStack(Items.GOLD_INGOT), tc("itemShard", 0));
+                new ItemStack(Items.GOLD_INGOT), ItemsTC.stack("air_shard"));
     }
 }

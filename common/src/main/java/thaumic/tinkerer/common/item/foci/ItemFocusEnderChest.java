@@ -24,6 +24,7 @@ import net.minecraft.world.level.Level;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -104,8 +105,8 @@ public class ItemFocusEnderChest extends ItemModFocus {
         if (ThaumcraftApi.isMirrorsAllowed()) {
             return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_FOCUS_ENDER_CHEST, LibResearch.KEY_FOCUS_ENDER_CHEST,
                     new ItemStack(this), new AspectList().add(Aspect.ORDER, 10).add(Aspect.ENTROPY, 10), "M", "E", "P",
-                    'M', tcBlock("blockMirror", 0), 'E', new ItemStack(Items.ENDER_EYE), 'P',
-                    tc("itemFocusPortableHole", 0));
+                    'M', ItemsTC.stack("mirror"), 'E', new ItemStack(Items.ENDER_EYE), 'P',
+                    ItemsTC.stack("focus_portable_hole"));
         }
         return null;
     }

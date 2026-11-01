@@ -35,6 +35,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
 import thaumic.tinkerer.common.item.kami.KamiHooks;
@@ -42,9 +43,9 @@ import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -151,10 +152,10 @@ public class ItemIchorSwordAdv extends ItemIchorSword implements IAdvancedTool {
                 new AspectList().add(Aspect.AIR, 50).add(Aspect.HUNGER, 64).add(Aspect.SOUL, 32)
                         .add(Aspect.WEAPON, 32).add(Aspect.ENERGY, 32).add(Aspect.ORDER, 16).add(Aspect.CRYSTAL, 16),
                 TTRegistry.stack(LibItemNames.ICHOR_SWORD), ItemKamiResource.stack(ItemKamiResource.ICHORIUM),
-                ItemKamiResource.stack(ItemKamiResource.ICHOR), KamiResearch.tc("itemSwordElemental", 0),
-                KamiResearch.tc("itemFocusFrost", 0), new ItemStack(Items.CACTUS), KamiResearch.tc("itemNugget", 21),
-                KamiResearch.tc("itemNugget", 16), KamiResearch.tc("itemNugget", 31), new ItemStack(Items.DIAMOND),
-                KamiResearch.tc("itemFocusFrost", 0), KamiResearch.tc("itemSwordElemental", 0),
+                ItemKamiResource.stack(ItemKamiResource.ICHOR), ItemsTC.stack("elemental_sword"),
+                ItemsTC.stack("focus_frost"), new ItemStack(Items.CACTUS), ItemsTC.stack("cluster_cinnabar"),
+                ItemsTC.stack("cluster_iron"), ItemsTC.stack("cluster_gold"), new ItemStack(Items.DIAMOND),
+                ItemsTC.stack("focus_frost"), ItemsTC.stack("elemental_sword"),
                 ItemKamiResource.stack(ItemKamiResource.ICHOR_CLOTH));
     }
 

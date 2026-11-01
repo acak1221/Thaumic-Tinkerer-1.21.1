@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.PickaxeItem;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
@@ -23,9 +24,9 @@ import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererArcaneRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -46,7 +47,7 @@ public class ItemIchorPick extends PickaxeItem implements ITTinkererRegisterable
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHOR_PICK, LibResearch.KEY_ICHOR_TOOLS,
                 new ItemStack(this), new AspectList().add(Aspect.FIRE, 75), "III", " R ", " R ", 'R',
-                KamiResearch.tc("itemWandRod", 2), 'I', ItemKamiResource.stack(ItemKamiResource.ICHORIUM));
+                ItemsTC.stack("wand_rod_silverwood"), 'I', ItemKamiResource.stack(ItemKamiResource.ICHORIUM));
     }
 
     /** ICHOR_TOOLS: the research of the four plain tools (1.7.10: {@code ItemIchorPick.getResearchItem}). */

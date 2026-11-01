@@ -33,6 +33,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.hooks.BlockProtection;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
@@ -41,9 +42,9 @@ import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibBlockNames;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -191,10 +192,10 @@ public class ItemIchorPickAdv extends ItemIchorPick implements IAdvancedTool {
                 new AspectList().add(Aspect.FIRE, 50).add(Aspect.MINE, 64).add(Aspect.METAL, 32).add(Aspect.EARTH, 32)
                         .add(Aspect.HARVEST, 32).add(Aspect.GREED, 16).add(Aspect.SENSES, 16),
                 TTRegistry.stack(LibItemNames.ICHOR_PICK), ItemKamiResource.stack(ItemKamiResource.ICHORIUM),
-                ItemKamiResource.stack(ItemKamiResource.ICHOR), KamiResearch.tc("itemPickElemental", 0),
-                KamiResearch.tc("itemFocusExcavation", 0), new ItemStack(Items.TNT), KamiResearch.tc("itemNugget", 21),
-                KamiResearch.tc("itemNugget", 16), KamiResearch.tc("itemNugget", 31), new ItemStack(Items.DIAMOND),
-                KamiResearch.tc("itemFocusExcavation", 0), KamiResearch.tc("itemPickElemental", 0),
+                ItemKamiResource.stack(ItemKamiResource.ICHOR), ItemsTC.stack("elemental_pickaxe"),
+                ItemsTC.stack("focus_excavation"), new ItemStack(Items.TNT), ItemsTC.stack("cluster_cinnabar"),
+                ItemsTC.stack("cluster_iron"), ItemsTC.stack("cluster_gold"), new ItemStack(Items.DIAMOND),
+                ItemsTC.stack("focus_excavation"), ItemsTC.stack("elemental_pickaxe"),
                 ItemKamiResource.stack(ItemKamiResource.ICHOR_CLOTH));
     }
 

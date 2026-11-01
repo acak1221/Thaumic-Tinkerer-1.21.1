@@ -25,6 +25,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.wands.WandCap;
 import thaumcraft.api.wands.WandHelper;
 import thaumcraft.api.wands.WandRod;
@@ -223,7 +224,7 @@ public final class KamiGear implements ContentGroup {
     /** The creative-tab wand with the Ichor rod and cap and every primal full (1.7.10: 100000 centivis of each). */
     private static ItemStack ichorWand() {
         try {
-            ItemStack wand = KamiResearch.tc("itemWandCasting", 0);
+            ItemStack wand = ItemsTC.stack("wand");
             WandHelper.setRod(wand, WandRod.byTag(RodIchorcloth.TAG));
             WandHelper.setCap(wand, WandCap.byTag(CapIchor.TAG));
             for (Aspect primal : Aspect.getPrimalAspects()) WandHelper.addRealVis(wand, primal, 100000, true);

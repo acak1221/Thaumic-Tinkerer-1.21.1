@@ -18,14 +18,15 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererArcaneRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipeMulti;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.KamiResearchItem;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
@@ -79,27 +80,27 @@ public class ItemKamiResource extends KamiItemBase {
                         stack(ICHOR_CLOTH, 3),
                         new AspectList().add(Aspect.FIRE, 125).add(Aspect.EARTH, 125).add(Aspect.WATER, 125)
                                 .add(Aspect.AIR, 125).add(Aspect.ORDER, 125).add(Aspect.ENTROPY, 125),
-                        "CCC", "III", "DDD", 'C', KamiResearch.tc("itemResource", 7), 'I', stack(ICHOR), 'D',
+                        "CCC", "III", "DDD", 'C', ItemsTC.stack("enchanted_fabric"), 'I', stack(ICHOR), 'D',
                         new ItemStack(Items.DIAMOND)),
                 new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHORIUM, LibResearch.KEY_ICHORIUM, stack(ICHORIUM),
                         new AspectList().add(Aspect.FIRE, 100).add(Aspect.EARTH, 100).add(Aspect.WATER, 100)
                                 .add(Aspect.AIR, 100).add(Aspect.ORDER, 100).add(Aspect.ENTROPY, 100),
-                        " T ", "IDI", " I ", 'T', KamiResearch.tc("itemResource", 2), 'I', stack(ICHOR), 'D',
+                        " T ", "IDI", " I ", 'T', ItemsTC.stack("thaumium_ingot"), 'I', stack(ICHOR), 'D',
                         new ItemStack(Items.DIAMOND)),
                 new ThaumicTinkererArcaneRecipe(LibResearch.KEY_ICHOR_CAP, LibResearch.KEY_ICHOR_CAP, stack(ICHOR_CAP, 2),
                         new AspectList().add(Aspect.FIRE, 100).add(Aspect.EARTH, 100).add(Aspect.WATER, 100)
                                 .add(Aspect.AIR, 100).add(Aspect.ORDER, 100).add(Aspect.ENTROPY, 100),
                         "ICI", " M ", "ICI", 'M', stack(ICHORIUM), 'I', stack(ICHOR), 'C',
-                        KamiResearch.tc("itemWandCap", 2)),
+                        ItemsTC.stack("wand_cap_thaumium")),
                 new ThaumicTinkererInfusionRecipe(LibResearch.KEY_ICHOR, stack(ICHOR, 8), 7,
                         new AspectList().add(Aspect.MAN, 32).add(Aspect.LIGHT, 32).add(Aspect.SOUL, 64),
                         new ItemStack(Items.NETHER_STAR), new ItemStack(Items.DIAMOND), stack(ENDER_SHARD),
                         new ItemStack(Items.ENDER_EYE), stack(NETHER_SHARD)),
                 new ThaumicTinkererInfusionRecipe(LibResearch.KEY_ICHORCLOTH_ROD, stack(ICHORCLOTH_ROD), 9,
                         new AspectList().add(Aspect.MAGIC, 100).add(Aspect.LIGHT, 32).add(Aspect.TOOL, 32),
-                        KamiResearch.tc("itemWandRod", 2), stack(ICHOR), stack(ICHOR_CLOTH),
-                        KamiResearch.tc("itemResource", 14), new ItemStack(Items.GHAST_TEAR),
-                        KamiResearch.tc("itemResource", 14), stack(ICHOR_CLOTH)));
+                        ItemsTC.stack("wand_rod_silverwood"), stack(ICHOR), stack(ICHOR_CLOTH),
+                        ItemsTC.stack("salis_mundus"), new ItemStack(Items.GHAST_TEAR),
+                        ItemsTC.stack("salis_mundus"), stack(ICHOR_CLOTH)));
     }
 
     /** The six research entries of the family (1.7.10: the {@code TTResearchItemMulti} of {@code ItemKamiResource}). */

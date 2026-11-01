@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -109,8 +110,8 @@ public class ItemFocusShadowbeam extends ItemModKamiFocus {
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_FOCUS_SHADOWBEAM, new ItemStack(this), 12,
                 new AspectList().add(Aspect.DARKNESS, 65).add(Aspect.ELDRITCH, 32).add(Aspect.MAGIC, 50)
                         .add(Aspect.WEAPON, 32),
-                KamiResearch.tc("itemFocusShock", 0), ItemKamiResource.stack(ItemKamiResource.ICHOR),
-                new ItemStack(Items.ARROW), new ItemStack(Items.DIAMOND), KamiResearch.tc("itemFocusExcavation", 0),
+                ItemsTC.stack("focus_shock"), ItemKamiResource.stack(ItemKamiResource.ICHOR),
+                new ItemStack(Items.ARROW), new ItemStack(Items.DIAMOND), ItemsTC.stack("focus_excavation"),
                 TTRegistry.stack(LibItemNames.FOCUS_DEFLECT), ItemKamiResource.stack(ItemKamiResource.ICHOR));
     }
 

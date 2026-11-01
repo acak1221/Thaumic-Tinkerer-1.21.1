@@ -20,6 +20,7 @@ import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -151,7 +152,7 @@ public class ItemFocusHeal extends ItemModFocus {
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_FOCUS_HEAL, new ItemStack(this), 4,
                 new AspectList().add(Aspect.HEAL, 10).add(Aspect.SOUL, 10).add(Aspect.LIFE, 15),
-                tc("itemFocusPech", 0), new ItemStack(Items.GOLDEN_CARROT), new ItemStack(Items.GOLD_NUGGET),
+                ItemsTC.stack("focus_pech"), new ItemStack(Items.GOLDEN_CARROT), new ItemStack(Items.GOLD_NUGGET),
                 new ItemStack(Items.GOLD_NUGGET), new ItemStack(Items.GOLD_NUGGET));
     }
 }

@@ -39,12 +39,12 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.baubles.BaubleType;
 import thaumcraft.api.baubles.IBauble;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.potions.WarpEffects;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.hooks.PlayerData;
@@ -178,7 +178,7 @@ public class ItemCleansingTalisman extends Item implements IBauble, ITTinkererRe
                 TTRegistry.stack(LibItemNames.DARK_QUARTZ),
                 TTRegistry.stack(LibItemNames.DARK_QUARTZ),
                 new ItemStack(Items.GHAST_TEAR),
-                ItemApi.getItem("itemResource", 1));
+                ItemsTC.stack("nitor"));
     }
 
     // ---- bauble --------------------------------------------------------------------------------------------------

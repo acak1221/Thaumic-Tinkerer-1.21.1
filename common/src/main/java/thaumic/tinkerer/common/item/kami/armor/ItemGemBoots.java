@@ -32,6 +32,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.hooks.TinkererEvents;
@@ -40,9 +41,9 @@ import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibMisc;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -216,9 +217,9 @@ public class ItemGemBoots extends ItemIchorclothArmorAdv {
                         .add(Aspect.LIGHT, 64).add(Aspect.PLANT, 16).add(Aspect.TRAVEL, 16),
                 TTRegistry.stack(LibItemNames.ICHOR_BOOTS), new ItemStack(Items.DIAMOND),
                 ItemKamiResource.stack(ItemKamiResource.ICHOR), ItemKamiResource.stack(ItemKamiResource.ICHOR),
-                KamiResearch.tc("itemThaumonomicon", 0), KamiResearch.tc("itemFocusPrimal", 0),
+                ItemsTC.stack("thaumonomicon"), ItemsTC.stack("focus_primal"),
                 new ItemStack(Items.GOLDEN_BOOTS), new ItemStack(Items.GRASS_BLOCK),
-                KamiResearch.tcBlock("blockWoodenDevice", 5), KamiResearch.tcBlock("blockMetalDevice", 8),
+                ItemsTC.stack("arcane_bore"), ItemsTC.stack("growth_lamp"),
                 new ItemStack(Items.WHEAT_SEEDS), new ItemStack(Items.WHITE_WOOL), new ItemStack(Items.LEAD));
     }
 

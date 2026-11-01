@@ -32,6 +32,7 @@ import net.minecraft.world.phys.Vec3;
 import thaumcraft.api.ThaumcraftFX;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.core.handler.kami.KamiArmorHandler;
@@ -155,9 +156,9 @@ public class ItemGemChest extends ItemIchorclothArmorAdv {
                         .add(Aspect.ORDER, 32).add(Aspect.LIGHT, 64).add(Aspect.ELDRITCH, 16).add(Aspect.SENSES, 16),
                 TTRegistry.stack(LibItemNames.ICHOR_CHEST), new ItemStack(Items.DIAMOND),
                 ItemKamiResource.stack(ItemKamiResource.ICHOR), ItemKamiResource.stack(ItemKamiResource.ICHOR),
-                KamiResearch.tc("itemFocusPrimal", 0), KamiResearch.tc("itemThaumonomicon", 0),
+                ItemsTC.stack("focus_primal"), ItemsTC.stack("thaumonomicon"),
                 new ItemStack(Items.GOLDEN_CHESTPLATE), TTRegistry.stack(LibItemNames.FOCUS_FLIGHT),
-                KamiResearch.tc("itemHoverHarness", 0), TTRegistry.stack(LibItemNames.FOCUS_DEFLECT),
+                ItemsTC.stack("hover_harness"), TTRegistry.stack(LibItemNames.FOCUS_DEFLECT),
                 new ItemStack(Items.FEATHER), new ItemStack(Items.GHAST_TEAR), new ItemStack(Items.ARROW));
     }
 

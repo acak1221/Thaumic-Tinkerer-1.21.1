@@ -26,6 +26,11 @@ public final class KamiGearGameTests {
     }
 
     @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
+    public void theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs(GameTestHelper test) {
+        KamiGearRuntimeChecks.theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs(test);
+    }
+
+    @GameTest(template = "empty", templateNamespace = "thaumictinkerer")
     public void dataPackCarriesTheTagsAndTheNuggetRecipe(GameTestHelper test) {
         KamiGearRuntimeChecks.dataPackCarriesTheTagsAndTheNuggetRecipe(test);
     }

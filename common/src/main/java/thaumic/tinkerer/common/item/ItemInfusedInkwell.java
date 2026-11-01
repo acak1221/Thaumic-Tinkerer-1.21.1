@@ -12,9 +12,9 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import thaumcraft.api.IScribeTools;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
 import thaumic.tinkerer.common.registry.ThaumicTinkererCraftingBenchRecipe;
@@ -60,9 +60,9 @@ public class ItemInfusedInkwell extends Item implements IScribeTools, ITTinkerer
                         new ItemStack(this),
                         2,
                         new AspectList().add(Aspect.VOID, 8).add(Aspect.DARKNESS, 8),
-                        ItemApi.getItem("itemInkwell", 0),
-                        ItemApi.getItem("itemShard", 0),
-                        ItemApi.getBlock("blockJar", 0),
-                        ItemApi.getItem("itemResource", 3)));
+                        ItemsTC.stack("inkwell"),
+                        ItemsTC.stack("air_shard"),
+                        ItemsTC.stack("jar"),
+                        ItemsTC.stack("quick_silver")));
     }
 }

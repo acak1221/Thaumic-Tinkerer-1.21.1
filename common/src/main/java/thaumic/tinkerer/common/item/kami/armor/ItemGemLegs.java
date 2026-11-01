@@ -29,6 +29,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
@@ -115,7 +116,7 @@ public class ItemGemLegs extends ItemIchorclothArmorAdv {
                         .add(Aspect.LIGHT, 64).add(Aspect.GREED, 16).add(Aspect.ELDRITCH, 16),
                 TTRegistry.stack(LibItemNames.ICHOR_LEGS), new ItemStack(Items.DIAMOND),
                 ItemKamiResource.stack(ItemKamiResource.ICHOR), ItemKamiResource.stack(ItemKamiResource.ICHOR),
-                KamiResearch.tc("itemFocusPrimal", 0), KamiResearch.tc("itemThaumonomicon", 0),
+                ItemsTC.stack("focus_primal"), ItemsTC.stack("thaumonomicon"),
                 new ItemStack(Items.GOLDEN_LEGGINGS),
                 PotionContents.createItemStack(Items.POTION, Potions.FIRE_RESISTANCE),
                 TTRegistry.stack(LibItemNames.FOCUS_SMELT), TTRegistry.stack(LibItemNames.BRIGHT_NTIOR),

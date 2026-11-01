@@ -17,9 +17,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
@@ -64,7 +64,7 @@ public class ItemSpellCloth extends Item implements ITTinkererRegisterable {
         return new ThaumicTinkererCrucibleRecipe(
                 LibResearch.KEY_SPELL_CLOTH,
                 new ItemStack(this),
-                ItemApi.getItem("itemResource", 7),
+                ItemsTC.stack("enchanted_fabric"),
                 new AspectList().add(Aspect.MAGIC, 10).add(Aspect.ENTROPY, 6).add(Aspect.EXCHANGE, 4));
     }
 

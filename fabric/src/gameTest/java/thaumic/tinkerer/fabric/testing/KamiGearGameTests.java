@@ -17,6 +17,11 @@ public final class KamiGearGameTests implements FabricGameTest {
     }
 
     @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs(GameTestHelper test) {
+        KamiGearRuntimeChecks.theNativeThaumcraftIdsNameTheStacksOfTheLegacyPairs(test);
+    }
+
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
     public void dataPackCarriesTheTagsAndTheNuggetRecipe(GameTestHelper test) {
         KamiGearRuntimeChecks.dataPackCarriesTheTagsAndTheNuggetRecipe(test);
     }

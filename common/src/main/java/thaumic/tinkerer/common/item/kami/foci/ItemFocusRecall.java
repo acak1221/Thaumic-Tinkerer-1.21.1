@@ -19,6 +19,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -28,9 +29,9 @@ import thaumic.tinkerer.common.item.kami.KamiHooks;
 import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -110,8 +111,8 @@ public class ItemFocusRecall extends ItemModKamiFocus {
                 new AspectList().add(Aspect.TRAVEL, 100).add(Aspect.ELDRITCH, 64).add(Aspect.MAGIC, 50),
                 TTRegistry.stack(LibItemNames.SKY_PEARL), ItemKamiResource.stack(ItemKamiResource.ICHOR),
                 ItemKamiResource.stack(ItemKamiResource.ICHOR), new ItemStack(Items.ENDER_PEARL),
-                new ItemStack(Items.DIAMOND), KamiResearch.tcBlock("blockMirror", 0),
-                KamiResearch.tc("itemFocusPortableHole", 0));
+                new ItemStack(Items.DIAMOND), ItemsTC.stack("mirror"),
+                ItemsTC.stack("focus_portable_hole"));
     }
 
     /** The research entry; the registrar skips it while Thaumcraft's mirrors are off ({@code ThaumcraftApi.isMirrorsAllowed()}), as 1.7.10 did. */

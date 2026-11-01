@@ -41,13 +41,14 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.baubles.BaubleType;
 import thaumcraft.api.baubles.IBauble;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.item.kami.KamiComponents.TalismanStore;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -283,10 +284,10 @@ public class ItemBlockTalisman extends KamiItemBase implements IBauble {
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_BLOCK_TALISMAN, new ItemStack(this), 9,
                 new AspectList().add(Aspect.VOID, 65).add(Aspect.DARKNESS, 32).add(Aspect.MAGIC, 50)
                         .add(Aspect.ELDRITCH, 32),
-                KamiResearch.tc("itemFocusPortableHole", 0), ItemKamiResource.stack(ItemKamiResource.ICHOR),
+                ItemsTC.stack("focus_portable_hole"), ItemKamiResource.stack(ItemKamiResource.ICHOR),
                 new ItemStack(Items.ENDER_CHEST), new ItemStack(Items.DIAMOND),
-                ItemKamiResource.stack(ItemKamiResource.ICHOR), KamiResearch.tc("itemResource", 11),
-                KamiResearch.tcBlock("blockJar", 3));
+                ItemKamiResource.stack(ItemKamiResource.ICHOR), ItemsTC.stack("tainted_goo"),
+                ItemsTC.stack("jar_void"));
     }
 
     /** The research entry; the registrar queues it for the last registration pass. */

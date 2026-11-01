@@ -11,7 +11,6 @@
  */
 package thaumic.tinkerer.common.item.foci;
 
-import java.util.Objects;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -26,7 +25,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.wands.ItemFocusBasic;
 import thaumcraft.api.wands.WandHelper;
 import thaumic.tinkerer.common.hooks.BlockProtection;
@@ -146,15 +144,5 @@ public abstract class ItemModFocus extends ItemFocusBasic implements ITTinkererR
      */
     protected static void resync(Player player) {
         if (player instanceof ServerPlayer serverPlayer) serverPlayer.containerMenu.sendAllDataToRemote();
-    }
-
-    /** {@code ItemApi.getItem(field, meta)}: a stack of the Thaumcraft item the 1.7.10 field and metadata named. */
-    protected static ItemStack tc(String field, int meta) {
-        return Objects.requireNonNull(ItemApi.getItem(field, meta), "Thaumcraft item " + field + ":" + meta);
-    }
-
-    /** {@code ItemApi.getBlock(field, meta)}: the item of a Thaumcraft block named by its 1.7.10 field and metadata. */
-    protected static ItemStack tcBlock(String field, int meta) {
-        return Objects.requireNonNull(ItemApi.getBlock(field, meta), "Thaumcraft block " + field + ":" + meta);
     }
 }

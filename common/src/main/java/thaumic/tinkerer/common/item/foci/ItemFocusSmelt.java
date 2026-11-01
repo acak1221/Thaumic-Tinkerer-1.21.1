@@ -31,6 +31,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -224,7 +225,7 @@ public class ItemFocusSmelt extends ItemModFocus {
     public ThaumicTinkererRecipe getRecipeItem() {
         return new ThaumicTinkererArcaneRecipe(LibResearch.KEY_FOCUS_SMELT, LibResearch.KEY_FOCUS_SMELT,
                 new ItemStack(this), new AspectList().add(Aspect.FIRE, 10).add(Aspect.ORDER, 5).add(Aspect.ENTROPY, 6),
-                "FNE", 'F', tc("itemFocusFire", 0), 'E', tc("itemFocusExcavation", 0), 'N', tc("itemResource", 1));
+                "FNE", 'F', ItemsTC.stack("focus_fire"), 'E', ItemsTC.stack("focus_excavation"), 'N', ItemsTC.stack("nitor"));
     }
 
     /** The block a player is smelting and the ticks that are left. */

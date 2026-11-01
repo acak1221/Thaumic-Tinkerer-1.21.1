@@ -33,10 +33,10 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.phys.BlockHitResult;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.block.tile.kami.TileWarpGate;
 import thaumic.tinkerer.common.content.KamiWorld;
@@ -145,7 +145,7 @@ public class BlockWarpGate extends BaseEntityBlock implements ITTinkererRegister
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_WARP_GATE, new ItemStack(this), 8,
                 new AspectList().add(Aspect.TRAVEL, 64).add(Aspect.ELDRITCH, 50).add(Aspect.FLIGHT, 50),
                 // ConfigBlocks.blockCosmeticSolid, 2: the paving stone of travel.
-                Objects.requireNonNull(ItemApi.getBlock("blockCosmeticSolid", 2), "Thaumcraft block blockCosmeticSolid:2"),
+                Objects.requireNonNull(ItemsTC.stack("paving_stone_travel"), "Thaumcraft block blockCosmeticSolid:2"),
                 // ItemKamiResource 0 (Ichor), 7 (Ender Shard), the Transvector Dislocator, 6 (Nether Shard).
                 TTRegistry.stack(LibItemNames.ICHOR),
                 TTRegistry.stack(LibItemNames.ENDER_SHARD), TTRegistry.stack(LibBlockNames.DISLOCATOR),

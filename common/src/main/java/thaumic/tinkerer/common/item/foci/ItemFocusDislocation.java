@@ -46,6 +46,7 @@ import thaumcraft.api.ThaumcraftApi;
 import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.FocusUpgradeType;
 import thaumcraft.api.wands.WandHelper;
@@ -445,7 +446,7 @@ public class ItemFocusDislocation extends ItemModFocus {
                 new AspectList().add(Aspect.ELDRITCH, 20).add(Aspect.DARKNESS, 10).add(Aspect.VOID, 25)
                         .add(Aspect.MAGIC, 20).add(Aspect.TAINT, 5),
                 new ItemStack(Items.ENDER_PEARL), new ItemStack(Items.QUARTZ), new ItemStack(Items.QUARTZ),
-                new ItemStack(Items.QUARTZ), new ItemStack(Items.QUARTZ), tc("itemResource", 6), tc("itemResource", 6),
-                tc("itemResource", 6), new ItemStack(Items.DIAMOND));
+                new ItemStack(Items.QUARTZ), new ItemStack(Items.QUARTZ), ItemsTC.stack("amber_gem"), ItemsTC.stack("amber_gem"),
+                ItemsTC.stack("amber_gem"), new ItemStack(Items.DIAMOND));
     }
 }

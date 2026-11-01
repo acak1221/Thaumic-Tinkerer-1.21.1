@@ -30,15 +30,16 @@ import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.baubles.BaubleType;
 import thaumcraft.api.baubles.IBauble;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumcraft.api.wands.IFocusPouch;
 import thaumic.tinkerer.common.block.tile.container.kami.ContainerIchorPouch;
 import thaumic.tinkerer.common.core.handler.ConfigHandler;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -152,10 +153,10 @@ public class ItemIchorPouch extends KamiItemBase implements IBauble, IFocusPouch
         return new ThaumicTinkererInfusionRecipe(LibResearch.KEY_ICHOR_POUCH, new ItemStack(this), 9,
                 new AspectList().add(Aspect.VOID, 64).add(Aspect.MAN, 32).add(Aspect.CLOTH, 32)
                         .add(Aspect.ELDRITCH, 32).add(Aspect.AIR, 64),
-                KamiResearch.tc("itemFocusPouch", 0), ItemKamiResource.stack(ItemKamiResource.ICHOR_CLOTH),
-                KamiResearch.tc("itemFocusPortableHole", 0), new ItemStack(Items.DIAMOND),
-                ItemKamiResource.stack(ItemKamiResource.ICHOR_CLOTH), KamiResearch.tcBlock("blockChestHungry", 0),
-                KamiResearch.tcBlock("blockJar", 3));
+                ItemsTC.stack("focus_pouch"), ItemKamiResource.stack(ItemKamiResource.ICHOR_CLOTH),
+                ItemsTC.stack("focus_portable_hole"), new ItemStack(Items.DIAMOND),
+                ItemKamiResource.stack(ItemKamiResource.ICHOR_CLOTH), ItemsTC.stack("hungry_chest"),
+                ItemsTC.stack("jar_void"));
     }
 
     public static TTResearchItem research() {

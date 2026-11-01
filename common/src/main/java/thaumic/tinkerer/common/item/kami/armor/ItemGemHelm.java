@@ -11,8 +11,8 @@
  */
 package thaumic.tinkerer.common.item.kami.armor;
 
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ArmorItem;
@@ -24,15 +24,16 @@ import net.minecraft.world.item.alchemy.Potions;
 import thaumcraft.api.IGoggles;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.nodes.IRevealer;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.item.kami.ItemKamiResource;
 import thaumic.tinkerer.common.item.kami.KamiResearch;
 import thaumic.tinkerer.common.lib.LibItemNames;
 import thaumic.tinkerer.common.lib.LibResearch;
+import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.registry.ThaumicTinkererInfusionRecipe;
 import thaumic.tinkerer.common.registry.ThaumicTinkererRecipe;
-import thaumic.tinkerer.common.registry.TTRegistry;
 import thaumic.tinkerer.common.research.ResearchHelper;
 import thaumic.tinkerer.common.research.TTResearchItem;
 
@@ -81,10 +82,10 @@ public class ItemGemHelm extends ItemIchorclothArmorAdv implements IGoggles, IRe
                         .add(Aspect.AURA, 32).add(Aspect.LIGHT, 64).add(Aspect.FLESH, 16).add(Aspect.MIND, 16),
                 TTRegistry.stack(LibItemNames.ICHOR_HELM), new ItemStack(Items.DIAMOND),
                 ItemKamiResource.stack(ItemKamiResource.ICHOR), ItemKamiResource.stack(ItemKamiResource.ICHOR),
-                KamiResearch.tc("itemThaumonomicon", 0), KamiResearch.tc("itemFocusPrimal", 0),
+                ItemsTC.stack("thaumonomicon"), ItemsTC.stack("focus_primal"),
                 new ItemStack(Items.GOLDEN_HELMET),
                 PotionContents.createItemStack(Items.POTION, Potions.NIGHT_VISION),
-                KamiResearch.tc("itemGoggles", 0), new ItemStack(Items.GHAST_TEAR), new ItemStack(Items.COD),
+                ItemsTC.stack("goggles_revealing"), new ItemStack(Items.GHAST_TEAR), new ItemStack(Items.COD),
                 new ItemStack(Items.CAKE), new ItemStack(Items.ENDER_EYE));
     }
 

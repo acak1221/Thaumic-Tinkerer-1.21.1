@@ -34,12 +34,12 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import org.joml.Vector3f;
-import thaumcraft.api.ItemApi;
 import thaumcraft.api.ThaumcraftSoundIds;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.api.baubles.BaubleType;
 import thaumcraft.api.baubles.IBauble;
+import thaumcraft.api.items.ItemsTC;
 import thaumcraft.api.research.ResearchPage;
 import thaumic.tinkerer.common.lib.LibResearch;
 import thaumic.tinkerer.common.registry.ITTinkererRegisterable;
@@ -245,7 +245,7 @@ public class ItemXPTalisman extends Item implements IBauble, ITTinkererRegistera
                 new ItemStack(Items.GOLD_INGOT),
                 new ItemStack(Items.QUARTZ),
                 new ItemStack(Items.QUARTZ),
-                ItemApi.getItem("itemZombieBrain", 0),
+                ItemsTC.stack("zombie_brain"),
                 new ItemStack(Items.DIAMOND));
     }
 
