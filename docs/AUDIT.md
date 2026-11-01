@@ -68,6 +68,28 @@ the game's own seed changes nothing (the same cells), so it is not a defect and 
 | `main` after merging `kami-followups` and `multiplayer`, with the Kami-off load conditions (one run of each) | JUnit 424 tests, 0 failures; Fabric: All 356 required tests passed; NeoForge: All 364 required tests passed; client smoke Fabric 726 / NeoForge 730 PASS, 0 FAIL, 1 NOT_RUN (the fewer PASS are fire blocks' `up=true` states, which vary from run to run, `CLIENT_VERIFICATION.md`); multiplayer 67 PASS, 0 FAIL on each loader, and the Kami-off server logs no data-load error |
 | Follow-up (worktree of `kami-followups`, `check runTinkererGameTest :neoforge:runGameTest`, one run) | JUnit 424 tests, 0 failures; Fabric: All 356 required tests passed; NeoForge: All 364 required tests passed. The client smoke runs were not repeated |
 
+## Modernization (package B, 2026-11-01): SimpleBlocks and TileBlocks with 1.21.1 techniques
+
+Branch `modernize-b`, from the read-only audit of 1.7.10 techniques left in the code (its package B). The gameplay is the original's; the
+group documents say what changed (`deviations/SimpleBlocks.md` 1.2, 2.3, 2.4, 2.8, 2.10; `deviations/TileBlocks.md` section 1, 2.1, 2.3, 2.6,
+2.8) and `DEVIATIONS.md` section 2 what a player can notice.
+
+| Finding | Was | Now | Test |
+|---|---|---|---|
+| Camouflage by block entity renderers | The platform and the four devices were invisible while camouflaged and `RenderTileCamo` / `RenderTileCamoDevice` drew the imitated state every frame | The baked models are wrapped (Fabric `ModelLoadingPlugin` + `ForwardingBakedModel` reading the block entity's render data; NeoForge `ModifyBakingResult` + `BakedModelWrapper` reading its `ModelData`) and draw the imitated state in the chunk mesh with its culling, tint, render type and light; a change of camouflage rebuilds the section (`CamouflageHooks`); the two renderers are deleted | JUnit `CamoModelsTest`; GameTests `theCamouflageIsDrawnFromThePlatformsModel` and the updated device checks; client smoke `CamoPhase` on both loaders |
+| Do-not-move lists | The Dislocator asked `ThaumcraftApi.portableHoleBlackList`, a mirror of Thaumcraft's tag that is empty in 0.1.0-alpha.11 (filled before tags are bound): it swapped beds, doors and pistons | Thaumcraft's tag `thaumcraft:portable_hole_blacklist` and the convention tag `c:relocation_not_supported` for the Dislocator; the Locomotive leaves the convention tag's blocks behind | `whatMustNotBeRelocatedStaysWhereItIs` (with a test-only tag entry, the lodestone) |
+| Water Imbued from a player-tick listener | `PotionEffectHandler` asked every player's tick for the effect | `ModPotions.WaterImbuedEffect` ticks itself (player on a server only) | `aWaterImbuedPlayerTurnsNearbyLavaIntoObsidian` (plus a pig that keeps its lava) |
+| Effects by 1.7.10 metadata index; `ENGLISH_NAMES` | `ModPotions.holder(int)`, a copy of the 1.7.10 English names | Named paths `ModPotions.AIR` ... `WATER`, `ModPotions.of(aspect)`; the names array is gone | `thePotionVariantsAndTheirEffectsAreInTheSameOrder`, `theInfusedPotionsGlintByTheirComponent` |
+| Glint by `isFoil` override | The infused potion overrode `isFoil` | Default component `minecraft:enchantment_glint_override` | `theInfusedPotionsGlintByTheirComponent` |
+| Dead 1.7.10 code | `NumericAspectHelper`, `RenderTileRelay` + `ModelRelay` (never registered), `ItemBrightNitor.meta` (never set) | Deleted (the soul-aspect order is `ItemMobAspect.ASPECTS`) | `theSeventeenSoulAspectsKeepTheirOriginalOrder` |
+| Wall clock in the Animation Tablet's renderer | `System.currentTimeMillis()` | Game time + partial tick at 50 ms a tick | client smoke (renderer close-up) |
+| Thaumcraft content by 1.7.10 field + metadata | `ItemApi.getItem/getBlock`, `TileBlocks.legacyItem/legacyBlock/anyOfLegacyBlocks` in the package's 20 files | Native ids (`ItemsTC.stack("earth_shard")`, ...; `BlockRPlacer.STONE_DEVICES`); the legacy helpers are deleted. Kept: `BlocksTC.state("blockAiry", 4)`, a variant of a native block the API names no other way (api request) | the recipe parity GameTests; `theRemotePlacerTakesAnyStoneDevice`; `aWardSlabSealsTheTwoCellsAbove` (the glimmer) |
+
+Not done (optional findings of the package): the fire transmutation tables as block tags (L1; same members, extensibility only), the live
+flammability of the loaders (L2; it would change which blocks the fires count as flammable, a gameplay change), the default translation keys
+instead of the 1.7.10 families (P4; it touches the Machines group's Mob Aspects and the generated language files of both packages, better
+done once after the merge).
+
 ## Not verified
 
 - The new tests were not run against the code before the fixes; that each would have caught its bug is reasoned, not seen.
