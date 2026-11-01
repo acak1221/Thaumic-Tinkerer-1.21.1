@@ -231,7 +231,7 @@ first complete one, had 63 PASS and 0 FAIL (before the two Dislocation placement
 
 ### Second part: devices, packets and Open Parties and Claims (2026-11-01)
 
-The final runs (2026-11-01, the tree of this section's last commit), each started as
+The final runs (2026-11-01, the code of commit `fd041b5`), each started as
 `GRADLE_CMD='<wrapper> {LOG}' tools/multiplayer-smoke.sh [--neoforge]` with its own port (`-p 25631` / `-p 25632`): both ended `BUILD SUCCESSFUL`,
 exit 0, and `summary.txt` "no problems":
 
