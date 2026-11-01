@@ -355,6 +355,9 @@ final class Scenes {
             inventory.selected = SLOT_EMPTY;
         }
         player.inventoryMenu.broadcastChanges();
+        // The selected slot is the client's: tell it, else it still selects slot 0, its own key press of slot 0 changes nothing and sends
+        // nothing, and the server goes on thinking the empty slot is held.
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket(inventory.selected));
     }
 
     static void left(ServerPlayer player, ServerReport report) {
