@@ -11,9 +11,10 @@
  */
 package thaumic.tinkerer.common.network.packet.kami;
 
-import java.util.ArrayList;
+import io.netty.buffer.ByteBuf;
 import java.util.List;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.phys.Vec3;
@@ -23,26 +24,23 @@ import thaumic.tinkerer.common.lib.LibMisc;
  * The path of a Shadowbeam (server to client): the first visible point, the points where the beam bounced off a wall and
  * the end. 1.7.10 spawned a dark sparkle at every step of the beam on the side that ran the beam; the client draws the
  * path from these points.
+ *
+ * <p>At most {@link #MAX_POINTS} points: the record keeps the first ones of a longer path, and the codec (a list of three doubles
+ * each, written as a VarInt count and the points) refuses a longer list either way, so a reader never stops in the middle of one.</p>
  */
 public record PacketShadowBeam(List<Vec3> points) implements CustomPacketPayload {
     public static final int MAX_POINTS = 96;
     public static final Type<PacketShadowBeam> TYPE = new Type<>(LibMisc.id("shadow_beam"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, PacketShadowBeam> CODEC = StreamCodec.of(
-            (buf, packet) -> {
-                int size = Math.min(packet.points.size(), MAX_POINTS);
-                buf.writeVarInt(size);
-                for (int i = 0; i < size; i++) {
-                    Vec3 point = packet.points.get(i);
-                    buf.writeDouble(point.x);
-                    buf.writeDouble(point.y);
-                    buf.writeDouble(point.z);
-                }
-            }, buf -> {
-                int size = Math.min(buf.readVarInt(), MAX_POINTS);
-                List<Vec3> points = new ArrayList<>(size);
-                for (int i = 0; i < size; i++) points.add(new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()));
-                return new PacketShadowBeam(points);
-            });
+    /** One point: x, y and z as doubles. */
+    private static final StreamCodec<ByteBuf, Vec3> POINT = StreamCodec.composite(ByteBufCodecs.DOUBLE, Vec3::x,
+            ByteBufCodecs.DOUBLE, Vec3::y, ByteBufCodecs.DOUBLE, Vec3::z, Vec3::new);
+    public static final StreamCodec<RegistryFriendlyByteBuf, PacketShadowBeam> CODEC = StreamCodec.composite(
+            POINT.apply(ByteBufCodecs.list(MAX_POINTS)), PacketShadowBeam::points, PacketShadowBeam::new);
+
+    /** The path, cut to its first {@link #MAX_POINTS} points. */
+    public PacketShadowBeam {
+        points = List.copyOf(points.size() > MAX_POINTS ? points.subList(0, MAX_POINTS) : points);
+    }
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

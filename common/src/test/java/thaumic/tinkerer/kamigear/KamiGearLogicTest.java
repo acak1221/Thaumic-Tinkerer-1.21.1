@@ -6,6 +6,7 @@ package thaumic.tinkerer.kamigear;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mojang.serialization.JsonOps;
@@ -394,15 +395,39 @@ class KamiGearLogicTest {
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
         PacketShadowBeam.CODEC.encode(buf, new PacketShadowBeam(points));
         assertEquals(points, PacketShadowBeam.CODEC.decode(buf).points());
+        assertFalse(buf.isReadable());
+
+        // the wire format of the earlier hand-written codec: a VarInt count and three doubles per point
+        RegistryFriendlyByteBuf wire = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+        PacketShadowBeam.CODEC.encode(wire, new PacketShadowBeam(points));
+        assertEquals(2, wire.readVarInt());
+        assertEquals(1.5, wire.readDouble());
+        assertEquals(2.5, wire.readDouble());
+        assertEquals(3.5, wire.readDouble());
+        assertEquals(-4.0, wire.readDouble());
 
         List<Vec3> many = new ArrayList<>();
         for (int i = 0; i < PacketShadowBeam.MAX_POINTS + 50; i++) many.add(new Vec3(i, 0, 0));
+        PacketShadowBeam capped = new PacketShadowBeam(many);
+        assertEquals(PacketShadowBeam.MAX_POINTS, capped.points().size(), "the record keeps the first points of a longer path");
+        assertEquals(many.subList(0, PacketShadowBeam.MAX_POINTS), capped.points());
         RegistryFriendlyByteBuf big = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
-        PacketShadowBeam.CODEC.encode(big, new PacketShadowBeam(many));
+        PacketShadowBeam.CODEC.encode(big, capped);
         List<Vec3> read = PacketShadowBeam.CODEC.decode(big).points();
         assertEquals(PacketShadowBeam.MAX_POINTS, read.size());
         assertFalse(big.isReadable(), "nothing but the capped points was written");
+
+        // a longer list on the wire is refused, not read in part (the hand-written reader clamped the count and left bytes unread)
+        RegistryFriendlyByteBuf tooLong = new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+        tooLong.writeVarInt(PacketShadowBeam.MAX_POINTS + 1);
+        for (int i = 0; i <= PacketShadowBeam.MAX_POINTS; i++) {
+            tooLong.writeDouble(i);
+            tooLong.writeDouble(0);
+            tooLong.writeDouble(0);
+        }
+        assertThrows(RuntimeException.class, () -> PacketShadowBeam.CODEC.decode(tooLong));
     }
+
 
     @Test
     void theArmourSwitchPacketCarriesItsFlag() {
