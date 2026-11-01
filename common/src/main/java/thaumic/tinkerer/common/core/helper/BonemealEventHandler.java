@@ -72,7 +72,7 @@ public class BonemealEventHandler {
     public static EventResult onInteract(Player player, InteractionHand hand, BlockPos pos, Direction face) {
         Level world = player.level();
         if (world.isClientSide || !(world instanceof ServerLevel server)) return EventResult.pass();
-        if (ConfigHandler.cropsAllowBonemeal) return EventResult.pass();
+        if (ConfigHandler.cropsAllowBonemeal(world)) return EventResult.pass();
         if (!(player instanceof ServerPlayer serverPlayer) || !serverPlayer.canInteractWithBlock(pos, 1.0)
                 || !BlockProtection.gameAllows(serverPlayer, server, pos)) {
             return EventResult.pass();

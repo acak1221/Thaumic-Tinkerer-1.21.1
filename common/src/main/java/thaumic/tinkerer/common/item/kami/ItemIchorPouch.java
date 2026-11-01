@@ -101,7 +101,7 @@ public class ItemIchorPouch extends KamiItemBase implements IBauble, IFocusPouch
     /** 1.7.10 {@code GuiHandler.isDimensionAllowed}: the pouch does not open in the dimensions of {@code ConfigHandler.forbiddenDimensions}. */
     public static boolean isDimensionAllowed(Level level) {
         String id = level.dimension().location().toString();
-        for (String forbidden : ConfigHandler.forbiddenDimensions) {
+        for (String forbidden : ConfigHandler.forbiddenDimensions(level)) {
             if (id.equals(forbidden)) return false;
         }
         return true;

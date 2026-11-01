@@ -154,7 +154,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   `moveForward != 0 || moveStrafing != 0`, the walking keys) is decided on the server from the movement the client last reported
   (`ServerPlayer.getKnownMovement()`, horizontal, more than 0.01 blocks a tick: `ItemGemBoots.isMoving`), because the server never sees the
   walking keys of a player who does not ride (`xxa`/`zza` stay 0 there); the first port read those and so never gave switched-off boots the step
-  (review finding, fixed 2026-11-01; GameTest `switchedOffGemBootsGiveTheStepWhileThePlayerWalks`, written, not yet run). Dirt turns to grass
+  (review finding, fixed 2026-11-01; GameTest `switchedOffGemBootsGiveTheStepWhileThePlayerWalks`, passed on the Fabric and the NeoForge GameTest server, 2026-11-01; a real client walking has not been seen). Dirt turns to grass
   under the wearer only while the piece is switched on and `shouldKamiBootsDoGrass` is on. The Thaumic Boots mod's tags `jump`, `speed`, `omni` and
   `inertiacanceling` are not ported (that mod does not exist for 1.21.1): the jump modifier is 1.
   - **Order against Ascent Boost: the original's, pinned by a GameTest.** Both are `LIVING_JUMP` listeners and run in the order they were registered.
@@ -233,7 +233,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   inside the world border, no spawn protection, a game mode that may break blocks). The conversion itself (`convertBedrock`) asks
   `BlockProtection.mayBreak` (the game's rules and the loader's break event, which claim mods answer) and changes nothing when it says no.
   The same guard is in the Protoclay's left-click handler and in the Hoe of Growth's click handler (`core/helper/BonemealEventHandler`, both
-  clicks; the right click passes the game's checks first anyway). GameTests (written, not yet run):
+  clicks; the right click passes the game's checks first anyway). GameTests (passed on the Fabric and the NeoForge GameTest server, 2026-11-01):
   `awakenedPickaxeIgnoresBedrockClicksThePlayerCannotMake`, `bedrockTurnsIntoAirOnlyWhereThePlayerMayBreakIt`,
   `protoclayIgnoresClicksThePlayerCannotMake`, `hoeOfGrowthIgnoresClicksThePlayerCannotMake`: out of reach, adventure mode and a chunk that is
   not loaded (which must stay unloaded) do nothing. Spawn protection is the same rule (`Level.mayInteract`) but cannot be shown in a GameTest:
@@ -262,7 +262,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   tick (`ToolHandler.afterTick`), and only when the target took the hit (`ItemIchorSwordAdv.soulHitLanded`: its hurt animation started and its
   attacker is the wielder, which `LivingEntity.hurt` records only for a hit it takes): an armour stand, an invulnerable mob, a creative player,
   a player that the server's PvP rule protects, and a click whose blow never came give none; a hit that a shield blocks still counts (the
-  game counts it as taken). GameTest `soulModeGivesAHeartOnlyForAHitThatLands` (written, not yet run).
+  game counts it as taken). GameTest `soulModeGivesAHeartOnlyForAHitThatLands` (passed on the Fabric and the NeoForge GameTest server, 2026-11-01; the hits are `hurt` calls of the check, not a client's attack packets).
 
 ## 5. Black Hole Ring
 
@@ -293,7 +293,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   build height are skipped. The first port asked `Level.mayInteract` and `Player.mayBuild` only, so a claim on Fabric was not asked at all, and
   on NeoForge a placement that the snapshot-captured place event cancelled was undone after the block had been paid for (review finding, fixed
   2026-11-01; GameTest `mirrorPlacesNothingWhereThePlayerMayNotBuild`, adventure mode standing in for spawn protection, which a GameTest server
-  never applies; written, not yet run; whether a claim mod's refusal arrives depends on the loader backends, which were written by another group
+  never applies; passed on the Fabric and the NeoForge GameTest server, 2026-11-01; whether a claim mod's refusal arrives depends on the loader backends, which were written by another group
   of the fix and are not tested here).
 - **What is remembered: what one item is worth (new, review finding, fixed 2026-11-01).** 1.7.10 stored the block and its metadata and placed
   that for one item a block, so a double slab, eight layers of snow or a waterlogged slab (a water source) came out of a single item.
@@ -303,8 +303,8 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   powered, the note block's note, mushroom faces, snowy grass...). A block whose contents differ from the default (`honey_level`, `charges`,
   `has_record`, `has_book`, the bottles, the chiseled bookshelf's slots, `level`, `eggs`, `pickles`, `candles`, `bites`, `flower_amount`: a hive with honey, a
   charged respawn anchor) is not remembered at all; the mirror keeps what it had. The rule is applied when the block is remembered and again when
-  the stored state is read, so a mirror saved before it places the single block too. JUnit `theMirrorPlacesWhatOneItemIsWorth` (run, see below),
-  GameTests `mirrorPlacesASingleSlabForADoubleOne`, `mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks` (written, not yet run). Still as before: the
+  the stored state is read, so a mirror saved before it places the single block too. JUnit `theMirrorPlacesWhatOneItemIsWorth` (run, passes),
+  GameTests `mirrorPlacesASingleSlabForADoubleOne`, `mirrorPlacesOneLayerOfSnowAndRefusesFilledBlocks` (passed on the Fabric and the NeoForge GameTest server, 2026-11-01). Still as before: the
   block entity of a placed block is new and empty (a furnace, a hive without bees), and the item taken from the inventory is the first stack of the
   block's item, whatever components it carries (a filled shulker box would be spent for an empty one).
 - **Payment.** The blocks must be in the inventory or in Black Hole Rings in it; a creative player always has them and the
@@ -338,7 +338,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   pouch into a box; found by the first Fabric run of the GameTest), so the pouch's cells refuse, in turn, what may not go inside a container item
   (`SlotNoPouches.mayHold`: shulker boxes and pouches; 1.7.10 refused pouches only). A pouch of shulker boxes of pouches can therefore not be
   nested without limit on either loader. GameTest `pouchDoesNotGoIntoShulkerBoxesOrBundles` (the slot, the bundle, the cells, a shift-click of
-  a shulker box into the pouch's menu).
+  a shulker box into the pouch's menu; passed on the Fabric and the NeoForge GameTest server, 2026-11-01; a real hopper was not run).
 - It is an `IFocusPouch` (request A2, now API) and a belt `IBauble`, so the wand's focus selector offers the foci in it. The selector
   lists at most the first 128 cells (the pouch has 117).
 - The screen title key `container.thaumictinkerer.ichor_pouch` is new (the screen draws no title, as in 1.7.10).
