@@ -14,9 +14,14 @@ the events is not exercised there.
 
 How the words are used: *implemented* means the code exists; a *check* is a JUnit test or a GameTest in the source that was written for the thing it
 is named for, and a check counts as *run* only where a document or a results file says so (section 12, "What ran", says what that is for the hooks); *read*
-means taken from the 1.21.1 or NeoForge bytecode, or from the pinned 1.7.10 source of Thaumic Tinkerer, by reading, not run; *recalled* means from memory
-of Forge or Minecraft 1.7.10, whose source and jars are not on this machine; *unverified* is everything else, in particular every effect on a client (no
-check runs one, section 12).
+means taken from the 1.21.1 or NeoForge bytecode, or from the pinned 1.7.10 source of Thaumic Tinkerer, by reading, not run; since 2026-11-01 also from the
+sources of Forge and Minecraft 1.7.10 named below (*read in 1.7.10*); *recalled* means from memory of Forge or Minecraft 1.7.10 (nothing in sections 2 and 3 is
+recalled any more); *unverified* is everything else, in particular every effect on a client (no check runs one, section 12).
+
+The 1.7.10 sources read: Forge's branch `1.7.10` (<https://github.com/MinecraftForge/MinecraftForge/tree/1.7.10>, commit `9274e4fe`), its patches of the
+Minecraft classes (`patches/minecraft/net/minecraft/...`), FML's event bus (<https://github.com/MinecraftForge/FML/tree/1.7.10>,
+`src/main/java/cpw/mods/fml/common/eventhandler/`), and an MCP decompile of Minecraft 1.7.10 without Forge, <https://github.com/Kittycat7J/MCP-1.7.10-Docker/tree/bb5cf03e3571c9e06f7801425f38598a45e1ee49/src/minecraft/net/minecraft> ("MCP" below; line numbers are
+those of the files there).
 
 | What | Where |
 |---|---|
@@ -68,7 +73,9 @@ section is appended as section 14 (it belongs with sections 3 to 8). Section 15 
   KamiGear and KamiWorld register nothing while `ConfigHandler.enableKami` is off. What the groups rely on today; each line is a choice of
   where a group registers and of the order of `ContentGroups.ALL`, which the event layer does not guarantee. The 1.7.10 column was **read** in
   the pinned source (`TTCommonProxy.init`, the constructors of `ItemBloodSword` and of `ItemIchorclothArmorAdv`, the `@SubscribeEvent` priorities
-  of `ModEnchantmentHandler`); the Forge rule that equal priorities run in registration order is recalled, not read.
+  of `ModEnchantmentHandler`); the Forge rule that equal priorities run in registration order is **read in 1.7.10**: FML's `ListenerList.ListenerListInst`
+  keeps one `ArrayList` per priority and `register` appends to it (lines 216-220), `buildCache` lists the priorities from `HIGHEST` to `LOWEST` and each
+  list in its order (lines 195-214), and `EventBus.post` calls them in that order (`EventBus.java` lines 130-147).
 
   | Event | Order of the listeners here | 1.7.10 | What pins it |
   |---|---|---|---|
@@ -94,7 +101,8 @@ throws away a hit that is not stronger than the last one (`amount <= lastHurt`) 
 `bypasses_cooldown` (empty in vanilla 1.21.1). The Fabric poster makes the same test first (`TinkererEvents.framesRefuse(victim, source,
 amount, lastHurt)`, the one rule for both loaders) and posts only a hit that the game goes on to deal. A listener with a side effect
 (Soul Hearts spending points) is therefore not charged for the lava, fire or cactus hit that vanilla would have refused: the 1.7.10 event
-came after that test as well (recalled, not read). The test uses the amount as the event sees it, so the later steps of `hurt` can still decide differently
+came after that test as well (read in 1.7.10: MCP `entity/EntityLivingBase.java` lines 599-606, the refusal `amount <= lastDamage` returns before
+`damageEntity`, which posts `LivingHurtEvent`). The test uses the amount as the event sees it, so the later steps of `hurt` can still decide differently
 in two corners: a hit that a shield blocks or a helmet reduces (`* 0.75`, falling blocks) is posted with its full amount and may be
 refused afterwards; and a freezing hit on a strider, blaze or magma cube (the game multiplies it by five before it compares) is always
 posted. The GameTest `livingDamageIsNotPostedForHitsTheInvulnerabilityFramesRefuse` pins this (the bypass branch only if a data pack
@@ -110,7 +118,7 @@ damage source. The listeners after a cancel are not called.
 and vanilla lets one in about ten through because the first hit's frames refuse the rest; after a cancelled hit there are no frames, and the
 next tick's hit is posted again. A listener that cancels with a side effect (Soul Hearts taking a covered hit off the pool and returning
 zero) is called for every repeat and would drain the pool about ten times faster than 1.7.10, where `hurtResistantTime` was set before the
-event (recalled, not read). Returning the uncovered rest and letting the game's frames count does not work alone: a fully covered hit has no rest (it must be
+event (read in 1.7.10: MCP `entity/EntityLivingBase.java` lines 607-611, `hurtResistantTime = maxHurtResistantTime` and then `damageEntity`). Returning the uncovered rest and letting the game's frames count does not work alone: a fully covered hit has no rest (it must be
 cancelled), and even a partly covered one comes back on the next tick, because the game's frames compare it with the *rest*. **The Soul Hearts
 therefore keep the frames of the original themselves**, per player (`SoulHeartHandler.Frames`, in memory: the game tick of the hit that began
 them, the strongest raw amount so far, and the amount last handed to the game), charge the pool by the rule of the original inside and outside
@@ -140,8 +148,11 @@ counter step, a heal), and vanilla then refuses it because `f·a2` is not above 
 factor that is not constant (Final Strike rolls a new one per hit, Dispersed Strikes moves with its counter) there is no such band formula. A check of both bands on
 the 1.21.1 side exists, the GameTest `theFramesCompareTheBoostedAmountsNotTheRawOnes` (Pounce IV; Dispersed Strikes I at a counter of 6); the results file of
 section 12 lists it without a failure.
-**Unverified**: the 1.7.10 side of both bands. The Minecraft 1.7.10 source is not on this machine; it is taken from the first bullet of the
-differences below and recalled from `EntityLivingBase.attackEntityFrom` (`deviations/Enchantments.md` sections 2 and 12).
+**The 1.7.10 side of both bands is read** (2026-11-01): MCP `entity/EntityLivingBase.java` lines 599-612. While `hurtResistantTime > maxHurtResistantTime / 2`
+a blow with `amount <= lastDamage` returns `false` before anything else; a stronger one calls `damageEntity(source, amount - lastDamage)` and sets
+`lastDamage = amount`, the **raw** amount; Forge's patch posts `LivingHurtEvent` at the head of `damageEntity` with that difference
+(`EntityLivingBase.java.patch` lines 145-152; for a player `EntityPlayer.java.patch` lines 309-322). So 1.7.10 dealt `f·(a2 - a1)` for `a1 < a2 <= f·a1`
+and refused `f·a1 < a2 <= a1` before its event, as said above (`deviations/Enchantments.md` sections 2 and 12).
 
 *Other listeners and the Soul Hearts' frames.* The chain runs in the order of registration across the groups: the Enchantments' listener is
 earlier than the Soul Hearts', as in 1.7.10 (section 2). Because the poster filters only the *game's* refusals, a hit that the **Soul Hearts'
@@ -149,23 +160,28 @@ frames** refuse (a repeat inside ten ticks of a covered hit, which began no game
 posted, so the Enchantments' listener has already run for it (Vampirism heals the attacker, the strike counter advances) when the pool refuses
 the hit; in 1.7.10 that hit was refused before any event. A hook that asks the pool's frames before any listener runs would close it (section 15).
 
-*Differences from Forge's `LivingHurtEvent` of 1.7.10* (**recalled, not read**: neither the Minecraft 1.7.10 source nor a Forge 1.7.10 jar is on this machine,
-so what the bullets say about 1.7.10 rests on memory of `EntityLivingBase.attackEntityFrom` and `damageEntity` and on the Thaumic Tinkerer source that listens to
-the event, as `deviations/Enchantments.md` section 12 says; the 1.21.1 side of each bullet was read in the bytecode)
+*Differences from Forge's `LivingHurtEvent` of 1.7.10* (**read in 1.7.10**, 2026-11-01: MCP `entity/EntityLivingBase.java` `attackEntityFrom`, lines 580-668,
+and `damageEntity`, lines 861-877; MCP `entity/player/EntityPlayer.java` `attackEntityFrom`, lines 687-728, and `damageEntity`, lines 759-777; Forge's
+`EntityLivingBase.java.patch` lines 53-60 (`onLivingAttack`) and 145-152 (`onLivingHurt`), `EntityPlayer.java.patch` lines 303-322; `ForgeHooks.onLivingHurt`,
+`ForgeHooks.java` lines 295-299. The 1.21.1 side of each bullet was read in the bytecode. The first version of these bullets was written from memory and had
+the place of the sword block wrong; corrected here)
 
-* 1.7.10 posted it in `damageEntity`, after the sword block of a player victim (there was no shield item, but a player who held a sword up took
-  `(1 + amount) / 2` before the event) and after the invulnerability frames had subtracted the last
-  hit (`damageEntity(source, amount - lastDamage)`); here the event comes first and the frames compare the **listener's** result with
-  the last hit. The test pins it down: a listener that halves turns 10 and then 8 into 5 and 4, and the second hit is refused, where
-  vanilla would let 3 of it through. This is NeoForge's order as well (`LivingIncomingDamageEvent`).
-* A cancel in 1.7.10 only skipped `damageEntity`: knockback and the hurt animation still happened. Here a cancel is a refusal of the
-  whole hit.
-* 1.7.10 passed the amount after that sword block; 1.21.1 has no sword block, and a hit that a shield will block is posted with its full amount.
+* 1.7.10 posted it at the head of `damageEntity`, **after** the invulnerability frames had subtracted the last hit (`damageEntity(source, amount -
+  lastDamage)`) and the helmet's share of a falling anvil or block (`amount *= 0.75F`, in `attackEntityFrom` before the frames), and **before** a player's
+  sword block (`(1 + amount) / 2`, which the patch leaves after the event) and the armour; here the event comes first and the frames compare the
+  **listener's** result with the last hit. The test pins it down: a listener that halves turns 10 and then 8 into 5 and 4, and the second hit is refused,
+  where vanilla would let 3 of it through. This is NeoForge's order as well (`LivingIncomingDamageEvent`).
+* A cancel in 1.7.10 (`ForgeHooks.onLivingHurt` returns 0 for a cancelled event, and `damageEntity` returns at `amount <= 0`) only skipped the rest of
+  `damageEntity`: `attackEntityFrom` had already started the frames, and went on to the hurt animation, the knockback and the hurt sound. Here a cancel is a
+  refusal of the whole hit.
+* The amount: 1.7.10's event saw the amount before the sword block and the armour, and after the helmet's share of a falling block; here it sees the whole
+  amount before the shield and the helmet (1.21.1 has no sword block, a hit that a shield will block is posted with its full amount, and the helmet's
+  `* 0.75` comes after the event).
 * 1.7.10 compared the frames with the *raw* amount and posted the event with the difference (`amount - lastDamage`); here the event gets the whole
   amount of a hit that goes on to be dealt, and the frames compare the *listener's result* with the next hit.
 * The armour of KamiGear (`ISpecialArmor`, `docs/api-requests/KamiGear.md` section 1) is **not** served by this event: it sat
-  *after* the event in 1.7.10 (inside the armour calculation). It has an event of its own, `LIVING_ARMOR_ABSORB`, posted from
-  `LivingEntity.getDamageAfterArmorAbsorb` (section 14).
+  *after* the event in 1.7.10 (`ApplyArmor` comes after `onLivingHurt` in the patched `EntityPlayer.damageEntity`). It has an event of its own,
+  `LIVING_ARMOR_ABSORB`, posted from `LivingEntity.getDamageAfterArmorAbsorb` (section 14).
 
 *NeoForge* (written; run on a GameTest server, section 9): `NeoForgeEventPosters.onLivingIncomingDamage`, a handler of `LivingIncomingDamageEvent` at
 `EventPriority.NORMAL` that does not receive cancelled events. It skips an amount that is not positive, returns without posting when

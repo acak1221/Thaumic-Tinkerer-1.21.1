@@ -296,7 +296,8 @@ bedrock and the click goes on (a held block is placed against it), as in `onBloc
     off as against an invulnerable player and a melee attacker sees a refused hit (no Fire Aspect or Knockback of its own on that
     blow, no thorns). Two more things of the refusal: **a sleeping player is not woken** by a hit the pool covers (in 1.21.1 the wake-up is
     in `LivingEntity.hurt`, after the point where the event is posted and a cancel returns; 1.7.10's `EntityPlayer.attackEntityFrom` woke the
-    sleeper before `super`, so a covered hit woke him: recalled, the vanilla 1.7.10 source is not on disk) and **a raised shield is not used**
+    sleeper before `super`, so a covered hit woke him: read in the MCP decompile of 1.7.10, `entity/player/EntityPlayer.java` lines 697-699, before the
+    call of `super.attackEntityFrom` at line 724 that leads to the event; `docs/HOOKS.md` names the sources) and **a raised shield is not used**
     for it (no durability lost, the attacker is not pushed back or disabled by it: `hurtCurrentlyUsedShield` and `blockUsingShield` come after
     the event too). For a hit the pool only partly covers the shield works as usual, on the rest, but the pool has been charged with the
     whole pre-block amount (`HOOKS.md` section 3: the event comes before the shield), so a blocking player pays the pool for damage the
@@ -356,7 +357,7 @@ counts, a wolf does not; the Animation Tablet's fake player is a player, as a `F
 `Level.END` / `Level.NETHER` where 1.7.10 compared the ids from the config) and a roll `<= 1D / 32D` (`1D / 16D`; 1.7.10 rolled
 `Math.random()`, the port the victim's random, see below), the roll made only when the first two hold. The shard is a new `ItemEntity` at the victim's position added to the list, as the
 original added an `EntityItem` (the `ItemEntity` constructor gives it the same small random motion, 0.2 up, and, like the `EntityItem`
-constructor (recalled: the vanilla 1.7.10 source is not on disk), no pickup delay: the game's own drops get the delay of 10 only through
+constructor (read in the MCP decompile of 1.7.10, `entity/item/EntityItem.java` lines 30-46; `Entity.entityDropItem` sets the delay of 10, line 1125), no pickup delay: the game's own drops get the delay of 10 only through
 `spawnAtLocation`, which neither handler uses);
 what the loot table, the equipment and the other listeners put in the list is left alone, Looting does not change the chance (it
 did not), and the shard is dropped whether or not the kill was "recent" and whatever `doMobLoot` says (the handler of the original

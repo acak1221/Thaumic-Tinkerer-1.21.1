@@ -192,7 +192,7 @@ Shadowbeam and the Experience Drain keep the Kami name colour through `ItemModKa
   - **Order against Ascent Boost: the original's, pinned by a GameTest.** Both are `LIVING_JUMP` listeners and run in the order they were registered.
     1.7.10 built the Gem Boots in `TTRegistry.preInit` (the constructor chain calls `registerEvents()`, which registers `ItemGemBoots.EventHandler`) and registered
     `ModEnchantmentHandler` from `ModEnchantments.initEnchantments()`, called by `TTCommonProxy.init`; both handlers are at normal priority, and Forge runs equal
-    priorities in registration order (recalled, not read: no Forge 1.7.10 source is on this machine), so the boots came first: `motionY = (0.42 + 0.3) x factor`, with Ascent Boost's `factor = (level + 2) / 2` (the highest level on
+    priorities in registration order (read in FML's `ListenerList` of the branch `1.7.10`, `docs/HOOKS.md` section 2), so the boots came first: `motionY = (0.42 + 0.3) x factor`, with Ascent Boost's `factor = (level + 2) / 2` (the highest level on
     the four armour slots, not while sneaking): **1.08 for Ascent Boost I, 1.80 for III**. Here the boots' listener is registered by `KamiGear.register()`
     (`KamiArmorHandler.register()`) and Ascent Boost's by `Enchantments.ready()` (`ModEnchantments.initJump()`, `ModEnchantmentHandler.registerJump()`), the phase after every
     group's `register()`, so the boots come first as in 1.7.10 and the jump is the original's 1.08 and 1.80 (the first wiring registered Ascent Boost's listener in

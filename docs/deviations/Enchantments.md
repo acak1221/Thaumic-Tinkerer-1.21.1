@@ -88,10 +88,10 @@ the shooter of an arrow, the wearer of thorns), as the original did: the blow of
     stored: the listener's result for the hit before) is **not posted** (the poster applies vanilla's test first), so it does not
     move the counter of Focused and Dispersed Strikes and does not heal with Vampirism. That is what 1.7.10 did too, except in
     the band above for a factor below one. A hit that a shield blocks or a helmet reduces is posted with its full amount and may
-    be refused afterwards; the counter and the heal have happened then. (1.7.10 had no shields and no helmet rule; `docs/HOOKS.md` section 3 puts its event after the
-    blocking, which for a player victim that blocked with a sword was `(1 + amount) / 2` before the factors, and now it is not
-    applied at all. A player victim that holds a sword up is the one case in which the factors of the enchantments meet a
-    different amount than in 1.7.10.)
+    be refused afterwards; the counter and the heal have happened then. (1.7.10 had no shields; its helmet rule for a falling anvil or block, `* 0.75`,
+    came before the frames and before its event. Its event came **before** a player's sword block (`(1 + amount) / 2`, applied after the event to what the
+    listeners left: Forge's patch of `EntityPlayer.damageEntity`, `docs/HOOKS.md` section 3), so the factors met the same amount as here; what is gone is
+    the halving afterwards, because 1.21.1 has no sword block. An earlier version of this note, written from memory, put the event after the block.)
   - the listener never cancels, so no frames are lost; other listeners (Soul Hearts of the KamiWorld group) chain in the order
     of registration, each seeing the amount the one before returned.
 - **What the workaround could not do and the event does** (all of them were limits written down here before): the factors
@@ -408,9 +408,9 @@ own entry comes with its block (section 6). The `PERIPHERALS` entry of the same 
   the original (its jar is not run here): the claim that a long fall ends at 2.9 there is arithmetic, and the claim that a short
   fall of 3 to 3.5 blocks may keep some of its damage there is too.
 - The 1.7.10 side of the two bands of the invulnerability frames (section 2: `EntityLivingBase.attackEntityFrom` compares the raw
-  amounts and passes the difference to `damageEntity`) is taken from `docs/HOOKS.md` section 3 and recalled from that method (the
-  Minecraft 1.7.10 sources are not at hand here), and the one-target swing of 1.7.10 is a fact of its version (no sweep); neither was
-  run. The 1.21.1 side of both is run by `theFramesCompareTheBoostedAmountsNotTheRawOnes` and `aSweepOfASwordIsAHitForEachEntityItReaches`. A sweep with a Sweeping Edge
+  amounts and passes the difference to `damageEntity`, where Forge posts `LivingHurtEvent`) is **read** since 2026-11-01 in an MCP decompile of
+  Minecraft 1.7.10 (`entity/EntityLivingBase.java` lines 599-612) and in Forge's patch (`EntityLivingBase.java.patch` lines 145-152), the sources
+  that `docs/HOOKS.md` names; the one-target swing of 1.7.10 is a fact of its version (no sweep). Neither was run. The 1.21.1 side of both is run by `theFramesCompareTheBoostedAmountsNotTheRawOnes` and `aSweepOfASwordIsAHitForEachEntityItReaches`. A sweep with a Sweeping Edge
   sword (the share of the blow in the sweep damage), with Final Strike, and the heal of a swing at three or more entities were not tried.
 - Nothing about the screen, the renderer, the particles and sounds, and the multiplayer behaviour of the packets has been seen.
 - **Checks that changed with the wiring** (`EnchantmentsRuntimeChecks`), all of them because they drove the deleted workaround: the

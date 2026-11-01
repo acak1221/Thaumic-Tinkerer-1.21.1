@@ -87,7 +87,7 @@ from the Thaumcraft API), [HOOKS](HOOKS.md) (loader events), [lang-key-families]
 * **The order of the listeners of the loader events** is a decision about where each group registers (`HOOKS.md` section 2): LIVING_DAMAGE runs the Enchantments'
   listener before KamiWorld's Soul Hearts, and LIVING_DROPS the Cursed Spirit's Blade (Machines) before the dimensional shards (KamiWorld), both as in 1.7.10 (the
   registration phases, `preInit` and `init`, were read in the pinned Thaumic Tinkerer source; that Forge ran listeners of equal priority in registration order is
-  recalled, not read, `HOOKS.md` section 2); the shard order is pinned by the GameTest `aReapedEndermanAndZombifiedPiglinStillRollTheirDimensionalShard` and depends on the order of
+  read in FML's `ListenerList` of the branch `1.7.10`, `HOOKS.md` section 2); the shard order is pinned by the GameTest `aReapedEndermanAndZombifiedPiglinStillRollTheirDimensionalShard` and depends on the order of
   `ContentGroups.ALL` and on both groups registering in `register()`, not in `ready()`. LIVING_JUMP runs the Gem Boots (`KamiGear.register()`) before Ascent Boost
   (`Enchantments.ready()`, through `ModEnchantments.initJump()`), as the original's `preInit` and `init` did: `(0.42 + 0.3) × factor`, 1.08 for Ascent Boost I and
   1.80 for III, pinned by `gemBootsAndAscentBoostLeggingsComposeTheirJumps` (the first wiring had it reversed, 0.93 and 1.35). Shockwave's `LOW` priority of 1.7.10 is
@@ -105,7 +105,7 @@ Architectury has no events for several things the original used Forge events for
 their workarounds (SimpleBlocks, TileBlocks and BasicItems never needed an event of this layer that was missing; SimpleBlocks' Imbued effects and the Cursed Spirit's
 Blade still use the Architectury `EntityEvent.LIVING_HURT` for 1.7.10's `LivingAttackEvent`). `HOOKS.md` section 10 says, per group, which workaround was removed, which event
 replaces it and which check pins it, and what rests on the NeoForge posters. What the events change against the original, each in the group's document (what is said
-about Forge's and Minecraft 1.7.10's own behaviour in this section is **recalled, not read**: its source is not on this machine, section 6, point 5):
+about Forge's and Minecraft 1.7.10's own behaviour in this section is **read** in their sources since 2026-11-01, section 6, point 5):
 
 * **The damage event stands before the shield, the invulnerability frames and the armour**, where Forge's stood after the frames had taken the last hit off.
   A cancel is a refusal of the whole hit and starts no frames. So the Soul Hearts keep the original's frames themselves (`KamiWorld.md` section 5), a covered
@@ -245,11 +245,18 @@ None of these is a known defect. Each is something the port decided or assumed w
    `recipesUnderAResearchKeyNoEntryDefinesStayLocked` (a player with every research cannot complete the keys or pass the gate; the recipes match their own
    catalyst, aspects and components; another infusion of the add-on passes with the same player). `SimpleBlocks.md` section 2.8, `BasicItems.md` section 6,
    `PARITY_REPORT.md` section 4.
-5. **The 1.7.10 side of the invulnerability-frames bands** (`HOOKS.md` section 3, `Enchantments.md` sections 2 and 12): taken from `HOOKS.md` and recalled from
-   `EntityLivingBase.attackEntityFrom`, not read in the Minecraft 1.7.10 source (not on this machine). The same holds for every statement about Forge's
-   `LivingHurtEvent` in `HOOKS.md` section 3 (its place after the frames and after a player's sword block, that a cancel only skipped `damageEntity`, that
-   `ISpecialArmor` sat after it) and for the claim that Forge ran listeners of equal priority in registration order, which the listener orders of section 2 lean on.
-   The 1.21.1 side has checks (`HOOKS.md` section 12 says what is recorded as run).
+5. **The 1.7.10 side of the invulnerability-frames bands and of Forge's `LivingHurtEvent`: resolved, read in the 1.7.10 sources.** *Evidence* (the sources of
+   point 1, plus FML's event bus, <https://github.com/MinecraftForge/FML/tree/1.7.10>): `EntityLivingBase.attackEntityFrom` refuses a blow with
+   `amount <= lastDamage` while `hurtResistantTime > maxHurtResistantTime / 2`, calls `damageEntity(source, amount - lastDamage)` for a stronger one and stores the
+   raw amount as `lastDamage`; outside the frames it sets `hurtResistantTime` first and then calls `damageEntity` (MCP `entity/EntityLivingBase.java` lines
+   599-612); Forge's `LivingHurtEvent` is posted at the head of `damageEntity` (`EntityLivingBase.java.patch` lines 145-152, `EntityPlayer.java.patch` lines
+   309-322), so it came after the frames and after the helmet's `* 0.75` of a falling block (lines 592-595), **before** a player's sword block, the armour and
+   `ApplyArmor`; a cancel (`ForgeHooks.onLivingHurt` returns 0) only ends `damageEntity`, after which `attackEntityFrom` still plays the hurt animation and the
+   knockback (lines 612-666: the hurt animation at line 635, the knockback at 649). Listeners of one priority run in registration order (FML `ListenerList.java` lines 195-220, `EventBus.post` lines 130-147).
+   *Decision*: nothing in the code changes: the two bands are as `HOOKS.md` section 3 and `Enchantments.md` section 2 described them (the GameTest
+   `theFramesCompareTheBoostedAmountsNotTheRawOnes` pins the 1.21.1 side). One statement was wrong and is corrected: the event did **not** stand after a
+   player's sword block, so the factors of the Enchantments met the same amount as here (`HOOKS.md` section 3, `Enchantments.md` sections 2 and 12; also the
+   statements of `KamiWorld.md` section 5 about the sleeper and of `KamiGear.md` section 3 about the listener order now cite the sources).
 6. **Slow Fall's landing rule** (section 2) is a decision of the port that the owner may want to change.
 7. **The Cursed Spirit's Blade cannot take the vanilla sword enchantments** (Sharpness, Smite, Looting, Fire Aspect, Unbreaking, Mending ...), which the 1.7.10 `ItemSword`
    took: it is in none of the vanilla sword tags. The fix touches files of other groups (`data/minecraft/tags/item/swords.json` and the Vampirism tag, which must keep refusing
