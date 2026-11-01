@@ -202,9 +202,13 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
 The per-group documents say what each group's own checks were; they record runs in different amounts (KamiWorld, Foci and the first round of KamiGear with numbers; Machines and BasicItems
 record no result of their own server-side tests; Enchantments a statement without a result): `README.md` and `HOOKS.md` section 12 say what is recorded.
 
-## 6. Open points (need the owner or a source that is not on this machine)
+## 6. Points that were open (settled on 2026-11-01)
 
-None of these is a known defect. Each is something the port decided or assumed without being able to check it, or a question for the owner.
+None of these was a known defect. Each was something the port had decided or assumed without being able to check it, or a question for the owner.
+On 2026-11-01 each was settled by the evidence named in it (the sources of Forge 1.7.10, Minecraft 1.7.10 and Thaumcraft 1.7.10-4.2.3.5, read, and the
+pinned Thaumic Tinkerer source) and by the rule of `PORTING_RULES.md`: the original's behaviour where it gives an answer; where it gives none, what fits its
+intent and the game working properly, marked as a decision the owner can revert. Points 8 and 9 were settled before. Every point names its code and tests;
+the runs are at the end of this section.
 
 1. **The slot index of `ISpecialArmor.getProperties` and `getArmorDisplay`: resolved, ported as 1.7.10 had it.** *Evidence* (Forge branch `1.7.10`, commit
    `9274e4fe`; Minecraft 1.7.10 from the MCP decompile <https://github.com/Kittycat7J/MCP-1.7.10-Docker/tree/bb5cf03e3571c9e06f7801425f38598a45e1ee49>):
@@ -302,3 +306,10 @@ None of these is a known defect. Each is something the port decided or assumed w
     `thePlatformAndTheDevicesImitateByTheOneRuleOfTheOriginal` (both rules over every block item of the game and every face; the devices refused; the
     pumpkin turned, the furnace not; a real click of a Remote Placer on a platform), beside the existing checks of both groups. The owner can merge
     later only with a data fixer for the property; the platform's block entity type `thaumictinkerer:camo` stays the platform's only.
+
+**Runs after these changes (2026-11-01, branch `owner-decisions`).** `check runTinkererGameTest :neoforge:runGameTest assemble :neoforge:assemble --continue`:
+JUnit `tinkererTest` 428 tests, 0 failures, 0 skipped; Fabric GameTest server "All 359 required tests passed"; NeoForge GameTest server "All 367 required tests
+passed" (the 359 generated wrappers and the 8 NeoForge-only checks); both jars built. Client smoke (`tools/client-smoke.sh`, the Mob Display's picture read on each):
+Fabric 727 PASS, 0 FAIL, 0 harness errors, 1 NOT_RUN, 80 pictures; NeoForge 731 PASS, 0 FAIL, 1 NOT_RUN, 80 pictures. **Not verified**: none of the 1.7.10
+behaviour was run (Forge, Minecraft and Thaumcraft 1.7.10 were read, not started); the armour's HUD and tooltip ("+6 Armor" on the chestplate), a real fall with
+Slow Fall and the table and anvil screens with the blade were not seen in a client (the checks drive the server-side code); the Mob Display was seen in a slot only.
