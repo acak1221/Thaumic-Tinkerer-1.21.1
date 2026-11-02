@@ -40,6 +40,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           path: thaumic-tinkerer
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          fetch-depth: 0
 
       - name: Read the version, the tag and the Thaumcraft commit
         id: meta
@@ -54,12 +56,14 @@ jobs:
           tc_ref="$(sed -n 's/^thaumcraft_ref=//p' "$props" | head -n1 | tr -d '\r')"
           tc_version="$(sed -n 's/^thaumcraft_version=//p' "$props" | head -n1 | tr -d '\r')"
           test -n "$version" && test -n "$tc_ref" || { echo "mod_version or thaumcraft_ref missing in gradle.properties" >&2; exit 1; }
+          [[ "$tc_ref" =~ ^[0-9a-f]{40}$ ]] || { echo 'thaumcraft_ref must pin a full commit SHA' >&2; exit 1; }
+          test -n "$tc_version" || { echo 'thaumcraft_version is missing' >&2; exit 1; }
           if [ "$EVENT" = push ]; then tag="$REF_NAME"; publish=true; else tag="$INPUT_TAG"; publish="${INPUT_PUBLISH:-false}"; fi
           if [ -n "$tag" ] && [ "$tag" != "v$version" ]; then
             echo "The tag $tag is not v$version (mod_version of gradle.properties)" >&2; exit 1
           fi
           [ -n "$tag" ] || publish=false
-          case "$version" in *-*) prerelease=true;; *) prerelease=false;; esac
+          case "${version%%+*}" in *-*) prerelease=true;; *) prerelease=false;; esac
           {
             echo "version=$version"; echo "tag=$tag"; echo "publish=$publish"; echo "prerelease=$prerelease"
             echo "tc_ref=$tc_ref"; echo "tc_version=$tc_version"
@@ -70,7 +74,7 @@ jobs:
         if: ${{ steps.meta.outputs.publish == 'true' }}
         working-directory: thaumic-tinkerer
         run: |
-          git fetch --no-tags --depth=200 origin main
+          git fetch --no-tags origin main
           git merge-base --is-ancestor HEAD FETCH_HEAD || { echo "The release commit is not on main" >&2; exit 1; }
 
       - name: Check out Thaumcraft 4 Reload
@@ -89,40 +93,52 @@ jobs:
           java-version: '21'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: true
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Test release report validation
+        working-directory: thaumic-tinkerer
+        run: python3 -m unittest discover -s tools -p 'test_release_bundle.py' -v
 
       - name: Install Thaumcraft 4 Reload into the local Maven repository
         working-directory: thaumcraft
-        run: ./gradlew --no-daemon --console=plain :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
+        run: ./gradlew --no-daemon --console=plain --max-workers=2 :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
 
       - name: Fabric - JUnit, GameTests, release jar
         working-directory: thaumic-tinkerer
-        run: ./gradlew --no-daemon --console=plain check runTinkererGameTest remapThaumicTinkererJar
+        run: ./gradlew --no-daemon --console=plain --max-workers=2 check runTinkererGameTest remapThaumicTinkererJar
 
       - name: NeoForge - wrappers, GameTests, release jar
         working-directory: thaumic-tinkerer
         run: |
           python3 -I -B tools/neoforge_gametests.py --check
-          ./gradlew --no-daemon --console=plain :neoforge:runGameTest :neoforge:assemble
+          ./gradlew --no-daemon --console=plain --max-workers=2 :neoforge:runGameTest :neoforge:assemble
 
-      - name: Collect the jars
+      - name: Validate test reports, jars and dependency provenance
         id: jars
         working-directory: thaumic-tinkerer
-        env:
-          VERSION: ${{ steps.meta.outputs.version }}
-        run: |
-          mkdir -p ../release
-          cp "build/libs/ThaumicTinkerer-fabric-$VERSION.jar" "neoforge/build/libs/ThaumicTinkerer-neoforge-$VERSION.jar" ../release/
-          (cd ../release && sha256sum *.jar > SHA256SUMS.txt && cat SHA256SUMS.txt)
+        run: python3 tools/release_bundle.py --thaumcraft-dir ../thaumcraft --output ../release
 
       - name: Upload the jars (every run)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ThaumicTinkerer-${{ steps.meta.outputs.version }}
           path: release/
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload test reports and logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-test-reports
+          path: |
+            thaumic-tinkerer/build/test-results/tinkererTest/
+            thaumic-tinkerer/build/tinkerer-gametest-results.xml
+            thaumic-tinkerer/neoforge/build/tinkerer-gametest-results.xml
+            thaumic-tinkerer/run-tinkerer-gametest/logs/
+            thaumic-tinkerer/neoforge/run-gametest/logs/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Publish the GitHub release
         if: ${{ steps.meta.outputs.publish == 'true' }}
@@ -143,10 +159,24 @@ jobs:
           - ThaumicTinkerer-fabric-$VERSION.jar: Fabric
           - ThaumicTinkerer-neoforge-$VERSION.jar: NeoForge
           - SHA256SUMS.txt: checksums
+          - BUILD_INFO.json: source commits, checksums and actual test results
 
           Licence: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 (the add-on); build files and tools MIT. See NOTICE.md.
+          Release automation maintained with OpenAI Codex (GPT-6).
           EOF
-          flags=()
-          [ "$PRERELEASE" = true ] && flags+=(--prerelease)
-          gh release create "$TAG" release/*.jar release/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" \
-            --title "Thaumic Tinkerer $VERSION" --notes-file notes.md --verify-tag "${flags[@]}"
+          (cd release && sha256sum --check SHA256SUMS.txt)
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/release-draft.txt" 2>/dev/null; then
+            if [ "$(cat "$RUNNER_TEMP/release-draft.txt")" != true ]; then
+              echo 'This release is already published; use a new version and tag.' >&2
+              exit 1
+            fi
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "Thaumic Tinkerer $VERSION" --notes-file notes.md
+          fi
+          gh release upload "$TAG" release/*.jar release/SHA256SUMS.txt release/BUILD_INFO.json \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          latest=true
+          if [ "$PRERELEASE" = true ]; then latest=false; fi
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false \
+            --prerelease="$PRERELEASE" --latest="$latest" --title "Thaumic Tinkerer $VERSION" --notes-file notes.md

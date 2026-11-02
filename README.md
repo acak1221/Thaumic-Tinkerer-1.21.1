@@ -118,6 +118,12 @@ python3 tools/neoforge_gametests.py          # are the NeoForge GameTest wrapper
   runs JUnit and the GameTests of both loaders, and publishes a GitHub release with the Fabric and the NeoForge jar and their SHA-256 sums (a version
   with `-alpha`, `-beta` or `-rc` is a pre-release). Started by hand (`workflow_dispatch`) without a tag it is a dry run: the same build, the jars as an
   artifact, nothing published. A release is only usable with a Thaumcraft 4 Reload build that has the API of `thaumcraft_ref`.
+  To publish the next version, commit and push its `mod_version`, then run `git tag v<mod_version>` and `git push origin v<mod_version>`.
+  **Actions → Release → Run workflow** without a tag checks the complete build without publishing. With a tag, the manual run checks out that
+  exact tag; publishing also requires the `publish` checkbox and a commit on `main`. Test reports must contain passing cases with no failures,
+  errors or skips. Releases include both production jars, `SHA256SUMS.txt` and `BUILD_INFO.json` with actual source commits and test results.
+  An interrupted upload can resume from its draft; published releases are not overwritten. The workflow uses `GITHUB_TOKEN` and caches Gradle.
+  Release automation maintained with OpenAI Codex (GPT-6).
 
 ## Layout
 
