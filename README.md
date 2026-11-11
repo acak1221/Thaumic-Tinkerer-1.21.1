@@ -1,161 +1,102 @@
-# Thaumic Tinkerer for Thaumcraft 4 Reload (Minecraft 1.21.1)
+<div align="center">
 
-A port of **Thaumic Tinkerer** (1.7.10, by Vazkii, pixlepix, nekosune and the GTNewHorizons contributors) to Minecraft 1.21.1 as an
-add-on of **Thaumcraft 4 Reload**, for **Fabric** and **NeoForge**. Mod id `thaumictinkerer`; a separate jar per loader that depends on `thaumcraft`,
-`architectury` and (on Fabric) `fabric-api`. It talks to Thaumcraft only through the public `thaumcraft.api`; a JUnit test (`TinkererApiOnlyTest`) fails the build if
-a source file imports anything else of Thaumcraft.
+# Thaumic Tinkerer for Thaumcraft 4 Reload
 
-Русская версия: [README.ru.md](README.ru.md).
+**The Thaumcraft 4 add-on by Vazkii, pixlepix and nekosune, carried from Minecraft 1.7.10 to 1.21.1 — on Fabric and NeoForge.**
 
-> **Licence: CC BY-NC-SA 3.0** (see `LICENSE` and `NOTICE.md`). Non-commercial, share-alike. The add-on sources are under it. The build
-> files of this repository (`settings.gradle`, `build.gradle`, `gradle.properties`, `fabric.gradle`, `neoforge/build.gradle`,
-> `neoforge/gradle.properties`, `tools/`, the CI and release workflows, `scripts/porting/`) are MIT (`LICENSE-MIT`); the Gradle wrapper is Gradle's own (Apache-2.0); `NOTICE.md` lists them.
+[![Minecraft 1.21.1](https://img.shields.io/badge/Minecraft-1.21.1-62B47A?style=flat-square)](#installation)
+[![Fabric](https://img.shields.io/badge/Fabric-supported-DBD0B4?style=flat-square)](#installation)
+[![NeoForge](https://img.shields.io/badge/NeoForge-supported-D7742F?style=flat-square)](#installation)
+[![Requires Thaumcraft 4 Reload](https://img.shields.io/badge/requires-Thaumcraft%204%20Reload-8A4BD6?style=flat-square)](https://github.com/acak1221/Thaumcraft-1.21.1)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-8A4BD6?style=flat-square)](#status)
 
-The add-on is developed in this repository. Until 2026-10-31 it was written inside the
-[Thaumcraft 4 Reload repository](https://github.com/acak1221/Thaumcraft-1.21.1) (`NOTICE.md`, "History"); that repository keeps the
-extensions of `thaumcraft.api` the add-on needs and no longer contains the add-on.
+[Releases](https://github.com/acak1221/Thaumic-Tinkerer-1.21.1/releases) · [Thaumcraft 4 Reload](https://github.com/acak1221/Thaumcraft-1.21.1) · [Русская версия](README.ru.md)
+
+</div>
+
+Thaumic Tinkerer adds late-game devices, wand foci, enchantments and the KAMI tier to Thaumcraft 4. This repository is its port
+to Minecraft 1.21.1.
+
+> [!IMPORTANT]
+> This is an **add-on**, not a standalone mod. It needs **[Thaumcraft 4 Reload](https://github.com/acak1221/Thaumcraft-1.21.1)**,
+> the port of Azanor's Thaumcraft 4.2.3.5 to Minecraft 1.21.1, and does nothing without it. Its research appears in its own tab
+> of the Thaumonomicon and builds on Thaumcraft's research.
+
+## What is in it
+
+The content is the 1.7.10 mod's: 74 research entries and 127 recipes, compared with the original source field by field
+([docs/PARITY_REPORT.md](docs/PARITY_REPORT.md)).
+
+| Group | Content |
+|---|---|
+| **Devices** | Osmotic Enchanter (you choose the enchantments, a wand pays the vis), Transvector Interface and Transvector Dislocator, Dynamism Tablet, Thaumic Restorer, Essentia Funnel, Kinetic and Corporeal Attractors, Remote Placer, Aspectalyzer, Tablet of Necromancy, Ethereal Platform, Levitational Locomotive, Golem Connector |
+| **Wand foci** | Distortion, Dislocation, Ender Rift, Uprising, Mending, Telekinesis, Efreet's Flame, Celestial Recall, Shadowbeam, Experience Drain |
+| **Enchantments** | Fourteen, given only by the Osmotic Enchanter: Ascent Boost, Slow Fall, Pounce, Shockwave, Flaming Touch, Disintegrate, Shatter, Tunnel, Quick Draw, Vampirism, Valiance, Focused Strike, Dispersed Strike, Final Strike |
+| **Items** | Spellbinding Cloth, Helmet of Revealing, Cursed Spirit's Blade, Black Hole Ring, Feline Amulet, Talisman of Remedium, Tome of Knowledge Sharing, Hyperenergetic Nitor, Gaseous Illuminae and Tenebrae, Infused Seeds and Infused Farmland, the six imbued fires |
+| **KAMI** | Ichor, Ichorcloth and Ichorium; the Ichorcloth armour and its four awakened pieces; Ichorium tools and their awakened forms; Bottomless Pouch, Ichorium Cap and the Ichor Woven Silverwood Wand Core; Celestial Gateway, Worldshaper's Looking Glass, Protoclay, the Bedrock Portal and its dimension. A config option turns the tier off |
+| **Building blocks** | Smokey Quartz and its blocks, slabs and stairs of the Thaumcraft paving stones |
+
+Optional integrations, used only when the other mod is installed: recipe pages for **EMI** and **JEI**, block tooltips for **Jade**,
+and energy through the Transvector Interface (NeoForge's own energy capability; on Fabric through **Team Reborn Energy**).
+
+Not ported: the ComputerCraft and OpenComputers peripherals and IC2 EU. Every difference from the 1.7.10 mod is listed in
+[docs/DEVIATIONS.md](docs/DEVIATIONS.md).
+
+## Installation
+
+1. Install **Thaumcraft 4 Reload** for your loader from its [releases](https://github.com/acak1221/Thaumcraft-1.21.1/releases)
+   and what it needs (its [README](https://github.com/acak1221/Thaumcraft-1.21.1#installation) says what).
+2. Download the Thaumic Tinkerer jar for the same loader from the [releases](https://github.com/acak1221/Thaumic-Tinkerer-1.21.1/releases)
+   of this repository and put it into `mods/` next to Thaumcraft.
+
+| | Fabric | NeoForge |
+|---|---|---|
+| Add-on jar | `ThaumicTinkerer-fabric-<version>.jar` | `ThaumicTinkerer-neoforge-<version>.jar` |
+| Minecraft | 1.21.1 | 1.21.1 |
+| Thaumcraft 4 Reload | the Fabric jar | the NeoForge jar |
+| Also needed | Fabric API, Architectury API 13.0.11+ | NeoForge 21.1.259+, Architectury API 13.0.11+ |
+
+**Which Thaumcraft version.** The add-on uses only the public `thaumcraft.api`, and needs the extensions that Thaumcraft 4 Reload
+has had since 2026-10-31. Each release names the Thaumcraft build it was tested with in its `BUILD_INFO.json`: 0.1.0-alpha.7 was built
+and tested against Thaumcraft 4 Reload 0.1.0-alpha.11. It also starts with 0.1.0-alpha.24; that combination has not been through the
+test suites.
+
+Use a new world or a backup: both mods are alpha versions.
 
 ## Status
 
-Both loaders are built from the same shared code: **Fabric** (the root project) and, since 2026-10-31, **NeoForge** (the subproject `:neoforge`,
-`docs/NEOFORGE.md`). Fabric came first; both are checked the same way now: the GameTests on a server and the client smoke in a dev client, in a world
-(`docs/CLIENT_VERIFICATION.md`).
+**Alpha** (0.1.0-alpha.7). All eight feature groups are ported for both loaders from one shared code base.
 
-| Part | State |
-|---|---|
-| Eight feature groups (simple blocks, tile blocks, machines, basic items, foci, enchantments, Kami gear, Kami world) | ported, reviewed; GameTests exist for every group. What is **recorded as run** is uneven: the documents of Kami world, Foci and (first round only) Kami gear record runs with numbers; the Machines and Basic items documents record no result of a run; the Enchantments document says that its tests ran, without a result. The one record that covers all eight is a GameTest results file, `build/tinkerer-gametest-results.xml`. The file of 2026-10-30 10:29 had 298 cases and no failure, error or skipped entry and was not tied to a console log. Later runs of the tree (2026-10-30, Gradle logs with the line "All 299 required tests passed"; the logs are not committed) wrote 299 cases, again without a failure, error or skipped entry (Tile blocks: 34 then, 35 now) (`docs/HOOKS.md` section 12, "What ran") |
-| Loader hooks (`LIVING_DAMAGE`, `LIVING_ARMOR_ABSORB`, `BREAK_SPEED`, jump, fall, item-use tick, drops, floating ticks, item renderers) | written for Fabric (Mixin) and for NeoForge (handlers of NeoForge's events in `NeoForgeEventPosters` and three mixins, `docs/HOOKS.md` section 9); checks exist (JUnit and GameTests, `docs/HOOKS.md` section 12). The results file above lists the 14 hook GameTests, the two of `LIVING_ARMOR_ABSORB` among them, without a failure; no document records a run of the hook JUnit tests. On NeoForge the same 14 GameTests passed on a NeoForge GameTest server (server side only; `docs/HOOKS.md` section 9) |
-| The groups that needed the hooks (Enchantments, Kami world, Kami gear, Machines, Foci) | **rewired** to them on Fabric, their workarounds deleted (`docs/HOOKS.md` section 10). Runs recorded in the group documents: Kami world 20 GameTests (together with the hook GameTests of its review round, 33 of 33) and 38 JUnit checks; Foci 36 GameTests; Kami gear a pass for its first round only (30 JUnit tests of the group plus `TinkererApiOnlyTest`, and 30 GameTests; the group has 34 JUnit tests and 36 GameTests now); Machines no result; Enchantments "ran" without a result. No totals are added up here. On NeoForge the GameTests of the five groups passed with the NeoForge posters (`docs/HOOKS.md` section 9) |
-| Research tree and recipes | registered through the Thaumcraft API; compared with the 1.7.10 source by script and by a GameTest (next row) |
-| Parity with the 1.7.10 source | `docs/PARITY_REPORT.md` (runs of 2026-10-30): 74 research entries and 127 recipes compared field by field with the original, and 17 object tags; **11 documented differences, 0 undocumented** (12 since 2026-11-01: the Levitational Locomotive's research shows the multiblock diagram that the original builds but never shows; the parity GameTests of the full runs of that day passed on both loaders); the runs recorded there are Fabric's (a GameTest on a running server: all 7 required tests passed). On NeoForge the same 7 GameTests passed in the full NeoForge run of 2026-10-31; the document does not compare that run's report |
-| NeoForge | **built and run on a GameTest server** (2026-10-31; `docs/NEOFORGE.md`, `docs/HOOKS.md` section 9): the subproject `:neoforge` (`neoforge/build.gradle`) compiles the shared code (`common/src/main`, `compat/src/main`) with the NeoForge glue of `neoforge/src/main`: the `@Mod` entry, the Thaumcraft add-on hook (`@IThaumcraftAddon.Addon`), the posters of every loader event (`NeoForgeEventPosters`), four mixins (armour step, `lastHurt` access, floating ticks, Infused Farmland soil), the item renderer backend (Mob Display), the Kami gear's wings and ghost blocks, and the Transvector Interface's fluid, item and energy capabilities. `./gradlew :neoforge:runGameTest`: "All 362 required tests passed" (2026-11-01: the 354 generated from the Fabric wrappers and 8 NeoForge-only checks). Decided differences from Fabric (`docs/HOOKS.md`, `docs/NEOFORGE.md`): the armour step is a mixin, not NeoForge's damage-container modifier; "cannot dig" is a speed of 0; the armour float check expects NeoForge's own arithmetic; NeoForge also posts the jump event for slimes, magma cubes and ridden horses and camels; the Infused Farmland needs its NeoForge soil mixin; the Interface also offers an item capability. Seen in a NeoForge dev client in a world: the NeoForge client smoke (2026-10-31: 730 checks passed, 0 failed; 739 with EMI and Jade, 735 with JEI; `docs/CLIENT_VERIFICATION.md`). A dedicated NeoForge server with real clients: the multiplayer check (`docs/MULTIPLAYER_VERIFICATION.md`). **Not seen:** the Kami wings and ghost blocks (the harness does not visit them on either loader). The CI workflow (`.github/workflows/ci.yml`) builds and tests both loaders; it has not run on GitHub yet |
-| Client (models, screens, HUD) | **seen in a running dev client on Fabric and on NeoForge** under Xvfb with software rendering (Mesa llvmpipe), `docs/CLIENT_VERIFICATION.md`: the last runs of the harness recorded 728 checks passed on Fabric and 730 on NeoForge, 0 failed, 1 not run (the tool-mode tooltip needs a key press), 80 pictures, English and Russian; the defects the first run found were fixed and the run repeated. **Not seen:** a GPU, sound, input from a real mouse or keyboard, other mods than EMI, JEI and Jade (seen in their own runs), the Kami wings and ghost blocks, the original 1.7.10 client for comparison (`docs/CLIENT_VERIFICATION.md`, "What it cannot show"). **Multiplayer**: real clients on a real dedicated server, on Fabric and on NeoForge, with the config sync, spawn protection (the tools and the Remote Placer, the Transvector Dislocator and the Animation Tablet), every packet of the add-on sent from the game's own keys, buttons and container clicks (the Remote Placer, the Enchanter's start, the Kami armour key, the Celestial Gateway; Soul Hearts and the Shadowbeam received and drawn), a second player seeing a block-entity change, the registration-option mismatch, and a real claims mod, Open Parties and Claims, on the server (`docs/MULTIPLAYER_VERIFICATION.md`; final runs of 2026-11-01: 141 checks passed, 0 failed, 0 harness errors on each loader, 67 of them the first part's). It found that on Fabric a place question did not reach that claims mod (fixed); the devices act as their fake player, whom a claims mod refuses in their owner's claim too (a decision for the owner) |
-| Recipe-viewer pages (EMI, JEI) and Jade tooltips | **ported** (optional: the add-on runs without these mods): the necromancy and infused-seed-drop pages of NEI as EMI and JEI categories, the Waila lines of five blocks as Jade tooltips (`docs/deviations/RecipeViewers.md`, `docs/deviations/Tooltips.md`). Tested on a server (GameTests) and **seen in the dev client** with EMI + Jade and, in a second run, with JEI: 30 + 45 pages, all 82 arcane/crucible/infusion recipes of the add-on in Thaumcraft's own categories, the tooltip text of six blocks read from Jade (`docs/CLIENT_VERIFICATION.md`). Not seen: hover tooltips, EMI and JEI together, NeoForge (the GameTests of the pages and tooltips passed there; EMI, JEI and Jade were not started on NeoForge) |
-| Energy through the Transvector Interface (RF in 1.7.10) | **ported** (2026-11-01, `docs/deviations/TileBlocks.md` 2.5): NeoForge `Capabilities.EnergyStorage.BLOCK`; Fabric through **Team Reborn Energy**, an optional mod (compiled against, not bundled; without it the add-on runs and the Interface carries no energy on Fabric). Amounts are forwarded as they are. GameTests on both loaders with a test energy cell; `runTinkererGameTest -PwithoutTeamRebornEnergy` runs the Fabric server without the mod. IC2 EU is not ported (no IC2 for 1.21.1) |
-| ComputerCraft / OpenComputers peripherals | not ported, by the owner's decision of 2026-11-01 (CC: Tweaked exists for 1.21.1; a port was written and tested on the branch `computercraft` and is kept there, not merged; OpenComputers has no 1.21.1 release). See `docs/DEVIATIONS.md`, "Not ported" |
+- The release build of 0.1.0-alpha.7 ran 429 JUnit tests, 362 GameTests on a Fabric server and 371 on a NeoForge server, without a failure.
+- The client was looked at in a development client on both loaders, and multiplayer on a dedicated server with real clients
+  ([docs/CLIENT_VERIFICATION.md](docs/CLIENT_VERIFICATION.md), [docs/MULTIPLAYER_VERIFICATION.md](docs/MULTIPLAYER_VERIFICATION.md)).
+  The release workflow itself does not repeat those two checks.
+- Not seen: the mod on a real GPU with sound, the Kami wings and ghost blocks, other mods than EMI, JEI and Jade.
 
-Nothing in this table is claimed beyond what a document or a results file records as run. The group documents differ in how much they record (first rows); where a document records no run, this table says so.
+What exactly was run and seen for each part is in [docs/STATUS.md](docs/STATUS.md).
 
-## What you need
+**Known issue.** With Thaumcraft 4 Reload up to 0.1.0-alpha.24, recipes of this add-on that take Obsidian Tiles (the Osmotic Enchanter
+among them) do not accept crafted tiles, so the infusion never starts. The cause was in Thaumcraft's `ItemApi` and is fixed there in commit
+[`299a9c0`](https://github.com/acak1221/Thaumcraft-1.21.1/commit/299a9c01); it needs the first Thaumcraft 4 Reload release after 0.1.0-alpha.24.
 
-* **JDK 21** (any vendor; the build uses a Java 21 toolchain) and git. The Gradle wrapper (8.12.1) is in the repository.
-* **Thaumcraft 4 Reload, built from the commit the add-on needs.** The add-on uses extensions of `thaumcraft.api` that are on the branch `main` of
-  <https://github.com/acak1221/Thaumcraft-1.21.1> since commit `4c38e3f` (2026-10-31); a Thaumcraft without them (an older commit or release) does not
-  compile the add-on. `thaumcraft_ref` in `gradle.properties` is the commit that the add-on is built and tested against (the CI uses it too). The build reads Thaumcraft from your local Maven repository (`~/.m2`, `mavenLocal()`), for **both loaders**:
-  `thaumcraft:Thaumcraft-fabric:<thaumcraft_version>` for the Fabric build and `thaumcraft:Thaumcraft-neoforge:<thaumcraft_version>` for `:neoforge`
-  (`gradle.properties`, now `0.1.0-alpha.7`). Install both first (`tools/publish-thaumcraft.sh` does, below); a build without the Fabric jar stops
-  with a message that says so (that check looks for the Fabric jar only).
-* Internet access for Maven Central, `maven.fabricmc.net`, `maven.neoforged.net`, `maven.architectury.dev` and Mojang (Minecraft, assets) on the first build.
-* Memory: the Gradle daemon is set to 3 GB (`org.gradle.jvmargs` in `gradle.properties`), and the GameTest servers and the client smoke each start a JVM with
-  `-Xmx3G` (`fabric.gradle`, `neoforge/build.gradle`), so plan for about 6 GB of free memory during `runTinkererGameTest`, `:neoforge:runGameTest` and `tools/client-smoke.sh`.
-* Only for the client smoke: Linux with `xvfb-run`, Mesa software rendering (no GPU needed) and `python3` (the script prints a summary of `report.json`
-  with it). Only for `scripts/porting`: Python 3.
+## For developers
 
-## Build and test
+- [docs/BUILDING.md](docs/BUILDING.md): what you need, every build and test command, what a good run looks like, the layout of the repository and how releases are made.
+- [docs/PORTING_RULES.md](docs/PORTING_RULES.md): the rules every file follows (naming, data components, licence headers, API-only imports).
+- [docs/DEVIATIONS.md](docs/DEVIATIONS.md): every difference from the 1.7.10 mod, with the per-group documents in `docs/deviations/`.
+- [docs/API_GAPS.md](docs/API_GAPS.md) and `docs/api-requests/`: what the add-on needed from the Thaumcraft API and how each request was answered.
+- [docs/HOOKS.md](docs/HOOKS.md) and [docs/NEOFORGE.md](docs/NEOFORGE.md): the loader events, and the NeoForge build.
+- [docs/AUDIT.md](docs/AUDIT.md): the defect audit of 2026-11-01.
 
-All commands run in the root of this repository.
+The add-on talks to Thaumcraft only through the public `thaumcraft.api`; a JUnit test (`TinkererApiOnlyTest`) fails the build if a source
+file imports anything else of Thaumcraft. Until 2026-10-31 the add-on was written inside the
+[Thaumcraft 4 Reload repository](https://github.com/acak1221/Thaumcraft-1.21.1) (`NOTICE.md`, "History"); that repository keeps the API
+extensions the add-on needs and its guides for add-on authors.
 
-```bash
-# 1. Thaumcraft 4 Reload into ~/.m2 (once; again when thaumcraft_ref in gradle.properties changes)
-tools/publish-thaumcraft.sh                  # clones ../Thaumcraft-1.21.1 at thaumcraft_ref and runs ./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal there
-#    by hand:  git clone https://github.com/acak1221/Thaumcraft-1.21.1 ../Thaumcraft-1.21.1
-#              cd ../Thaumcraft-1.21.1 && git checkout <thaumcraft_ref> && ./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
+## Credits and licence
 
-# 2. The add-on
-./gradlew tinkererTest                       # JUnit tests of the add-on
-./gradlew runTinkererGameTest                # all GameTests on a Fabric GameTest server
-./gradlew runTinkererGameTest -PtinkererGameTestFilter='simpleblocksgametests.*'   # one group or test (comma list, trailing * allowed)
-./gradlew runTinkererGameTest -PwithoutTeamRebornEnergy   # without the optional Team Reborn Energy (the energy checks then check that the add-on runs without it)
-./gradlew remapThaumicTinkererJar            # the release jar: build/libs/ThaumicTinkerer-fabric-<version>.jar
-./gradlew check                              # compiles the main, GameTest and client-smoke source sets and runs tinkererTest
-                                             #   (from the root directory also :neoforge:check, which compiles the NeoForge sources and GameTests)
-./gradlew runTinkererClient                  # a development client with Thaumcraft and the add-on
-tools/client-smoke.sh                        # the client smoke under Xvfb, about 2 minutes after the first compile (docs/CLIENT_VERIFICATION.md)
-tools/client-smoke.sh --neoforge             # the same on NeoForge (results in neoforge/build/tinkerer-client-smoke/)
-tools/multiplayer-smoke.sh [--neoforge]      # dedicated servers and real clients over the network, with Open Parties and Claims on the server, 6 to 8 minutes (docs/MULTIPLAYER_VERIFICATION.md)
-./gradlew exportTinkererClasspath && tools/compile.sh [-g]   # javac outside Gradle, for a quick edit-compile loop (-g: with the GameTest sources)
+Thaumic Tinkerer was written by **Vazkii**, continued by **pixlepix** and **nekosune** and maintained for 1.7.10 by the
+**GTNewHorizons** contributors. Thaumcraft 4 is the work of **Azanor**. This port changes none of that authorship.
 
-# 3. NeoForge (the subproject :neoforge; docs/NEOFORGE.md)
-./gradlew :neoforge:assemble                 # the NeoForge release jar: neoforge/build/libs/ThaumicTinkerer-neoforge-<version>.jar
-./gradlew :neoforge:runGameTest              # the same GameTests on a NeoForge GameTest server
-./gradlew :neoforge:runGameTest -PtinkererGameTestFilter='kamiworldgametests.*'    # the same filter as the Fabric run
-python3 tools/neoforge_gametests.py          # are the NeoForge GameTest wrappers in step with the Fabric ones? (--write regenerates them)
-```
-
-* **What a good run looks like** (0.1.0-alpha.7, 2026-11-01; the counts move when tests are added, a failure is what matters):
-
-  | Command | Result |
-  |---|---|
-  | `./gradlew tinkererTest` | `BUILD SUCCESSFUL`; the files in `build/test-results/tinkererTest/` add up to 424 tests, 0 failures, 0 errors, 0 skipped |
-  | `./gradlew runTinkererGameTest` | the log line `All 357 required tests passed :)` and `BUILD SUCCESSFUL`; `build/tinkerer-gametest-results.xml` has 357 `testcase` elements and no `failure` or `error` |
-  | `./gradlew remapThaumicTinkererJar` | `BUILD SUCCESSFUL` and `build/libs/ThaumicTinkerer-fabric-0.1.0-alpha.7.jar` (about 2.3 MB) |
-  | `./gradlew check` | `BUILD SUCCESSFUL` (the three source sets compile, the Mixin refmap check passes, `tinkererTest` runs) |
-  | `./gradlew :neoforge:assemble` | `BUILD SUCCESSFUL` and `neoforge/build/libs/ThaumicTinkerer-neoforge-0.1.0-alpha.7.jar` |
-  | `./gradlew :neoforge:runGameTest` | like `runTinkererGameTest`, with the eight NeoForge-only tests on top: `All 365 required tests passed :)`, and `neoforge/build/tinkerer-gametest-results.xml` with 365 `testcase` elements and no `failure` or `error`; the last run (2026-11-01) reached it. The earlier runs and their failures are in `docs/NEOFORGE.md`, "GameTests on NeoForge" |
-  | `tools/multiplayer-smoke.sh` | `multiplayer: passed on fabric` and `BUILD SUCCESSFUL`; `build/tinkerer-multiplayer/summary.txt` lists the seven reports (two servers, five clients), each `harness COMPLETED`, and ends with `no problems`; the same with `--neoforge` (results in `neoforge/build/tinkerer-multiplayer/`). The exit code is non-zero for any FAIL, HARNESS_ERROR or NOT_RUN |
-  | `tools/client-smoke.sh` | `client-smoke: harness COMPLETED; checks {PASS: ..., FAIL: 0, HARNESS_ERROR: 0, NOT_RUN: 1, ...}` and 80 screenshots in `build/tinkerer-client-smoke/`; on NeoForge (`--neoforge`, results in `neoforge/build/tinkerer-client-smoke/`) 730. On Fabric PASS was 725 to 728 in six runs (three fire-block checks depend on random pixels), FAIL 0 and NOT_RUN 1 did not move. `tools/client-smoke.sh -- -PwithEmi -PwithJade` adds the EMI and Jade checks (737 PASS, 88 screenshots), `-- -PwithJei` the JEI ones (730 PASS, 82 screenshots) |
-* The release jars (`mod_version` in `gradle.properties`): for Fabric `build/libs/ThaumicTinkerer-fabric-<version>.jar` (`remapThaumicTinkererJar`, which
-  the root project's `assemble` builds); it is remapped for production, carries `LICENSE` under `META-INF/` and holds the Mixin refmap. To play with it, put
-  it into `mods/` next to the Thaumcraft 4 Reload jar for Fabric, Architectury API 13.0.11+ and Fabric API. For NeoForge
-  `neoforge/build/libs/ThaumicTinkerer-neoforge-<version>.jar` (`./gradlew :neoforge:assemble`); it carries `LICENSE` under `META-INF/` too and needs no
-  refmap (NeoForge runs on Mojang names). It goes into `mods/` of NeoForge 21.1.259+ next to the Thaumcraft 4 Reload jar for NeoForge and Architectury
-  API 13.0.11+ (`neoforge.mods.toml`). On NeoForge the add-on has run on a GameTest server and in a dev client in a world (the client smoke), both from the
-  build's classes, not from this jar.
-* `runTinkererGameTest` writes `build/tinkerer-gametest-results.xml`; its world lives in `run-tinkerer-gametest/` (deleted at the start of every run). The
-  JUnit reports are in `build/reports/tests/tinkererTest/`, the client smoke results in `build/tinkerer-client-smoke/`. All of that is git-ignored.
-  `:neoforge:runGameTest` writes `neoforge/build/tinkerer-gametest-results.xml`; its world lives in `neoforge/run-gametest/` (deleted at the start of
-  every run, git-ignored too).
-* `tools/client-smoke.sh` runs `./gradlew` under `xvfb-run`; the environment variable `GRADLE_CMD` replaces the Gradle command (see the header of the script).
-* The Fabric compile step fails if the Mixin annotation processor wrote no refmap or one without an entry for a mixin that has an injector (`fabric.gradle`).
-  The NeoForge build makes no refmap.
-* Files that the documents cite and that belong to the **Thaumcraft 4 Reload repository**, not to this one: `AGENTS.md`, `docs/api/` (`PORTING.md`,
-  `LEGACY_IDS.md`, the guides), `docs/MIGRATION_STATUS.md`, `common/src/main/java/thaumcraft/` and `common/src/main/resources/*/thaumcraft/` (the sources and resources of Thaumcraft; `docs/API_GAPS.md` abbreviates them as `API/` and `INT/`) and `fabric/build.gradle`
-  (this repository has `fabric.gradle` instead). `neoforge/build.gradle` is this repository's own: the NeoForge build of the add-on. Results that the documents quote from runs of Thaumcraft's own suites (JUnit 2761, 515 GameTests, 296 Python tests,
-  `docs/DEVIATIONS.md` section 5) were runs in the Thaumcraft repository, not in this one; section 5 says which rows those are.
-* `scripts/porting/` holds the Python tools that converted the 1.7.10 resources and extracted the parity oracle (MIT; see its `README.md`). They need a
-  checkout of the original 1.7.10 source (and `tt_oracle.py` one of Thaumcraft); `tools/porting.sh` runs them.
-* **Releases** (`.github/workflows/release.yml`): a tag `v<mod_version>` on a commit of `main` builds Thaumcraft 4 Reload at `thaumcraft_ref`,
-  runs JUnit and the GameTests of both loaders, and publishes a GitHub release with the Fabric and the NeoForge jar and their SHA-256 sums (a version
-  with `-alpha`, `-beta` or `-rc` is a pre-release). Started by hand (`workflow_dispatch`) without a tag it is a dry run: the same build, the jars as an
-  artifact, nothing published. A release is only usable with a Thaumcraft 4 Reload build that has the API of `thaumcraft_ref`.
-  To publish the next version, commit and push its `mod_version`, then run `git tag v<mod_version>` and `git push origin v<mod_version>`.
-  **Actions → Release → Run workflow** without a tag checks the complete build without publishing. With a tag, the manual run checks out that
-  exact tag; publishing also requires the `publish` checkbox and a commit on `main`. Test reports must contain passing cases with no failures,
-  errors or skips. Releases include both production jars, `SHA256SUMS.txt` and `BUILD_INFO.json` with actual source commits and test results.
-  An interrupted upload can resume from its draft; published releases are not overwritten. The workflow uses `GITHUB_TOKEN` and caches Gradle.
-  Release automation maintained with OpenAI Codex (GPT-6).
-
-## Layout
-
-```
-common/src/main      loader-neutral code, data (assets/, data/), language files
-common/src/test      JUnit tests (no world)
-common/src/gameTest  runtime checks used by the GameTests
-fabric/src/main      Fabric entry points, Mixins, Fabric item-renderer backend
-fabric/src/gameTest  GameTest wrappers and the Fabric GameTest mod
-fabric/src/clientSmoke  the client smoke harness (a development tool, never in the jar)
-compat/src/main      the optional EMI, JEI and Jade integrations (both loaders)
-neoforge/src/main    NeoForge entry (@Mod), Thaumcraft add-on hook, event posters, mixins, client glue, block capabilities
-neoforge/src/gameTest  NeoForge GameTest wrappers (generated from the Fabric ones) and the NeoForge GameTest mod
-build.gradle         the root (Fabric) project: Loom, Minecraft, Fabric, Architectury and the Thaumcraft jar
-fabric.gradle        source sets, runs and tasks of the Fabric add-on
-neoforge/build.gradle  the subproject :neoforge: the NeoForge build, its runs and its GameTests
-tools/               compile.sh, client-smoke.sh, publish-thaumcraft.sh, porting.sh, neoforge_gametests.py
-scripts/porting/     Python tools of the resource and oracle pipeline (MIT)
-docs/                porting rules, deviations, API requests and gaps, hooks, parity report, client verification
-lang-extra/          language fragments merged into the language files
-```
-
-The registry layer is in `thaumic.tinkerer.common.registry` (`TTRegistry`, `TTRecipes`), the content in
-`thaumic.tinkerer.common.content` (one registrar per group, listed in `ContentGroups`).
-
-## Where to read next
-
-- `docs/PORTING_RULES.md` – the rules every file follows (naming, data components, licence headers, API-only imports).
-- `docs/DEVIATIONS.md` – every difference from the 1.7.10 mod, grouped, with pointers to the per-group documents in `docs/deviations/`.
-- `docs/API_GAPS.md`, `docs/api-requests/` – what the add-on needed from the Thaumcraft API and how each request was answered.
-- `docs/HOOKS.md` – the loader events and how they are posted (Fabric and NeoForge).
-- `docs/NEOFORGE.md` – the NeoForge build: its GameTests, its glue and what was verified there.
-- `docs/PARITY_REPORT.md` – the research/recipe comparison with the original source.
-- `docs/CLIENT_VERIFICATION.md` – the client smoke harness and what it cannot show.
-- `docs/AUDIT.md` – the defect audit of 2026-11-01: what was found, fixed and verified.
+**CC BY-NC-SA 3.0** for the add-on (`LICENSE`, `NOTICE.md`): non-commercial, share-alike. The build files, tools and workflows of this
+repository are MIT (`LICENSE-MIT`); the Gradle wrapper is Gradle's own (Apache-2.0). `NOTICE.md` lists what falls under which.

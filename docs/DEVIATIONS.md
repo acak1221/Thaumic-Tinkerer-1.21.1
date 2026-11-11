@@ -212,7 +212,7 @@ were runs of Thaumcraft's own suites, which belong to that repository and not to
   `b231f66`). It runs JUnit and the GameTests of both loaders, not the client smoke or the multiplayer check (they need Xvfb and take minutes each).
 
 The per-group documents say what each group's own checks were; they record runs in different amounts (KamiWorld, Foci and the first round of KamiGear with numbers; Machines and BasicItems
-record no result of their own server-side tests; Enchantments a statement without a result): `README.md` and `HOOKS.md` section 12 say what is recorded.
+record no result of their own server-side tests; Enchantments a statement without a result): `STATUS.md` and `HOOKS.md` section 12 say what is recorded.
 
 ## 6. Points that were open (settled on 2026-11-01)
 

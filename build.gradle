@@ -19,7 +19,7 @@ base { archivesName = archives_name }
 
 repositories {
  // Thaumcraft 4 Reload comes from the local Maven repository only: the commit named in gradle.properties (thaumcraft_ref), built and
- // installed by tools/publish-thaumcraft.sh (README.md). No other repository is asked for the group `thaumcraft`.
+ // installed by tools/publish-thaumcraft.sh (docs/BUILDING.md). No other repository is asked for the group `thaumcraft`.
  exclusiveContent {
   forRepository { mavenLocal() }
   filter { includeGroup 'thaumcraft' }
@@ -43,7 +43,7 @@ if (!thaumcraftProbe.resolvedConfiguration.lenientConfiguration.unresolvedModule
  throw new GradleException("Thaumcraft 4 Reload (thaumcraft:Thaumcraft-fabric:$thaumcraft_version) is not installed in the local Maven repository.\n" +
    "Install it first: run tools/publish-thaumcraft.sh (it builds the commit thaumcraft_ref of gradle.properties from " +
    "https://github.com/acak1221/Thaumcraft-1.21.1 and installs both the Fabric and the NeoForge jar with " +
-   "`./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal`), see README.md, \"Build and test\".\n" +
+   "`./gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal`), see docs/BUILDING.md, \"Build and test\".\n" +
    "If the Thaumcraft that you built has another version, set thaumcraft_version in gradle.properties to it.")
 }
 
